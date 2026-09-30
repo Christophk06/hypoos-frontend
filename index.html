@@ -67,6 +67,18 @@ async function supabaseLogin(supabaseUrl, anonKey, email, password){
   if(!res.ok) throw new Error(data.error_description || data.msg || "Login fehlgeschlagen.");
   return data.access_token;
 }
+async function supabaseSignUp(supabaseUrl, anonKey, email, password){
+  const res = await fetch(supabaseUrl.replace(/\/$/,"") + "/auth/v1/signup", {
+    method:"POST", headers:{apikey:anonKey,"Content-Type":"application/json"},
+    body: JSON.stringify({email,password}),
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error_description || data.msg || "Registrierung fehlgeschlagen.");
+  // Wenn E-Mail-Bestätigung in Supabase deaktiviert ist, liefert Supabase sofort
+  // eine Session (access_token) zurück. Ist Bestätigung aktiviert, ist
+  // access_token leer und der Nutzer muss zuerst auf den Link in der Mail klicken.
+  return data.access_token || null;
+}
 
 function Card(props){ return <div className="card" style={props.style}>{props.children}</div>; }
 function Field({label, children}){ return <label style={{display:"block",marginBottom:14}}><div className="field-label">{label}</div>{children}</label>; }
@@ -97,22 +109,51 @@ function SetupView({onSave}){
 }
 
 function LoginView({config,onLogin,onReset}){
+  const [mode,setMode]=useState("login"); // "login" | "register"
   const [email,setEmail]=useState(""); const [password,setPassword]=useState("");
-  const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
-  const submit = async () => {
-    setError(""); setLoading(true);
+  const [error,setError]=useState(""); const [info,setInfo]=useState(""); const [loading,setLoading]=useState(false);
+
+  const submitLogin = async () => {
+    setError(""); setInfo(""); setLoading(true);
     try { const token = await supabaseLogin(config.supabaseUrl, config.supabaseAnonKey, email, password); onLogin(token); }
     catch(e){ setError(e.message); }
     setLoading(false);
   };
+
+  const submitRegister = async () => {
+    setError(""); setInfo(""); setLoading(true);
+    try {
+      if(password.length < 6){ setError("Das Passwort muss mindestens 6 Zeichen haben."); setLoading(false); return; }
+      const token = await supabaseSignUp(config.supabaseUrl, config.supabaseAnonKey, email, password);
+      if(token){ onLogin(token); }
+      else { setInfo("Konto angelegt! Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben, und melde dich danach an."); setMode("login"); }
+    } catch(e){ setError(e.message); }
+    setLoading(false);
+  };
+
+  const submit = mode==="login" ? submitLogin : submitRegister;
+
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
       <Card style={{maxWidth:380,width:"100%"}}>
-        <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:18}}>Anmelden</div>
+        <div style={{display:"flex",gap:6,marginBottom:18,background:PAPER,borderRadius:8,padding:4}}>
+          <button onClick={()=>{setMode("login");setError("");setInfo("");}}
+            style={{flex:1,padding:"8px 0",borderRadius:6,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:600,
+              background:mode==="login"?INK:"transparent",color:mode==="login"?"#fff":INK_MUTED}}>Anmelden</button>
+          <button onClick={()=>{setMode("register");setError("");setInfo("");}}
+            style={{flex:1,padding:"8px 0",borderRadius:6,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:600,
+              background:mode==="register"?INK:"transparent",color:mode==="register"?"#fff":INK_MUTED}}>Registrieren</button>
+        </div>
+        <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:18}}>
+          {mode==="login" ? "Anmelden" : "Neues Konto erstellen"}
+        </div>
         <Field label="E-Mail"><input className="input" value={email} onChange={e=>setEmail(e.target.value)} /></Field>
         <Field label="Passwort"><input type="password" className="input" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} /></Field>
         {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
-        <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>{loading?"Bitte warten…":"Anmelden"}</button>
+        {info && <div style={{color:GOOD,fontSize:13,marginBottom:12}}>{info}</div>}
+        <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>
+          {loading?"Bitte warten…":(mode==="login"?"Anmelden":"Konto erstellen")}
+        </button>
         <div style={{textAlign:"center",marginTop:12}}>
           <button onClick={onReset} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Verbindungseinstellungen ändern</button>
         </div>

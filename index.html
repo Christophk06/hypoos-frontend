@@ -79,6 +79,26 @@ async function supabaseSignUp(supabaseUrl, anonKey, email, password){
   // access_token leer und der Nutzer muss zuerst auf den Link in der Mail klicken.
   return data.access_token || null;
 }
+async function supabaseRecover(supabaseUrl, anonKey, email, redirectTo){
+  const res = await fetch(supabaseUrl.replace(/\/$/,"") + "/auth/v1/recover", {
+    method:"POST", headers:{apikey:anonKey,"Content-Type":"application/json"},
+    body: JSON.stringify({email, redirect_to: redirectTo}),
+  });
+  if(!res.ok){
+    let data = null; try { data = await res.json(); } catch(e){}
+    throw new Error((data && (data.error_description||data.msg)) || "Anfrage fehlgeschlagen.");
+  }
+}
+async function supabaseSetNewPassword(supabaseUrl, anonKey, accessToken, newPassword){
+  const res = await fetch(supabaseUrl.replace(/\/$/,"") + "/auth/v1/user", {
+    method:"PUT",
+    headers:{apikey:anonKey,"Content-Type":"application/json",Authorization:`Bearer ${accessToken}`},
+    body: JSON.stringify({password:newPassword}),
+  });
+  const data = await res.json();
+  if(!res.ok) throw new Error((data && (data.error_description||data.msg)) || "Passwort konnte nicht geändert werden.");
+  return data;
+}
 
 function Card(props){ return <div className="card" style={props.style}>{props.children}</div>; }
 function Field({label, children}){ return <label style={{display:"block",marginBottom:14}}><div className="field-label">{label}</div>{children}</label>; }
@@ -109,7 +129,7 @@ function SetupView({onSave}){
 }
 
 function LoginView({config,onLogin,onReset}){
-  const [mode,setMode]=useState("login"); // "login" | "register"
+  const [mode,setMode]=useState("login"); // "login" | "register" | "forgot"
   const [email,setEmail]=useState(""); const [password,setPassword]=useState("");
   const [error,setError]=useState(""); const [info,setInfo]=useState(""); const [loading,setLoading]=useState(false);
 
@@ -131,7 +151,35 @@ function LoginView({config,onLogin,onReset}){
     setLoading(false);
   };
 
-  const submit = mode==="login" ? submitLogin : submitRegister;
+  const submitForgot = async () => {
+    setError(""); setInfo(""); setLoading(true);
+    try {
+      const redirectTo = window.location.origin + window.location.pathname;
+      await supabaseRecover(config.supabaseUrl, config.supabaseAnonKey, email, redirectTo);
+      setInfo("Falls diese E-Mail-Adresse bei uns registriert ist, haben wir dir gerade einen Link zum Zurücksetzen deines Passworts geschickt. Bitte schau in dein Postfach (auch im Spam-Ordner).");
+    } catch(e){ setError(e.message); }
+    setLoading(false);
+  };
+
+  const submit = mode==="login" ? submitLogin : mode==="register" ? submitRegister : submitForgot;
+
+  if(mode==="forgot"){
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+        <Card style={{maxWidth:380,width:"100%"}}>
+          <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Passwort vergessen</div>
+          <div style={{fontSize:13,color:INK_MUTED,marginBottom:16}}>Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.</div>
+          <Field label="E-Mail"><input className="input" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} /></Field>
+          {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+          {info && <div style={{color:GOOD,fontSize:13,marginBottom:12}}>{info}</div>}
+          <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>{loading?"Bitte warten…":"Link schicken"}</button>
+          <div style={{textAlign:"center",marginTop:12}}>
+            <button onClick={()=>{setMode("login");setError("");setInfo("");}} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Zurück zur Anmeldung</button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
@@ -154,9 +202,35 @@ function LoginView({config,onLogin,onReset}){
         <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>
           {loading?"Bitte warten…":(mode==="login"?"Anmelden":"Konto erstellen")}
         </button>
-        <div style={{textAlign:"center",marginTop:12}}>
+        <div style={{textAlign:"center",marginTop:12,display:"flex",justifyContent:"center",gap:14}}>
+          {mode==="login" && <button onClick={()=>{setMode("forgot");setError("");setInfo("");}} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Passwort vergessen?</button>}
           <button onClick={onReset} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Verbindungseinstellungen ändern</button>
         </div>
+      </Card>
+    </div>
+  );
+}
+
+function ResetPasswordView({config, accessToken, onDone}){
+  const [password,setPassword]=useState(""); const [password2,setPassword2]=useState("");
+  const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
+  const submit = async () => {
+    setError("");
+    if(password.length < 6){ setError("Das Passwort muss mindestens 6 Zeichen haben."); return; }
+    if(password !== password2){ setError("Die beiden Passwörter stimmen nicht überein."); return; }
+    setLoading(true);
+    try { await supabaseSetNewPassword(config.supabaseUrl, config.supabaseAnonKey, accessToken, password); onDone(); }
+    catch(e){ setError(e.message); }
+    setLoading(false);
+  };
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+      <Card style={{maxWidth:380,width:"100%"}}>
+        <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Neues Passwort festlegen</div>
+        <Field label="Neues Passwort"><input type="password" className="input" value={password} onChange={e=>setPassword(e.target.value)} /></Field>
+        <Field label="Neues Passwort wiederholen"><input type="password" className="input" value={password2} onChange={e=>setPassword2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} /></Field>
+        {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+        <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>{loading?"Bitte warten…":"Passwort speichern"}</button>
       </Card>
     </div>
   );
@@ -359,10 +433,22 @@ function App(){
   const [risks,setRisks] = useState([]);
   const [readiness,setReadiness] = useState(null);
   const [fatalError,setFatalError] = useState("");
+  const [recoveryToken,setRecoveryToken] = useState(null);
+  const [recoveryDone,setRecoveryDone] = useState(false);
 
   useEffect(()=>{
     try { const raw = window.localStorage.getItem(LS_KEY); setConfig(raw ? JSON.parse(raw) : null); }
     catch(e){ setConfig(null); }
+    // Erkennt den Link aus der "Passwort vergessen"-E-Mail: Supabase hängt
+    // #access_token=...&type=recovery an die URL an, wenn man draufklickt.
+    try {
+      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+      const params = new URLSearchParams(hash);
+      if(params.get("type")==="recovery" && params.get("access_token")){
+        setRecoveryToken(params.get("access_token"));
+        window.history.replaceState(null,"",window.location.pathname);
+      }
+    } catch(e){}
   },[]);
 
   const saveConfig = (cfg) => {
@@ -402,6 +488,16 @@ function App(){
 
   if(config===undefined) return <div style={{padding:40,color:INK_MUTED}}>Lädt…</div>;
   if(!config) return <SetupView onSave={saveConfig} />;
+  if(recoveryToken && !recoveryDone) return <ResetPasswordView config={config} accessToken={recoveryToken} onDone={()=>{setRecoveryDone(true);setRecoveryToken(null);}} />;
+  if(recoveryDone) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+      <Card style={{maxWidth:380,width:"100%",textAlign:"center"}}>
+        <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:10}}>Passwort geändert</div>
+        <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:16}}>Du kannst dich jetzt mit deinem neuen Passwort anmelden.</div>
+        <button className="btn-primary" style={{width:"100%"}} onClick={()=>setRecoveryDone(false)}>Zur Anmeldung</button>
+      </Card>
+    </div>
+  );
   if(!token) return <LoginView config={config} onLogin={setToken} onReset={()=>saveConfig(null)} />;
   if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api}
     onCreated={(h)=>{ setHotels([...hotels,h]); setHotel(h); }} onSelect={setHotel} />;

@@ -38,6 +38,7 @@ const PRIORITIES = ["Kritisch","Hoch","Mittel","Niedrig"];
 const TASK_STATUSES = ["Nicht begonnen","In Arbeit","Blockiert","In Prüfung","Abgeschlossen"];
 const MILESTONE_STATUSES = ["Geplant","In Arbeit","Gefährdet","Abgeschlossen"];
 const LS_KEY = "hpoos_connection_config_v1";
+const LS_INVITE_KEY = "hpoos_pending_invite_v1";
 
 function fmtDate(d){ return d ? new Date(d).toLocaleDateString("de-DE",{day:"2-digit",month:"short",year:"numeric"}) : "—"; }
 function priorityColor(p){
@@ -421,6 +422,93 @@ function RisksView({risks, callHotel, refresh}){
   );
 }
 
+function TeamView({orgId, api, inviteLinkBase}){
+  const [members,setMembers] = useState([]);
+  const [invites,setInvites] = useState([]);
+  const [email,setEmail] = useState(""); const [role,setRole] = useState("member");
+  const [error,setError] = useState(""); const [copiedId,setCopiedId] = useState(null); const [loading,setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [m,i] = await Promise.all([
+        api("/api/organizations/"+orgId+"/members"),
+        api("/api/organizations/"+orgId+"/invites"),
+      ]);
+      setMembers(m); setInvites(i);
+    } catch(e){ setError(e.message); }
+  }, [api, orgId]);
+
+  useEffect(()=>{ load(); }, [load]);
+
+  const invite = async () => {
+    if(!email) return;
+    setError(""); setLoading(true);
+    try { await api("/api/invites","POST",{organization_id:orgId, email, role}); setEmail(""); await load(); }
+    catch(e){ setError(e.message); }
+    setLoading(false);
+  };
+
+  const revoke = async (id) => { await api("/api/invites/"+id,"DELETE"); await load(); };
+
+  const copyLink = (invite) => {
+    const link = inviteLinkBase + "?invite=" + invite.token;
+    navigator.clipboard?.writeText(link).then(()=>{ setCopiedId(invite.id); setTimeout(()=>setCopiedId(null),1800); });
+  };
+
+  return (
+    <div>
+      <Card style={{marginBottom:18}}>
+        <div style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</div>
+        <div style={{display:"flex",gap:10}}>
+          <input className="input" placeholder="E-Mail-Adresse" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&invite()} />
+          <select className="input" style={{width:150}} value={role} onChange={e=>setRole(e.target.value)}>
+            <option value="member">Mitglied</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button className="btn-primary" onClick={invite} disabled={loading}>{loading?"…":"Einladen"}</button>
+        </div>
+        {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+        <div style={{fontSize:12,color:INK_MUTED,marginTop:10}}>
+          Nach dem Einladen bekommst du einen Link zum Kopieren — den schickst du der Person (z. B. per E-Mail oder Chat).
+          Sie muss sich damit registrieren oder anmelden, dann gehört sie automatisch zu deiner Organisation.
+        </div>
+      </Card>
+
+      <Card style={{marginBottom:18,padding:0}}>
+        <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Mitglieder</div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+          {members.map(m=>(
+            <tr key={m.user_id} style={{borderTop:`1px solid ${BORDER}`}}>
+              <td style={{padding:12}}>{m.email}</td>
+              <td style={{padding:12,color:INK_MUTED}}>{m.role}</td>
+              <td style={{padding:12,color:INK_MUTED}}>seit {fmtDate(m.joined_at)}</td>
+            </tr>
+          ))}
+        </tbody></table>
+      </Card>
+
+      {invites.filter(i=>i.status==="ausstehend").length > 0 && (
+        <Card style={{padding:0}}>
+          <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Ausstehende Einladungen</div>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+            {invites.filter(i=>i.status==="ausstehend").map(i=>(
+              <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
+                <td style={{padding:12}}>{i.email}<div style={{fontSize:11.5,color:INK_MUTED}}>{i.role}</div></td>
+                <td style={{padding:12}}>
+                  <button onClick={()=>copyLink(i)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"5px 10px",fontSize:12.5,cursor:"pointer"}}>
+                    {copiedId===i.id ? "Kopiert!" : "Link kopieren"}
+                  </button>
+                </td>
+                <td style={{padding:12}}><button onClick={()=>revoke(i.id)} style={{background:"none",border:"none",color:INK_MUTED,cursor:"pointer"}}>✕</button></td>
+              </tr>
+            ))}
+          </tbody></table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function App(){
   const [config,setConfig] = useState(undefined);
   const [token,setToken] = useState(null);
@@ -449,6 +537,16 @@ function App(){
         window.history.replaceState(null,"",window.location.pathname);
       }
     } catch(e){}
+    // Erkennt einen Team-Einladungslink: ?invite=<token>. Der Token wird im
+    // Browser gemerkt, damit er auch nach Registrierung + E-Mail-Bestätigung
+    // (die zurück auf die Seite ohne ?invite führt) noch da ist.
+    try {
+      const search = new URLSearchParams(window.location.search);
+      if(search.get("invite")){
+        try { window.localStorage.setItem(LS_INVITE_KEY, search.get("invite")); } catch(e){}
+        window.history.replaceState(null,"",window.location.pathname);
+      }
+    } catch(e){}
   },[]);
 
   const saveConfig = (cfg) => {
@@ -462,8 +560,22 @@ function App(){
     if(!token || !config) return;
     (async () => {
       try {
-        const boot = await apiCall(config.backendUrl, token, "/api/bootstrap-organization", "POST", {name:"Meine Organisation"});
-        setOrgId(boot.organization_id);
+        let organizationId;
+        let inviteToken = null;
+        try { inviteToken = window.localStorage.getItem(LS_INVITE_KEY); } catch(e){}
+        if(inviteToken){
+          try {
+            const accepted = await apiCall(config.backendUrl, token, "/api/invites/accept", "POST", {token:inviteToken});
+            organizationId = accepted.organization_id;
+          } catch(e){ setFatalError("Einladung: " + e.message); }
+          // Einladung nur einmal verarbeiten – egal ob angenommen oder ungültig.
+          try { window.localStorage.removeItem(LS_INVITE_KEY); } catch(e){}
+        }
+        if(!organizationId){
+          const boot = await apiCall(config.backendUrl, token, "/api/bootstrap-organization", "POST", {name:"Meine Organisation"});
+          organizationId = boot.organization_id;
+        }
+        setOrgId(organizationId);
         const h = await apiCall(config.backendUrl, token, "/api/hotels");
         setHotels(h);
       } catch(e){ setFatalError(e.message); }
@@ -507,6 +619,7 @@ function App(){
     {key:"tasks", label:"Aufgaben"},
     {key:"milestones", label:"Meilensteine"},
     {key:"risks", label:"Risiken"},
+    {key:"team", label:"Team"},
   ];
 
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -532,6 +645,7 @@ function App(){
           {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname} />}
         </div>
       </div>
     </div>

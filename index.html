@@ -433,14 +433,17 @@ function TeamView({orgId, api, inviteLinkBase}){
   const [invites,setInvites] = useState([]);
   const [email,setEmail] = useState(""); const [role,setRole] = useState("member");
   const [error,setError] = useState(""); const [copiedId,setCopiedId] = useState(null); const [loading,setLoading] = useState(false);
+  const [isAdmin,setIsAdmin] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [m,i] = await Promise.all([
+      const [m,r] = await Promise.all([
         api("/api/organizations/"+orgId+"/members"),
-        api("/api/organizations/"+orgId+"/invites"),
+        api("/api/organizations/"+orgId+"/my-role"),
       ]);
-      setMembers(m); setInvites(i);
+      setMembers(m); setIsAdmin(r.is_admin);
+      // Einladungen sehen und verwalten dürfen nur Admins (erzwingt auch die Datenbank).
+      setInvites(r.is_admin ? await api("/api/organizations/"+orgId+"/invites") : []);
     } catch(e){ setError(e.message); }
   }, [api, orgId]);
 
@@ -470,7 +473,8 @@ function TeamView({orgId, api, inviteLinkBase}){
 
   return (
     <div>
-      <Card style={{marginBottom:18}}>
+      {!isAdmin && error && <div style={{color:BAD,fontSize:13,marginBottom:14}}>{error}</div>}
+      {isAdmin && <Card style={{marginBottom:18}}>
         <div style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</div>
         <div style={{display:"flex",gap:10}}>
           <input className="input" placeholder="E-Mail-Adresse" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&invite()} />
@@ -485,7 +489,7 @@ function TeamView({orgId, api, inviteLinkBase}){
           Nach dem Einladen bekommst du einen Link zum Kopieren — den schickst du der Person (z. B. per E-Mail oder Chat).
           Sie muss sich damit registrieren oder anmelden, dann gehört sie automatisch zu deiner Organisation.
         </div>
-      </Card>
+      </Card>}
 
       <Card style={{marginBottom:18,padding:0}}>
         <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Mitglieder</div>

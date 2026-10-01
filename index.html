@@ -39,6 +39,13 @@ const TASK_STATUSES = ["Nicht begonnen","In Arbeit","Blockiert","In Prüfung","A
 const MILESTONE_STATUSES = ["Geplant","In Arbeit","Gefährdet","Abgeschlossen"];
 const LS_KEY = "hpoos_connection_config_v1";
 const LS_INVITE_KEY = "hpoos_pending_invite_v1";
+// Öffentliche Verbindungsdaten. Der publishable Key darf im Frontend stehen –
+// die Daten schützen Login-Pflicht und Row Level Security in der Datenbank.
+const DEFAULT_CONFIG = {
+  backendUrl: "https://hpoos-backend.onrender.com",
+  supabaseUrl: "https://czixqievmbftumcavtqr.supabase.co",
+  supabaseAnonKey: "sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx",
+};
 
 function fmtDate(d){ return d ? new Date(d).toLocaleDateString("de-DE",{day:"2-digit",month:"short",year:"numeric"}) : "—"; }
 function priorityColor(p){
@@ -205,7 +212,6 @@ function LoginView({config,onLogin,onReset}){
         </button>
         <div style={{textAlign:"center",marginTop:12,display:"flex",justifyContent:"center",gap:14}}>
           {mode==="login" && <button onClick={()=>{setMode("forgot");setError("");setInfo("");}} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Passwort vergessen?</button>}
-          <button onClick={onReset} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Verbindungseinstellungen ändern</button>
         </div>
       </Card>
     </div>
@@ -513,7 +519,7 @@ function App(){
   const [config,setConfig] = useState(undefined);
   const [token,setToken] = useState(null);
   const [orgId,setOrgId] = useState(null);
-  const [hotels,setHotels] = useState([]);
+  const [hotels,setHotels] = useState(null);
   const [hotel,setHotel] = useState(null);
   const [tab,setTab] = useState("dashboard");
   const [tasks,setTasks] = useState([]);
@@ -525,8 +531,8 @@ function App(){
   const [recoveryDone,setRecoveryDone] = useState(false);
 
   useEffect(()=>{
-    try { const raw = window.localStorage.getItem(LS_KEY); setConfig(raw ? JSON.parse(raw) : null); }
-    catch(e){ setConfig(null); }
+    // Verbindungsdaten sind fest eingebaut – niemand muss sie mehr eintragen.
+    setConfig(DEFAULT_CONFIG);
     // Erkennt den Link aus der "Passwort vergessen"-E-Mail: Supabase hängt
     // #access_token=...&type=recovery an die URL an, wenn man draufklickt.
     try {
@@ -611,6 +617,19 @@ function App(){
     </div>
   );
   if(!token) return <LoginView config={config} onLogin={setToken} onReset={()=>saveConfig(null)} />;
+  // hotels === null heißt: noch nicht geladen. Erst danach entscheiden, ob Liste oder Formular.
+  if(!hotel && hotels===null) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+      <Card style={{maxWidth:380,width:"100%",textAlign:"center"}}>
+        {fatalError
+          ? <React.Fragment>
+              <div style={{color:BAD,fontSize:13.5,marginBottom:14}}>{fatalError}</div>
+              <button className="btn-primary" style={{width:"100%"}} onClick={()=>{setFatalError("");setToken(null);setOrgId(null);}}>Zurück zur Anmeldung</button>
+            </React.Fragment>
+          : <div style={{color:INK_MUTED,fontSize:13.5}}>Hotels werden geladen…</div>}
+      </Card>
+    </div>
+  );
   if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api}
     onCreated={(h)=>{ setHotels([...hotels,h]); setHotel(h); }} onSelect={setHotel} />;
 
@@ -632,7 +651,7 @@ function App(){
         {NAV.map(n=>(
           <div key={n.key} onClick={()=>setTab(n.key)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginBottom:3,fontSize:13.5,background:tab===n.key?INK_SOFT:"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.65)"}}>{n.label}</div>
         ))}
-        <div onClick={()=>{setToken(null);setOrgId(null);setHotel(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
+        <div onClick={()=>{setToken(null);setOrgId(null);setHotel(null);setHotels(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`}}>

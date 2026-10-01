@@ -320,7 +320,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
   const color = readiness.overall>=80?GOOD:readiness.overall>=60?WARN:BAD;
   return (
     <div>
-      <div className="stack" style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:24,marginBottom:22}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:18,marginBottom:18}}>
         <Card style={{display:"flex",alignItems:"center",gap:20}}>
           <div style={{fontFamily:"Fraunces, serif",fontSize:44,fontWeight:600,color}}>{readiness.overall}%</div>
           <div>
@@ -348,7 +348,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
           ))}
         </Card>
       </div>
-      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:18}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18,marginBottom:18}}>
         <div onClick={()=>onOpen("budget")} style={{cursor:"pointer"}}>
           <Card>
             <div style={{fontWeight:700,marginBottom:8}}>Budget</div>
@@ -379,7 +379,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
           </Card>
         </div>
       </div>
-      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18}}>
         <Card>
           <div style={{fontWeight:700,marginBottom:10}}>Überfällige kritische Aufgaben</div>
           {overdue.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Keine.</div> :

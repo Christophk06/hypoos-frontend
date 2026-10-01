@@ -20,6 +20,26 @@
   .btn-primary { background: #1C2430; color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
   .input { width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #E4DFD3; font-size: 14px; color: #1C2430; background: #F6F4EF; }
   .field-label { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-bottom: 5px; }
+
+  /* ---------- Handy-Ansicht ---------- */
+  @media (max-width: 760px) {
+    .app-shell { flex-direction: column !important; }
+    .sidebar { width: auto !important; padding: 8px 10px !important; display: flex; align-items: center; gap: 2px;
+               overflow-x: auto; position: sticky; top: 0; z-index: 10; -webkit-overflow-scrolling: touch; }
+    .sidebar .brand { padding: 0 10px 0 4px !important; border: none !important; margin: 0 !important; }
+    .sidebar .nav-item { margin: 0 !important; white-space: nowrap; }
+    .sidebar .logout { margin: 0 0 0 auto !important; padding: 9px 10px; white-space: nowrap; }
+    .page-header { padding: 14px 16px !important; flex-wrap: wrap; }
+    .page-content { padding: 16px !important; }
+    .stack { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
+    .stack > * { width: 100% !important; }
+    .resp-table tr { display: flex; flex-wrap: wrap; align-items: center; }
+    .resp-table td { padding: 8px 12px !important; }
+    .resp-table td:first-child { flex-basis: 100%; padding-bottom: 2px !important; }
+    .dept-label { width: 110px !important; }
+    .card { padding: 16px; }
+    .input { font-size: 16px; } /* verhindert automatisches Hineinzoomen auf dem iPhone */
+  }
 </style>
 </head>
 <body>
@@ -294,7 +314,7 @@ function DashboardView({readiness, tasks, risks}){
   const color = readiness.overall>=80?GOOD:readiness.overall>=60?WARN:BAD;
   return (
     <div>
-      <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:24,marginBottom:22}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:24,marginBottom:22}}>
         <Card style={{display:"flex",alignItems:"center",gap:20}}>
           <div style={{fontFamily:"Fraunces, serif",fontSize:44,fontWeight:600,color}}>{readiness.overall}%</div>
           <div>
@@ -308,7 +328,7 @@ function DashboardView({readiness, tasks, risks}){
           <div style={{fontWeight:700,marginBottom:8}}>Bereitschaft je Abteilung</div>
           {Object.entries(readiness.deptScores||{}).map(([dept,score])=>(
             <div key={dept} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0"}}>
-              <div style={{width:150,fontSize:13}}>{dept}</div>
+              <div className="dept-label" style={{width:150,fontSize:13}}>{dept}</div>
               <div style={{flex:1,height:6,background:PAPER,borderRadius:4,overflow:"hidden"}}>
                 <div style={{width:score+"%",height:"100%",background:score>=80?GOOD:score>=60?WARN:BAD}}></div>
               </div>
@@ -317,7 +337,7 @@ function DashboardView({readiness, tasks, risks}){
           ))}
         </Card>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
         <Card>
           <div style={{fontWeight:700,marginBottom:10}}>Überfällige kritische Aufgaben</div>
           {overdue.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Keine.</div> :
@@ -355,12 +375,12 @@ function TasksView({tasks, callHotel, callId, refresh}){
       {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
       {showForm && (
         <Card style={{marginBottom:16}}>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
+          <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
             <input className="input" placeholder="Titel" value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} />
             <select className="input" value={draft.department} onChange={e=>setDraft({...draft,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
             <select className="input" value={draft.priority} onChange={e=>setDraft({...draft,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
           </div>
-          <div style={{display:"flex",gap:10}}>
+          <div className="stack" style={{display:"flex",gap:10}}>
             <input type="date" className="input" value={draft.due_date} onChange={e=>setDraft({...draft,due_date:e.target.value})} />
             <input className="input" placeholder="Verantwortlich" value={draft.owner} onChange={e=>setDraft({...draft,owner:e.target.value})} />
             <button className="btn-primary" onClick={add}>Speichern</button>
@@ -368,16 +388,16 @@ function TasksView({tasks, callHotel, callId, refresh}){
         </Card>
       )}
       <Card style={{padding:0}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+        <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
           {tasks.map(t=> editId===t.id ? (
             <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`,background:PAPER}}>
               <td colSpan={5} style={{padding:12}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
+                <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
                   <input className="input" value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})} />
                   <select className="input" value={edit.department} onChange={e=>setEdit({...edit,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
                   <select className="input" value={edit.priority} onChange={e=>setEdit({...edit,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
                 </div>
-                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <div className="stack" style={{display:"flex",gap:10,alignItems:"center"}}>
                   <input type="date" className="input" value={edit.due_date} onChange={e=>setEdit({...edit,due_date:e.target.value})} />
                   <input className="input" placeholder="Verantwortlich" value={edit.owner} onChange={e=>setEdit({...edit,owner:e.target.value})} />
                   <button className="btn-primary" onClick={saveEdit}>Speichern</button>
@@ -418,7 +438,7 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
   return (
     <div>
       <Card style={{marginBottom:16}}>
-        <div style={{display:"flex",gap:10}}>
+        <div className="stack" style={{display:"flex",gap:10}}>
           <input className="input" placeholder="Titel" value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} />
           <input type="date" className="input" value={draft.date} onChange={e=>setDraft({...draft,date:e.target.value})} />
           <select className="input" value={draft.criticality} onChange={e=>setDraft({...draft,criticality:e.target.value})}><option>Kritisch</option><option>Hoch</option><option>Mittel</option></select>
@@ -428,7 +448,7 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
       {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
       {[...milestones].sort((a,b)=>new Date(a.date)-new Date(b.date)).map(m=> editId===m.id ? (
         <Card key={m.id} style={{marginBottom:10,background:PAPER}}>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          <div className="stack" style={{display:"flex",gap:10,alignItems:"center"}}>
             <input className="input" value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})} />
             <input type="date" className="input" value={edit.date} onChange={e=>setEdit({...edit,date:e.target.value})} />
             <select className="input" value={edit.criticality} onChange={e=>setEdit({...edit,criticality:e.target.value})}><option>Kritisch</option><option>Hoch</option><option>Mittel</option></select>
@@ -437,7 +457,7 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
           </div>
         </Card>
       ) : (
-        <Card key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:10}}>
+        <Card key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:10,flexWrap:"wrap"}}>
           <div><div style={{fontWeight:600}}>{m.title}</div><div style={{fontSize:12.5,color:INK_MUTED}}>{fmtDate(m.date)} · {m.criticality}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <select value={m.status} onChange={e=>updateStatus(m.id,e.target.value)} className="input" style={{width:"auto",padding:"6px 9px",fontSize:12.5}}>{MILESTONE_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
@@ -453,12 +473,12 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
 function RiskFields({value, onChange}){
   return (
     <React.Fragment>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10,marginBottom:10}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10,marginBottom:10}}>
         <input className="input" placeholder="Titel" value={value.title} onChange={e=>onChange({...value,title:e.target.value})} />
         <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
       </div>
       <input className="input" placeholder="Gegenmaßnahme (optional)" value={value.mitigation||""} onChange={e=>onChange({...value,mitigation:e.target.value})} style={{marginBottom:10}} />
-      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+      <div className="stack" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
         <span style={{fontSize:12.5}}>Wahrscheinlichkeit: {value.probability}</span>
         <input type="range" min="1" max="5" value={value.probability} onChange={e=>onChange({...value,probability:Number(e.target.value)})} />
         <span style={{fontSize:12.5}}>Auswirkung: {value.impact}</span>
@@ -522,12 +542,12 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
   return (
     <Card style={{marginBottom:18}}>
       <div style={{fontWeight:700,marginBottom:10}}>Hotel bearbeiten</div>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
         <input className="input" placeholder="Name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
         <input className="input" placeholder="Stadt" value={form.city} onChange={e=>setForm({...form,city:e.target.value})} />
         <input className="input" placeholder="Land" value={form.country} onChange={e=>setForm({...form,country:e.target.value})} />
       </div>
-      <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
+      <div className="stack" style={{display:"flex",gap:10,alignItems:"flex-end"}}>
         <label style={{flex:1}}><div className="field-label">Zimmeranzahl</div><input type="number" className="input" value={form.rooms} onChange={e=>setForm({...form,rooms:e.target.value})} /></label>
         <label style={{flex:1}}><div className="field-label">Eröffnungsdatum</div><input type="date" className="input" value={form.opening_date} onChange={e=>setForm({...form,opening_date:e.target.value})} /></label>
         <button style={linkBtn} onClick={onCancel}>Abbrechen</button>
@@ -586,7 +606,7 @@ function TeamView({orgId, api, inviteLinkBase}){
       {!isAdmin && error && <div style={{color:BAD,fontSize:13,marginBottom:14}}>{error}</div>}
       {isAdmin && <Card style={{marginBottom:18}}>
         <div style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</div>
-        <div style={{display:"flex",gap:10}}>
+        <div className="stack" style={{display:"flex",gap:10}}>
           <input className="input" placeholder="E-Mail-Adresse" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&invite()} />
           <select className="input" style={{width:150}} value={role} onChange={e=>setRole(e.target.value)}>
             <option value="member">Mitglied</option>
@@ -603,7 +623,7 @@ function TeamView({orgId, api, inviteLinkBase}){
 
       <Card style={{marginBottom:18,padding:0}}>
         <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Mitglieder</div>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+        <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
           {members.map(m=>(
             <tr key={m.user_id} style={{borderTop:`1px solid ${BORDER}`}}>
               <td style={{padding:12}}>{m.email}</td>
@@ -617,7 +637,7 @@ function TeamView({orgId, api, inviteLinkBase}){
       {invites.filter(i=>i.status==="ausstehend").length > 0 && (
         <Card style={{padding:0}}>
           <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Ausstehende Einladungen</div>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+          <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
             {invites.filter(i=>i.status==="ausstehend").map(i=>(
               <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
                 <td style={{padding:12}}>{i.email}<div style={{fontSize:11.5,color:INK_MUTED}}>{i.role}</div>
@@ -772,23 +792,23 @@ function App(){
   const callId = (resource, id, method, body) => api("/api/"+resource+"/"+id, method, body);
 
   return (
-    <div style={{fontFamily:"Inter, sans-serif",background:PAPER,minHeight:"100vh",display:"flex"}}>
-      <div style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
-        <div style={{fontFamily:"Fraunces, serif",fontSize:15.5,fontWeight:600,padding:"0 8px 22px",borderBottom:"1px solid rgba(255,255,255,0.12)",marginBottom:14}}>HPOOS</div>
+    <div className="app-shell" style={{fontFamily:"Inter, sans-serif",background:PAPER,minHeight:"100vh",display:"flex"}}>
+      <div className="sidebar" style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
+        <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:15.5,fontWeight:600,padding:"0 8px 22px",borderBottom:"1px solid rgba(255,255,255,0.12)",marginBottom:14}}>HPOOS</div>
         {NAV.map(n=>(
-          <div key={n.key} onClick={()=>setTab(n.key)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginBottom:3,fontSize:13.5,background:tab===n.key?INK_SOFT:"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.65)"}}>{n.label}</div>
+          <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginBottom:3,fontSize:13.5,background:tab===n.key?INK_SOFT:"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.65)"}}>{n.label}</div>
         ))}
-        <div onClick={()=>{setToken(null);setOrgId(null);setHotel(null);setHotels(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
+        <div className="logout" onClick={()=>{setToken(null);setOrgId(null);setHotel(null);setHotels(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+        <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
           <div>
             <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600}}>{hotel.name}</div>
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {hotel.rooms} Zimmer · Eröffnung {fmtDate(hotel.opening_date)}</div>
           </div>
           {!editingHotel && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
         </div>
-        <div style={{padding:"22px 28px"}}>
+        <div className="page-content" style={{padding:"22px 28px"}}>
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}

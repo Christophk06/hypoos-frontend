@@ -328,6 +328,11 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
             <Pill color={color} bg={readiness.overall>=80?GOOD_SOFT:readiness.overall>=60?WARN_SOFT:BAD_SOFT}>
               {readiness.overdueCriticalTasksCount} überfällig · {readiness.highRisksCount} hohe Risiken
             </Pill>
+            <div style={{fontSize:12,color:INK_MUTED,marginTop:6,lineHeight:1.5}}>
+              {readiness.daysToOpening!=null && <div>{readiness.daysToOpening>=0 ? "Noch "+readiness.daysToOpening+" Tage bis zur Eröffnung" : "Eröffnung war vor "+(-readiness.daysToOpening)+" Tagen"}</div>}
+              {readiness.staffingPct!=null && <div>Personal {readiness.staffingPct} % besetzt{readiness.overdueOpenPositionsCount>0 && <span style={{color:BAD}}> · {readiness.overdueOpenPositionsCount} Stellen über Starttermin offen</span>}</div>}
+              {(readiness.overBudgetDepts||[]).length>0 && <div style={{color:BAD}}>Budget überschritten: {readiness.overBudgetDepts.join(", ")}</div>}
+            </div>
           </div>
         </Card>
         <Card>

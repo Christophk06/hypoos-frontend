@@ -22,7 +22,7 @@
   .field-label { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-bottom: 5px; }
 
   /* ---------- Handy-Ansicht ---------- */
-  @media (max-width: 760px) {
+  @media (max-width: 640px) {
     .app-shell { flex-direction: column !important; }
     .sidebar { width: auto !important; padding: 8px 10px !important; display: flex; align-items: center; gap: 2px;
                overflow-x: auto; position: sticky; top: 0; z-index: 10; -webkit-overflow-scrolling: touch; }
@@ -307,8 +307,14 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect}){
   );
 }
 
-function DashboardView({readiness, tasks, risks}){
+function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
   if(!readiness) return <div style={{color:INK_MUTED}}>Lädt…</div>;
+  const planned = budget.reduce((s,i)=>s+Number(i.planned||0),0);
+  const actual = budget.reduce((s,i)=>s+Number(i.actual||0),0);
+  const budgetPct = planned>0 ? Math.round(actual/planned*100) : 0;
+  const need = staff.reduce((s,p)=>s+p.headcount,0);
+  const have = staff.reduce((s,p)=>s+p.filled,0);
+  const staffPct = need>0 ? Math.round(have/need*100) : 0;
   const overdue = tasks.filter(t=>t.due_date && new Date(t.due_date) < new Date() && t.status!=="Abgeschlossen" && t.priority==="Kritisch");
   const topRisks = [...risks].sort((a,b)=>b.probability*b.impact - a.probability*a.impact).slice(0,4);
   const color = readiness.overall>=80?GOOD:readiness.overall>=60?WARN:BAD;
@@ -336,6 +342,37 @@ function DashboardView({readiness, tasks, risks}){
             </div>
           ))}
         </Card>
+      </div>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:18}}>
+        <div onClick={()=>onOpen("budget")} style={{cursor:"pointer"}}>
+          <Card>
+            <div style={{fontWeight:700,marginBottom:8}}>Budget</div>
+            {budget.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Posten – hier anlegen →</div> : (
+              <React.Fragment>
+                <div style={{fontSize:13.5,marginBottom:8}}>{fmtEur(actual)} von {fmtEur(planned)} ausgegeben</div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <Bar pct={budgetPct} color={budgetPct>100?BAD:budgetPct>90?WARN:GOOD} />
+                  <div style={{width:40,textAlign:"right",fontSize:13,fontWeight:700}}>{budgetPct}%</div>
+                </div>
+                {actual>planned && <div style={{color:BAD,fontSize:12.5,marginTop:6}}>Um {fmtEur(actual-planned)} überschritten</div>}
+              </React.Fragment>
+            )}
+          </Card>
+        </div>
+        <div onClick={()=>onOpen("staff")} style={{cursor:"pointer"}}>
+          <Card>
+            <div style={{fontWeight:700,marginBottom:8}}>Personal</div>
+            {staff.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Stellen – hier anlegen →</div> : (
+              <React.Fragment>
+                <div style={{fontSize:13.5,marginBottom:8}}>{have} von {need} Personen eingestellt · {need-have} offen</div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <Bar pct={staffPct} color={staffPct>=80?GOOD:staffPct>=50?WARN:BAD} />
+                  <div style={{width:40,textAlign:"right",fontSize:13,fontWeight:700}}>{staffPct}%</div>
+                </div>
+              </React.Fragment>
+            )}
+          </Card>
+        </div>
       </div>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
         <Card>
@@ -558,6 +595,249 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
   );
 }
 
+const BUDGET_CATEGORIES = ["Ausstattung","Personal & Schulung","Marketing","IT & Technik","Bau & Instandhaltung","Vorräte","Dienstleister","Sonstiges"];
+function fmtEur(n){ return Number(n||0).toLocaleString("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0}); }
+function sumBy(items, key, field){
+  const out = {};
+  items.forEach(i=>{ const k=i[key]; out[k]=(out[k]||0)+Number(i[field]||0); });
+  return out;
+}
+function StatTile({label, value, sub, color}){
+  return (
+    <Card style={{flex:1,minWidth:150}}>
+      <div style={{fontSize:12,color:INK_MUTED,fontWeight:600,marginBottom:4}}>{label}</div>
+      <div style={{fontFamily:"Fraunces, serif",fontSize:24,fontWeight:600,color:color||INK}}>{value}</div>
+      {sub && <div style={{fontSize:12,color:INK_MUTED,marginTop:2}}>{sub}</div>}
+    </Card>
+  );
+}
+function Bar({pct, color}){
+  return (
+    <div style={{flex:1,height:6,background:PAPER,borderRadius:4,overflow:"hidden"}}>
+      <div style={{width:Math.max(0,Math.min(100,pct))+"%",height:"100%",background:color}}></div>
+    </div>
+  );
+}
+
+function BudgetFields({value, onChange}){
+  return (
+    <React.Fragment>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
+        <input className="input" placeholder="Posten, z. B. Matratzen" value={value.title} onChange={e=>onChange({...value,title:e.target.value})} />
+        <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
+        <select className="input" value={value.category} onChange={e=>onChange({...value,category:e.target.value})}>{BUDGET_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
+      </div>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:10}}>
+        <label><div className="field-label">Plan (€)</div><input type="number" min="0" className="input" value={value.planned} onChange={e=>onChange({...value,planned:e.target.value})} /></label>
+        <label><div className="field-label">Ist (€)</div><input type="number" min="0" className="input" value={value.actual} onChange={e=>onChange({...value,actual:e.target.value})} /></label>
+        <label><div className="field-label">Notiz</div><input className="input" value={value.note||""} onChange={e=>onChange({...value,note:e.target.value})} /></label>
+      </div>
+    </React.Fragment>
+  );
+}
+
+function BudgetView({items, callHotel, callId, refresh}){
+  const empty = {title:"",department:DEPARTMENTS[0],category:BUDGET_CATEGORIES[0],planned:"",actual:"",note:""};
+  const [showForm,setShowForm]=useState(false);
+  const [draft,setDraft]=useState(empty);
+  const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
+  const [error,setError]=useState("");
+  const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
+  const toBody = (v) => ({...v, planned:Number(v.planned||0), actual:Number(v.actual||0)});
+  const add = () => { if(!draft.title) return; run(async()=>{ await callHotel("/budget","POST",toBody(draft)); setDraft({...empty,department:draft.department,category:draft.category}); setShowForm(false); }); };
+  const startEdit = (b) => { setEditId(b.id); setEdit({title:b.title,department:b.department,category:b.category,planned:b.planned,actual:b.actual,note:b.note||""}); };
+  const saveEdit = () => { if(!edit.title) return; run(async()=>{ await callId("budget",editId,"PATCH",toBody(edit)); setEditId(null); }); };
+  const remove = (b) => { if(confirmDelete("Budgetposten „"+b.title+"“")) run(()=>callId("budget",b.id,"DELETE")); };
+
+  const planned = items.reduce((s,i)=>s+Number(i.planned||0),0);
+  const actual = items.reduce((s,i)=>s+Number(i.actual||0),0);
+  const diff = planned - actual;
+  const plannedByDept = sumBy(items,"department","planned");
+  const actualByDept = sumBy(items,"department","actual");
+  const depts = Object.keys(plannedByDept).sort();
+
+  return (
+    <div>
+      <div className="stack" style={{display:"flex",gap:14,marginBottom:18}}>
+        <StatTile label="PLAN" value={fmtEur(planned)} sub={items.length+" Posten"} />
+        <StatTile label="IST" value={fmtEur(actual)} sub={planned>0 ? Math.round(actual/planned*100)+" % vom Plan" : "—"} />
+        <StatTile label={diff>=0 ? "NOCH VERFÜGBAR" : "ÜBERSCHRITTEN"} value={fmtEur(Math.abs(diff))} color={diff>=0?GOOD:BAD} />
+      </div>
+
+      {depts.length>0 && (
+        <Card style={{marginBottom:18}}>
+          <div style={{fontWeight:700,marginBottom:8}}>Ist vs. Plan je Abteilung</div>
+          {depts.map(d=>{
+            const p=plannedByDept[d], a=actualByDept[d]||0, pct = p>0 ? a/p*100 : (a>0?100:0);
+            return (
+              <div key={d} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0"}}>
+                <div className="dept-label" style={{width:150,fontSize:13}}>{d}</div>
+                <Bar pct={pct} color={pct>100?BAD:pct>90?WARN:GOOD} />
+                <div style={{width:150,textAlign:"right",fontSize:12.5,color:INK_MUTED}}>{fmtEur(a)} / {fmtEur(p)}</div>
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+        <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Budgetposten</button>
+      </div>
+      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {showForm && (
+        <Card style={{marginBottom:16}}>
+          <BudgetFields value={draft} onChange={setDraft} />
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:10}}>
+            <button style={linkBtn} onClick={()=>setShowForm(false)}>Abbrechen</button>
+            <button className="btn-primary" onClick={add}>Speichern</button>
+          </div>
+        </Card>
+      )}
+      <Card style={{padding:0}}>
+        <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+          {items.length===0 && <tr><td style={{padding:16,color:INK_MUTED}}>Noch keine Budgetposten.</td></tr>}
+          {items.map(b=> editId===b.id ? (
+            <tr key={b.id} style={{borderTop:`1px solid ${BORDER}`,background:PAPER}}>
+              <td colSpan={4} style={{padding:12}}>
+                <BudgetFields value={edit} onChange={setEdit} />
+                <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:10}}>
+                  <button style={linkBtn} onClick={()=>setEditId(null)}>Abbrechen</button>
+                  <button className="btn-primary" onClick={saveEdit}>Speichern</button>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            <tr key={b.id} style={{borderTop:`1px solid ${BORDER}`}}>
+              <td style={{padding:12}}>{b.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{b.department} · {b.category}{b.note ? " · "+b.note : ""}</div></td>
+              <td style={{padding:12,whiteSpace:"nowrap"}}><span style={{color:INK_MUTED,fontSize:12}}>Plan </span>{fmtEur(b.planned)}</td>
+              <td style={{padding:12,whiteSpace:"nowrap",color:Number(b.actual)>Number(b.planned)?BAD:INK}}><span style={{color:INK_MUTED,fontSize:12}}>Ist </span>{fmtEur(b.actual)}</td>
+              <td style={{padding:12,whiteSpace:"nowrap"}}>
+                <button style={linkBtn} onClick={()=>startEdit(b)}>Bearbeiten</button>
+                <button style={linkBtn} onClick={()=>remove(b)} title="Löschen">✕</button>
+              </td>
+            </tr>
+          ))}
+        </tbody></table>
+      </Card>
+    </div>
+  );
+}
+
+function StaffFields({value, onChange}){
+  return (
+    <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1.3fr 0.7fr 0.7fr 1fr",gap:10}}>
+      <label><div className="field-label">Stelle</div><input className="input" placeholder="z. B. Rezeptionist/in" value={value.title} onChange={e=>onChange({...value,title:e.target.value})} /></label>
+      <label><div className="field-label">Abteilung</div><select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select></label>
+      <label><div className="field-label">Benötigt</div><input type="number" min="1" className="input" value={value.headcount} onChange={e=>onChange({...value,headcount:e.target.value})} /></label>
+      <label><div className="field-label">Besetzt</div><input type="number" min="0" className="input" value={value.filled} onChange={e=>onChange({...value,filled:e.target.value})} /></label>
+      <label><div className="field-label">Start</div><input type="date" className="input" value={value.start_date||""} onChange={e=>onChange({...value,start_date:e.target.value})} /></label>
+    </div>
+  );
+}
+
+function StaffView({positions, callHotel, callId, refresh}){
+  const empty = {title:"",department:DEPARTMENTS[0],headcount:1,filled:0,start_date:""};
+  const [showForm,setShowForm]=useState(false);
+  const [draft,setDraft]=useState(empty);
+  const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
+  const [error,setError]=useState("");
+  const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
+  const check = (v) => {
+    const h=Number(v.headcount), f=Number(v.filled);
+    if(!v.title) return "Bitte eine Stellenbezeichnung eingeben.";
+    if(!(h>=1)) return "„Benötigt“ muss mindestens 1 sein.";
+    if(f<0 || f>h) return "„Besetzt“ muss zwischen 0 und „Benötigt“ liegen.";
+    return "";
+  };
+  const toBody = (v) => ({...v, headcount:Number(v.headcount), filled:Number(v.filled)});
+  const add = () => { const m=check(draft); if(m) return setError(m); run(async()=>{ await callHotel("/staff","POST",toBody(draft)); setDraft({...empty,department:draft.department}); setShowForm(false); }); };
+  const startEdit = (p) => { setEditId(p.id); setEdit({title:p.title,department:p.department,headcount:p.headcount,filled:p.filled,start_date:p.start_date||""}); };
+  const saveEdit = () => { const m=check(edit); if(m) return setError(m); run(async()=>{ await callId("staff",editId,"PATCH",toBody(edit)); setEditId(null); }); };
+  const step = (p, d) => { const f=p.filled+d; if(f<0||f>p.headcount) return; run(()=>callId("staff",p.id,"PATCH",{filled:f})); };
+  const remove = (p) => { if(confirmDelete("Stelle „"+p.title+"“")) run(()=>callId("staff",p.id,"DELETE")); };
+
+  const need = positions.reduce((s,p)=>s+p.headcount,0);
+  const have = positions.reduce((s,p)=>s+p.filled,0);
+  const pct = need>0 ? Math.round(have/need*100) : 0;
+  const needByDept = sumBy(positions,"department","headcount");
+  const haveByDept = sumBy(positions,"department","filled");
+  const depts = Object.keys(needByDept).sort();
+  const today = new Date();
+  const urgent = positions.filter(p=>p.filled<p.headcount && p.start_date && (new Date(p.start_date)-today)/86400000 <= 30).length;
+
+  return (
+    <div>
+      <div className="stack" style={{display:"flex",gap:14,marginBottom:18}}>
+        <StatTile label="BESETZT" value={pct+" %"} sub={have+" von "+need+" Personen"} color={pct>=80?GOOD:pct>=50?WARN:BAD} />
+        <StatTile label="OFFEN" value={need-have} sub={(n=>n===1?"1 Stelle mit Lücken":n+" Stellen mit Lücken")(positions.filter(p=>p.filled<p.headcount).length)} />
+        <StatTile label="DRINGEND" value={urgent} sub="offen, Start in ≤ 30 Tagen" color={urgent>0?BAD:INK} />
+      </div>
+
+      {depts.length>0 && (
+        <Card style={{marginBottom:18}}>
+          <div style={{fontWeight:700,marginBottom:8}}>Besetzung je Abteilung</div>
+          {depts.map(d=>{
+            const n=needByDept[d], h=haveByDept[d]||0, p=n>0?h/n*100:0;
+            return (
+              <div key={d} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0"}}>
+                <div className="dept-label" style={{width:150,fontSize:13}}>{d}</div>
+                <Bar pct={p} color={p>=80?GOOD:p>=50?WARN:BAD} />
+                <div style={{width:60,textAlign:"right",fontSize:12.5,color:INK_MUTED}}>{h} / {n}</div>
+              </div>
+            );
+          })}
+        </Card>
+      )}
+
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+        <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Stelle</button>
+      </div>
+      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {showForm && (
+        <Card style={{marginBottom:16}}>
+          <StaffFields value={draft} onChange={setDraft} />
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:10}}>
+            <button style={linkBtn} onClick={()=>setShowForm(false)}>Abbrechen</button>
+            <button className="btn-primary" onClick={add}>Speichern</button>
+          </div>
+        </Card>
+      )}
+      <Card style={{padding:0}}>
+        <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+          {positions.length===0 && <tr><td style={{padding:16,color:INK_MUTED}}>Noch keine Stellen angelegt.</td></tr>}
+          {[...positions].sort((a,b)=>a.department.localeCompare(b.department)).map(p=> editId===p.id ? (
+            <tr key={p.id} style={{borderTop:`1px solid ${BORDER}`,background:PAPER}}>
+              <td colSpan={4} style={{padding:12}}>
+                <StaffFields value={edit} onChange={setEdit} />
+                <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:10}}>
+                  <button style={linkBtn} onClick={()=>setEditId(null)}>Abbrechen</button>
+                  <button className="btn-primary" onClick={saveEdit}>Speichern</button>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            <tr key={p.id} style={{borderTop:`1px solid ${BORDER}`}}>
+              <td style={{padding:12}}>{p.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{p.department}{p.start_date ? " · Start "+fmtDate(p.start_date) : ""}</div></td>
+              <td style={{padding:12,whiteSpace:"nowrap"}}>
+                <button style={{...linkBtn,border:`1px solid ${BORDER}`,borderRadius:6,padding:"2px 9px"}} onClick={()=>step(p,-1)} title="Eine Person weniger">−</button>
+                <span style={{display:"inline-block",minWidth:54,textAlign:"center",fontWeight:600}}>{p.filled} / {p.headcount}</span>
+                <button style={{...linkBtn,border:`1px solid ${BORDER}`,borderRadius:6,padding:"2px 9px"}} onClick={()=>step(p,1)} title="Eine Person mehr">+</button>
+              </td>
+              <td style={{padding:12}}>
+                {p.filled>=p.headcount ? <Pill color={GOOD} bg={GOOD_SOFT}>Besetzt</Pill> : <Pill color={WARN} bg={WARN_SOFT}>{p.headcount-p.filled} offen</Pill>}
+              </td>
+              <td style={{padding:12,whiteSpace:"nowrap"}}>
+                <button style={linkBtn} onClick={()=>startEdit(p)}>Bearbeiten</button>
+                <button style={linkBtn} onClick={()=>remove(p)} title="Löschen">✕</button>
+              </td>
+            </tr>
+          ))}
+        </tbody></table>
+      </Card>
+    </div>
+  );
+}
+
 function TeamView({orgId, api, inviteLinkBase}){
   const [members,setMembers] = useState([]);
   const [invites,setInvites] = useState([]);
@@ -671,6 +951,8 @@ function App(){
   const [tasks,setTasks] = useState([]);
   const [milestones,setMilestones] = useState([]);
   const [risks,setRisks] = useState([]);
+  const [budget,setBudget] = useState([]);
+  const [staff,setStaff] = useState([]);
   const [readiness,setReadiness] = useState(null);
   const [fatalError,setFatalError] = useState("");
   const [recoveryToken,setRecoveryToken] = useState(null);
@@ -739,13 +1021,16 @@ function App(){
     if(!h) return;
     const base = "/api/hotels/" + h.id;
     try {
-      const [t,m,r,rd] = await Promise.all([
+      const [t,m,r,rd,b,s] = await Promise.all([
         apiCall(config.backendUrl, token, base+"/tasks"),
         apiCall(config.backendUrl, token, base+"/milestones"),
         apiCall(config.backendUrl, token, base+"/risks"),
         apiCall(config.backendUrl, token, base+"/readiness"),
+        // Budget/Personal dürfen das Laden der übrigen Daten nie blockieren.
+        apiCall(config.backendUrl, token, base+"/budget").catch(()=>[]),
+        apiCall(config.backendUrl, token, base+"/staff").catch(()=>[]),
       ]);
-      setTasks(t); setMilestones(m); setRisks(r); setReadiness(rd);
+      setTasks(t); setMilestones(m); setRisks(r); setReadiness(rd); setBudget(b); setStaff(s);
     } catch(e){ setFatalError(e.message); }
   },[config, token]);
 
@@ -785,6 +1070,8 @@ function App(){
     {key:"tasks", label:"Aufgaben"},
     {key:"milestones", label:"Meilensteine"},
     {key:"risks", label:"Risiken"},
+    {key:"budget", label:"Budget"},
+    {key:"staff", label:"Personal"},
     {key:"team", label:"Team"},
   ];
 
@@ -812,10 +1099,12 @@ function App(){
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
-          {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} />}
+          {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={setTab} />}
           {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="staff" && <StaffView positions={staff} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname} />}
         </div>
       </div>

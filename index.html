@@ -456,9 +456,16 @@ function TeamView({orgId, api, inviteLinkBase}){
 
   const revoke = async (id) => { await api("/api/invites/"+id,"DELETE"); await load(); };
 
+  const [shownLinkId,setShownLinkId] = useState(null);
+  const linkFor = (invite) => inviteLinkBase + "?invite=" + invite.token;
   const copyLink = (invite) => {
-    const link = inviteLinkBase + "?invite=" + invite.token;
-    navigator.clipboard?.writeText(link).then(()=>{ setCopiedId(invite.id); setTimeout(()=>setCopiedId(null),1800); });
+    // Link immer auch sichtbar anzeigen – manche Browser blockieren die Zwischenablage.
+    setShownLinkId(invite.id);
+    try {
+      navigator.clipboard.writeText(linkFor(invite))
+        .then(()=>{ setCopiedId(invite.id); setTimeout(()=>setCopiedId(null),1800); })
+        .catch(()=>{});
+    } catch(e){}
   };
 
   return (
@@ -499,7 +506,12 @@ function TeamView({orgId, api, inviteLinkBase}){
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
             {invites.filter(i=>i.status==="ausstehend").map(i=>(
               <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
-                <td style={{padding:12}}>{i.email}<div style={{fontSize:11.5,color:INK_MUTED}}>{i.role}</div></td>
+                <td style={{padding:12}}>{i.email}<div style={{fontSize:11.5,color:INK_MUTED}}>{i.role}</div>
+                  {shownLinkId===i.id && (
+                    <input readOnly className="input" value={linkFor(i)} onFocus={e=>e.target.select()} autoFocus
+                      style={{marginTop:8,fontSize:12}} />
+                  )}
+                </td>
                 <td style={{padding:12}}>
                   <button onClick={()=>copyLink(i)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"5px 10px",fontSize:12.5,cursor:"pointer"}}>
                     {copiedId===i.id ? "Kopiert!" : "Link kopieren"}

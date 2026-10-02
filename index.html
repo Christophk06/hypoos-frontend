@@ -22,6 +22,22 @@
   .field-label { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-bottom: 5px; }
 
   /* ---------- Handy-Ansicht ---------- */
+  /* ---------- Statusbericht (Druck / PDF) ---------- */
+  .report { max-width: 210mm; margin: 0 auto; background: #fff; color: #1C2430; padding: 14mm 14mm 10mm; font-size: 12.5px; }
+  .report h2 { font-family: 'Fraunces', serif; font-size: 15px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #E4DFD3; }
+  .report table { width: 100%; border-collapse: collapse; }
+  .report td, .report th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #F0ECE3; vertical-align: top; }
+  .report th { font-size: 11px; color: #6B7280; font-weight: 600; }
+  .report .avoid-break { break-inside: avoid; }
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff !important; }
+    .no-print { display: none !important; }
+    .report-wrap { background: #fff !important; padding: 0 !important; min-height: 0 !important; }
+    .report { max-width: none; padding: 12mm 14mm; box-shadow: none !important; border-radius: 0 !important; margin: 0; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
   @media (max-width: 640px) {
     .app-shell { flex-direction: column !important; }
     .sidebar { width: auto !important; padding: 8px 10px !important; display: flex; align-items: center; gap: 2px;
@@ -1087,6 +1103,164 @@ function OrgRenameCard({orgId, orgName, api, onRenamed}){
   );
 }
 
+// Druckfertiger Statusbericht (A4) – über den Druckdialog des Browsers als PDF speicherbar.
+function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, budget, staff, onClose}){
+  useEffect(()=>{
+    const prev = document.title;
+    // Der Titel wird im Druckdialog als Dateiname vorgeschlagen.
+    document.title = "Statusbericht " + hotel.name + " " + new Date().toISOString().slice(0,10);
+    return () => { document.title = prev; };
+  }, [hotel.name]);
+
+  const today = new Date().toISOString().slice(0,10);
+  const r = readiness || {overall:0, deptScores:{}};
+  const scoreColor = (s) => s>=80 ? GOOD : s>=60 ? WARN : BAD;
+  const isLate = (t) => t.due_date && t.due_date < today && t.status!=="Abgeschlossen";
+
+  const doneTasks = tasks.filter(t=>t.status==="Abgeschlossen").length;
+  const openTasks = tasks.length - doneTasks;
+  const lateTasks = tasks.filter(isLate);
+  const urgentLate = lateTasks.filter(t=>t.priority==="Kritisch"||t.priority==="Hoch")
+    .sort((a,b)=>(PRIORITY_RANK[a.priority]-PRIORITY_RANK[b.priority]) || (a.due_date<b.due_date?-1:1));
+  const blocked = tasks.filter(t=>t.status==="Blockiert");
+
+  const msOpen = milestones.filter(m=>m.status!=="Abgeschlossen").sort((a,b)=>a.date<b.date?-1:1);
+  const msAtRisk = msOpen.filter(m=>m.status==="Gefährdet" || m.date < today);
+  const msNext = msOpen.filter(m=>!msAtRisk.includes(m)).slice(0,5);
+
+  const planned = budget.reduce((s,i)=>s+Number(i.planned||0),0);
+  const actual = budget.reduce((s,i)=>s+Number(i.actual||0),0);
+  const pB = sumBy(budget,"department","planned"), aB = sumBy(budget,"department","actual");
+  const overDepts = Object.keys(pB).filter(d=>(aB[d]||0)>pB[d]).map(d=>({d, over:(aB[d]||0)-pB[d], pct: pB[d]>0 ? Math.round(((aB[d]||0)-pB[d])/pB[d]*100) : null}));
+
+  const need = staff.reduce((s,p)=>s+p.headcount,0), have = staff.reduce((s,p)=>s+Math.min(p.filled,p.headcount),0);
+  const openPositions = staff.filter(p=>p.filled<p.headcount).sort((a,b)=>(a.start_date||"9999")<(b.start_date||"9999")?-1:1);
+
+  const topRisks = [...risks].sort((a,b)=>b.probability*b.impact - a.probability*a.impact).slice(0,5);
+  const days = r.daysToOpening;
+
+  const Kpi = ({label, value, sub, color}) => (
+    <div style={{flex:1,border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 10px"}}>
+      <div style={{fontSize:10.5,color:INK_MUTED,fontWeight:600}}>{label}</div>
+      <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,color:color||INK}}>{value}</div>
+      {sub && <div style={{fontSize:10.5,color:INK_MUTED}}>{sub}</div>}
+    </div>
+  );
+  const None = ({children}) => <div style={{color:INK_MUTED}}>{children}</div>;
+
+  return (
+    <div className="report-wrap" style={{background:PAPER,minHeight:"100vh",padding:"16px 12px"}}>
+      <div className="no-print" style={{maxWidth:"210mm",margin:"0 auto 12px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <button style={{...linkBtn,fontSize:13.5}} onClick={onClose}>← Zurück</button>
+        <div style={{flex:1,fontSize:12.5,color:INK_MUTED}}>Im Druckdialog als Ziel „Als PDF speichern“ wählen.</div>
+        <button className="btn-primary" onClick={()=>window.print()}>Als PDF speichern / Drucken</button>
+      </div>
+
+      <div className="report" style={{boxShadow:"0 1px 8px rgba(0,0,0,0.08)",borderRadius:6}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+          <div>
+            <div style={{fontSize:11,color:INK_MUTED,fontWeight:600,letterSpacing:0.5}}>STATUSBERICHT PRE-OPENING</div>
+            <div style={{fontFamily:"Fraunces, serif",fontSize:24,fontWeight:600}}>{hotel.name}</div>
+            <div style={{color:INK_MUTED}}>{[hotel.city, hotel.country].filter(Boolean).join(", ")}{hotel.rooms ? " · "+hotel.rooms+" Zimmer" : ""}{orgName ? " · "+orgName : ""}</div>
+          </div>
+          <div style={{textAlign:"right",fontSize:11.5,color:INK_MUTED}}>
+            <div>Stand: <b style={{color:INK}}>{fmtDate(today)}</b></div>
+            <div>Eröffnung: <b style={{color:INK}}>{fmtDate(hotel.opening_date)}</b></div>
+            {days!=null && <div>{days>=0 ? "noch "+days+" Tage" : "seit "+(-days)+" Tagen eröffnet"}</div>}
+            {me && <div>erstellt von {me.email}</div>}
+          </div>
+        </div>
+
+        <div className="avoid-break" style={{display:"flex",gap:16,marginTop:16,alignItems:"stretch"}}>
+          <div style={{border:`1px solid ${BORDER}`,borderRadius:8,padding:"10px 16px",textAlign:"center",minWidth:120}}>
+            <div style={{fontSize:10.5,color:INK_MUTED,fontWeight:600}}>BEREITSCHAFT</div>
+            <div style={{fontFamily:"Fraunces, serif",fontSize:40,fontWeight:600,color:scoreColor(r.overall),lineHeight:1.1}}>{r.overall}%</div>
+          </div>
+          <div style={{flex:1}}>
+            {Object.entries(r.deptScores||{}).sort((a,b)=>a[1]-b[1]).map(([d,s])=>(
+              <div key={d} style={{display:"flex",alignItems:"center",gap:8,padding:"2px 0"}}>
+                <div style={{width:140,fontSize:11.5}}>{d}</div>
+                <Bar pct={s} color={scoreColor(s)} />
+                <div style={{width:34,textAlign:"right",fontSize:11.5,fontWeight:700}}>{s}%</div>
+              </div>
+            ))}
+            {Object.keys(r.deptScores||{}).length===0 && <None>Noch keine Abteilungsdaten.</None>}
+          </div>
+        </div>
+
+        <div className="avoid-break" style={{display:"flex",gap:8,marginTop:12}}>
+          <Kpi label="AUFGABEN" value={doneTasks+" / "+tasks.length} sub={openTasks+" offen · "+lateTasks.length+" überfällig"} color={lateTasks.length?BAD:INK} />
+          <Kpi label="MEILENSTEINE" value={msAtRisk.length ? msAtRisk.length+" gefährdet" : "im Plan"} sub={msOpen.length+" offen"} color={msAtRisk.length?BAD:GOOD} />
+          <Kpi label="BUDGET (IST / PLAN)" value={planned>0 ? Math.round(actual/planned*100)+" %" : "—"} sub={fmtEur(actual)+" / "+fmtEur(planned)} color={actual>planned?BAD:INK} />
+          <Kpi label="PERSONAL" value={need>0 ? Math.round(have/need*100)+" %" : "—"} sub={have+" / "+need+" besetzt"} color={need>0 && have/need<0.5?BAD:INK} />
+        </div>
+
+        <h2>Überfällige Aufgaben mit hoher Priorität</h2>
+        {urgentLate.length===0 ? <None>Keine.</None> : (
+          <table><thead><tr><th>Aufgabe</th><th>Abteilung</th><th>Priorität</th><th>Fällig</th><th>Status</th></tr></thead><tbody>
+            {urgentLate.slice(0,12).map(t=>(
+              <tr key={t.id}><td>{t.title}</td><td>{t.department}</td><td style={{color:priorityColor(t.priority).color,fontWeight:600}}>{t.priority}</td><td style={{color:BAD}}>{fmtDate(t.due_date)}</td><td>{t.status}</td></tr>
+            ))}
+          </tbody></table>
+        )}
+        {urgentLate.length>12 && <None>… und {urgentLate.length-12} weitere.</None>}
+        {blocked.length>0 && <div style={{marginTop:6}}><b>Blockiert:</b> {blocked.map(t=>t.title).join(" · ")}</div>}
+
+        <h2>Meilensteine</h2>
+        {msAtRisk.length===0 && msNext.length===0 ? <None>Keine offenen Meilensteine.</None> : (
+          <table><thead><tr><th>Meilenstein</th><th>Datum</th><th>Kritikalität</th><th>Status</th></tr></thead><tbody>
+            {[...msAtRisk, ...msNext].map(m=>{
+              const risk = msAtRisk.includes(m);
+              return <tr key={m.id}><td style={{fontWeight:risk?600:400}}>{m.title}</td><td style={{color:risk?BAD:INK}}>{fmtDate(m.date)}</td><td>{m.criticality}</td><td style={{color:risk?BAD:INK}}>{m.date<today ? "überfällig" : m.status}</td></tr>;
+            })}
+          </tbody></table>
+        )}
+
+        <h2>Größte Risiken</h2>
+        {topRisks.length===0 ? <None>Keine Risiken erfasst.</None> : (
+          <table><thead><tr><th>Risiko</th><th>Abteilung</th><th>Score</th><th>Gegenmaßnahme</th></tr></thead><tbody>
+            {topRisks.map(x=>(
+              <tr key={x.id} className="avoid-break"><td>{x.title}</td><td>{x.department}</td><td style={{fontWeight:700,color:x.probability*x.impact>=16?BAD:x.probability*x.impact>=9?WARN:INK}}>{x.probability*x.impact}</td><td>{x.mitigation || <span style={{color:BAD}}>keine festgelegt</span>}</td></tr>
+            ))}
+          </tbody></table>
+        )}
+
+        <div className="avoid-break" style={{display:"flex",gap:20}}>
+          <div style={{flex:1}}>
+            <h2>Budget</h2>
+            {budget.length===0 ? <None>Kein Budget erfasst.</None> : (
+              <React.Fragment>
+                <div>Plan {fmtEur(planned)} · Ist {fmtEur(actual)} · {planned>=actual ? "verfügbar "+fmtEur(planned-actual) : <b style={{color:BAD}}>überschritten um {fmtEur(actual-planned)}</b>}</div>
+                {overDepts.length>0 ? (
+                  <div style={{marginTop:6}}>{overDepts.map(o=><div key={o.d} style={{color:BAD}}>{o.d}: +{fmtEur(o.over)}{o.pct!=null ? " ("+o.pct+" % über Plan)" : ""}</div>)}</div>
+                ) : <div style={{marginTop:6,color:GOOD}}>Alle Abteilungen im Plan.</div>}
+              </React.Fragment>
+            )}
+          </div>
+          <div style={{flex:1}}>
+            <h2>Personal</h2>
+            {staff.length===0 ? <None>Keine Stellen erfasst.</None> : (
+              <React.Fragment>
+                <div>{have} von {need} Personen eingestellt · {need-have} offen</div>
+                {openPositions.slice(0,8).map(p=>(
+                  <div key={p.id} style={{color:p.start_date && p.start_date<today ? BAD : INK}}>
+                    {p.title} ({p.department}): {p.headcount-p.filled} offen{p.start_date ? ", Start "+fmtDate(p.start_date) : ""}
+                  </div>
+                ))}
+                {openPositions.length>8 && <None>… und {openPositions.length-8} weitere Stellen.</None>}
+              </React.Fragment>
+            )}
+          </div>
+        </div>
+
+        <div style={{marginTop:18,paddingTop:6,borderTop:`1px solid ${BORDER}`,fontSize:10,color:INK_MUTED,display:"flex",justifyContent:"space-between"}}>
+          <span>Erstellt mit HPOOS</span><span>{new Date().toLocaleString("de-DE")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed}){
   const [members,setMembers] = useState([]);
   const [invites,setInvites] = useState([]);
@@ -1211,6 +1385,7 @@ function App(){
   const [recoveryToken,setRecoveryToken] = useState(null);
   const [recoveryDone,setRecoveryDone] = useState(false);
   const [editingHotel,setEditingHotel] = useState(false);
+  const [showReport,setShowReport] = useState(false);
 
   useEffect(()=>{
     // Verbindungsdaten sind fest eingebaut – niemand muss sie mehr eintragen.
@@ -1349,6 +1524,9 @@ function App(){
   );
   if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api} orgs={orgs} onSwitchOrg={switchOrg}
     onCreated={(h)=>{ setHotels([...hotels,h]); setHotel(h); }} onSelect={setHotel} />;
+  if(showReport) return <ReportView hotel={hotel} orgName={currentOrg ? currentOrg.name : ""} me={me}
+    readiness={readiness} tasks={tasks} milestones={milestones} risks={risks} budget={budget} staff={staff}
+    onClose={()=>setShowReport(false)} />;
 
   const NAV = [
     {key:"dashboard", label:"Dashboard"},
@@ -1381,7 +1559,10 @@ function App(){
             <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600}}>{hotel.name}</div>
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {hotel.rooms} Zimmer · Eröffnung {fmtDate(hotel.opening_date)}</div>
           </div>
-          {!editingHotel && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button onClick={()=>{ setShowReport(true); window.scrollTo(0,0); }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Statusbericht</button>
+            {!editingHotel && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
+          </div>
         </div>
         <div className="page-content" style={{padding:"22px 28px"}}>
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}

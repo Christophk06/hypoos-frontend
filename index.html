@@ -586,7 +586,79 @@ function filterTasks(tasks, f, {me, members}){
   return [...list].sort(cmp);
 }
 
-function TasksView({tasks, callHotel, callId, refresh, members, me}){
+// Was im Verlauf für eine Änderung angezeigt wird
+function describeEvent(e){
+  const v = (x) => x==null || x==="" ? "—" : x;
+  const d = (x) => x ? fmtDate(x) : "kein Termin";
+  switch(e.kind){
+    case "created":  return "hat die Aufgabe angelegt";
+    case "status":   return <span>Status: {v(e.old_value)} → <b>{v(e.new_value)}</b></span>;
+    case "due_date": return <span>Termin: {d(e.old_value)} → <b>{d(e.new_value)}</b>{e.automatic ? " (Eröffnung verschoben)" : ""}</span>;
+    case "assignee": return <span>Zuständig: {e.old_value || "niemand"} → <b>{e.new_value || "niemand"}</b></span>;
+    case "priority": return <span>Priorität: {v(e.old_value)} → <b>{v(e.new_value)}</b></span>;
+    case "title":    return <span>Titel: „{v(e.old_value)}“ → <b>„{v(e.new_value)}“</b></span>;
+    default:         return e.kind;
+  }
+}
+function fmtDateTime(iso){
+  return new Date(iso).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+
+// Kommentare und Änderungsverlauf einer Aufgabe
+function TaskActivity({taskId, api, me, onChanged}){
+  const [items,setItems] = useState(null);
+  const [text,setText] = useState("");
+  const [error,setError] = useState(""); const [busy,setBusy] = useState(false);
+  const [showHistory,setShowHistory] = useState(true);
+  const load = useCallback(()=>{ api("/api/tasks/"+taskId+"/activity").then(setItems).catch(e=>setError(e.message)); }, [api, taskId]);
+  useEffect(()=>{ load(); }, [load]);
+  const who = (it) => it.user_id && me && it.user_id===me.id ? "Du" : (it.email || "Unbekannt");
+  const send = async () => {
+    if(!text.trim()) return;
+    setBusy(true); setError("");
+    try { await api("/api/tasks/"+taskId+"/comments","POST",{body:text}); setText(""); load(); onChanged(); }
+    catch(e){ setError(e.message); }
+    setBusy(false);
+  };
+  const del = async (c) => {
+    if(!window.confirm("Kommentar löschen?")) return;
+    try { await api("/api/comments/"+c.id,"DELETE"); load(); onChanged(); } catch(e){ setError(e.message); }
+  };
+  const shown = (items||[]).filter(it => it.type==="comment" || showHistory);
+  return (
+    <div style={{paddingTop:6}}>
+      <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+        <textarea className="input" rows={2} placeholder="Kommentar schreiben … (Strg+Enter zum Senden)" value={text}
+          onChange={e=>setText(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) send(); }}
+          style={{resize:"vertical",fontSize:13.5,background:"#fff"}} />
+        <button className="btn-primary" onClick={send} disabled={busy||!text.trim()}>{busy?"…":"Senden"}</button>
+      </div>
+      {error && <div style={{color:BAD,fontSize:12.5,marginTop:6}}>{error}</div>}
+      <div style={{display:"flex",justifyContent:"flex-end",margin:"8px 0 4px"}}>
+        <label style={{fontSize:12,color:INK_MUTED,display:"flex",gap:5,alignItems:"center",cursor:"pointer"}}>
+          <input type="checkbox" checked={showHistory} onChange={e=>setShowHistory(e.target.checked)} /> Änderungsverlauf anzeigen
+        </label>
+      </div>
+      {items===null && !error && <div style={{fontSize:12.5,color:INK_MUTED}}>Lädt…</div>}
+      {items && shown.length===0 && <div style={{fontSize:12.5,color:INK_MUTED}}>Noch keine Kommentare.</div>}
+      {shown.map(it => it.type==="comment" ? (
+        <div key={it.id} style={{background:"#fff",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 10px",margin:"6px 0"}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:11.5,color:INK_MUTED,marginBottom:3}}>
+            <span><b style={{color:INK}}>{who(it)}</b> · {fmtDateTime(it.at)}</span>
+            {me && it.user_id===me.id && <button style={{...linkBtn,fontSize:11.5,padding:0}} onClick={()=>del(it)}>löschen</button>}
+          </div>
+          <div style={{fontSize:13.5,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{it.body}</div>
+        </div>
+      ) : (
+        <div key={it.id} style={{fontSize:12,color:INK_MUTED,padding:"3px 2px 3px 10px",borderLeft:`2px solid ${BORDER}`,margin:"2px 0"}}>
+          {it.automatic ? "Automatisch" : who(it)} · {describeEvent(it)} · {fmtDateTime(it.at)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TasksView({tasks, callHotel, callId, refresh, members, me, api}){
   const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:"",assignee_id:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
@@ -597,6 +669,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me}){
   const updateStatus = (id,status) => run(()=>callId("tasks",id,"PATCH",{status}));
   const [origDue,setOrigDue]=useState("");
   const [showTemplate,setShowTemplate]=useState(false);
+  const [openActivity,setOpenActivity]=useState(null);
   const startEdit = (t) => { setEditId(t.id); setOrigDue(t.due_date||""); setEdit({title:t.title,department:t.department,priority:t.priority,due_date:t.due_date||"",owner:t.owner||"",assignee_id:t.assignee_id||""}); };
   // Termin nur mitschicken, wenn er geändert wurde – sonst bliebe die Aufgabe nicht mehr ans Eröffnungsdatum gekoppelt.
   const saveEdit = () => { if(!edit.title) return; const body={...edit}; if(body.due_date===origDue) delete body.due_date; run(async()=>{ await callId("tasks",editId,"PATCH",body); setEditId(null); }); };
@@ -683,7 +756,8 @@ function TasksView({tasks, callHotel, callId, refresh, members, me}){
               </td>
             </tr>
           ) : (
-            <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`}}>
+            <React.Fragment key={t.id}>
+            <tr style={{borderTop:`1px solid ${BORDER}`}}>
               <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.assignee_id ? <span style={{color:t.assignee_id===(me&&me.id)?BRASS:INK_MUTED,fontWeight:t.assignee_id===(me&&me.id)?600:400}}> · {t.assignee_id===(me&&me.id) ? "Du" : (memberEmail(members,t.assignee_id)||"Teammitglied")}</span> : ""}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div></td>
               <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
               <td style={{padding:12}}>
@@ -691,10 +765,21 @@ function TasksView({tasks, callHotel, callId, refresh, members, me}){
               </td>
               <td style={{padding:12,color:INK_MUTED}}>{fmtDate(t.due_date)}</td>
               <td style={{padding:12,whiteSpace:"nowrap"}}>
+                <button style={{...linkBtn,color:openActivity===t.id?INK:INK_MUTED,fontWeight:openActivity===t.id?600:400}} onClick={()=>setOpenActivity(openActivity===t.id?null:t.id)} title="Kommentare und Verlauf">
+                  💬 {t.comment_count||0}
+                </button>
                 <button style={linkBtn} onClick={()=>startEdit(t)}>Bearbeiten</button>
                 <button style={linkBtn} onClick={()=>remove(t)} title="Löschen">✕</button>
               </td>
             </tr>
+            {openActivity===t.id && (
+              <tr style={{background:PAPER}}>
+                <td colSpan={5} style={{padding:"4px 12px 14px"}}>
+                  <TaskActivity taskId={t.id} api={api} me={me} onChanged={refresh} />
+                </td>
+              </tr>
+            )}
+            </React.Fragment>
           ))}
         </tbody></table>
       </Card>
@@ -1570,7 +1655,7 @@ function App(){
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
           {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={setTab} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
-          {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} />}
+          {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}

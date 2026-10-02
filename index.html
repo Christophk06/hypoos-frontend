@@ -475,8 +475,73 @@ function TemplatePanel({callHotel, refresh, onClose}){
   );
 }
 
-function TasksView({tasks, callHotel, callId, refresh}){
-  const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:""};
+function MyTasksView({orgId, api, hotelId, refresh}){
+  const [items,setItems] = useState(null);
+  const [error,setError] = useState("");
+  const [showDone,setShowDone] = useState(false);
+  const load = useCallback(()=>{ api("/api/organizations/"+orgId+"/my-tasks").then(setItems).catch(e=>setError(e.message)); }, [api, orgId]);
+  useEffect(()=>{ load(); }, [load]);
+  const updateStatus = async (t, status) => {
+    setError("");
+    try { await api("/api/tasks/"+t.id, "PATCH", {status}); load(); if(t.hotel_id===hotelId) refresh(); }
+    catch(e){ setError(e.message); }
+  };
+  if(items===null) return <div style={{color:error?BAD:INK_MUTED}}>{error || "Lädt…"}</div>;
+  const today = new Date().toISOString().slice(0,10);
+  const open = items.filter(t=>t.status!=="Abgeschlossen");
+  const done = items.filter(t=>t.status==="Abgeschlossen");
+  const overdue = open.filter(t=>t.due_date && t.due_date < today).length;
+  const list = showDone ? items : open;
+  return (
+    <div>
+      <div className="stack" style={{display:"flex",gap:14,marginBottom:18}}>
+        <StatTile label="OFFEN" value={open.length} sub="dir zugewiesen, alle Hotels" />
+        <StatTile label="ÜBERFÄLLIG" value={overdue} color={overdue>0?BAD:INK} sub="Termin schon vorbei" />
+        <StatTile label="ERLEDIGT" value={done.length} color={GOOD} />
+      </div>
+      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+        <label style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}>
+          <input type="checkbox" checked={showDone} onChange={e=>setShowDone(e.target.checked)} /> Erledigte anzeigen
+        </label>
+      </div>
+      <Card style={{padding:0}}>
+        <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+          {list.length===0 && <tr><td style={{padding:16,color:INK_MUTED}}>
+            {items.length===0 ? "Dir ist noch keine Aufgabe zugewiesen. Zuständigkeiten legst du unter „Aufgaben“ beim Bearbeiten fest." : "Keine offenen Aufgaben – alles erledigt."}
+          </td></tr>}
+          {list.map(t=>{
+            const late = t.status!=="Abgeschlossen" && t.due_date && t.due_date < today;
+            return (
+              <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`}}>
+                <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.hotel_name} · {t.department}</div></td>
+                <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
+                <td style={{padding:12}}>
+                  <select value={t.status} onChange={e=>updateStatus(t,e.target.value)} className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(st=><option key={st}>{st}</option>)}</select>
+                </td>
+                <td style={{padding:12,whiteSpace:"nowrap",color:late?BAD:INK_MUTED,fontWeight:late?600:400}}>{fmtDate(t.due_date)}{late ? " · überfällig" : ""}</td>
+              </tr>
+            );
+          })}
+        </tbody></table>
+      </Card>
+    </div>
+  );
+}
+
+// Auswahl eines Teammitglieds als Zuständige/n.
+function AssigneeSelect({value, onChange, members}){
+  return (
+    <select className="input" value={value||""} onChange={e=>onChange(e.target.value)} title="Zuständig im Team">
+      <option value="">— niemand aus dem Team —</option>
+      {members.map(m=><option key={m.user_id} value={m.user_id}>{m.email}</option>)}
+    </select>
+  );
+}
+function memberEmail(members, id){ const m = members.find(x=>x.user_id===id); return m ? m.email : ""; }
+
+function TasksView({tasks, callHotel, callId, refresh, members, me}){
+  const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:"",assignee_id:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
@@ -486,7 +551,7 @@ function TasksView({tasks, callHotel, callId, refresh}){
   const updateStatus = (id,status) => run(()=>callId("tasks",id,"PATCH",{status}));
   const [origDue,setOrigDue]=useState("");
   const [showTemplate,setShowTemplate]=useState(false);
-  const startEdit = (t) => { setEditId(t.id); setOrigDue(t.due_date||""); setEdit({title:t.title,department:t.department,priority:t.priority,due_date:t.due_date||"",owner:t.owner||""}); };
+  const startEdit = (t) => { setEditId(t.id); setOrigDue(t.due_date||""); setEdit({title:t.title,department:t.department,priority:t.priority,due_date:t.due_date||"",owner:t.owner||"",assignee_id:t.assignee_id||""}); };
   // Termin nur mitschicken, wenn er geändert wurde – sonst bliebe die Aufgabe nicht mehr ans Eröffnungsdatum gekoppelt.
   const saveEdit = () => { if(!edit.title) return; const body={...edit}; if(body.due_date===origDue) delete body.due_date; run(async()=>{ await callId("tasks",editId,"PATCH",body); setEditId(null); }); };
   const remove = (t) => { if(confirmDelete("Aufgabe „"+t.title+"“")) run(()=>callId("tasks",t.id,"DELETE")); };
@@ -507,7 +572,8 @@ function TasksView({tasks, callHotel, callId, refresh}){
           </div>
           <div className="stack" style={{display:"flex",gap:10}}>
             <input type="date" className="input" value={draft.due_date} onChange={e=>setDraft({...draft,due_date:e.target.value})} />
-            <input className="input" placeholder="Verantwortlich" value={draft.owner} onChange={e=>setDraft({...draft,owner:e.target.value})} />
+            <AssigneeSelect value={draft.assignee_id} onChange={v=>setDraft({...draft,assignee_id:v})} members={members} />
+            <input className="input" placeholder="Extern / Sonstige" value={draft.owner} onChange={e=>setDraft({...draft,owner:e.target.value})} />
             <button className="btn-primary" onClick={add}>Speichern</button>
           </div>
         </Card>
@@ -524,7 +590,8 @@ function TasksView({tasks, callHotel, callId, refresh}){
                 </div>
                 <div className="stack" style={{display:"flex",gap:10,alignItems:"center"}}>
                   <input type="date" className="input" value={edit.due_date} onChange={e=>setEdit({...edit,due_date:e.target.value})} />
-                  <input className="input" placeholder="Verantwortlich" value={edit.owner} onChange={e=>setEdit({...edit,owner:e.target.value})} />
+                  <AssigneeSelect value={edit.assignee_id} onChange={v=>setEdit({...edit,assignee_id:v})} members={members} />
+                  <input className="input" placeholder="Extern / Sonstige" value={edit.owner} onChange={e=>setEdit({...edit,owner:e.target.value})} />
                   <button className="btn-primary" onClick={saveEdit}>Speichern</button>
                   <button style={linkBtn} onClick={()=>setEditId(null)}>Abbrechen</button>
                 </div>
@@ -532,7 +599,7 @@ function TasksView({tasks, callHotel, callId, refresh}){
             </tr>
           ) : (
             <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`}}>
-              <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div></td>
+              <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.assignee_id ? <span style={{color:t.assignee_id===(me&&me.id)?BRASS:INK_MUTED,fontWeight:t.assignee_id===(me&&me.id)?600:400}}> · {t.assignee_id===(me&&me.id) ? "Du" : (memberEmail(members,t.assignee_id)||"Teammitglied")}</span> : ""}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div></td>
               <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
               <td style={{padding:12}}>
                 <select value={t.status} onChange={e=>updateStatus(t.id,e.target.value)} className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
@@ -1060,6 +1127,8 @@ function App(){
   const [token,setToken] = useState(null);
   const [orgId,setOrgId] = useState(null);
   const [orgs,setOrgs] = useState([]);
+  const [members,setMembers] = useState([]);
+  const [me,setMe] = useState(null);
   const [hotels,setHotels] = useState(null);
   const [hotel,setHotel] = useState(null);
   const [tab,setTab] = useState("dashboard");
@@ -1154,6 +1223,16 @@ function App(){
   };
   const currentOrg = orgs.find(o=>o.id===orgId);
 
+  // Wer bin ich, und wer ist im Team? (für Zuständigkeiten)
+  useEffect(()=>{
+    if(!token) { setMe(null); return; }
+    apiCall(config.backendUrl, token, "/api/me").then(setMe).catch(()=>setMe(null));
+  },[token, config]);
+  useEffect(()=>{
+    if(!token || !orgId) { setMembers([]); return; }
+    apiCall(config.backendUrl, token, "/api/organizations/"+orgId+"/members").then(setMembers).catch(()=>setMembers([]));
+  },[token, orgId, config]);
+
   const loadHotelData = useCallback(async (h) => {
     if(!h) return;
     const base = "/api/hotels/" + h.id;
@@ -1204,6 +1283,7 @@ function App(){
 
   const NAV = [
     {key:"dashboard", label:"Dashboard"},
+    {key:"mine", label:"Meine Aufgaben"},
     {key:"tasks", label:"Aufgaben"},
     {key:"milestones", label:"Meilensteine"},
     {key:"risks", label:"Risiken"},
@@ -1239,7 +1319,8 @@ function App(){
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
           {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={setTab} />}
-          {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}

@@ -540,6 +540,36 @@ function AssigneeSelect({value, onChange, members}){
 }
 function memberEmail(members, id){ const m = members.find(x=>x.user_id===id); return m ? m.email : ""; }
 
+const LS_TASK_FILTERS = "hpoos_task_filters_v1";
+const TASK_FILTER_DEFAULTS = {q:"", department:"", status:"", sort:"due", mine:false, overdue:false, unassigned:false};
+const PRIORITY_RANK = {Kritisch:0, Hoch:1, Mittel:2, Niedrig:3};
+
+// Wendet Suche, Filter und Sortierung auf die Aufgabenliste an.
+function filterTasks(tasks, f, {me, members}){
+  const today = new Date().toISOString().slice(0,10);
+  const q = f.q.trim().toLowerCase();
+  const list = tasks.filter(t=>{
+    if(f.department && t.department!==f.department) return false;
+    if(f.status==="open" && t.status==="Abgeschlossen") return false;
+    if(f.status && f.status!=="open" && t.status!==f.status) return false;
+    if(f.mine && !(me && t.assignee_id===me.id)) return false;
+    if(f.unassigned && t.assignee_id) return false;
+    if(f.overdue && !(t.due_date && t.due_date<today && t.status!=="Abgeschlossen")) return false;
+    if(q){
+      const hay = [t.title, t.owner, t.department, memberEmail(members,t.assignee_id)].join(" ").toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const byDue = (a,b) => (a.due_date||"9999") < (b.due_date||"9999") ? -1 : (a.due_date||"9999") > (b.due_date||"9999") ? 1 : 0;
+  const cmp = {
+    due: byDue,
+    priority: (a,b) => (PRIORITY_RANK[a.priority]??9) - (PRIORITY_RANK[b.priority]??9) || byDue(a,b),
+    department: (a,b) => a.department.localeCompare(b.department,"de") || byDue(a,b),
+  }[f.sort] || byDue;
+  return [...list].sort(cmp);
+}
+
 function TasksView({tasks, callHotel, callId, refresh, members, me}){
   const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:"",assignee_id:""};
   const [showForm,setShowForm]=useState(false);
@@ -555,6 +585,21 @@ function TasksView({tasks, callHotel, callId, refresh, members, me}){
   // Termin nur mitschicken, wenn er geändert wurde – sonst bliebe die Aufgabe nicht mehr ans Eröffnungsdatum gekoppelt.
   const saveEdit = () => { if(!edit.title) return; const body={...edit}; if(body.due_date===origDue) delete body.due_date; run(async()=>{ await callId("tasks",editId,"PATCH",body); setEditId(null); }); };
   const remove = (t) => { if(confirmDelete("Aufgabe „"+t.title+"“")) run(()=>callId("tasks",t.id,"DELETE")); };
+
+  // Filter und Sortierung (pro Browser gemerkt)
+  const [filters,setFilters] = useState(()=>{
+    try { return {...TASK_FILTER_DEFAULTS, ...JSON.parse(window.localStorage.getItem(LS_TASK_FILTERS)||"{}")}; }
+    catch(e){ return TASK_FILTER_DEFAULTS; }
+  });
+  const setFilter = (k,v) => setFilters(f=>{ const n={...f,[k]:v}; try { window.localStorage.setItem(LS_TASK_FILTERS, JSON.stringify(n)); } catch(e){} return n; });
+  const resetFilters = () => { setFilters(TASK_FILTER_DEFAULTS); try { window.localStorage.removeItem(LS_TASK_FILTERS); } catch(e){} };
+  const visible = filterTasks(tasks, filters, {me, members});
+  const filtersActive = JSON.stringify({...filters, sort:null}) !== JSON.stringify({...TASK_FILTER_DEFAULTS, sort:null});
+  const chip = (key,label) => (
+    <button onClick={()=>setFilter(key,!filters[key])}
+      style={{border:`1px solid ${filters[key]?INK:BORDER}`,background:filters[key]?INK:"#fff",color:filters[key]?"#fff":INK,borderRadius:999,padding:"6px 12px",fontSize:12.5,cursor:"pointer",whiteSpace:"nowrap"}}>{label}</button>
+  );
+
   return (
     <div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
@@ -578,9 +623,33 @@ function TasksView({tasks, callHotel, callId, refresh, members, me}){
           </div>
         </Card>
       )}
+      {tasks.length>0 && (
+        <Card style={{marginBottom:12,padding:14}}>
+          <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 1.2fr 1fr",gap:10,marginBottom:10}}>
+            <input className="input" placeholder="Suchen: Titel, Zuständige, Externe …" value={filters.q} onChange={e=>setFilter("q",e.target.value)} />
+            <select className="input" value={filters.department} onChange={e=>setFilter("department",e.target.value)}>
+              <option value="">Alle Abteilungen</option>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}
+            </select>
+            <select className="input" value={filters.status} onChange={e=>setFilter("status",e.target.value)}>
+              <option value="">Alle Status</option><option value="open">Alle offenen</option>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}
+            </select>
+            <select className="input" value={filters.sort} onChange={e=>setFilter("sort",e.target.value)} title="Sortierung">
+              <option value="due">Nach Termin</option><option value="priority">Nach Priorität</option><option value="department">Nach Abteilung</option>
+            </select>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {chip("mine","Nur meine")}{chip("overdue","Überfällig")}{chip("unassigned","Ohne Zuständigkeit")}
+            <span style={{marginLeft:"auto",fontSize:12.5,color:INK_MUTED}}>
+              {visible.length} von {tasks.length} Aufgaben
+              {filtersActive && <button style={{...linkBtn,textDecoration:"underline"}} onClick={resetFilters}>Filter zurücksetzen</button>}
+            </span>
+          </div>
+        </Card>
+      )}
       <Card style={{padding:0}}>
         <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
-          {tasks.map(t=> editId===t.id ? (
+          {tasks.length>0 && visible.length===0 && <tr><td style={{padding:16,color:INK_MUTED}}>Keine Aufgabe passt zu den Filtern.</td></tr>}
+          {visible.map(t=> editId===t.id ? (
             <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`,background:PAPER}}>
               <td colSpan={5} style={{padding:12}}>
                 <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>

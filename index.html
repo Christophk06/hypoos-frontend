@@ -29,6 +29,8 @@
     .sidebar .brand { padding: 0 10px 0 4px !important; border: none !important; margin: 0 !important; }
     .sidebar .nav-item { margin: 0 !important; white-space: nowrap; }
     .sidebar .logout { margin: 0 0 0 auto !important; padding: 9px 10px; white-space: nowrap; }
+    .sidebar .org-switcher { margin: 0 6px 0 0 !important; min-width: 130px; }
+    .sidebar .org-switcher > div:first-child { display: none; }
     .page-header { padding: 14px 16px !important; flex-wrap: wrap; }
     .page-content { padding: 16px !important; }
     .stack { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
@@ -59,6 +61,7 @@ const TASK_STATUSES = ["Nicht begonnen","In Arbeit","Blockiert","In Prüfung","A
 const MILESTONE_STATUSES = ["Geplant","In Arbeit","Gefährdet","Abgeschlossen"];
 const LS_KEY = "hpoos_connection_config_v1";
 const LS_INVITE_KEY = "hpoos_pending_invite_v1";
+const LS_ORG_KEY = "hpoos_last_org_v1";
 // Öffentliche Verbindungsdaten. Der publishable Key darf im Frontend stehen –
 // die Daten schützen Login-Pflicht und Row Level Security in der Datenbank.
 const DEFAULT_CONFIG = {
@@ -263,7 +266,26 @@ function ResetPasswordView({config, accessToken, onDone}){
   );
 }
 
-function HotelSetupView({hotels, orgId, api, onCreated, onSelect}){
+// Zeigt die aktuelle Organisation; bei mehreren Mitgliedschaften als Auswahl zum Umschalten.
+function OrgSwitcher({orgs, orgId, onSwitch, dark}){
+  if(!orgs || orgs.length===0) return null;
+  const current = orgs.find(o=>o.id===orgId);
+  const style = dark
+    ? {width:"100%",background:INK_SOFT,color:"#fff",border:"1px solid rgba(255,255,255,0.15)",borderRadius:7,padding:"7px 8px",fontSize:12.5}
+    : {width:"100%",background:PAPER,color:INK,border:`1px solid ${BORDER}`,borderRadius:7,padding:"8px 10px",fontSize:13.5};
+  return (
+    <div className="org-switcher" style={{marginBottom:dark?14:16}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:0.4,color:dark?"rgba(255,255,255,0.5)":INK_MUTED,marginBottom:4}}>ORGANISATION</div>
+      {orgs.length===1
+        ? <div style={{fontSize:13,fontWeight:600,color:dark?"#fff":INK}}>{current ? current.name : ""}</div>
+        : <select value={orgId||""} onChange={e=>onSwitch(e.target.value)} style={style}>
+            {orgs.map(o=><option key={o.id} value={o.id}>{o.name}{o.role==="admin"?" (Admin)":""}</option>)}
+          </select>}
+    </div>
+  );
+}
+
+function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitchOrg}){
   const [showForm,setShowForm] = useState(hotels.length===0);
   const [form,setForm] = useState({name:"",city:"",country:"",rooms:100,opening_date:""});
   const [saving,setSaving] = useState(false); const [error,setError]=useState("");
@@ -277,6 +299,7 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect}){
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
       <Card style={{maxWidth:440,width:"100%"}}>
+        <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={onSwitchOrg} />
         {!showForm && hotels.length>0 && (
           <React.Fragment>
             <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:14}}>Hotel auswählen</div>
@@ -843,7 +866,31 @@ function StaffView({positions, callHotel, callId, refresh}){
   );
 }
 
-function TeamView({orgId, api, inviteLinkBase}){
+function OrgRenameCard({orgId, orgName, api, onRenamed}){
+  const [name,setName] = useState(orgName);
+  const [msg,setMsg] = useState(""); const [error,setError] = useState(""); const [saving,setSaving] = useState(false);
+  useEffect(()=>{ setName(orgName); }, [orgName]);
+  const save = async () => {
+    if(!name.trim() || name.trim()===orgName) return;
+    setSaving(true); setError(""); setMsg("");
+    try { onRenamed(await api("/api/organizations/"+orgId,"PATCH",{name})); setMsg("Gespeichert."); }
+    catch(e){ setError(e.message); }
+    setSaving(false);
+  };
+  return (
+    <Card style={{marginBottom:18}}>
+      <div style={{fontWeight:700,marginBottom:10}}>Organisation</div>
+      <div className="stack" style={{display:"flex",gap:10}}>
+        <input className="input" value={name} onChange={e=>{setName(e.target.value);setMsg("");}} onKeyDown={e=>e.key==="Enter"&&save()} placeholder="Name der Organisation, z. B. Hotelgruppe Wien" />
+        <button className="btn-primary" onClick={save} disabled={saving}>{saving?"…":"Umbenennen"}</button>
+      </div>
+      {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+      {msg && <div style={{color:GOOD,fontSize:13,marginTop:10}}>{msg}</div>}
+    </Card>
+  );
+}
+
+function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed}){
   const [members,setMembers] = useState([]);
   const [invites,setInvites] = useState([]);
   const [email,setEmail] = useState(""); const [role,setRole] = useState("member");
@@ -889,6 +936,7 @@ function TeamView({orgId, api, inviteLinkBase}){
   return (
     <div>
       {!isAdmin && error && <div style={{color:BAD,fontSize:13,marginBottom:14}}>{error}</div>}
+      {isAdmin && <OrgRenameCard orgId={orgId} orgName={orgName} api={api} onRenamed={onRenamed} />}
       {isAdmin && <Card style={{marginBottom:18}}>
         <div style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</div>
         <div className="stack" style={{display:"flex",gap:10}}>
@@ -950,6 +998,7 @@ function App(){
   const [config,setConfig] = useState(undefined);
   const [token,setToken] = useState(null);
   const [orgId,setOrgId] = useState(null);
+  const [orgs,setOrgs] = useState([]);
   const [hotels,setHotels] = useState(null);
   const [hotel,setHotel] = useState(null);
   const [tab,setTab] = useState("dashboard");
@@ -1001,12 +1050,13 @@ function App(){
     (async () => {
       try {
         let organizationId;
+        let fromInvite = false;
         let inviteToken = null;
         try { inviteToken = window.localStorage.getItem(LS_INVITE_KEY); } catch(e){}
         if(inviteToken){
           try {
             const accepted = await apiCall(config.backendUrl, token, "/api/invites/accept", "POST", {token:inviteToken});
-            organizationId = accepted.organization_id;
+            organizationId = accepted.organization_id; fromInvite = true;
           } catch(e){ setFatalError("Einladung: " + e.message); }
           // Einladung nur einmal verarbeiten – egal ob angenommen oder ungültig.
           try { window.localStorage.removeItem(LS_INVITE_KEY); } catch(e){}
@@ -1015,12 +1065,33 @@ function App(){
           const boot = await apiCall(config.backendUrl, token, "/api/bootstrap-organization", "POST", {name:"Meine Organisation"});
           organizationId = boot.organization_id;
         }
+        const list = await apiCall(config.backendUrl, token, "/api/organizations");
+        // Zuletzt benutzte Organisation wiederherstellen – außer man kommt gerade über eine Einladung.
+        let saved = null;
+        try { saved = window.localStorage.getItem(LS_ORG_KEY); } catch(e){}
+        if(!fromInvite && saved && list.some(o=>o.id===saved)) organizationId = saved;
+        setOrgs(list);
         setOrgId(organizationId);
-        const h = await apiCall(config.backendUrl, token, "/api/hotels");
-        setHotels(h);
       } catch(e){ setFatalError(e.message); }
     })();
   },[token, config]);
+
+  // Hotels immer nur für die gewählte Organisation laden.
+  useEffect(()=>{
+    if(!token || !orgId) return;
+    let cancelled = false;
+    setHotels(null);
+    apiCall(config.backendUrl, token, "/api/hotels?organization_id=" + encodeURIComponent(orgId))
+      .then(h=>{ if(!cancelled) setHotels(h); })
+      .catch(e=>{ if(!cancelled) setFatalError(e.message); });
+    return () => { cancelled = true; };
+  },[token, orgId, config]);
+
+  const switchOrg = (id) => {
+    setHotel(null); setTab("dashboard"); setFatalError(""); setOrgId(id);
+    try { window.localStorage.setItem(LS_ORG_KEY, id); } catch(e){}
+  };
+  const currentOrg = orgs.find(o=>o.id===orgId);
 
   const loadHotelData = useCallback(async (h) => {
     if(!h) return;
@@ -1067,7 +1138,7 @@ function App(){
       </Card>
     </div>
   );
-  if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api}
+  if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api} orgs={orgs} onSwitchOrg={switchOrg}
     onCreated={(h)=>{ setHotels([...hotels,h]); setHotel(h); }} onSelect={setHotel} />;
 
   const NAV = [
@@ -1087,10 +1158,12 @@ function App(){
     <div className="app-shell" style={{fontFamily:"Inter, sans-serif",background:PAPER,minHeight:"100vh",display:"flex"}}>
       <div className="sidebar" style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
         <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:15.5,fontWeight:600,padding:"0 8px 22px",borderBottom:"1px solid rgba(255,255,255,0.12)",marginBottom:14}}>HPOOS</div>
+        <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={switchOrg} dark />
         {NAV.map(n=>(
           <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginBottom:3,fontSize:13.5,background:tab===n.key?INK_SOFT:"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.65)"}}>{n.label}</div>
         ))}
-        <div className="logout" onClick={()=>{setToken(null);setOrgId(null);setHotel(null);setHotels(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
+        <div className="nav-item" onClick={()=>setHotel(null)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
+        <div className="logout" onClick={()=>{setToken(null);setOrgId(null);setOrgs([]);setHotel(null);setHotels(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
@@ -1110,7 +1183,9 @@ function App(){
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="staff" && <StaffView positions={staff} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
-          {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname} />}
+          {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname}
+            orgName={currentOrg ? currentOrg.name : ""}
+            onRenamed={(org)=>setOrgs(orgs.map(o=>o.id===org.id?{...o,name:org.name}:o))} />}
         </div>
       </div>
     </div>

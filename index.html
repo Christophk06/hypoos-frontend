@@ -1369,11 +1369,18 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed}){
 
   const invite = async () => {
     if(!email) return;
-    setError(""); setLoading(true);
-    try { await api("/api/invites","POST",{organization_id:orgId, email, role}); setEmail(""); await load(); }
+    setError(""); setInviteMsg(null); setLoading(true);
+    try {
+      const inv = await api("/api/invites","POST",{organization_id:orgId, email, role});
+      setInviteMsg(inv.email_sent
+        ? {ok:true, text:"Einladung per E-Mail an "+inv.email+" verschickt."}
+        : {ok:false, text:"Einladung angelegt, aber keine E-Mail verschickt (E-Mail-Versand nicht eingerichtet). Bitte unten den Link kopieren und weitergeben."});
+      setEmail(""); await load();
+    }
     catch(e){ setError(e.message); }
     setLoading(false);
   };
+  const [inviteMsg,setInviteMsg] = useState(null);
 
   const revoke = async (id) => { await api("/api/invites/"+id,"DELETE"); await load(); };
 
@@ -1404,9 +1411,10 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed}){
           <button className="btn-primary" onClick={invite} disabled={loading}>{loading?"…":"Einladen"}</button>
         </div>
         {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+        {inviteMsg && <div style={{color:inviteMsg.ok?GOOD:WARN,fontSize:13,marginTop:10}}>{inviteMsg.text}</div>}
         <div style={{fontSize:12,color:INK_MUTED,marginTop:10}}>
-          Nach dem Einladen bekommst du einen Link zum Kopieren — den schickst du der Person (z. B. per E-Mail oder Chat).
-          Sie muss sich damit registrieren oder anmelden, dann gehört sie automatisch zu deiner Organisation.
+          Die Person bekommt den Einladungslink per E-Mail. Sie muss sich damit registrieren oder anmelden,
+          dann gehört sie automatisch zu deiner Organisation. Kommt keine Mail an, kannst du den Link unten auch kopieren und selbst weitergeben.
         </div>
       </Card>}
 

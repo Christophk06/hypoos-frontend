@@ -420,6 +420,61 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
 const linkBtn = {background:"none",border:"none",color:INK_MUTED,cursor:"pointer",fontSize:12.5,padding:"2px 4px"};
 function confirmDelete(what){ return window.confirm(what + " wirklich löschen? Das kann nicht rückgängig gemacht werden."); }
 
+// " · 90 Tage vor Eröffnung" für Einträge, deren Termin dem Eröffnungsdatum folgt.
+function offsetLabel(days){
+  if(days==null) return "";
+  if(days===0) return " · am Eröffnungstag";
+  return " · " + Math.abs(days) + (days<0 ? " Tage vor" : " Tage nach") + " Eröffnung";
+}
+
+function TemplatePanel({callHotel, refresh, onClose}){
+  const [preview,setPreview]=useState(null);
+  const [skipPast,setSkipPast]=useState(false);
+  const [error,setError]=useState(""); const [result,setResult]=useState(""); const [busy,setBusy]=useState(false);
+  useEffect(()=>{ callHotel("/template-preview").then(setPreview).catch(e=>setError(e.message)); },[]);
+  const apply = async () => {
+    setBusy(true); setError("");
+    try {
+      const r = await callHotel("/apply-template","POST",{skipPast});
+      setResult(r.tasksCreated+" Aufgaben und "+r.milestonesCreated+" Meilensteine angelegt."+(r.skippedPast?" "+r.skippedPast+" vergangene weggelassen.":""));
+      setPreview(null); refresh();
+    } catch(e){ setError(e.message); }
+    setBusy(false);
+  };
+  const total = preview ? preview.tasks + preview.milestones : 0;
+  return (
+    <Card style={{marginBottom:16,borderColor:BRASS}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+        <div style={{fontWeight:700,marginBottom:6}}>Vorlage: Standard-Eröffnungsplanung</div>
+        {onClose && <button style={linkBtn} onClick={onClose}>Schließen</button>}
+      </div>
+      <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>
+        Typische Pre-Opening-Aufgaben und Meilensteine für alle Abteilungen, terminiert relativ zum Eröffnungsdatum.
+        Verschiebt sich die Eröffnung, wandern diese Termine automatisch mit – bis du einen Termin selbst änderst.
+      </div>
+      {error && <div style={{color:BAD,fontSize:13}}>{error}</div>}
+      {result && <div style={{color:GOOD,fontSize:13}}>{result}</div>}
+      {!preview && !error && !result && <div style={{fontSize:13,color:INK_MUTED}}>Wird geprüft…</div>}
+      {preview && total===0 && <div style={{fontSize:13}}>Die Vorlage ist bereits vollständig angewendet.</div>}
+      {preview && total>0 && (
+        <React.Fragment>
+          <div style={{fontSize:13.5,marginBottom:10}}>
+            Neu angelegt werden <b>{preview.tasks} Aufgaben</b> und <b>{preview.milestones} Meilensteine</b>
+            {preview.alreadyApplied>0 && <span style={{color:INK_MUTED}}> ({preview.alreadyApplied} sind schon vorhanden und werden übersprungen)</span>}.
+          </div>
+          {preview.past>0 && (
+            <label style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:13,marginBottom:12,cursor:"pointer"}}>
+              <input type="checkbox" checked={skipPast} onChange={e=>setSkipPast(e.target.checked)} style={{marginTop:2}} />
+              <span>{preview.past} davon hätten ihren Termin schon vor heute. Diese weglassen (sonst werden sie als überfällig angelegt).</span>
+            </label>
+          )}
+          <button className="btn-primary" onClick={apply} disabled={busy}>{busy?"Wird angelegt…":"Vorlage anwenden"}</button>
+        </React.Fragment>
+      )}
+    </Card>
+  );
+}
+
 function TasksView({tasks, callHotel, callId, refresh}){
   const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:""};
   const [showForm,setShowForm]=useState(false);
@@ -429,15 +484,20 @@ function TasksView({tasks, callHotel, callId, refresh}){
   const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
   const add = () => { if(!draft.title) return; run(async()=>{ await callHotel("/tasks","POST",draft); setShowForm(false); setDraft({...draft,title:""}); }); };
   const updateStatus = (id,status) => run(()=>callId("tasks",id,"PATCH",{status}));
-  const startEdit = (t) => { setEditId(t.id); setEdit({title:t.title,department:t.department,priority:t.priority,due_date:t.due_date||"",owner:t.owner||""}); };
-  const saveEdit = () => { if(!edit.title) return; run(async()=>{ await callId("tasks",editId,"PATCH",edit); setEditId(null); }); };
+  const [origDue,setOrigDue]=useState("");
+  const [showTemplate,setShowTemplate]=useState(false);
+  const startEdit = (t) => { setEditId(t.id); setOrigDue(t.due_date||""); setEdit({title:t.title,department:t.department,priority:t.priority,due_date:t.due_date||"",owner:t.owner||""}); };
+  // Termin nur mitschicken, wenn er geändert wurde – sonst bliebe die Aufgabe nicht mehr ans Eröffnungsdatum gekoppelt.
+  const saveEdit = () => { if(!edit.title) return; const body={...edit}; if(body.due_date===origDue) delete body.due_date; run(async()=>{ await callId("tasks",editId,"PATCH",body); setEditId(null); }); };
   const remove = (t) => { if(confirmDelete("Aufgabe „"+t.title+"“")) run(()=>callId("tasks",t.id,"DELETE")); };
   return (
     <div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+        <button onClick={()=>setShowTemplate(!showTemplate)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Vorlage ergänzen</button>
         <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Aufgabe</button>
       </div>
       {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {(showTemplate || tasks.length===0) && <TemplatePanel callHotel={callHotel} refresh={()=>{ setShowTemplate(true); refresh(); }} onClose={tasks.length>0 ? ()=>setShowTemplate(false) : null} />}
       {showForm && (
         <Card style={{marginBottom:16}}>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
@@ -472,7 +532,7 @@ function TasksView({tasks, callHotel, callId, refresh}){
             </tr>
           ) : (
             <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`}}>
-              <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.owner ? " · "+t.owner : ""}</div></td>
+              <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div></td>
               <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
               <td style={{padding:12}}>
                 <select value={t.status} onChange={e=>updateStatus(t.id,e.target.value)} className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
@@ -497,8 +557,9 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
   const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
   const add = () => { if(!draft.title||!draft.date) return; run(async()=>{ await callHotel("/milestones","POST",draft); setDraft({title:"",date:"",criticality:"Hoch"}); }); };
   const updateStatus = (id,status) => run(()=>callId("milestones",id,"PATCH",{status}));
-  const startEdit = (m) => { setEditId(m.id); setEdit({title:m.title,date:m.date,criticality:m.criticality}); };
-  const saveEdit = () => { if(!edit.title||!edit.date) return; run(async()=>{ await callId("milestones",editId,"PATCH",edit); setEditId(null); }); };
+  const [origDate,setOrigDate]=useState("");
+  const startEdit = (m) => { setEditId(m.id); setOrigDate(m.date); setEdit({title:m.title,date:m.date,criticality:m.criticality}); };
+  const saveEdit = () => { if(!edit.title||!edit.date) return; const body={...edit}; if(body.date===origDate) delete body.date; run(async()=>{ await callId("milestones",editId,"PATCH",body); setEditId(null); }); };
   const remove = (m) => { if(confirmDelete("Meilenstein „"+m.title+"“")) run(()=>callId("milestones",m.id,"DELETE")); };
   return (
     <div>
@@ -523,7 +584,7 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
         </Card>
       ) : (
         <Card key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:10,flexWrap:"wrap"}}>
-          <div><div style={{fontWeight:600}}>{m.title}</div><div style={{fontSize:12.5,color:INK_MUTED}}>{fmtDate(m.date)} · {m.criticality}</div></div>
+          <div><div style={{fontWeight:600}}>{m.title}</div><div style={{fontSize:12.5,color:INK_MUTED}}>{fmtDate(m.date)} · {m.criticality}{offsetLabel(m.opening_offset_days)}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <select value={m.status} onChange={e=>updateStatus(m.id,e.target.value)} className="input" style={{width:"auto",padding:"6px 9px",fontSize:12.5}}>{MILESTONE_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
             <button style={linkBtn} onClick={()=>startEdit(m)}>Bearbeiten</button>

@@ -81,7 +81,7 @@ const LS_ORG_KEY = "hpoos_last_org_v1";
 // Öffentliche Verbindungsdaten. Der publishable Key darf im Frontend stehen –
 // die Daten schützen Login-Pflicht und Row Level Security in der Datenbank.
 const DEFAULT_CONFIG = {
-  backendUrl: "https://hpoos-backend.onrender.com",
+  backendUrl: "https://hpoos-backend-1.onrender.com",
   supabaseUrl: "https://czixqievmbftumcavtqr.supabase.co",
   supabaseAnonKey: "sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx",
 };
@@ -152,7 +152,7 @@ function Field({label, children}){ return <label style={{display:"block",marginB
 function Pill({children,color,bg}){ return <span style={{color,background:bg,fontSize:12,fontWeight:600,padding:"3px 9px",borderRadius:999}}>{children}</span>; }
 
 function SetupView({onSave}){
-  const [form,setForm] = useState({backendUrl:"https://hpoos-backend.onrender.com", supabaseUrl:"", supabaseAnonKey:""});
+  const [form,setForm] = useState({backendUrl:"https://hpoos-backend-1.onrender.com", supabaseUrl:"", supabaseAnonKey:""});
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
       <Card style={{maxWidth:440,width:"100%"}}>

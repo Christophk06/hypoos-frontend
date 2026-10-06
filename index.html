@@ -605,7 +605,105 @@ function fmtDateTime(iso){
 }
 
 // Kommentare und Änderungsverlauf einer Aufgabe
-function TaskActivity({taskId, api, me, onChanged}){
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+function fmtBytes(n){
+  if(!n) return "0 KB";
+  if(n < 1024*1024) return Math.max(1, Math.round(n/1024)) + " KB";
+  return (n/1024/1024).toLocaleString("de-DE",{maximumFractionDigits:1}) + " MB";
+}
+function fileIcon(mime, name){
+  const ext = (name.split(".").pop()||"").toLowerCase();
+  if((mime||"").startsWith("image/")) return "🖼️";
+  if(ext==="pdf") return "📕";
+  if(["xls","xlsx","csv"].includes(ext)) return "📊";
+  if(["doc","docx","odt","txt"].includes(ext)) return "📝";
+  return "📄";
+}
+// Dateiname für den Speicherpfad: nur unproblematische Zeichen (der Originalname bleibt im Eintrag)
+function storageSafeName(name){
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9._-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,100) || "datei";
+}
+
+// Liste + Upload von Dokumenten eines Hotels (optional nur einer Aufgabe)
+function DocumentsPanel({hotel, api, upload, me, taskId, compact, onChanged}){
+  const [docs,setDocs] = useState(null);
+  const [error,setError] = useState(""); const [busy,setBusy] = useState("");
+  const inputRef = React.useRef(null);
+  const load = useCallback(()=>{
+    api("/api/hotels/"+hotel.id+"/documents"+(taskId?"?task_id="+taskId:"")).then(setDocs).catch(e=>setError(e.message));
+  }, [api, hotel.id, taskId]);
+  useEffect(()=>{ load(); }, [load]);
+
+  const uploadFiles = async (files) => {
+    setError("");
+    for(const file of files){
+      if(file.size > MAX_UPLOAD_BYTES){ setError("„"+file.name+"“ ist größer als 25 MB."); continue; }
+      setBusy("Lädt hoch: "+file.name);
+      const path = hotel.organization_id+"/"+hotel.id+"/"+crypto.randomUUID().slice(0,8)+"-"+storageSafeName(file.name);
+      try {
+        // Datei direkt in den Supabase-Speicher – mit dem Login des Nutzers, die Regeln greifen dort
+        const res = await fetch(upload.supabaseUrl.replace(/\/$/,"")+"/storage/v1/object/documents/"+path.split("/").map(encodeURIComponent).join("/"), {
+          method:"POST",
+          headers:{Authorization:"Bearer "+upload.token, apikey:upload.anonKey, "Content-Type":file.type||"application/octet-stream", "x-upsert":"false"},
+          body:file,
+        });
+        if(!res.ok){ let m=""; try{ m=(await res.json()).message; }catch(e){} throw new Error("Hochladen fehlgeschlagen"+(m?": "+m:"")); }
+        await api("/api/hotels/"+hotel.id+"/documents","POST",{name:file.name, storage_path:path, size_bytes:file.size, mime_type:file.type, task_id:taskId||null});
+      } catch(e){ setError(e.message); }
+    }
+    setBusy(""); load(); if(onChanged) onChanged();
+  };
+  const download = async (d) => {
+    try {
+      const {url} = await api("/api/documents/"+d.id+"/download");
+      const a = document.createElement("a"); a.href = url; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+    } catch(e){ setError(e.message); }
+  };
+  const remove = async (d) => {
+    if(!window.confirm("„"+d.name+"“ löschen? Die Datei wird endgültig entfernt.")) return;
+    try { await api("/api/documents/"+d.id,"DELETE"); load(); if(onChanged) onChanged(); } catch(e){ setError(e.message); }
+  };
+  const [dragOver,setDragOver] = useState(false);
+  const canDelete = (d) => me && (d.uploaded_by===me.id || me.isAdmin);
+
+  return (
+    <div>
+      <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)}
+        onDrop={e=>{e.preventDefault();setDragOver(false);uploadFiles([...e.dataTransfer.files]);}}
+        style={{border:`1.5px dashed ${dragOver?BRASS:BORDER}`,background:dragOver?BRASS_SOFT:(compact?"#fff":PAPER),borderRadius:8,padding:compact?"8px 10px":"14px 16px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
+        <input ref={inputRef} type="file" multiple style={{display:"none"}} onChange={e=>{ uploadFiles([...e.target.files]); e.target.value=""; }} />
+        <button className="btn-primary" onClick={()=>inputRef.current.click()} disabled={!!busy} style={compact?{padding:"6px 12px",fontSize:12.5}:{}}>{compact?"Datei anhängen":"Dateien hochladen"}</button>
+        <span style={{fontSize:12,color:INK_MUTED}}>{busy || "oder hierher ziehen · max. 25 MB je Datei"}</span>
+      </div>
+      {error && <div style={{color:BAD,fontSize:12.5,marginBottom:8}}>{error}</div>}
+      {docs===null && !error && <div style={{fontSize:12.5,color:INK_MUTED}}>Lädt…</div>}
+      {docs && docs.length===0 && <div style={{fontSize:12.5,color:INK_MUTED}}>{taskId ? "Keine Anhänge." : "Noch keine Dokumente."}</div>}
+      {docs && docs.length>0 && (
+        <Card style={{padding:0}}>
+          <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><tbody>
+            {docs.map(d=>(
+              <tr key={d.id} style={{borderTop:`1px solid ${BORDER}`}}>
+                <td style={{padding:"8px 12px"}}>
+                  <button onClick={()=>download(d)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:INK,fontWeight:600,fontSize:13.5,textAlign:"left",wordBreak:"break-word"}}>{fileIcon(d.mime_type,d.name)} {d.name}</button>
+                  <div style={{fontSize:11.5,color:INK_MUTED}}>
+                    {fmtBytes(d.size_bytes)} · {d.uploaded_by && me && d.uploaded_by===me.id ? "von dir" : (d.uploaded_by_email ? "von "+d.uploaded_by_email : "")} · {fmtDateTime(d.created_at)}
+                    {!taskId && d.task_title ? <span> · Aufgabe: {d.task_title}</span> : null}
+                  </div>
+                </td>
+                <td style={{padding:"8px 12px",whiteSpace:"nowrap",textAlign:"right"}}>
+                  <button style={linkBtn} onClick={()=>download(d)}>Herunterladen</button>
+                  {canDelete(d) && <button style={linkBtn} onClick={()=>remove(d)} title="Löschen">✕</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody></table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function TaskActivity({taskId, api, me, onChanged, docCtx}){
   const [items,setItems] = useState(null);
   const [text,setText] = useState("");
   const [error,setError] = useState(""); const [busy,setBusy] = useState(false);
@@ -641,6 +739,12 @@ function TaskActivity({taskId, api, me, onChanged}){
       </div>
       {items===null && !error && <div style={{fontSize:12.5,color:INK_MUTED}}>Lädt…</div>}
       {items && shown.length===0 && <div style={{fontSize:12.5,color:INK_MUTED}}>Noch keine Kommentare.</div>}
+      {docCtx && (
+        <div style={{margin:"10px 0"}}>
+          <div style={{fontSize:12,fontWeight:700,color:INK_MUTED,margin:"0 0 6px"}}>ANHÄNGE</div>
+          <DocumentsPanel hotel={docCtx.hotel} api={api} upload={docCtx.upload} me={docCtx.me} taskId={taskId} compact onChanged={onChanged} />
+        </div>
+      )}
       {shown.map(it => it.type==="comment" ? (
         <div key={it.id} style={{background:"#fff",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 10px",margin:"6px 0"}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:11.5,color:INK_MUTED,marginBottom:3}}>
@@ -658,7 +762,7 @@ function TaskActivity({taskId, api, me, onChanged}){
   );
 }
 
-function TasksView({tasks, callHotel, callId, refresh, members, me, api}){
+function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}){
   const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:"",assignee_id:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
@@ -766,7 +870,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api}){
               <td style={{padding:12,color:INK_MUTED}}>{fmtDate(t.due_date)}</td>
               <td style={{padding:12,whiteSpace:"nowrap"}}>
                 <button style={{...linkBtn,color:openActivity===t.id?INK:INK_MUTED,fontWeight:openActivity===t.id?600:400}} onClick={()=>setOpenActivity(openActivity===t.id?null:t.id)} title="Kommentare und Verlauf">
-                  💬 {t.comment_count||0}
+                  💬 {t.comment_count||0}{t.document_count ? "  📎 "+t.document_count : ""}
                 </button>
                 <button style={linkBtn} onClick={()=>startEdit(t)}>Bearbeiten</button>
                 <button style={linkBtn} onClick={()=>remove(t)} title="Löschen">✕</button>
@@ -775,7 +879,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api}){
             {openActivity===t.id && (
               <tr style={{background:PAPER}}>
                 <td colSpan={5} style={{padding:"4px 12px 14px"}}>
-                  <TaskActivity taskId={t.id} api={api} me={me} onChanged={refresh} />
+                  <TaskActivity taskId={t.id} api={api} me={me} onChanged={refresh} docCtx={docCtx} />
                 </td>
               </tr>
             )}
@@ -1629,10 +1733,17 @@ function App(){
     {key:"risks", label:"Risiken"},
     {key:"budget", label:"Budget"},
     {key:"staff", label:"Personal"},
+    {key:"docs", label:"Dokumente"},
     {key:"team", label:"Team"},
   ];
 
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
+  // Für Dokumente: Upload direkt in den Supabase-Speicher; Admins dürfen alle Dokumente löschen
+  const docCtx = {
+    hotel,
+    upload: {supabaseUrl: config.supabaseUrl, anonKey: config.supabaseAnonKey, token},
+    me: me ? {...me, isAdmin: !!(currentOrg && currentOrg.role==="admin")} : null,
+  };
   const callId = (resource, id, method, body) => api("/api/"+resource+"/"+id, method, body);
 
   return (
@@ -1663,10 +1774,11 @@ function App(){
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
           {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={setTab} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
-          {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} />}
+          {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} docCtx={docCtx} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="docs" && <DocumentsPanel hotel={hotel} api={api} upload={docCtx.upload} me={docCtx.me} />}
           {tab==="staff" && <StaffView positions={staff} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname}
             orgName={currentOrg ? currentOrg.name : ""}

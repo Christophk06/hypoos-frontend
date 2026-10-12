@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HPOOS – Pre-Opening-Software für Hotel-Eröffnungen</title>
+<meta name="description" content="HPOOS plant Hotel-Eröffnungen: Pre-Opening-Vorlage, Bereitschafts-Score je Abteilung, KI-Lagebericht für Eigentümer. 14 Tage kostenlos testen." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏨</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #1C2430; --ink-soft: #2A3444; --paper: #F6F4EF; --card: #FFFFFF; --border: #E4DFD3;
+    --brass: #A9834B; --brass-soft: #F1E8D8; --good: #3F7A5C; --good-soft: #E4EFE8;
+    --warn: #B9822E; --warn-soft: #F5E9D5; --bad: #A23B32; --bad-soft: #F5E1DE; --muted: #6B7280;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.55; }
+  a { color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  .serif { font-family: 'Fraunces', serif; }
+  .btn { display: inline-block; text-decoration: none; font-weight: 600; font-size: 15px; border-radius: 9px; padding: 12px 20px; }
+  .btn-primary { background: var(--ink); color: #fff; }
+  .btn-ghost { border: 1px solid var(--border); background: var(--card); color: var(--ink); }
+  .eyebrow { font-size: 12.5px; font-weight: 700; letter-spacing: .08em; color: var(--brass); text-transform: uppercase; }
+
+  header { position: sticky; top: 0; z-index: 10; background: rgba(246,244,239,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); }
+  header .wrap { display: flex; align-items: center; gap: 22px; height: 62px; }
+  header .brand { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; text-decoration: none; margin-right: auto; }
+  header nav a { text-decoration: none; font-size: 14px; color: var(--muted); }
+  header nav { display: flex; gap: 20px; }
+  header .btn { padding: 8px 14px; font-size: 13.5px; white-space: nowrap; }
+
+  .hero { padding: 72px 0 56px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+  .hero h1 { font-family: 'Fraunces', serif; font-size: 46px; line-height: 1.12; margin: 12px 0 18px; font-weight: 600; }
+  .hero p.lead { font-size: 18px; color: #3B4552; margin: 0 0 26px; }
+  .hero .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero .fine { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+  .mock { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 12px 40px rgba(28,36,48,.08); }
+  .mock .top { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .mock .score { font-family: 'Fraunces', serif; font-size: 42px; font-weight: 600; color: var(--warn); }
+  .mock .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+  .row .lab { width: 130px; }
+  .row .bar { flex: 1; height: 6px; background: var(--paper); border-radius: 4px; overflow: hidden; }
+  .row .bar i { display: block; height: 100%; }
+  .row b { width: 36px; text-align: right; }
+  .mock .ai { margin-top: 14px; padding: 12px; border: 1px solid var(--warn); border-radius: 10px; font-size: 13px; }
+
+  section { padding: 64px 0; }
+  section h2 { font-family: 'Fraunces', serif; font-size: 32px; font-weight: 600; margin: 8px 0 12px; line-height: 1.2; }
+  section .intro { color: #3B4552; max-width: 640px; margin: 0 0 32px; font-size: 16.5px; }
+
+  .pains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .pain { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .pain h3, .feat h3 { margin: 0 0 6px; font-size: 16px; }
+  .pain p, .feat p { margin: 0; color: #4B5563; font-size: 14.5px; }
+
+  .feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .feat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+  .feat .ic { width: 36px; height: 36px; border-radius: 9px; background: var(--brass-soft); color: var(--brass); display: grid; place-items: center; margin-bottom: 12px; }
+  .feat.highlight { border-color: var(--brass); }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: s; }
+  .step { padding: 20px 20px 20px 62px; position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  .step::before { counter-increment: s; content: counter(s); position: absolute; left: 20px; top: 20px; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+  .step h3 { margin: 0 0 4px; font-size: 16px; }
+  .step p { margin: 0; color: #4B5563; font-size: 14.5px; }
+
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+  .plan { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 26px; display: flex; flex-direction: column; }
+  .plan.pop { border: 2px solid var(--brass); position: relative; }
+  .plan.pop .tag { position: absolute; top: -12px; left: 24px; background: var(--brass); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .plan h3 { margin: 0; font-size: 18px; }
+  .plan .price { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 600; margin: 10px 0 0; }
+  .plan .per { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .plan ul { padding-left: 18px; margin: 0 0 22px; flex: 1; font-size: 14.5px; line-height: 1.75; }
+  .plan .btn { text-align: center; }
+
+  .faq { max-width: 760px; }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; }
+  summary { font-weight: 600; cursor: pointer; }
+  details p { margin: 10px 0 0; color: #4B5563; }
+
+  .final { background: var(--ink); color: #fff; border-radius: 16px; padding: 48px 32px; text-align: center; }
+  .final h2 { color: #fff; margin-top: 0; }
+  .final p { color: rgba(255,255,255,.75); margin: 0 auto 24px; max-width: 520px; }
+  .final .btn-primary { background: #fff; color: var(--ink); }
+
+  footer { padding: 32px 0 48px; font-size: 13px; color: var(--muted); }
+  footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; }
+  footer .wrap span { margin-right: auto; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; padding-top: 40px; gap: 32px; }
+    .hero h1 { font-size: 34px; }
+    .pains, .feats, .steps, .plans { grid-template-columns: 1fr; }
+    header nav { display: none; }
+    header .wrap { gap: 10px; }
+    header .btn { padding: 7px 10px; font-size: 13px; }
+    section { padding: 44px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#">HPOOS</a>
+    <nav>
+      <a href="#funktionen">Funktionen</a>
+      <a href="#preise">Preise</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-ghost" href="index.html">Anmelden</a>
+    <a class="btn btn-primary" href="index.html">Kostenlos testen</a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <div class="eyebrow">Pre-Opening-Software für Hotels</div>
+      <h1>Hotel-Eröffnungen planen, ohne dass etwas durchrutscht.</h1>
+      <p class="lead">HPOOS bündelt Aufgaben, Meilensteine, Risiken, Budget und Personal Ihrer Eröffnung an einem Ort – mit einem Bereitschafts-Score je Abteilung und einem KI-Lagebericht, den Sie direkt in die Eigentümersitzung mitnehmen.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="index.html">14 Tage kostenlos testen</a>
+        <a class="btn btn-ghost" href="#funktionen">Funktionen ansehen</a>
+      </div>
+      <div class="fine">Keine Kreditkarte nötig · in 5 Minuten startklar · monatlich kündbar</div>
+    </div>
+
+    <div class="mock" aria-label="Beispiel-Dashboard">
+      <div class="top">
+        <div class="score">72%</div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600">BEREITSCHAFT · GRAND HOTEL</div>
+          <span class="pill" style="color:var(--warn);background:var(--warn-soft)">3 überfällig · 2 hohe Risiken</span>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Noch 48 Tage bis zur Eröffnung</div>
+        </div>
+      </div>
+      <div style="padding-top:10px">
+        <div class="row"><span class="lab">Housekeeping</span><span class="bar"><i style="width:91%;background:var(--good)"></i></span><b>91%</b></div>
+        <div class="row"><span class="lab">Food & Beverage</span><span class="bar"><i style="width:84%;background:var(--good)"></i></span><b>84%</b></div>
+        <div class="row"><span class="lab">Personal</span><span class="bar"><i style="width:68%;background:var(--warn)"></i></span><b>68%</b></div>
+        <div class="row"><span class="lab">IT & Systeme</span><span class="bar"><i style="width:47%;background:var(--bad)"></i></span><b>47%</b></div>
+      </div>
+      <div class="ai">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><b>KI-Lagebericht</b><span class="pill" style="color:var(--warn);background:var(--warn-soft)">Verzug – aufholbar</span></div>
+        Kritischer Pfad ist die IT: PMS-Abnahme seit 9 Tagen überfällig, blockiert Schnittstellentests und Schulungen.
+        <div style="margin-top:6px"><b>Sofort:</b> Eskalationstermin mit dem PMS-Anbieter, Schulungsplan um eine Woche schieben.</div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Das Problem</div>
+      <h2>Eine Eröffnung hat hunderte Abhängigkeiten. Excel kennt keine davon.</h2>
+      <div class="pains">
+        <div class="pain"><h3>Verstreute Listen</h3><p>Jede Abteilung führt ihre eigene Tabelle. Wer den Gesamtstand will, telefoniert sich durch.</p></div>
+        <div class="pain"><h3>Termine, die nicht mitwandern</h3><p>Verschiebt sich die Eröffnung um zwei Wochen, müssen hunderte Fristen von Hand angepasst werden.</p></div>
+        <div class="pain"><h3>Berichte kosten Abende</h3><p>Für jede Eigentümersitzung wird der Status neu zusammengesucht – und ist am nächsten Tag veraltet.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="funktionen">
+    <div class="wrap">
+      <div class="eyebrow">Funktionen</div>
+      <h2>Alles, was ein Pre-Opening-Team braucht</h2>
+      <p class="intro">Entwickelt für Hotel-Eröffnungen, nicht für allgemeines Projektmanagement.</p>
+      <div class="feats">
+        <div class="feat"><div class="ic">✓</div><h3>Pre-Opening-Vorlage</h3><p>42 typische Aufgaben und 7 Meilensteine von Organigramm bis Probebetrieb – mit einem Klick angelegt, alle Termine relativ zum Eröffnungsdatum.</p></div>
+        <div class="feat"><div class="ic">↻</div><h3>Termine wandern mit</h3><p>Verschiebt sich die Eröffnung, rechnet HPOOS alle abhängigen Fristen automatisch neu – mit Verlauf.</p></div>
+        <div class="feat"><div class="ic">%</div><h3>Bereitschafts-Score</h3><p>Eine Zahl je Abteilung aus Aufgaben, Risiken, Meilensteinen, Personal und Budget. Sie sehen sofort, wo es brennt.</p></div>
+        <div class="feat highlight"><div class="ic">✦</div><h3>KI-Lagebericht</h3><p>Die KI liest den gesamten Projektstand und schreibt eine Einschätzung mit Ampel, Handlungsbedarf und nächsten Schritten – für GM und Eigentümer.</p></div>
+        <div class="feat"><div class="ic">▤</div><h3>Statusbericht als PDF</h3><p>Ein druckfertiger A4-Bericht mit Score, Überfälligem, Meilensteinen, Risiken, Budget und Personal – auf Knopfdruck.</p></div>
+        <div class="feat"><div class="ic">@</div><h3>Team und Zuständigkeiten</h3><p>Aufgaben zuweisen, kommentieren, Dokumente anhängen. Jede Person bekommt morgens eine Mail mit ihren fälligen Aufgaben.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">So geht's los</div>
+      <h2>In drei Schritten zum Eröffnungsplan</h2>
+      <div class="steps">
+        <div class="step"><h3>Hotel anlegen</h3><p>Name, Zimmerzahl und Eröffnungsdatum eintragen.</p></div>
+        <div class="step"><h3>Vorlage anwenden</h3><p>Der komplette Pre-Opening-Plan steht – mit passenden Terminen.</p></div>
+        <div class="step"><h3>Team einladen</h3><p>Abteilungsleitungen per Mail einladen und Aufgaben verteilen.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="preise">
+    <div class="wrap">
+      <div class="eyebrow">Preise</div>
+      <h2>Ein fairer Preis pro Eröffnung</h2>
+      <p class="intro">Alle Tarife mit unbegrenzt vielen Teammitgliedern. 14 Tage kostenlos testen, danach monatlich kündbar.</p>
+      <div class="plans">
+        <div class="plan">
+          <h3>Starter</h3>
+          <div class="price">199 €</div>
+          <div class="per">pro Monat zzgl. USt.</div>
+          <ul>
+            <li>1 Hotel-Eröffnung</li>
+            <li>Unbegrenzt viele Teammitglieder</li>
+            <li>Pre-Opening-Vorlage</li>
+            <li>KI-Lagebericht</li>
+            <li>Statusbericht als PDF</li>
+          </ul>
+          <a class="btn btn-ghost" href="index.html">Kostenlos testen</a>
+        </div>
+        <div class="plan pop">
+          <span class="tag">Für Hotelgruppen</span>
+          <h3>Professional</h3>
+          <div class="price">499 €</div>
+          <div class="per">pro Monat zzgl. USt.</div>
+          <ul>
+            <li>Bis zu 5 Eröffnungen gleichzeitig</li>
+            <li>Alles aus Starter</li>
+            <li>Für Gruppen und Beratungen</li>
+            <li>Bevorzugter Support</li>
+          </ul>
+          <a class="btn btn-primary" href="index.html">Kostenlos testen</a>
+        </div>
+        <div class="plan">
+          <h3>Enterprise</h3>
+          <div class="price" style="font-size:30px">auf Anfrage</div>
+          <div class="per">Jahresvertrag</div>
+          <ul>
+            <li>Mehr als 5 Hotels</li>
+            <li>Eigene Vorlagen je Marke</li>
+            <li>Onboarding und Schulung</li>
+          </ul>
+          <a class="btn btn-ghost" href="index.html">Kontakt über die App</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap faq">
+      <div class="eyebrow">FAQ</div>
+      <h2>Häufige Fragen</h2>
+      <details><summary>Was passiert nach den 14 Tagen Testphase?</summary><p>Sie wählen einen Tarif – oder nicht. Ohne Abo bleiben alle Daten erhalten und lesbar, nur Änderungen sind dann nicht mehr möglich. Es wird nichts automatisch abgebucht.</p></details>
+      <details><summary>Wie viele Personen können mitarbeiten?</summary><p>Unbegrenzt viele. Sie zahlen pro Hotel-Eröffnung, nicht pro Kopf – so kann das ganze Pre-Opening-Team inklusive externer Partner mitarbeiten.</p></details>
+      <details><summary>Kann ich monatlich kündigen?</summary><p>Ja. Starter und Professional sind monatlich kündbar, direkt in der App unter „Abo“. Rechnungen und Zahlungsart verwalten Sie dort ebenfalls.</p></details>
+      <details><summary>Sieht ein anderer Kunde meine Daten?</summary><p>Nein. Die Trennung zwischen Organisationen erzwingt die Datenbank selbst – nicht nur die Anwendung. Dokumente liegen in einem privaten Speicher und werden nur über kurzlebige Links ausgeliefert.</p></details>
+      <details><summary>Was macht die KI mit meinen Projektdaten?</summary><p>Für den Lagebericht wird ein verdichteter Projektstand (Aufgaben, Meilensteine, Risiken, Budget- und Personalzahlen) an das KI-Modell geschickt. Der Bericht wird nur erstellt, wenn Sie ihn anfordern.</p></details>
+      <details><summary>Funktioniert HPOOS auch für Umbauten oder Rebrandings?</summary><p>Ja. Die Vorlage ist ein Startpunkt – Aufgaben, Abteilungen und Termine lassen sich frei anpassen.</p></details>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="final">
+        <h2 class="serif">Ihre nächste Eröffnung, im Griff.</h2>
+        <p>Legen Sie Ihr Hotel an, wenden Sie die Vorlage an und sehen Sie in fünf Minuten, wo Ihr Projekt steht.</p>
+        <a class="btn btn-primary" href="index.html">14 Tage kostenlos testen</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© HPOOS</span>
+    <a href="rechtliches.html#impressum">Impressum</a>
+    <a href="rechtliches.html#datenschutz">Datenschutz</a>
+    <a href="rechtliches.html#agb">AGB</a>
+  </div>
+</footer>
+
+</body>
+</html>

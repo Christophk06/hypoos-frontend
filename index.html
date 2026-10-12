@@ -1293,7 +1293,7 @@ function OrgRenameCard({orgId, orgName, api, onRenamed}){
 }
 
 // Druckfertiger Statusbericht (A4) – über den Druckdialog des Browsers als PDF speicherbar.
-function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, budget, staff, onClose}){
+function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, budget, staff, aiReport, onClose}){
   useEffect(()=>{
     const prev = document.title;
     // Der Titel wird im Druckdialog als Dateiname vorgeschlagen.
@@ -1384,6 +1384,17 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
           <Kpi label="PERSONAL" value={need>0 ? Math.round(have/need*100)+" %" : "—"} sub={have+" / "+need+" besetzt"} color={need>0 && have/need<0.5?BAD:INK} />
         </div>
 
+        {aiReport && (
+          <React.Fragment>
+            <h2 style={{display:"flex",alignItems:"center",gap:8}}>
+              Einschätzung
+              <span style={{fontFamily:"Inter, sans-serif",fontSize:11,fontWeight:700,color:(AMPEL[aiReport.content.ampel]||AMPEL["gelb"]).color}}>● {(AMPEL[aiReport.content.ampel]||AMPEL["gelb"]).label}</span>
+              <span style={{fontFamily:"Inter, sans-serif",fontSize:10.5,fontWeight:400,color:INK_MUTED,marginLeft:"auto"}}>KI-Lagebericht vom {fmtDateTime(aiReport.created_at)}</span>
+            </h2>
+            <AiReportBody content={aiReport.content} full />
+          </React.Fragment>
+        )}
+
         <h2>Überfällige Aufgaben mit hoher Priorität</h2>
         {urgentLate.length===0 ? <None>Keine.</None> : (
           <table><thead><tr><th>Aufgabe</th><th>Abteilung</th><th>Priorität</th><th>Fällig</th><th>Status</th></tr></thead><tbody>
@@ -1445,6 +1456,195 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
         <div style={{marginTop:18,paddingTop:6,borderTop:`1px solid ${BORDER}`,fontSize:10,color:INK_MUTED,display:"flex",justifyContent:"space-between"}}>
           <span>Erstellt mit HPOOS</span><span>{new Date().toLocaleString("de-DE")}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ KI-Lagebericht ------------------------------ */
+const AMPEL = {
+  "grün": {color:GOOD, bg:GOOD_SOFT, label:"Im Plan"},
+  "gelb": {color:WARN, bg:WARN_SOFT, label:"Verzug – aufholbar"},
+  "rot":  {color:BAD,  bg:BAD_SOFT,  label:"Eröffnung gefährdet"},
+};
+const URGENCY_COLOR = {"sofort":BAD, "diese Woche":WARN, "diesen Monat":INK_MUTED};
+
+// Inhalt eines Lageberichts – im Dashboard und im druckbaren Statusbericht.
+function AiReportBody({content, full}){
+  const List = ({title, items}) => items && items.length>0 ? (
+    <div className="avoid-break" style={{marginTop:12}}>
+      <div style={{fontWeight:700,marginBottom:4}}>{title}</div>
+      <ul style={{margin:0,paddingLeft:18,lineHeight:1.55}}>{items.map((x,i)=><li key={i}>{x}</li>)}</ul>
+    </div>
+  ) : null;
+  return (
+    <div>
+      <div style={{lineHeight:1.6}}>{content.zusammenfassung}</div>
+      {(content.handlungsbedarf||[]).length>0 && (
+        <div style={{marginTop:12}}>
+          <div style={{fontWeight:700,marginBottom:4}}>Handlungsbedarf</div>
+          {content.handlungsbedarf.map((h,i)=>(
+            <div key={i} className="avoid-break" style={{padding:"7px 0",borderTop:`1px solid ${BORDER}`}}>
+              <div style={{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap"}}>
+                <span style={{fontWeight:600}}>{h.titel}</span>
+                <span style={{fontSize:"0.85em",fontWeight:700,color:URGENCY_COLOR[h.dringlichkeit]||INK_MUTED}}>{h.dringlichkeit}</span>
+                <span style={{fontSize:"0.85em",color:INK_MUTED}}>{h.abteilung}</span>
+              </div>
+              <div style={{color:INK_MUTED,marginTop:2,lineHeight:1.5}}>{h.begruendung}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {full && <List title="Risikohinweise" items={content.risikohinweise} />}
+      {full && <List title="Was gut läuft" items={content.positiv} />}
+      {full && <List title="Nächste Schritte (7 Tage)" items={content.naechste_schritte} />}
+    </div>
+  );
+}
+
+function AiReportCard({hotel, api, ai, onChange}){
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
+  const [full,setFull] = useState(false);
+  if(!ai || !ai.enabled) return null;
+  const report = ai.report;
+  const a = report ? (AMPEL[report.content.ampel] || AMPEL["gelb"]) : null;
+
+  const generate = async () => {
+    setBusy(true); setError("");
+    try { onChange({...ai, report: await api("/api/hotels/"+hotel.id+"/ai-report","POST")}); setFull(true); }
+    catch(e){ setError(e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <Card style={{marginBottom:18,borderColor:a ? a.color : BORDER}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:report||busy||error?12:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <div style={{fontWeight:700}}>KI-Lagebericht</div>
+          {a && <Pill color={a.color} bg={a.bg}>{a.label}</Pill>}
+          {report && <span style={{fontSize:12,color:INK_MUTED}}>Stand {fmtDateTime(report.created_at)}</span>}
+        </div>
+        <button className={report ? "" : "btn-primary"} onClick={generate} disabled={busy}
+          style={report ? {background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"} : {}}>
+          {busy ? "Analysiert…" : report ? "Neu erstellen" : "Lagebericht erstellen"}
+        </button>
+      </div>
+      {!report && !busy && <div style={{fontSize:13,color:INK_MUTED,marginTop:8}}>
+        Die KI wertet Aufgaben, Meilensteine, Risiken, Budget und Personal aus und schreibt eine Einschätzung für Geschäftsführung und Eigentümer – mit Ampel, Handlungsbedarf und nächsten Schritten.
+      </div>}
+      {busy && <div style={{fontSize:13,color:INK_MUTED}}>Die KI analysiert den Projektstand. Das dauert meist 20–60 Sekunden …</div>}
+      {error && <div style={{color:BAD,fontSize:13}}>{error}</div>}
+      {report && !busy && (
+        <div style={{fontSize:13.5}}>
+          <AiReportBody content={report.content} full={full} />
+          <button style={{...linkBtn,marginTop:8,paddingLeft:0}} onClick={()=>setFull(!full)}>{full ? "Weniger anzeigen" : "Risikohinweise und nächste Schritte anzeigen"}</button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ----------------------------------- Abo ----------------------------------- */
+// Kontaktadresse für Enterprise-Anfragen; leer = kein Mail-Link
+const CONTACT_EMAIL = "";
+
+function fmtEurPlain(n){ return Number(n).toLocaleString("de-DE") + " €"; }
+
+function BillingBanner({billing, onOpen}){
+  if(!billing) return null;
+  let tone = null, text = "";
+  if(!billing.active){ tone = BAD; text = billing.status==="trialing" ? "Die Testphase ist abgelaufen. HPOOS ist im Nur-Lesen-Modus – alle Daten bleiben erhalten." : "Kein aktives Abo. HPOOS ist im Nur-Lesen-Modus – alle Daten bleiben erhalten."; }
+  else if(billing.status==="past_due"){ tone = WARN; text = "Die letzte Zahlung ist fehlgeschlagen. Bitte die Zahlungsart aktualisieren."; }
+  else if(billing.status==="trialing"){ tone = BRASS; text = "Testphase: noch " + billing.trial_days_left + (billing.trial_days_left===1 ? " Tag." : " Tage."); }
+  if(!tone) return null;
+  return (
+    <div className="no-print" style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",border:`1px solid ${tone}`,background:tone===BAD?BAD_SOFT:tone===WARN?WARN_SOFT:BRASS_SOFT,color:INK,borderRadius:8,padding:"9px 14px",marginBottom:16,fontSize:13.5}}>
+      <div style={{flex:1,minWidth:200}}>{text}</div>
+      <button className="btn-primary" style={{padding:"6px 12px",fontSize:12.5}} onClick={onOpen}>{billing.status==="past_due" ? "Zahlungsart ändern" : "Tarif wählen"}</button>
+    </div>
+  );
+}
+
+const BILLING_NOTICES = {
+  success: {ok:true, text:"Danke! Die Zahlung war erfolgreich. Das Abo wird in wenigen Sekunden aktiviert."},
+  cancel: {ok:false, text:"Die Bezahlung wurde abgebrochen. Es wurde nichts berechnet."},
+};
+
+function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
+  const [busy,setBusy] = useState(null);
+  const [error,setError] = useState("");
+  if(!billing) return <div style={{color:INK_MUTED}}>Abo-Daten werden geladen…</div>;
+
+  const paid = billing.active && billing.plan!=="trial" && billing.has_customer;
+  const go = async (path, body, key) => {
+    setBusy(key); setError("");
+    try { const r = await api("/api/organizations/"+orgId+"/billing/"+path, "POST", body); window.location.href = r.url; }
+    catch(e){ setError(e.message); setBusy(null); }
+  };
+  const statusText = {
+    trialing: billing.active ? "Testphase bis " + fmtDate(billing.trial_ends_at) : "Testphase abgelaufen am " + fmtDate(billing.trial_ends_at),
+    active: billing.cancel_at_period_end ? "Gekündigt – läuft bis " + fmtDate(billing.current_period_end) : "Aktiv" + (billing.current_period_end ? " · nächste Abrechnung " + fmtDate(billing.current_period_end) : ""),
+    past_due: "Zahlung offen – bitte Zahlungsart aktualisieren",
+    canceled: "Beendet", unpaid: "Unbezahlt", incomplete: "Zahlung nicht abgeschlossen",
+  }[billing.status] || billing.status;
+  const n = notice && BILLING_NOTICES[notice];
+
+  return (
+    <div>
+      {n && <div style={{color:n.ok?GOOD:WARN,fontSize:13.5,marginBottom:14}}>{n.text}</div>}
+      <Card style={{marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:12.5,color:INK_MUTED,fontWeight:600}}>AKTUELLER TARIF</div>
+            <div style={{fontFamily:"Fraunces, serif",fontSize:22,fontWeight:600}}>{billing.plan_name}</div>
+            <div style={{fontSize:13.5,color:billing.active?INK:BAD}}>{statusText}</div>
+            <div style={{fontSize:13,color:INK_MUTED,marginTop:4}}>{billing.hotel_count} von {billing.hotel_limit} Hotel{billing.hotel_limit===1?"":"s"} genutzt</div>
+          </div>
+          {isAdmin && billing.has_customer && billing.stripe_enabled && (
+            <button onClick={()=>go("portal", null, "portal")} disabled={!!busy} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 14px",fontSize:13,cursor:"pointer"}}>
+              {busy==="portal" ? "Öffnet…" : "Abo verwalten (Rechnungen, Zahlungsart, Kündigung)"}
+            </button>
+          )}
+        </div>
+        {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+        {!isAdmin && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>Nur Admins der Organisation können das Abo ändern.</div>}
+        {!billing.stripe_enabled && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>Die Online-Bezahlung wird gerade eingerichtet.{CONTACT_EMAIL ? <span> Für ein Abo schreib an <a href={"mailto:"+CONTACT_EMAIL}>{CONTACT_EMAIL}</a>.</span> : null}</div>}
+      </Card>
+
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:18}}>
+        {(billing.plans||[]).map(p=>{
+          const current = billing.plan===p.key && billing.active;
+          return (
+            <Card key={p.key} style={{display:"flex",flexDirection:"column",borderColor:current?BRASS:BORDER}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontWeight:700,fontSize:16}}>{p.name}</div>
+                {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
+              </div>
+              <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,margin:"8px 0 2px"}}>{fmtEurPlain(p.monthlyEur)}</div>
+              <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>pro Monat zzgl. USt., monatlich kündbar</div>
+              <ul style={{margin:"0 0 14px",paddingLeft:18,fontSize:13.5,lineHeight:1.6,flex:1}}>{p.features.map(f=><li key={f}>{f}</li>)}</ul>
+              {isAdmin && billing.stripe_enabled && !current && (
+                paid
+                  ? <button onClick={()=>go("portal", null, "portal")} disabled={!!busy} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer"}}>Über „Abo verwalten“ wechseln</button>
+                  : <button className="btn-primary" onClick={()=>go("checkout", {plan:p.key}, p.key)} disabled={!!busy || !p.available}>{busy===p.key ? "Öffnet Bezahlseite…" : p.available ? p.name+" wählen" : "Bald verfügbar"}</button>
+              )}
+            </Card>
+          );
+        })}
+        <Card style={{display:"flex",flexDirection:"column"}}>
+          <div style={{fontWeight:700,fontSize:16}}>Enterprise</div>
+          <div style={{fontFamily:"Fraunces, serif",fontSize:22,fontWeight:600,margin:"8px 0 2px"}}>auf Anfrage</div>
+          <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>Jahresvertrag</div>
+          <ul style={{margin:"0 0 14px",paddingLeft:18,fontSize:13.5,lineHeight:1.6,flex:1}}>
+            <li>Mehr als 5 Hotels</li><li>Eigene Vorlagen je Marke</li><li>Onboarding und Schulung</li>
+          </ul>
+          {CONTACT_EMAIL && <a href={"mailto:"+CONTACT_EMAIL+"?subject=HPOOS%20Enterprise"} style={{textAlign:"center",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,color:INK,textDecoration:"none"}}>Kontakt aufnehmen</a>}
+        </Card>
+      </div>
+      <div style={{fontSize:12,color:INK_MUTED,marginTop:14}}>
+        Die Bezahlung läuft sicher über Stripe. Rechnungen kommen per E-Mail und sind unter „Abo verwalten“ abrufbar.
+        <button style={{...linkBtn,marginLeft:6}} onClick={onReload}>Status aktualisieren</button>
       </div>
     </div>
   );
@@ -1583,6 +1783,9 @@ function App(){
   const [recoveryDone,setRecoveryDone] = useState(false);
   const [editingHotel,setEditingHotel] = useState(false);
   const [showReport,setShowReport] = useState(false);
+  const [billing,setBilling] = useState(null);
+  const [billingNotice,setBillingNotice] = useState(null);
+  const [ai,setAi] = useState(null);
 
   useEffect(()=>{
     // Verbindungsdaten sind fest eingebaut – niemand muss sie mehr eintragen.
@@ -1604,6 +1807,12 @@ function App(){
       const search = new URLSearchParams(window.location.search);
       if(search.get("invite")){
         try { window.localStorage.setItem(LS_INVITE_KEY, search.get("invite")); } catch(e){}
+        window.history.replaceState(null,"",window.location.pathname);
+      }
+      // Rückkehr von der Stripe-Bezahlseite oder der Abo-Verwaltung: ?billing=success|cancel|portal
+      if(search.get("billing")){
+        setBillingNotice(search.get("billing"));
+        setTab("billing");
         window.history.replaceState(null,"",window.location.pathname);
       }
     } catch(e){}
@@ -1658,6 +1867,19 @@ function App(){
     return () => { cancelled = true; };
   },[token, orgId, config]);
 
+  // Abo der gewählten Organisation. Fehlt es (z. B. Backend noch ohne Abo-Funktion), wird nichts angezeigt.
+  const loadBilling = useCallback(() => {
+    if(!token || !orgId) { setBilling(null); return; }
+    apiCall(config.backendUrl, token, "/api/organizations/"+orgId+"/billing").then(setBilling).catch(()=>setBilling(null));
+  },[token, orgId, config]);
+  useEffect(()=>{ loadBilling(); },[loadBilling]);
+  // Nach der Bezahlung meldet Stripe das Abo per Webhook – kann ein paar Sekunden dauern.
+  useEffect(()=>{
+    if(billingNotice!=="success" && billingNotice!=="portal") return;
+    const timers = [2000, 5000, 10000, 20000].map(ms=>setTimeout(loadBilling, ms));
+    return () => timers.forEach(clearTimeout);
+  },[billingNotice, loadBilling]);
+
   const switchOrg = (id) => {
     setHotel(null); setTab("dashboard"); setFatalError(""); setOrgId(id);
     try { window.localStorage.setItem(LS_ORG_KEY, id); } catch(e){}
@@ -1692,6 +1914,11 @@ function App(){
   },[config, token]);
 
   useEffect(()=>{ if(hotel) loadHotelData(hotel); },[hotel, loadHotelData]);
+  useEffect(()=>{
+    setAi(null);
+    if(!hotel || !token) return;
+    apiCall(config.backendUrl, token, "/api/hotels/"+hotel.id+"/ai-report").then(setAi).catch(()=>setAi(null));
+  },[hotel, token, config]);
 
   if(config===undefined) return <div style={{padding:40,color:INK_MUTED}}>Lädt…</div>;
   if(!config) return <SetupView onSave={saveConfig} />;
@@ -1723,7 +1950,7 @@ function App(){
     onCreated={(h)=>{ setHotels([...hotels,h]); setHotel(h); }} onSelect={setHotel} />;
   if(showReport) return <ReportView hotel={hotel} orgName={currentOrg ? currentOrg.name : ""} me={me}
     readiness={readiness} tasks={tasks} milestones={milestones} risks={risks} budget={budget} staff={staff}
-    onClose={()=>setShowReport(false)} />;
+    aiReport={ai && ai.report} onClose={()=>setShowReport(false)} />;
 
   const NAV = [
     {key:"dashboard", label:"Dashboard"},
@@ -1735,6 +1962,7 @@ function App(){
     {key:"staff", label:"Personal"},
     {key:"docs", label:"Dokumente"},
     {key:"team", label:"Team"},
+    ...(billing ? [{key:"billing", label:"Abo"}] : []),
   ];
 
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -1770,8 +1998,10 @@ function App(){
         </div>
         <div className="page-content" style={{padding:"22px 28px"}}>
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
+          {tab!=="billing" && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
+          {tab==="dashboard" && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} />}
           {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={setTab} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
           {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} docCtx={docCtx} />}
@@ -1783,6 +2013,8 @@ function App(){
           {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname}
             orgName={currentOrg ? currentOrg.name : ""}
             onRenamed={(org)=>setOrgs(orgs.map(o=>o.id===org.id?{...o,name:org.name}:o))} />}
+          {tab==="billing" && <BillingView billing={billing} orgId={orgId} api={api} notice={billingNotice}
+            isAdmin={!!(currentOrg && currentOrg.role==="admin")} onReload={loadBilling} />}
         </div>
       </div>
     </div>

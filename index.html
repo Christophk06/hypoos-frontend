@@ -412,12 +412,13 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
         <Card style={{display:"flex",alignItems:"center",gap:20}}>
           <div style={{fontFamily:"Fraunces, serif",fontSize:44,fontWeight:600,color}}>{readiness.overall}%</div>
           <div>
-            <div style={{fontSize:12.5,color:INK_MUTED,fontWeight:600}}>BEREITSCHAFT</div>
+            <div style={{fontSize:12.5,color:INK_MUTED,fontWeight:600}} title="Wie viel von dem, was bis heute fällig war, erledigt ist – abzüglich Risiken, Personal- und Budgetlücken. 100 % heißt: voll im Zeitplan.">BEREITSCHAFT · IM ZEITPLAN ⓘ</div>
             <Pill color={color} bg={readiness.overall>=80?GOOD_SOFT:readiness.overall>=60?WARN_SOFT:BAD_SOFT}>
               {readiness.overdueCriticalTasksCount} überfällig · {readiness.highRisksCount} hohe Risiken
             </Pill>
             <div style={{fontSize:12,color:INK_MUTED,marginTop:6,lineHeight:1.5}}>
-              {readiness.daysToOpening!=null && <div>{readiness.daysToOpening>=0 ? "Noch "+readiness.daysToOpening+" Tage bis zur Eröffnung" : "Eröffnung war vor "+(-readiness.daysToOpening)+" Tagen"}</div>}
+              {readiness.progressPct!=null && <div>Gesamtfortschritt: <b style={{color:INK}}>{readiness.progressPct} %</b> aller Aufgaben erledigt</div>}
+              {readiness.daysToOpening!=null &&<div>{readiness.daysToOpening>=0 ? "Noch "+readiness.daysToOpening+" Tage bis zur Eröffnung" : "Eröffnung war vor "+(-readiness.daysToOpening)+" Tagen"}</div>}
               {readiness.staffingPct!=null && <div>Personal {readiness.staffingPct} % besetzt{readiness.overdueOpenPositionsCount>0 && <span style={{color:BAD}}> · {readiness.overdueOpenPositionsCount} Stellen über Starttermin offen</span>}</div>}
               {(readiness.overBudgetDepts||[]).length>0 && <div style={{color:BAD}}>Budget überschritten: {readiness.overBudgetDepts.join(", ")}</div>}
             </div>
@@ -1411,8 +1412,9 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
 
         <div className="avoid-break" style={{display:"flex",gap:16,marginTop:16,alignItems:"stretch"}}>
           <div style={{border:`1px solid ${BORDER}`,borderRadius:8,padding:"10px 16px",textAlign:"center",minWidth:120}}>
-            <div style={{fontSize:10.5,color:INK_MUTED,fontWeight:600}}>BEREITSCHAFT</div>
+            <div style={{fontSize:10.5,color:INK_MUTED,fontWeight:600}}>IM ZEITPLAN</div>
             <div style={{fontFamily:"Fraunces, serif",fontSize:40,fontWeight:600,color:scoreColor(r.overall),lineHeight:1.1}}>{r.overall}%</div>
+            {r.progressPct!=null && <div style={{fontSize:10.5,color:INK_MUTED,marginTop:2}}>{r.progressPct} % aller Aufgaben erledigt</div>}
           </div>
           <div style={{flex:1}}>
             {Object.entries(r.deptScores||{}).sort((a,b)=>a[1]-b[1]).map(([d,s])=>(

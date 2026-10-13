@@ -334,6 +334,7 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitch
   const [showForm,setShowForm] = useState(hotels.length===0);
   const [form,setForm] = useState({name:"",city:"",country:"",rooms:100,opening_date:""});
   const [saving,setSaving] = useState(false); const [error,setError]=useState("");
+  const [demoBusy,setDemoBusy] = useState(false);
   const submit = async () => {
     if(!form.name) return;
     setSaving(true); setError("");
@@ -341,6 +342,22 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitch
     catch(e){ setError(e.message); }
     setSaving(false);
   };
+  // Beispielhotel: gefülltes Projekt zum Ausprobieren, zählt nicht zum Hotel-Limit
+  const hasDemo = hotels.some(h=>h.is_demo);
+  const openDemo = async () => {
+    setDemoBusy(true); setError("");
+    try { onCreated(await api("/api/organizations/"+orgId+"/demo-hotel","POST")); }
+    catch(e){ setError(e.message); }
+    setDemoBusy(false);
+  };
+  const demoBox = !hasDemo && (
+    <div style={{marginTop:18,paddingTop:16,borderTop:`1px solid ${BORDER}`}}>
+      <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>Erst einmal ausprobieren? Das Beispielhotel zeigt ein Projekt 30 Tage vor der Eröffnung – mit Aufgaben, Risiken, Budget und Personal. Es zählt nicht zu deinem Tarif.</div>
+      <button onClick={openDemo} disabled={demoBusy} style={{width:"100%",background:"none",border:`1px solid ${BRASS}`,color:INK,borderRadius:4,padding:"9px 14px",fontSize:13.5,fontWeight:600,cursor:"pointer"}}>
+        {demoBusy ? "Wird angelegt…" : "Beispielhotel öffnen"}
+      </button>
+    </div>
+  );
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
       <Card style={{maxWidth:440,width:"100%"}}>
@@ -350,11 +367,13 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitch
             <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:14}}>Hotel auswählen</div>
             {hotels.map(h=>(
               <div key={h.id} onClick={()=>onSelect(h)} style={{padding:"10px 12px",border:`1px solid ${BORDER}`,borderRadius:8,marginBottom:8,cursor:"pointer"}}>
-                <div style={{fontWeight:600}}>{h.name}</div>
+                <div style={{fontWeight:600,display:"flex",alignItems:"center",gap:8}}>{h.name}{h.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispiel</Pill>}</div>
                 <div style={{fontSize:12.5,color:INK_MUTED}}>{h.city} · {h.rooms} Zimmer</div>
               </div>
             ))}
             <button className="btn-primary" style={{width:"100%",marginTop:6}} onClick={()=>setShowForm(true)}>+ Neues Hotel</button>
+            {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+            {demoBox}
           </React.Fragment>
         )}
         {showForm && (
@@ -368,6 +387,7 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitch
             {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
             <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={saving}>{saving?"Speichert…":"Hotel anlegen"}</button>
             {hotels.length>0 && <button onClick={()=>setShowForm(false)} style={{width:"100%",textAlign:"center",marginTop:8,fontSize:12.5,background:"none",border:"none",color:INK_MUTED,cursor:"pointer"}}>Abbrechen</button>}
+            {hotels.length===0 && demoBox}
           </React.Fragment>
         )}
       </Card>
@@ -1490,6 +1510,28 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
   );
 }
 
+/* ------------------------------- Excel-Export ------------------------------- */
+// Alle Daten eines Hotels als Excel-Datei mit einem Blatt je Bereich.
+async function exportHotelXlsx({hotel, tasks, milestones, risks, budget, staff, members}){
+  const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+  const email = (id) => (members.find(m=>m.user_id===id)||{}).email || "";
+  const sheets = {
+    "Aufgaben": tasks.map(t=>({Aufgabe:t.title, Abteilung:t.department, Priorität:t.priority, Status:t.status, Fällig:t.due_date||"", Zuständig:email(t.assignee_id)||t.owner||""})),
+    "Meilensteine": milestones.map(m=>({Meilenstein:m.title, Datum:m.date, Kritikalität:m.criticality, Status:m.status})),
+    "Risiken": risks.map(r=>({Risiko:r.title, Abteilung:r.department, Wahrscheinlichkeit:r.probability, Auswirkung:r.impact, Score:r.probability*r.impact, Gegenmaßnahme:r.mitigation||""})),
+    "Budget": budget.map(b=>({Posten:b.title, Abteilung:b.department, Kategorie:b.category, "Plan (EUR)":Number(b.planned), "Ist (EUR)":Number(b.actual), Notiz:b.note||""})),
+    "Personal": staff.map(p=>({Stelle:p.title, Abteilung:p.department, Soll:p.headcount, Besetzt:p.filled, Offen:p.headcount-p.filled, Start:p.start_date||""})),
+  };
+  const wb = XLSX.utils.book_new();
+  for(const [name, rows] of Object.entries(sheets)){
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{Hinweis:"Keine Einträge"}]);
+    ws["!cols"] = Object.keys(rows[0]||{Hinweis:""}).map(k=>({wch: k==="Aufgabe"||k==="Risiko"||k==="Posten"||k==="Meilenstein"||k==="Gegenmaßnahme" ? 48 : 16}));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  }
+  const safe = hotel.name.replace(/[^\wäöüÄÖÜß -]/g,"").trim() || "Hotel";
+  XLSX.writeFile(wb, "Ouverture " + safe + " " + new Date().toISOString().slice(0,10) + ".xlsx");
+}
+
 /* ------------------------------ KI-Lagebericht ------------------------------ */
 const AMPEL = {
   "grün": {color:GOOD, bg:GOOD_SOFT, label:"Im Plan"},
@@ -2017,11 +2059,18 @@ function App(){
       <div style={{flex:1,minWidth:0}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
           <div>
-            <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600}}>{hotel.name}</div>
+            <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.name}{hotel.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispielhotel</Pill>}</div>
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {hotel.rooms} Zimmer · Eröffnung {fmtDate(hotel.opening_date)}</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button onClick={()=>{ setShowReport(true); window.scrollTo(0,0); }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Statusbericht</button>
+            <button onClick={async ()=>{ try { await exportHotelXlsx({hotel, tasks, milestones, risks, budget, staff, members}); } catch(e){ setFatalError("Export fehlgeschlagen: " + e.message); } }}
+              style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Excel-Export</button>
+            {hotel.is_demo && <button onClick={async ()=>{
+                if(!window.confirm("Beispielhotel mit allen Beispieldaten löschen? Du kannst es später jederzeit neu anlegen.")) return;
+                try { await api("/api/hotels/"+hotel.id,"DELETE"); setHotels((hotels||[]).filter(x=>x.id!==hotel.id)); setHotel(null); }
+                catch(e){ setFatalError(e.message); }
+              }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer",color:INK_MUTED}}>Beispiel entfernen</button>}
             {!editingHotel && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
           </div>
         </div>

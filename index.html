@@ -98,12 +98,94 @@ function priorityColor(p){
   return {color:INK_MUTED,bg:PAPER};
 }
 
+/* ------------------------ Fehler an das Backend melden ------------------------
+   Landet im Server-Protokoll und (falls eingerichtet) als Sammel-Mail beim Betreiber. */
+let reportedErrors = 0;
+function reportClientError(message, stack){
+  if(reportedErrors++ >= 10) return; // pro Seitenaufruf höchstens 10 Meldungen
+  try {
+    fetch(DEFAULT_CONFIG.backendUrl.replace(/\/$/,"") + "/api/client-error", {
+      method:"POST", headers:{"Content-Type":"application/json"}, keepalive:true,
+      body: JSON.stringify({message:String(message||"").slice(0,500), stack:String(stack||"").slice(0,1500),
+        url: window.location.pathname, userAgent: navigator.userAgent}),
+    }).catch(()=>{});
+  } catch(e){}
+}
+window.addEventListener("error", (e) => reportClientError(e.message, e.error && e.error.stack));
+window.addEventListener("unhandledrejection", (e) => reportClientError(e.reason && e.reason.message || e.reason, e.reason && e.reason.stack));
+
+// Stürzt eine Ansicht ab, erscheint eine Meldung statt einer weißen Seite.
+class ErrorBoundary extends React.Component {
+  constructor(props){ super(props); this.state = {failed:false}; }
+  static getDerivedStateFromError(){ return {failed:true}; }
+  componentDidCatch(error, info){ reportClientError(error && error.message, (error && error.stack || "") + (info && info.componentStack || "")); }
+  render(){
+    if(!this.state.failed) return this.props.children;
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+        <Card style={{maxWidth:420,width:"100%",textAlign:"center"}}>
+          <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Da ist etwas schiefgelaufen</div>
+          <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:16}}>Der Fehler wurde automatisch gemeldet. Deine Daten sind gespeichert – bitte die Seite neu laden.</div>
+          <button className="btn-primary" onClick={()=>window.location.reload()}>Seite neu laden</button>
+        </Card>
+      </div>
+    );
+  }
+}
+
+/* --------------------------- Anmeldung merken ---------------------------
+   Die Sitzung (Zugangs- und Erneuerungsschlüssel) liegt im Browser, damit man
+   nach dem Neuladen angemeldet bleibt. Der Zugangsschlüssel gilt nur eine Stunde
+   und wird vor jeder Anfrage bei Bedarf still erneuert – die App muss dafür nichts
+   neu laden. Schlägt die Erneuerung fehl, geht es zurück zur Anmeldung. */
+const LS_SESSION_KEY = "hpoos_session_v1";
+const Session = {
+  current: null,
+  onExpired: null,
+  load(){ try { this.current = JSON.parse(window.localStorage.getItem(LS_SESSION_KEY)); } catch(e){ this.current = null; } return this.current; },
+  save(s){ this.current = s; try { if(s) window.localStorage.setItem(LS_SESSION_KEY, JSON.stringify(s)); else window.localStorage.removeItem(LS_SESSION_KEY); } catch(e){} },
+};
+function sessionFromAuth(data){
+  return { access_token: data.access_token, refresh_token: data.refresh_token,
+    expires_at: data.expires_at || Math.floor(Date.now()/1000) + (data.expires_in || 3600) };
+}
+let refreshing = null;
+function refreshSession(){
+  if(!Session.current || !Session.current.refresh_token) return Promise.reject(new Error("Bitte erneut anmelden."));
+  // Mehrere gleichzeitige Anfragen teilen sich eine Erneuerung
+  refreshing = refreshing || (async () => {
+    const res = await fetch(DEFAULT_CONFIG.supabaseUrl.replace(/\/$/,"") + "/auth/v1/token?grant_type=refresh_token", {
+      method:"POST", headers:{apikey:DEFAULT_CONFIG.supabaseAnonKey, "Content-Type":"application/json"},
+      body: JSON.stringify({refresh_token: Session.current.refresh_token}),
+    });
+    let data = null; try { data = await res.json(); } catch(e){}
+    if(!res.ok || !data || !data.access_token){
+      Session.save(null);
+      if(Session.onExpired) Session.onExpired();
+      throw new Error("Deine Sitzung ist abgelaufen – bitte erneut anmelden.");
+    }
+    Session.save(sessionFromAuth(data));
+    return data.access_token;
+  })().finally(() => { refreshing = null; });
+  return refreshing;
+}
+// Liefert einen gültigen Zugangsschlüssel (erneuert ihn kurz vor Ablauf).
+async function freshToken(token){
+  const s = Session.current;
+  if(!token || !s) return token;
+  if(s.expires_at - 60 < Date.now()/1000) return refreshSession();
+  return s.access_token;
+}
+
 async function apiCall(backendUrl, token, path, method, body){
-  const res = await fetch(backendUrl.replace(/\/$/,"") + path, {
+  const send = (t) => fetch(backendUrl.replace(/\/$/,"") + path, {
     method: method || "GET",
-    headers: { "Content-Type":"application/json", ...(token ? {Authorization:`Bearer ${token}`} : {}) },
+    headers: { "Content-Type":"application/json", ...(t ? {Authorization:`Bearer ${t}`} : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
+  let res = await send(await freshToken(token));
+  // Schlüssel trotzdem abgelehnt (z. B. Rechner war im Ruhezustand): einmal erneuern und wiederholen
+  if(res.status === 401 && token && Session.current) res = await send(await refreshSession());
   let data = null;
   try { data = await res.json(); } catch(e) {}
   if(!res.ok) throw new Error((data && data.error) || ("Fehler " + res.status));
@@ -116,7 +198,7 @@ async function supabaseLogin(supabaseUrl, anonKey, email, password){
   });
   const data = await res.json();
   if(!res.ok) throw new Error(data.error_description || data.msg || "Login fehlgeschlagen.");
-  return data.access_token;
+  return data;
 }
 async function supabaseSignUp(supabaseUrl, anonKey, email, password){
   const res = await fetch(supabaseUrl.replace(/\/$/,"") + "/auth/v1/signup", {
@@ -128,7 +210,7 @@ async function supabaseSignUp(supabaseUrl, anonKey, email, password){
   // Wenn E-Mail-Bestätigung in Supabase deaktiviert ist, liefert Supabase sofort
   // eine Session (access_token) zurück. Ist Bestätigung aktiviert, ist
   // access_token leer und der Nutzer muss zuerst auf den Link in der Mail klicken.
-  return data.access_token || null;
+  return data.access_token ? data : null;
 }
 async function supabaseRecover(supabaseUrl, anonKey, email, redirectTo){
   const res = await fetch(supabaseUrl.replace(/\/$/,"") + "/auth/v1/recover", {
@@ -195,7 +277,7 @@ function LoginView({config,onLogin,onReset}){
 
   const submitLogin = async () => {
     setError(""); setInfo(""); setLoading(true);
-    try { const token = await supabaseLogin(config.supabaseUrl, config.supabaseAnonKey, email, password); onLogin(token); }
+    try { onLogin(await supabaseLogin(config.supabaseUrl, config.supabaseAnonKey, email, password)); }
     catch(e){ setError(e.message); }
     setLoading(false);
   };
@@ -204,8 +286,8 @@ function LoginView({config,onLogin,onReset}){
     setError(""); setInfo(""); setLoading(true);
     try {
       if(password.length < 6){ setError("Das Passwort muss mindestens 6 Zeichen haben."); setLoading(false); return; }
-      const token = await supabaseSignUp(config.supabaseUrl, config.supabaseAnonKey, email, password);
-      if(token){ onLogin(token); }
+      const session = await supabaseSignUp(config.supabaseUrl, config.supabaseAnonKey, email, password);
+      if(session){ onLogin(session); }
       else { setInfo("Konto angelegt! Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben, und melde dich danach an."); setMode("login"); }
     } catch(e){ setError(e.message); }
     setLoading(false);
@@ -541,6 +623,117 @@ function TemplatePanel({callHotel, refresh, onClose}){
   );
 }
 
+/* -------------------------------- Excel-Import -------------------------------- */
+// Welche Spaltenüberschriften (klein geschrieben, ohne Sonderzeichen) zu welchem Feld gehören
+const IMPORT_FIELDS = [
+  {key:"title", label:"Aufgabe", hints:["aufgabe","titel","task","title","bezeichnung","beschreibung","todo","massnahme","maßnahme","name"]},
+  {key:"department", label:"Abteilung", hints:["abteilung","bereich","department","dept","team","gewerk"]},
+  {key:"priority", label:"Priorität", hints:["prioritat","priorität","prio","priority","wichtigkeit"]},
+  {key:"status", label:"Status", hints:["status","stand","state","erledigt","done"]},
+  {key:"due_date", label:"Fällig am", hints:["fallig","fällig","fälligkeit","termin","deadline","due","datum","date","bis","frist","enddatum","ende"]},
+  {key:"owner", label:"Zuständig", hints:["zustandig","zuständig","verantwortlich","owner","responsible","wer","assigned","person"]},
+];
+const normHeader = (h) => String(h||"").toLowerCase().replace(/[^a-zäöüß]/g,"");
+function guessMapping(headers){
+  const used = new Set(); const map = {};
+  for(const f of IMPORT_FIELDS){
+    // Erst exakte Treffer ("Status"), dann enthaltene ("Fälligkeitsdatum" enthält "fällig")
+    const free = (test) => headers.findIndex((h,i)=>!used.has(i) && f.hints.some(x=>test(normHeader(h), normHeader(x))));
+    const exact = free((h,x)=>h===x);
+    const idx = exact>=0 ? exact : free((h,x)=>x.length>=4 && h.includes(x));
+    if(idx>=0){ map[f.key]=idx; used.add(idx); }
+  }
+  return map;
+}
+// Excel-Datumswerte (Seriennummern) in der Vorschau lesbar zeigen; der Server wertet sie selbst aus.
+function previewCell(v){
+  if(typeof v==="number" && v>20000 && v<80000) return new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000).toLocaleDateString("de-DE");
+  return String(v ?? "");
+}
+
+function ImportPanel({callHotel, refresh, onClose}){
+  const [sheet,setSheet] = useState(null); // {name, headers, rows}
+  const [map,setMap] = useState({});
+  const [error,setError] = useState(""); const [result,setResult] = useState(""); const [busy,setBusy] = useState(false);
+
+  const readFile = async (file) => {
+    setError(""); setResult(""); setSheet(null);
+    if(!file) return;
+    try {
+      const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+      const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const all = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:""}).filter(r=>r.some(c=>String(c).trim()!==""));
+      if(all.length<2) throw new Error("In der Datei wurden keine Zeilen unter der Überschrift gefunden.");
+      // Überschrift = erste Zeile mit mindestens zwei Textzellen
+      const headIdx = Math.max(0, all.findIndex(r=>r.filter(c=>typeof c==="string" && c.trim()).length>=2));
+      const headers = all[headIdx].map(h=>String(h).trim());
+      const rows = all.slice(headIdx+1);
+      setSheet({name:file.name, headers, rows});
+      setMap(guessMapping(headers));
+    } catch(e){ setError("Datei konnte nicht gelesen werden: "+e.message); }
+  };
+
+  const rowsForImport = () => (sheet ? sheet.rows : []).map(r => {
+    const o = {}; for(const f of IMPORT_FIELDS) if(map[f.key]!=null && map[f.key]!=="") o[f.key] = r[map[f.key]];
+    return o;
+  });
+  const valid = rowsForImport().filter(r=>String(r.title??"").trim());
+
+  const doImport = async () => {
+    setBusy(true); setError("");
+    try {
+      const r = await callHotel("/tasks/bulk","POST",{tasks: rowsForImport()});
+      setResult(r.created+" Aufgaben importiert"+(r.skipped?", "+r.skipped+" leere Zeilen übersprungen":"")+".");
+      setSheet(null); refresh();
+    } catch(e){ setError(e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <Card style={{marginBottom:16,borderColor:BRASS}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+        <div style={{fontWeight:700,marginBottom:6}}>Aufgaben aus Excel oder CSV importieren</div>
+        <button style={linkBtn} onClick={onClose}>Schließen</button>
+      </div>
+      <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>
+        Erste Tabelle der Datei, eine Aufgabe pro Zeile. Spalten wie „Aufgabe“, „Abteilung“, „Priorität“, „Status“, „Fällig“ und „Zuständig“ werden automatisch erkannt – auch auf Englisch.
+      </div>
+      <input type="file" accept=".xlsx,.xls,.csv,.ods" onChange={e=>readFile(e.target.files[0])} style={{fontSize:13,marginBottom:10}} />
+      {error && <div style={{color:BAD,fontSize:13,marginTop:6}}>{error}</div>}
+      {result && <div style={{color:GOOD,fontSize:13,marginTop:6}}>{result}</div>}
+      {sheet && (
+        <div style={{marginTop:8}}>
+          <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Spalten zuordnen</div>
+          <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:10,marginBottom:12}}>
+            {IMPORT_FIELDS.map(f=>(
+              <Field key={f.key} label={f.label + (f.key==="title"?" (Pflicht)":"")}>
+                <select className="input" value={map[f.key]??""} onChange={e=>setMap({...map,[f.key]:e.target.value===""?null:Number(e.target.value)})}>
+                  <option value="">– nicht importieren –</option>
+                  {sheet.headers.map((h,i)=><option key={i} value={i}>{h || "Spalte "+(i+1)}</option>)}
+                </select>
+              </Field>
+            ))}
+          </div>
+          <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:6}}>Vorschau der ersten Zeilen ({valid.length} von {sheet.rows.length} Zeilen haben einen Aufgabentitel):</div>
+          <div style={{overflowX:"auto",border:`1px solid ${BORDER}`,borderRadius:6,marginBottom:12}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5}}>
+              <thead><tr>{IMPORT_FIELDS.filter(f=>map[f.key]!=null).map(f=><th key={f.key} style={{textAlign:"left",padding:"6px 8px",background:PAPER,whiteSpace:"nowrap"}}>{f.label}</th>)}</tr></thead>
+              <tbody>{sheet.rows.slice(0,5).map((r,i)=>(
+                <tr key={i} style={{borderTop:`1px solid ${BORDER}`}}>{IMPORT_FIELDS.filter(f=>map[f.key]!=null).map(f=><td key={f.key} style={{padding:"6px 8px"}}>{previewCell(r[map[f.key]])}</td>)}</tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>Unbekannte Prioritäten werden zu „Mittel“, unbekannter Status zu „Nicht begonnen“, fehlende Abteilung zu „Allgemein“. Zuständige werden als Text übernommen – Teammitglieder kannst du danach zuweisen.</div>
+          <button className="btn-primary" onClick={doImport} disabled={busy || map.title==null || valid.length===0}>
+            {busy ? "Importiert…" : valid.length+" Aufgaben importieren"}
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function MyTasksView({orgId, api, hotelId, refresh}){
   const [items,setItems] = useState(null);
   const [error,setError] = useState("");
@@ -694,7 +887,7 @@ function DocumentsPanel({hotel, api, upload, me, taskId, compact, onChanged}){
         // Datei direkt in den Supabase-Speicher – mit dem Login des Nutzers, die Regeln greifen dort
         const res = await fetch(upload.supabaseUrl.replace(/\/$/,"")+"/storage/v1/object/documents/"+path.split("/").map(encodeURIComponent).join("/"), {
           method:"POST",
-          headers:{Authorization:"Bearer "+upload.token, apikey:upload.anonKey, "Content-Type":file.type||"application/octet-stream", "x-upsert":"false"},
+          headers:{Authorization:"Bearer "+(await freshToken(upload.token)), apikey:upload.anonKey, "Content-Type":file.type||"application/octet-stream", "x-upsert":"false"},
           body:file,
         });
         if(!res.ok){ let m=""; try{ m=(await res.json()).message; }catch(e){} throw new Error("Hochladen fehlgeschlagen"+(m?": "+m:"")); }
@@ -823,6 +1016,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
   const updateStatus = (id,status) => run(()=>callId("tasks",id,"PATCH",{status}));
   const [origDue,setOrigDue]=useState("");
   const [showTemplate,setShowTemplate]=useState(false);
+  const [showImport,setShowImport]=useState(false);
   const [openActivity,setOpenActivity]=useState(null);
   const startEdit = (t) => { setEditId(t.id); setOrigDue(t.due_date||""); setEdit({title:t.title,department:t.department,priority:t.priority,due_date:t.due_date||"",owner:t.owner||"",assignee_id:t.assignee_id||""}); };
   // Termin nur mitschicken, wenn er geändert wurde – sonst bliebe die Aufgabe nicht mehr ans Eröffnungsdatum gekoppelt.
@@ -846,11 +1040,13 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
   return (
     <div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Excel importieren</button>
         <button onClick={()=>setShowTemplate(!showTemplate)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Vorlage ergänzen</button>
         <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Aufgabe</button>
       </div>
       {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
-      {(showTemplate || tasks.length===0) && <TemplatePanel callHotel={callHotel} refresh={()=>{ setShowTemplate(true); refresh(); }} onClose={tasks.length>0 ? ()=>setShowTemplate(false) : null} />}
+      {showImport && <ImportPanel callHotel={callHotel} refresh={refresh} onClose={()=>setShowImport(false)} />}
+      {(showTemplate || (tasks.length===0 && !showImport)) && <TemplatePanel callHotel={callHotel} refresh={()=>{ setShowTemplate(true); refresh(); }} onClose={tasks.length>0 ? ()=>setShowTemplate(false) : null} />}
       {showForm && (
         <Card style={{marginBottom:16}}>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
@@ -1534,6 +1730,108 @@ async function exportHotelXlsx({hotel, tasks, milestones, risks, budget, staff, 
   XLSX.writeFile(wb, "Ouverture " + safe + " " + new Date().toISOString().slice(0,10) + ".xlsx");
 }
 
+/* ------------------------------ Kalender-Export ------------------------------ */
+// Offene Fristen und Meilensteine als ganztägige Termine (.ics) für Outlook, Google, Apple.
+function icsEscape(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/([,;])/g,"\\$1"); }
+function icsFold(line){
+  // Zeilen über 75 Zeichen umbrechen (Folgezeilen beginnen mit einem Leerzeichen)
+  const parts = []; let rest = line;
+  while(rest.length > 74){ parts.push(rest.slice(0,74)); rest = " " + rest.slice(74); }
+  parts.push(rest); return parts.join("\r\n");
+}
+function buildIcs({hotel, tasks, milestones}){
+  const day = (iso) => iso.replace(/-/g,"");
+  const next = (iso) => { const d = new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10).replace(/-/g,""); };
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
+  const ev = (uid, date, summary, desc) => [
+    "BEGIN:VEVENT", "UID:"+uid+"@ouverture", "DTSTAMP:"+stamp,
+    "DTSTART;VALUE=DATE:"+day(date), "DTEND;VALUE=DATE:"+next(date),
+    "SUMMARY:"+icsEscape(summary), "DESCRIPTION:"+icsEscape(desc), "TRANSP:TRANSPARENT", "END:VEVENT",
+  ];
+  const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Ouverture//Pre-Opening//DE","CALSCALE:GREGORIAN",
+    "X-WR-CALNAME:"+icsEscape("Ouverture – "+hotel.name)];
+  if(hotel.opening_date) lines.push(...ev("opening-"+hotel.id, hotel.opening_date, "🎉 Eröffnung "+hotel.name, "Eröffnungstermin"));
+  milestones.filter(m=>m.date && m.status!=="Abgeschlossen").forEach(m=>lines.push(...ev("m-"+m.id, m.date, "◆ "+m.title, "Meilenstein · "+m.criticality+" · "+m.status)));
+  tasks.filter(t=>t.due_date && t.status!=="Abgeschlossen").forEach(t=>lines.push(...ev("t-"+t.id, t.due_date, t.title, t.department+" · Priorität "+t.priority+" · "+t.status+(t.owner?" · "+t.owner:""))));
+  lines.push("END:VCALENDAR");
+  return lines.map(icsFold).join("\r\n") + "\r\n";
+}
+function downloadIcs(data){
+  const blob = new Blob([buildIcs(data)], {type:"text/calendar;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Ouverture " + data.hotel.name.replace(/[^\wäöüÄÖÜß -]/g,"").trim() + " Termine.ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+/* -------------------------------- Zeitstrahl -------------------------------- */
+function TimelineView({hotel, tasks, milestones}){
+  const [onlyOpen,setOnlyOpen] = useState(false);
+  const today = new Date().toISOString().slice(0,10);
+  const dated = tasks.filter(t=>t.due_date && (!onlyOpen || t.status!=="Abgeschlossen"));
+  const dates = [...dated.map(t=>t.due_date), ...milestones.map(m=>m.date), today, hotel.opening_date].filter(Boolean).sort();
+  if(dated.length===0 && milestones.length===0) return <Card><div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Aufgaben oder Meilensteine mit Termin.</div></Card>;
+  const toT = (iso) => new Date(iso+"T00:00:00Z").getTime();
+  const pad = 7*86400000;
+  const start = toT(dates[0]) - pad, end = toT(dates[dates.length-1]) + pad;
+  const pos = (iso) => ((toT(iso)-start)/(end-start)*100) + "%";
+
+  const depts = [...new Set(dated.map(t=>t.department))].sort((a,b)=>DEPARTMENTS.indexOf(a)-DEPARTMENTS.indexOf(b));
+  const colorOf = (t) => t.status==="Abgeschlossen" ? GOOD : (t.due_date<today ? BAD : t.status==="Blockiert" ? WARN : BRASS);
+  // Monatsmarken für die Achse
+  const months = []; { const d = new Date(start); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth()+1);
+    while(d.getTime() < end){ months.push(d.toISOString().slice(0,10)); d.setUTCMonth(d.getUTCMonth()+1); } }
+  const LABEL_W = 150;
+  const Row = ({label, children, height=34}) => (
+    <div style={{display:"flex",alignItems:"center",borderTop:`1px solid ${BORDER}`,minHeight:height}}>
+      <div style={{width:LABEL_W,flexShrink:0,fontSize:12.5,padding:"0 10px",fontWeight:600}}>{label}</div>
+      <div style={{position:"relative",flex:1,height}}>{children}</div>
+    </div>
+  );
+  const VLine = ({iso, color, label}) => (
+    <div style={{position:"absolute",top:0,bottom:0,left:`calc(${LABEL_W}px + (100% - ${LABEL_W}px) * ${(toT(iso)-start)/(end-start)})`,borderLeft:`2px ${label==="Heute"?"dashed":"solid"} ${color}`,pointerEvents:"none"}}>
+      <div style={{position:"absolute",top:-18,left:-30,width:60,textAlign:"center",fontSize:11,fontWeight:700,color}}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap",marginBottom:12,fontSize:12.5,color:INK_MUTED}}>
+        <span><span style={{color:GOOD}}>●</span> erledigt</span><span><span style={{color:BRASS}}>●</span> offen</span>
+        <span><span style={{color:WARN}}>●</span> blockiert</span><span><span style={{color:BAD}}>●</span> überfällig</span><span>◆ Meilenstein</span>
+        <label style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> nur offene Aufgaben</label>
+      </div>
+      <Card style={{padding:"26px 0 0",overflowX:"auto"}}>
+        <div style={{position:"relative",minWidth:760}}>
+          <VLine iso={today} color={INK} label="Heute" />
+          {hotel.opening_date && <VLine iso={hotel.opening_date} color={BRASS} label="Eröffnung" />}
+          <Row label="Monate" height={24}>
+            {months.map(m=><div key={m} style={{position:"absolute",left:pos(m),top:4,fontSize:11,color:INK_MUTED,whiteSpace:"nowrap",borderLeft:`1px solid ${BORDER}`,paddingLeft:4}}>{new Date(m).toLocaleDateString("de-DE",{month:"short",year:"2-digit"})}</div>)}
+          </Row>
+          <Row label="Meilensteine" height={40}>
+            {milestones.filter(m=>m.date).map(m=>{
+              const late = m.status!=="Abgeschlossen" && (m.date<today || m.status==="Gefährdet");
+              return <div key={m.id} title={m.title+" · "+fmtDate(m.date)+" · "+m.status}
+                style={{position:"absolute",left:pos(m.date),top:13,width:13,height:13,marginLeft:-6.5,transform:"rotate(45deg)",background:m.status==="Abgeschlossen"?GOOD:late?BAD:INK,cursor:"default"}} />;
+            })}
+          </Row>
+          {depts.map(d=>(
+            <Row key={d} label={d}>
+              {dated.filter(t=>t.department===d).map(t=>(
+                <div key={t.id} title={t.title+" · fällig "+fmtDate(t.due_date)+" · "+t.status+" · "+t.priority}
+                  style={{position:"absolute",left:pos(t.due_date),top:"50%",width:t.priority==="Kritisch"?13:10,height:t.priority==="Kritisch"?13:10,marginLeft:t.priority==="Kritisch"?-6.5:-5,marginTop:t.priority==="Kritisch"?-6.5:-5,
+                    borderRadius:"50%",background:colorOf(t),border:"2px solid #fff",boxShadow:"0 0 0 1px "+colorOf(t),cursor:"default"}} />
+              ))}
+            </Row>
+          ))}
+        </div>
+      </Card>
+      <div style={{fontSize:12,color:INK_MUTED,marginTop:8}}>Mit der Maus über einen Punkt fahren, um die Aufgabe zu sehen. Größere Punkte sind kritische Aufgaben.</div>
+    </div>
+  );
+}
+
 /* ------------------------------ KI-Lagebericht ------------------------------ */
 const AMPEL = {
   "grün": {color:GOOD, bg:GOOD_SOFT, label:"Im Plan"},
@@ -1723,6 +2021,45 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
   );
 }
 
+/* ---------------------------------- Konto ---------------------------------- */
+function PasswordCard({config, token}){
+  const [pw,setPw] = useState(""); const [pw2,setPw2] = useState("");
+  const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
+  const save = async () => {
+    setMsg(null);
+    if(pw.length < 8) return setMsg({ok:false, text:"Das neue Passwort muss mindestens 8 Zeichen haben."});
+    if(pw !== pw2) return setMsg({ok:false, text:"Die beiden Passwörter stimmen nicht überein."});
+    setBusy(true);
+    try {
+      await supabaseSetNewPassword(config.supabaseUrl, config.supabaseAnonKey, await freshToken(token), pw);
+      setPw(""); setPw2(""); setMsg({ok:true, text:"Passwort geändert."});
+    } catch(e){ setMsg({ok:false, text:e.message}); }
+    setBusy(false);
+  };
+  return (
+    <Card style={{marginBottom:18,maxWidth:520}}>
+      <div style={{fontWeight:700,marginBottom:12}}>Passwort ändern</div>
+      <Field label="Neues Passwort"><input type="password" className="input" value={pw} onChange={e=>setPw(e.target.value)} autoComplete="new-password" /></Field>
+      <Field label="Neues Passwort wiederholen"><input type="password" className="input" value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&save()} autoComplete="new-password" /></Field>
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+      <button className="btn-primary" onClick={save} disabled={busy}>{busy?"Speichert…":"Passwort ändern"}</button>
+    </Card>
+  );
+}
+
+function AccountView({config, token, me, children}){
+  return (
+    <div>
+      <Card style={{marginBottom:18,maxWidth:520}}>
+        <div style={{fontSize:12.5,color:INK_MUTED,fontWeight:600}}>ANGEMELDET ALS</div>
+        <div style={{fontSize:15,fontWeight:600,marginTop:4}}>{me ? me.email : "…"}</div>
+      </Card>
+      <PasswordCard config={config} token={token} />
+      {children}
+    </div>
+  );
+}
+
 function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed}){
   const [members,setMembers] = useState([]);
   const [invites,setInvites] = useState([]);
@@ -1836,8 +2173,10 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed}){
 }
 
 function App(){
-  const [config,setConfig] = useState(undefined);
-  const [token,setToken] = useState(null);
+  // Verbindungsdaten sofort setzen: eine gespeicherte Sitzung braucht sie schon beim ersten Anzeigen
+  const [config,setConfig] = useState(DEFAULT_CONFIG);
+  // Gespeicherte Sitzung wiederherstellen – so bleibt man nach dem Neuladen angemeldet
+  const [token,setToken] = useState(() => { const s = Session.load(); return s ? s.access_token : null; });
   const [orgId,setOrgId] = useState(null);
   const [orgs,setOrgs] = useState([]);
   const [members,setMembers] = useState([]);
@@ -1890,6 +2229,11 @@ function App(){
       }
     } catch(e){}
   },[]);
+
+  // Erneuerung fehlgeschlagen (z. B. lange nicht benutzt) -> zurück zur Anmeldung
+  useEffect(()=>{ Session.onExpired = () => { setToken(null); setOrgId(null); }; return () => { Session.onExpired = null; }; },[]);
+  const login = (data) => { Session.save(sessionFromAuth(data)); setToken(data.access_token); };
+  const logout = () => { Session.save(null); setToken(null); setOrgId(null); setOrgs([]); setHotel(null); setHotels(null); };
 
   const saveConfig = (cfg) => {
     setConfig(cfg);
@@ -2005,7 +2349,7 @@ function App(){
       </Card>
     </div>
   );
-  if(!token) return <LoginView config={config} onLogin={setToken} onReset={()=>saveConfig(null)} />;
+  if(!token) return <LoginView config={config} onLogin={login} onReset={()=>saveConfig(null)} />;
   // hotels === null heißt: noch nicht geladen. Erst danach entscheiden, ob Liste oder Formular.
   if(!hotel && hotels===null) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
@@ -2013,7 +2357,7 @@ function App(){
         {fatalError
           ? <React.Fragment>
               <div style={{color:BAD,fontSize:13.5,marginBottom:14}}>{fatalError}</div>
-              <button className="btn-primary" style={{width:"100%"}} onClick={()=>{setFatalError("");setToken(null);setOrgId(null);}}>Zurück zur Anmeldung</button>
+              <button className="btn-primary" style={{width:"100%"}} onClick={()=>{setFatalError("");logout();}}>Zurück zur Anmeldung</button>
             </React.Fragment>
           : <div style={{color:INK_MUTED,fontSize:13.5}}>Hotels werden geladen…</div>}
       </Card>
@@ -2030,12 +2374,14 @@ function App(){
     {key:"mine", label:"Meine Aufgaben"},
     {key:"tasks", label:"Aufgaben"},
     {key:"milestones", label:"Meilensteine"},
+    {key:"timeline", label:"Zeitstrahl"},
     {key:"risks", label:"Risiken"},
     {key:"budget", label:"Budget"},
     {key:"staff", label:"Personal"},
     {key:"docs", label:"Dokumente"},
     {key:"team", label:"Team"},
     ...(billing ? [{key:"billing", label:"Abo"}] : []),
+    {key:"account", label:"Konto"},
   ];
 
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -2056,7 +2402,7 @@ function App(){
           <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderLeft:"2px solid "+(tab===n.key?"#C9A66B":"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}</div>
         ))}
         <div className="nav-item" onClick={()=>setHotel(null)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
-        <div className="logout" onClick={()=>{setToken(null);setOrgId(null);setOrgs([]);setHotel(null);setHotels(null);}} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
+        <div className="logout" onClick={logout} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
@@ -2068,6 +2414,8 @@ function App(){
             <button onClick={()=>{ setShowReport(true); window.scrollTo(0,0); }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Statusbericht</button>
             <button onClick={async ()=>{ try { await exportHotelXlsx({hotel, tasks, milestones, risks, budget, staff, members}); } catch(e){ setFatalError("Export fehlgeschlagen: " + e.message); } }}
               style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Excel-Export</button>
+            <button onClick={()=>downloadIcs({hotel, tasks, milestones})} title="Offene Fristen und Meilensteine für Outlook, Google oder Apple Kalender"
+              style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Kalender</button>
             {hotel.is_demo && <button onClick={async ()=>{
                 if(!window.confirm("Beispielhotel mit allen Beispieldaten löschen? Du kannst es später jederzeit neu anlegen.")) return;
                 try { await api("/api/hotels/"+hotel.id,"DELETE"); setHotels((hotels||[]).filter(x=>x.id!==hotel.id)); setHotel(null); }
@@ -2085,6 +2433,7 @@ function App(){
           {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={setTab} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
           {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} docCtx={docCtx} />}
+          {tab==="timeline" && <TimelineView hotel={hotel} tasks={tasks} milestones={milestones} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
@@ -2093,6 +2442,7 @@ function App(){
           {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname}
             orgName={currentOrg ? currentOrg.name : ""}
             onRenamed={(org)=>setOrgs(orgs.map(o=>o.id===org.id?{...o,name:org.name}:o))} />}
+          {tab==="account" && <AccountView config={config} token={token} me={me} />}
           {tab==="billing" && <BillingView billing={billing} orgId={orgId} api={api} notice={billingNotice}
             isAdmin={!!(currentOrg && currentOrg.role==="admin")} onReload={loadBilling} />}
         </div>
@@ -2101,7 +2451,7 @@ function App(){
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App /></ErrorBoundary>);
 </script>
 </body>
 </html>

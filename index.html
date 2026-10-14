@@ -1959,7 +1959,19 @@ const BILLING_NOTICES = {
   cancel: {ok:false, text:"Die Bezahlung wurde abgebrochen. Es wurde nichts berechnet."},
 };
 
+// Vorschlag für die Abo-Währung aus dem Land des Browsers (gleiche Regel wie billing.js)
+function suggestBillingCurrency(){
+  const l = (navigator.language || "").toLowerCase();
+  if (/-ch(?![a-z])|^de-li/.test(l)) return "CHF";
+  if (/-gb(?![a-z])/.test(l)) return "GBP";
+  if (/-(us|ae|sa|qa|bh|kw|om)(?![a-z])/.test(l)) return "USD";
+  return "EUR";
+}
+function fmtPrice(n, cur){ return Number(n).toLocaleString(UI_LOCALE,{style:"currency",currency:cur,maximumFractionDigits:0}); }
+
 function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
+  const [cur,setCur] = useState(() => { try { return window.localStorage.getItem("hpoos_billing_currency") || suggestBillingCurrency(); } catch(e){ return suggestBillingCurrency(); } });
+  const pickCur = (c) => { setCur(c); try { window.localStorage.setItem("hpoos_billing_currency", c); } catch(e){} };
   const [busy,setBusy] = useState(null);
   const [error,setError] = useState("");
   if(!billing) return <div style={{color:INK_MUTED}}>Abo-Daten werden geladen…</div>;
@@ -2000,6 +2012,17 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
         {!billing.stripe_enabled && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>Die Online-Bezahlung wird gerade eingerichtet.{CONTACT_EMAIL ? <span> Für ein Abo schreib an <a href={"mailto:"+CONTACT_EMAIL}>{CONTACT_EMAIL}</a>.</span> : null}</div>}
       </Card>
 
+      {(billing.currencies||[]).length > 1 && (
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+          <span style={{fontSize:13,color:INK_MUTED}}>Währung</span>
+          <div style={{display:"flex",gap:6}} data-no-i18n="">
+            {billing.currencies.map(c=>(
+              <button key={c} onClick={()=>pickCur(c)} className={c===cur?"btn-primary":""}
+                style={c===cur ? {padding:"6px 12px",fontSize:12.5} : {background:"none",border:`1px solid ${BORDER}`,borderRadius:4,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>{c}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:18}}>
         {(billing.plans||[]).map(p=>{
           const current = billing.plan===p.key && billing.active;
@@ -2009,13 +2032,13 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
                 <div style={{fontWeight:700,fontSize:16}}>{p.name}</div>
                 {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
               </div>
-              <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,margin:"8px 0 2px"}}>{fmtEurPlain(p.monthlyEur)}</div>
+              <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,margin:"8px 0 2px"}}>{fmtPrice((p.monthly && p.monthly[cur]) || p.monthlyEur, p.monthly && p.monthly[cur] ? cur : "EUR")}</div>
               <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>pro Monat zzgl. USt., monatlich kündbar</div>
               <ul style={{margin:"0 0 14px",paddingLeft:18,fontSize:13.5,lineHeight:1.6,flex:1}}>{p.features.map(f=><li key={f}>{f}</li>)}</ul>
               {isAdmin && billing.stripe_enabled && !current && (
                 paid
                   ? <button onClick={()=>go("portal", null, "portal")} disabled={!!busy} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer"}}>Über „Abo verwalten“ wechseln</button>
-                  : <button className="btn-primary" onClick={()=>go("checkout", {plan:p.key}, p.key)} disabled={!!busy || !p.available}>{busy===p.key ? "Öffnet Bezahlseite…" : p.available ? p.name+" wählen" : "Bald verfügbar"}</button>
+                  : <button className="btn-primary" onClick={()=>go("checkout", {plan:p.key, currency:cur}, p.key)} disabled={!!busy || !p.available}>{busy===p.key ? "Öffnet Bezahlseite…" : p.available ? p.name+" wählen" : "Bald verfügbar"}</button>
               )}
             </Card>
           );

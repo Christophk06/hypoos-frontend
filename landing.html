@@ -239,10 +239,14 @@
       <div class="eyebrow">Preise</div>
       <h2>Ein fairer Preis pro Eröffnung</h2>
       <p class="intro">Alle Tarife mit unbegrenzt vielen Teammitgliedern. 14 Tage kostenlos testen, danach monatlich kündbar.</p>
+      <div class="cur-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-6px 0 22px">
+        <span class="cur-label" style="font-size:14px;color:#6B7280"></span>
+        <select id="price-currency" aria-label="Währung" data-no-i18n style="font:inherit;font-size:14px;padding:7px 10px;border:1px solid #E4DFD3;border-radius:6px;background:#fff;color:#1C2430"></select>
+      </div>
       <div class="plans">
         <div class="plan">
           <h3>Starter</h3>
-          <div class="price">299 €</div>
+          <div class="price" data-plan="starter" data-no-i18n>299 €</div>
           <div class="per">pro Monat zzgl. USt.</div>
           <ul>
             <li>1 Hotel-Eröffnung</li>
@@ -256,7 +260,7 @@
         <div class="plan pop">
           <span class="tag">Für Hotelgruppen</span>
           <h3>Professional</h3>
-          <div class="price">790 €</div>
+          <div class="price" data-plan="professional" data-no-i18n>790 €</div>
           <div class="per">pro Monat zzgl. USt.</div>
           <ul>
             <li>Bis zu 5 Eröffnungen gleichzeitig</li>
@@ -314,5 +318,37 @@
   </div>
 </footer>
 
+<script>
+// Preise in der gewählten Währung (genau die Beträge, die beim Abo abgebucht werden)
+(function(){
+  var API = "https://hpoos-backend-1.onrender.com/api/public/plans";
+  var sel = document.getElementById("price-currency");
+  document.querySelector(".cur-label").textContent = tf("Preise in");
+  var REGION = {ch:"CHF",li:"CHF",gb:"GBP",us:"USD",ca:"CAD",au:"AUD",nz:"NZD",jp:"JPY",cn:"CNY",hk:"HKD",sg:"SGD",kr:"KRW",ae:"AED",sa:"SAR",qa:"QAR",bh:"USD",kw:"USD",om:"USD",tr:"TRY",br:"BRL",mx:"MXN",za:"ZAR",se:"SEK",no:"NOK",dk:"DKK",pl:"PLN",cz:"CZK",hu:"HUF"};
+  var LANG = {ja:"JPY",zh:"CNY",ko:"KRW",tr:"TRY",ar:"AED",sv:"SEK",nb:"NOK",da:"DKK",pl:"PLN",cs:"CZK",hu:"HUF"};
+  var parts = (navigator.language || "").toLowerCase().split(/[-_]/);
+  var saved = null; try { saved = localStorage.getItem("hpoos_billing_currency"); } catch(e){}
+  var fallback = {plans:[{key:"starter",monthly:{EUR:299}},{key:"professional",monthly:{EUR:790}}], currencies:["EUR"]};
+  function name(c){ try { return new Intl.DisplayNames([UI_LOCALE], {type:"currency"}).of(c); } catch(e){ return c; } }
+  function show(data){
+    var cur = sel.value;
+    data.plans.forEach(function(p){
+      var el = document.querySelector('.price[data-plan="'+p.key+'"]'); if(!el) return;
+      var c = p.monthly[cur] ? cur : "EUR";
+      el.textContent = Number(p.monthly[c]).toLocaleString(UI_LOCALE, {style:"currency", currency:c, maximumFractionDigits:0});
+    });
+  }
+  function init(data){
+    sel.innerHTML = "";
+    data.currencies.forEach(function(c){ var o = document.createElement("option"); o.value = c; o.textContent = name(c) + " (" + c + ")"; sel.appendChild(o); });
+    var pick = saved || REGION[parts[1]] || LANG[UI_LANG] || LANG[parts[0]] || "EUR";
+    sel.value = data.currencies.indexOf(pick) >= 0 ? pick : "EUR";
+    sel.onchange = function(){ try { localStorage.setItem("hpoos_billing_currency", sel.value); } catch(e){} show(data); };
+    show(data);
+  }
+  init(fallback);
+  fetch(API).then(function(r){ return r.json(); }).then(init).catch(function(){});
+})();
+</script>
 </body>
 </html>

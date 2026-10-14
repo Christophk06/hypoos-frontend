@@ -37,7 +37,8 @@
   @page { size: A4; margin: 0; }
   @media print {
     body { background: #fff !important; }
-    .no-print { display: none !important; }
+    .no-print, .sidebar, .page-header { display: none !important; }
+    .page-content { padding: 8mm !important; }
     .report-wrap { background: #fff !important; padding: 0 !important; min-height: 0 !important; }
     .report { max-width: none; padding: 12mm 14mm; box-shadow: none !important; border-radius: 0 !important; margin: 0; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -77,6 +78,18 @@ const BRASS="#A9834B", BRASS_SOFT="#F1E8D8", GOOD="#3F7A5C", GOOD_SOFT="#E4EFE8"
 const WARN="#B9822E", WARN_SOFT="#F5E9D5", BAD="#A23B32", BAD_SOFT="#F5E1DE", INK_MUTED="#6B7280";
 
 const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Technik","IT & Systeme","Personal","Einkauf","Sicherheit"];
+// Eigene Rolle und Abteilungen in der gewählten Organisation (setzt App bei jedem Anzeigen).
+// Die Datenbank erzwingt die Rechte; die Oberfläche blendet nur aus, was nicht geht.
+let ACCESS = {role:"admin", depts:[]};
+const isLeadRole = () => ACCESS.role==="admin" || ACCESS.role==="manager";
+// Abteilungen, in denen man Einträge anlegen darf
+function editableDepts(){
+  if(ACCESS.role==="admin") return DEPARTMENTS;
+  const own = ACCESS.depts || [];
+  return DEPARTMENTS.filter(d=>own.includes(d)).concat(own.filter(d=>!DEPARTMENTS.includes(d)));
+}
+function deptOptions(current){ const list = editableDepts(); return current && !list.includes(current) ? [current, ...list] : list; }
+function canManageDept(d){ return ACCESS.role==="admin" || (ACCESS.role==="manager" && (ACCESS.depts||[]).includes(d)); }
 const PRIORITIES = ["Kritisch","Hoch","Mittel","Niedrig"];
 const TASK_STATUSES = ["Nicht begonnen","In Arbeit","Blockiert","In Prüfung","Abgeschlossen"];
 const MILESTONE_STATUSES = ["Geplant","In Arbeit","Gefährdet","Abgeschlossen"];
@@ -244,7 +257,7 @@ function Logo({size=24, color="#C9A66B"}){
   );
 }
 
-function Card(props){ return <div className="card" style={props.style}>{props.children}</div>; }
+function Card(props){ return <div className={"card"+(props.className ? " "+props.className : "")} style={props.style}>{props.children}</div>; }
 function Field({label, children}){ return <label style={{display:"block",marginBottom:14}}><div className="field-label">{label}</div>{children}</label>; }
 function Pill({children,color,bg}){ return <span style={{color,background:bg,fontSize:12,fontWeight:600,padding:"3px 9px",borderRadius:999}}>{children}</span>; }
 
@@ -484,7 +497,7 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitch
   );
 }
 
-function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
+function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=true}){
   if(!readiness) return <div style={{color:INK_MUTED}}>Lädt…</div>;
   const planned = budget.reduce((s,i)=>s+Number(i.planned||0),0);
   const actual = budget.reduce((s,i)=>s+Number(i.actual||0),0);
@@ -526,7 +539,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
           ))}
         </Card>
       </div>
-      <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18,marginBottom:18}}>
+      {lead && <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18,marginBottom:18}}>
         <div onClick={()=>onOpen("budget")} style={{cursor:"pointer"}}>
           <Card>
             <div style={{fontWeight:700,marginBottom:8}}>Budget</div>
@@ -556,17 +569,17 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen}){
             )}
           </Card>
         </div>
-      </div>
+      </div>}
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18}}>
         <Card>
           <div style={{fontWeight:700,marginBottom:10}}>Überfällige kritische Aufgaben</div>
           {overdue.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Keine.</div> :
             overdue.map(t=><div key={t.id} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>{t.title} <span style={{color:INK_MUTED}}>· {t.department}</span></div>)}
         </Card>
-        <Card>
+        {lead && <Card>
           <div style={{fontWeight:700,marginBottom:10}}>Höchste Risiken</div>
           {topRisks.map(r=><div key={r.id} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>{r.title} <span style={{color:INK_MUTED}}>· Score {r.probability*r.impact}</span></div>)}
-        </Card>
+        </Card>}
       </div>
     </div>
   );
@@ -1013,7 +1026,7 @@ function TaskActivity({taskId, api, me, onChanged, docCtx}){
 }
 
 function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}){
-  const empty = {title:"",department:DEPARTMENTS[0],priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:"",assignee_id:""};
+  const empty = {title:"",department:(editableDepts()[0]||DEPARTMENTS[0]),priority:"Mittel",status:"Nicht begonnen",due_date:"",owner:"",assignee_id:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
@@ -1047,18 +1060,18 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
   return (
     <div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Excel importieren</button>
-        <button onClick={()=>setShowTemplate(!showTemplate)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Vorlage ergänzen</button>
-        <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Aufgabe</button>
+        {ACCESS.role==="admin" && <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Excel importieren</button>}
+        {ACCESS.role==="admin" && <button onClick={()=>setShowTemplate(!showTemplate)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Vorlage ergänzen</button>}
+        {editableDepts().length>0 && <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Aufgabe</button>}
       </div>
       {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
       {showImport && <ImportPanel callHotel={callHotel} refresh={refresh} onClose={()=>setShowImport(false)} />}
-      {(showTemplate || (tasks.length===0 && !showImport)) && <TemplatePanel callHotel={callHotel} refresh={()=>{ setShowTemplate(true); refresh(); }} onClose={tasks.length>0 ? ()=>setShowTemplate(false) : null} />}
+      {ACCESS.role==="admin" && (showTemplate || (tasks.length===0 && !showImport)) && <TemplatePanel callHotel={callHotel} refresh={()=>{ setShowTemplate(true); refresh(); }} onClose={tasks.length>0 ? ()=>setShowTemplate(false) : null} />}
       {showForm && (
         <Card style={{marginBottom:16}}>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
             <input className="input" placeholder="Titel" value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} />
-            <select className="input" value={draft.department} onChange={e=>setDraft({...draft,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
+            <select className="input" value={draft.department} onChange={e=>setDraft({...draft,department:e.target.value})}>{deptOptions(draft.department).map(d=><option key={d}>{d}</option>)}</select>
             <select className="input" value={draft.priority} onChange={e=>setDraft({...draft,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
           </div>
           <div className="stack" style={{display:"flex",gap:10}}>
@@ -1100,7 +1113,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
               <td colSpan={5} style={{padding:12}}>
                 <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
                   <input className="input" value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})} />
-                  <select className="input" value={edit.department} onChange={e=>setEdit({...edit,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
+                  <select className="input" value={edit.department} onChange={e=>setEdit({...edit,department:e.target.value})}>{deptOptions(edit.department).map(d=><option key={d}>{d}</option>)}</select>
                   <select className="input" value={edit.priority} onChange={e=>setEdit({...edit,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
                 </div>
                 <div className="stack" style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -1126,7 +1139,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
                   💬 {t.comment_count||0}{t.document_count ? "  📎 "+t.document_count : ""}
                 </button>
                 <button style={linkBtn} onClick={()=>startEdit(t)}>Bearbeiten</button>
-                <button style={linkBtn} onClick={()=>remove(t)} title="Löschen">✕</button>
+                {canManageDept(t.department) && <button style={linkBtn} onClick={()=>remove(t)} title="Löschen">✕</button>}
               </td>
             </tr>
             {openActivity===t.id && (
@@ -1195,7 +1208,7 @@ function RiskFields({value, onChange}){
     <React.Fragment>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10,marginBottom:10}}>
         <input className="input" placeholder="Titel" value={value.title} onChange={e=>onChange({...value,title:e.target.value})} />
-        <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
+        <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{deptOptions(value.department).map(d=><option key={d}>{d}</option>)}</select>
       </div>
       <input className="input" placeholder="Gegenmaßnahme (optional)" value={value.mitigation||""} onChange={e=>onChange({...value,mitigation:e.target.value})} style={{marginBottom:10}} />
       <div className="stack" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
@@ -1209,7 +1222,7 @@ function RiskFields({value, onChange}){
 }
 
 function RisksView({risks, callHotel, callId, refresh}){
-  const [draft,setDraft]=useState({title:"",department:DEPARTMENTS[0],probability:3,impact:3,mitigation:""});
+  const [draft,setDraft]=useState({title:"",department:(editableDepts()[0]||DEPARTMENTS[0]),probability:3,impact:3,mitigation:""});
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
   const [error,setError]=useState("");
   const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
@@ -1316,7 +1329,7 @@ function BudgetFields({value, onChange}){
     <React.Fragment>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
         <input className="input" placeholder="Posten, z. B. Matratzen" value={value.title} onChange={e=>onChange({...value,title:e.target.value})} />
-        <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select>
+        <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{deptOptions(value.department).map(d=><option key={d}>{d}</option>)}</select>
         <select className="input" value={value.category} onChange={e=>onChange({...value,category:e.target.value})}>{BUDGET_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
       </div>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:10}}>
@@ -1329,7 +1342,7 @@ function BudgetFields({value, onChange}){
 }
 
 function BudgetView({items, callHotel, callId, refresh}){
-  const empty = {title:"",department:DEPARTMENTS[0],category:BUDGET_CATEGORIES[0],planned:"",actual:"",note:""};
+  const empty = {title:"",department:(editableDepts()[0]||DEPARTMENTS[0]),category:BUDGET_CATEGORIES[0],planned:"",actual:"",note:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
@@ -1419,7 +1432,7 @@ function StaffFields({value, onChange}){
   return (
     <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1.3fr 0.7fr 0.7fr 1fr",gap:10}}>
       <label><div className="field-label">Stelle</div><input className="input" placeholder="z. B. Rezeptionist/in" value={value.title} onChange={e=>onChange({...value,title:e.target.value})} /></label>
-      <label><div className="field-label">Abteilung</div><select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}</select></label>
+      <label><div className="field-label">Abteilung</div><select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{deptOptions(value.department).map(d=><option key={d}>{d}</option>)}</select></label>
       <label><div className="field-label">Benötigt</div><input type="number" min="1" className="input" value={value.headcount} onChange={e=>onChange({...value,headcount:e.target.value})} /></label>
       <label><div className="field-label">Besetzt</div><input type="number" min="0" className="input" value={value.filled} onChange={e=>onChange({...value,filled:e.target.value})} /></label>
       <label><div className="field-label">Start</div><input type="date" className="input" value={value.start_date||""} onChange={e=>onChange({...value,start_date:e.target.value})} /></label>
@@ -1428,7 +1441,7 @@ function StaffFields({value, onChange}){
 }
 
 function StaffView({positions, callHotel, callId, refresh}){
-  const empty = {title:"",department:DEPARTMENTS[0],headcount:1,filled:0,start_date:""};
+  const empty = {title:"",department:(editableDepts()[0]||DEPARTMENTS[0]),headcount:1,filled:0,start_date:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
@@ -2061,6 +2074,442 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
   );
 }
 
+/* -------------------------------- Dienstplan --------------------------------
+   Wochenplan je Abteilung. Planen dürfen Admins und die Abteilungsleitung;
+   Mitarbeitende sehen den Plan ihrer Abteilung und stellen Anträge. */
+const SHIFT_KINDS = ["Früh","Spät","Nacht","Zwischen","Frei","Urlaub","Krank"];
+const WORK_KINDS = ["Früh","Spät","Nacht","Zwischen"];
+const SHIFT_TIMES = {"Früh":["06:00","14:30"],"Spät":["14:00","22:30"],"Nacht":["22:00","06:30"],"Zwischen":["10:00","18:30"]};
+const SHIFT_STYLE = {
+  "Früh":{bg:"#F1E8D8",fg:"#7A5B2B"}, "Spät":{bg:"#F5E1D0",fg:"#8A4B1E"}, "Nacht":{bg:"#DCE1EA",fg:"#1C2430"},
+  "Zwischen":{bg:"#E4EFE8",fg:"#3F7A5C"}, "Frei":{bg:"#F6F4EF",fg:"#6B7280"}, "Urlaub":{bg:"#E6EEF7",fg:"#2F5D8A"}, "Krank":{bg:"#F5E1DE",fg:"#A23B32"},
+};
+const REQUEST_STATUS_STYLE = {"Offen":{color:WARN,bg:WARN_SOFT}, "Genehmigt":{color:GOOD,bg:GOOD_SOFT}, "Abgelehnt":{color:BAD,bg:BAD_SOFT}, "Zurückgezogen":{color:INK_MUTED,bg:PAPER}};
+
+function addDaysIso(iso, n){ const d = new Date(iso+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function mondayOfIso(iso){ const d = new Date(iso+"T00:00:00Z"); return addDaysIso(iso, -((d.getUTCDay()+6)%7)); }
+function todayIso(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function isoWeekNumber(iso){
+  const d = new Date(iso+"T00:00:00Z"); const day = (d.getUTCDay()+6)%7;
+  d.setUTCDate(d.getUTCDate()-day+3);
+  const firstThu = new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  return 1 + Math.round(((d - firstThu)/86400000 - 3 + ((firstThu.getUTCDay()+6)%7))/7);
+}
+function fmtDay(iso, opts){ return new Date(iso+"T12:00:00").toLocaleDateString(UI_LOCALE, opts || {weekday:"short",day:"2-digit",month:"2-digit"}); }
+const shortName = (email) => (email||"").split("@")[0];
+const shiftTimes = (s) => s.start_time ? String(s.start_time).slice(0,5)+"–"+String(s.end_time||"").slice(0,5) : "";
+
+function ShiftChip({s, onClick}){
+  const st = SHIFT_STYLE[s.kind] || SHIFT_STYLE["Frei"];
+  return (
+    <div onClick={onClick} title={s.note || ""}
+      style={{background:st.bg,color:st.fg,borderRadius:4,padding:"3px 6px",fontSize:11.5,lineHeight:1.3,marginBottom:3,cursor:onClick?"pointer":"default"}}>
+      <b>{s.kind}</b>{s.start_time && <div data-no-i18n="" dir="ltr" style={{unicodeBidi:"isolate",textAlign:"start"}}>{shiftTimes(s)}</div>}
+    </div>
+  );
+}
+
+function RosterView({hotel, api, me, members, role, myDepts, orgId}){
+  const isAdmin = role==="admin";
+  const visibleDepts = (role==="admin" || role==="viewer") ? DEPARTMENTS
+    : DEPARTMENTS.filter(d=>myDepts.includes(d)).concat(myDepts.filter(d=>!DEPARTMENTS.includes(d)));
+  const [dept,setDeptState] = useState(()=>{
+    try { const saved = window.localStorage.getItem("hpoos_roster_dept"); if(saved && visibleDepts.includes(saved)) return saved; } catch(e){}
+    return visibleDepts[0] || "";
+  });
+  const setDept = (d) => { setDeptState(d); setEditor(null); try { window.localStorage.setItem("hpoos_roster_dept", d); } catch(e){} };
+  const [week,setWeek] = useState(()=>mondayOfIso(todayIso()));
+  const [shifts,setShifts] = useState([]);
+  const [mins,setMins] = useState([]);
+  const [requests,setRequests] = useState([]);
+  const [myShifts,setMyShifts] = useState([]);
+  const [msg,setMsg] = useState(null);
+  const [editor,setEditor] = useState(null);
+  const [extraNames,setExtraNames] = useState([]);
+  const [newName,setNewName] = useState("");
+  const canManage = isAdmin || (role==="manager" && myDepts.includes(dept));
+  const days = Array.from({length:7}, (_,i)=>addDaysIso(week,i));
+  const base = "/api/hotels/"+hotel.id;
+  const today = todayIso();
+
+  const load = useCallback(async () => {
+    try {
+      const [s,m,r,my] = await Promise.all([
+        dept ? api(base+"/shifts?from="+week+"&to="+addDaysIso(week,6)+"&department="+encodeURIComponent(dept)) : Promise.resolve([]),
+        api(base+"/shift-minimums"),
+        api(base+"/shift-requests"),
+        api("/api/organizations/"+orgId+"/my-shifts"),
+      ]);
+      setShifts(s); setMins(m); setRequests(r); setMyShifts(my);
+    } catch(e){ setMsg({ok:false, text:e.message}); }
+  }, [api, base, dept, week, orgId]);
+  useEffect(()=>{ load(); }, [load]);
+
+  const run = async (fn, okText) => {
+    setMsg(null);
+    try { const out = await fn(); if(okText) setMsg({ok:true, text:okText}); await load(); return out; }
+    catch(e){ setMsg({ok:false, text:e.message}); }
+  };
+
+  // Zeilen: Teammitglieder der Abteilung, Personen mit Schichten in dieser Woche, neu eingetragene Namen
+  const rows = []; const seen = new Set();
+  const addRow = (key, row) => { if(!seen.has(key)){ seen.add(key); rows.push({key, ...row}); } };
+  members.filter(m=>m.role!=="viewer" && (m.departments||[]).includes(dept))
+    .forEach(m=>addRow("u:"+m.user_id, {user_id:m.user_id, name:shortName(m.email), title:m.email}));
+  shifts.forEach(s=>{
+    if(s.user_id){ const m = members.find(x=>x.user_id===s.user_id); addRow("u:"+s.user_id, {user_id:s.user_id, name:m ? shortName(m.email) : "Teammitglied", title:m ? m.email : ""}); }
+    else addRow("n:"+(s.employee_name||"").toLowerCase(), {user_id:null, name:s.employee_name, title:""});
+  });
+  extraNames.forEach(n=>addRow("n:"+n.toLowerCase(), {user_id:null, name:n, title:""}));
+  const shiftsFor = (row, date) => shifts.filter(s=>s.shift_date===date &&
+    (row.user_id ? s.user_id===row.user_id : (!s.user_id && (s.employee_name||"").toLowerCase()===row.name.toLowerCase())));
+
+  // Besetzung und Unterbesetzung
+  const minFor = (kind) => { const m = mins.find(x=>x.department===dept && x.kind===kind); return m ? m.min_count : 0; };
+  const count = (date, kind) => shifts.filter(s=>s.shift_date===date && s.kind===kind).length;
+  const gaps = [];
+  days.forEach(d=>WORK_KINDS.forEach(k=>{ const need = minFor(k); const have = count(d,k); if(need>0 && have<need) gaps.push({d,k,have,need}); }));
+
+  // Bearbeiten
+  const openNew = (row, date) => setEditor({row, date, id:null, kind:"Früh", start_time:SHIFT_TIMES["Früh"][0], end_time:SHIFT_TIMES["Früh"][1], note:""});
+  const openEdit = (row, s) => setEditor({row, date:s.shift_date, id:s.id, kind:s.kind,
+    start_time:(s.start_time||"").slice(0,5), end_time:(s.end_time||"").slice(0,5), note:s.note||""});
+  const setKind = (k) => setEditor(e=>({...e, kind:k, start_time:SHIFT_TIMES[k] ? SHIFT_TIMES[k][0] : "", end_time:SHIFT_TIMES[k] ? SHIFT_TIMES[k][1] : ""}));
+  const saveShift = () => run(async () => {
+    const work = WORK_KINDS.includes(editor.kind);
+    const body = {department:dept, shift_date:editor.date, kind:editor.kind,
+      start_time:work ? editor.start_time : null, end_time:work ? editor.end_time : null, note:editor.note,
+      user_id:editor.row.user_id || null, employee_name:editor.row.user_id ? null : editor.row.name};
+    if(editor.id) await api("/api/shifts/"+editor.id, "PATCH", body); else await api(base+"/shifts", "POST", body);
+    setEditor(null);
+  });
+  const deleteShift = () => run(async () => { await api("/api/shifts/"+editor.id, "DELETE"); setEditor(null); });
+  const copyPrev = () => {
+    if(!window.confirm(translateString("Arbeitsschichten der Vorwoche in diese Woche übernehmen? Bereits belegte Tage bleiben unverändert."))) return;
+    run(async () => {
+      const r = await api(base+"/shifts/copy-week", "POST", {department:dept, from:addDaysIso(week,-7), to:week});
+      setMsg({ok:true, text:translateString("Übernommene Schichten:")+" "+r.created});
+    });
+  };
+  const saveMin = (kind, value) => {
+    const v = Math.max(0, Math.min(200, parseInt(value,10) || 0));
+    if(v===minFor(kind)) return;
+    run(()=>api(base+"/shift-minimums", "PUT", {department:dept, kind, min_count:v}));
+  };
+  const addName = () => {
+    const n = newName.trim(); if(!n) return;
+    setExtraNames([...extraNames, n]); setNewName("");
+  };
+
+  const exportXlsx = async () => {
+    try {
+      const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+      const cell = (list) => list.map(s=>translateString(s.kind)+(s.start_time ? " "+shiftTimes(s) : "")).join(", ");
+      const data = [
+        [translateString("Name"), ...days.map(d=>fmtDay(d))],
+        ...rows.map(r=>[r.title || r.name, ...days.map(d=>cell(shiftsFor(r,d)))]),
+        [],
+        ...WORK_KINDS.map(k=>[translateString(k), ...days.map(d=>count(d,k) + (minFor(k) ? " / "+minFor(k) : ""))]),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      ws["!cols"] = [{wch:26}, ...days.map(()=>({wch:18}))];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, translateString("Dienstplan").slice(0,31));
+      const safe = (hotel.name+" "+dept).replace(/[\\/:*?"<>|]+/g,"").trim();
+      XLSX.writeFile(wb, translateString("Dienstplan")+" "+safe+" "+week+".xlsx");
+    } catch(e){ setMsg({ok:false, text:translateString("Export fehlgeschlagen:")+" "+e.message}); }
+  };
+
+  // Anträge
+  const requestDept = myDepts.includes(dept) ? dept : (myDepts[0] || dept);
+  const emptyReq = {kind:"Urlaub", date_from:"", date_to:"", shift_id:"", swap_with:"", note:""};
+  const [req,setReq] = useState(emptyReq);
+  const myUpcoming = myShifts.filter(s=>s.hotel_id===hotel.id && WORK_KINDS.includes(s.kind));
+  const swapShift = myUpcoming.find(s=>s.id===req.shift_id);
+  const swapDept = swapShift ? swapShift.department : requestDept;
+  const colleagues = members.filter(m=>m.role!=="viewer" && (!me || m.user_id!==me.id) && ((m.departments||[]).includes(swapDept) || m.role==="admin"));
+  const submitReq = () => run(async () => {
+    await api(base+"/shift-requests", "POST", {...req, department:requestDept, date_to:req.date_to || req.date_from});
+    setReq(emptyReq);
+  }, "Antrag gestellt. Die Abteilungsleitung entscheidet darüber.");
+  const decide = (r, approve) => {
+    let note = "";
+    if(!approve){ note = window.prompt(translateString("Begründung für die Ablehnung (optional)")); if(note===null) return; }
+    run(()=>api("/api/shift-requests/"+r.id+"/decide", "POST", {approve, note}), approve ? "Antrag genehmigt." : "Antrag abgelehnt.");
+  };
+  const withdraw = (r) => run(()=>api("/api/shift-requests/"+r.id+"/withdraw", "POST", {}), "Antrag zurückgezogen.");
+  const nameOf = (uid) => { if(me && uid===me.id) return null; const m = members.find(x=>x.user_id===uid); return m ? shortName(m.email) : "Teammitglied"; };
+  const toDecide = requests.filter(r=>r.status==="Offen" && (!me || r.user_id!==me.id) && canManageDept(r.department));
+  const mine = me ? requests.filter(r=>r.user_id===me.id).slice(0,12) : [];
+  const forMe = me ? requests.filter(r=>r.swap_with===me.id && r.status==="Offen") : [];
+
+  const RequestLine = ({r, actions}) => {
+    const st = REQUEST_STATUS_STYLE[r.status] || REQUEST_STATUS_STYLE["Offen"];
+    const sh = r.kind==="Tausch" && shifts.concat(myShifts).find(s=>s.id===r.shift_id);
+    return (
+      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",padding:"9px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
+        <div style={{flex:"1 1 260px",minWidth:0}}>
+          {nameOf(r.user_id) && <b data-no-i18n="" style={{marginRight:6}}>{nameOf(r.user_id)}</b>}
+          <span>{r.kind==="Tausch" ? "Schichttausch" : r.kind}</span>
+          <span style={{color:INK_MUTED}}> · </span>
+          <span data-no-i18n="">{fmtDay(r.date_from)}{r.date_to!==r.date_from ? " – "+fmtDay(r.date_to) : ""}</span>
+          {sh && <span style={{color:INK_MUTED}}> · <span>{sh.kind}</span> <bdi data-no-i18n="" dir="ltr">{shiftTimes(sh)}</bdi></span>}
+          {r.kind==="Tausch" && r.swap_with && <span style={{color:INK_MUTED}}> → <span data-no-i18n="">{nameOf(r.swap_with) || translateString("Du")}</span></span>}
+          <span style={{color:INK_MUTED}}> · <span>{r.department}</span></span>
+          {r.note && <div style={{fontSize:12.5,color:INK_MUTED}} data-no-i18n="">„{r.note}“</div>}
+          {r.decision_note && <div style={{fontSize:12.5,color:INK_MUTED}}><span>Antwort:</span> <span data-no-i18n="">{r.decision_note}</span></div>}
+        </div>
+        <Pill color={st.color} bg={st.bg}>{r.status}</Pill>
+        {actions}
+      </div>
+    );
+  };
+
+  const navBtn = {background:"none",border:`1px solid ${BORDER}`,borderRadius:4,padding:"6px 10px",fontSize:13,cursor:"pointer"};
+  const rtl = document.documentElement.dir==="rtl";
+  const upcomingMine = myShifts.slice(0,14);
+
+  return (
+    <div>
+      {msg && <div className="no-print" style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:12}}>{msg.text}</div>}
+
+      {role!=="viewer" && (
+        <Card style={{marginBottom:18}}>
+          <div style={{fontWeight:700,marginBottom:8}}>Meine Schichten</div>
+          {upcomingMine.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>In den nächsten acht Wochen sind für dich keine Schichten eingetragen.</div> : (
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))",gap:8}}>
+              {upcomingMine.map(s=>(
+                <div key={s.id} style={{border:`1px solid ${s.shift_date===today?BRASS:BORDER}`,borderRadius:6,padding:"8px 10px"}}>
+                  <div style={{fontSize:12,color:INK_MUTED}} data-no-i18n="">{fmtDay(s.shift_date)}</div>
+                  <ShiftChip s={s} />
+                  {s.hotel_id!==hotel.id && <div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{s.hotel_name}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {visibleDepts.length===0 ? (
+        <Card style={{marginBottom:18}}><div style={{color:INK_MUTED,fontSize:13.5}}>Dir ist noch keine Abteilung zugeordnet. Ein Admin kann das unter „Team“ ändern – dann siehst du hier den Dienstplan deiner Abteilung.</div></Card>
+      ) : (
+      <Card style={{marginBottom:18,padding:0}}>
+        <div className="no-print" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"14px 16px"}}>
+          <select className="input" style={{width:"auto",minWidth:180}} value={dept} onChange={e=>setDept(e.target.value)}>
+            {visibleDepts.map(d=><option key={d} value={d}>{d}</option>)}
+          </select>
+          <button style={navBtn} onClick={()=>{ setWeek(addDaysIso(week,-7)); setEditor(null); }} aria-label="Vorige Woche">{rtl ? "›" : "‹"}</button>
+          <div style={{fontSize:13.5,fontWeight:600,minWidth:150,textAlign:"center"}}>
+            <span>KW</span> <span data-no-i18n="">{isoWeekNumber(week)} · {fmtDay(week,{day:"2-digit",month:"2-digit"})} – {fmtDay(days[6],{day:"2-digit",month:"2-digit",year:"numeric"})}</span>
+          </div>
+          <button style={navBtn} onClick={()=>{ setWeek(addDaysIso(week,7)); setEditor(null); }} aria-label="Nächste Woche">{rtl ? "‹" : "›"}</button>
+          <button style={navBtn} onClick={()=>{ setWeek(mondayOfIso(today)); setEditor(null); }}>Heute</button>
+          <span style={{flex:1}}></span>
+          {canManage && <button style={navBtn} onClick={copyPrev}>Vorwoche übernehmen</button>}
+          <button style={navBtn} onClick={()=>window.print()}>Drucken</button>
+          <button style={navBtn} onClick={exportXlsx}>Excel</button>
+        </div>
+        <div style={{padding:"0 16px 6px",fontFamily:"Fraunces, serif",fontSize:16,fontWeight:600}}>
+          <span>Dienstplan</span> · <span>{dept}</span> · <span data-no-i18n="">{hotel.name}</span>
+        </div>
+
+        {gaps.length>0 && (
+          <div style={{margin:"6px 16px 10px",border:`1px solid ${BAD}`,background:BAD_SOFT,borderRadius:6,padding:"8px 12px",fontSize:13}}>
+            <b>Unterbesetzt:</b>
+            {days.filter(d=>gaps.some(g=>g.d===d)).map(d=>(
+              <div key={d} style={{marginTop:2}}>
+                <bdi data-no-i18n="">{fmtDay(d)}</bdi>{": "}
+                {gaps.filter(g=>g.d===d).map((g,i)=>(
+                  <React.Fragment key={g.k}>{i>0 && ", "}<span>{g.k}</span> <bdi data-no-i18n="" dir="ltr">{g.have}/{g.need}</bdi></React.Fragment>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",minWidth:820,borderCollapse:"collapse",fontSize:13}}>
+            <thead>
+              <tr>
+                <th style={{textAlign:"start",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`}}>Name</th>
+                {days.map(d=>(
+                  <th key={d} style={{textAlign:"start",padding:"8px 6px",fontSize:12,fontWeight:600,borderTop:`1px solid ${BORDER}`,
+                    color:d===today?BRASS:INK_MUTED,background:d===today?BRASS_SOFT:"transparent"}} data-no-i18n="">{fmtDay(d)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length===0 && (
+                <tr><td colSpan={8} style={{padding:"14px 12px",color:INK_MUTED,borderTop:`1px solid ${BORDER}`}}>
+                  Noch niemand in dieser Abteilung. Ordne unter „Team“ Mitarbeitende zu oder trage unten einen Namen ein.
+                </td></tr>
+              )}
+              {rows.map(r=>(
+                <tr key={r.key} style={{borderTop:`1px solid ${BORDER}`}}>
+                  <td style={{padding:"8px 12px",verticalAlign:"top",whiteSpace:"nowrap"}} title={r.title}>
+                    <span data-no-i18n="" style={{fontWeight:me && r.user_id===me.id ? 700 : 500}}>{r.name}</span>
+                    {!r.user_id && <div style={{fontSize:11,color:INK_MUTED}}>ohne Login</div>}
+                  </td>
+                  {days.map(d=>{
+                    const list = shiftsFor(r,d);
+                    const active = editor && editor.row.key===r.key && editor.date===d;
+                    return (
+                      <td key={d} style={{padding:"6px 4px",verticalAlign:"top",minWidth:96,background:active?BRASS_SOFT:(d===today?"#FBF8F2":"transparent")}}>
+                        {list.map(s=><ShiftChip key={s.id} s={s} onClick={canManage ? ()=>openEdit(r,s) : null} />)}
+                        {canManage && list.length===0 && (
+                          <button className="no-print" onClick={()=>openNew(r,d)} title="Schicht eintragen"
+                            style={{width:"100%",border:`1px dashed ${BORDER}`,background:"none",color:INK_MUTED,borderRadius:4,padding:"4px 0",fontSize:13,cursor:"pointer"}}>+</button>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              <tr style={{borderTop:`2px solid ${BORDER}`,background:PAPER}}>
+                <td style={{padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,verticalAlign:"top"}}>Besetzung</td>
+                {days.map(d=>(
+                  <td key={d} style={{padding:"6px 6px",fontSize:11.5,verticalAlign:"top"}}>
+                    {WORK_KINDS.map(k=>{
+                      const have = count(d,k), need = minFor(k);
+                      if(!have && !need) return null;
+                      return <div key={k} style={{color:need && have<need ? BAD : INK_MUTED,fontWeight:need && have<need ? 700 : 400}}>
+                        <span>{k}</span> <span data-no-i18n="">{have}{need ? "/"+need : ""}</span>
+                      </div>;
+                    })}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {canManage && (
+          <div className="no-print" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"12px 16px",borderTop:`1px solid ${BORDER}`}}>
+            <input className="input" style={{maxWidth:260}} placeholder="Name ohne Login (z. B. Aushilfe)" value={newName}
+              onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter" && addName()} />
+            <button style={navBtn} onClick={addName}>Zeile hinzufügen</button>
+          </div>
+        )}
+      </Card>
+      )}
+
+      {editor && canManage && (
+        <Card style={{marginBottom:18,borderColor:BRASS}}>
+          <div style={{fontWeight:700,marginBottom:10}}>
+            <span>{editor.id ? "Schicht bearbeiten" : "Schicht eintragen"}</span>{" · "}
+            <span data-no-i18n="">{editor.row.name} · {fmtDay(editor.date,{weekday:"long",day:"2-digit",month:"long"})}</span>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+            {SHIFT_KINDS.map(k=>{
+              const st = SHIFT_STYLE[k]; const on = editor.kind===k;
+              return <button key={k} onClick={()=>setKind(k)}
+                style={{border:`1px solid ${on?st.fg:BORDER}`,background:on?st.bg:"#fff",color:on?st.fg:INK,fontWeight:on?700:400,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{k}</button>;
+            })}
+          </div>
+          <div className="stack" style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+            {WORK_KINDS.includes(editor.kind) && (
+              <React.Fragment>
+                <label><div className="field-label">Beginn</div><input type="time" className="input" style={{width:130}} value={editor.start_time} onChange={e=>setEditor({...editor,start_time:e.target.value})} /></label>
+                <label><div className="field-label">Ende</div><input type="time" className="input" style={{width:130}} value={editor.end_time} onChange={e=>setEditor({...editor,end_time:e.target.value})} /></label>
+              </React.Fragment>
+            )}
+            <label style={{flex:"1 1 200px"}}><div className="field-label">Notiz</div><input className="input" value={editor.note} onChange={e=>setEditor({...editor,note:e.target.value})} /></label>
+            <button className="btn-primary" onClick={saveShift}>Speichern</button>
+            {editor.id && <button style={{...linkBtn,color:BAD}} onClick={deleteShift}>Löschen</button>}
+            <button style={linkBtn} onClick={()=>setEditor(null)}>Abbrechen</button>
+          </div>
+        </Card>
+      )}
+
+      {canManage && visibleDepts.length>0 && (
+        <Card className="no-print" style={{marginBottom:18}}>
+          <div style={{fontWeight:700,marginBottom:6}}>Mindestbesetzung</div>
+          <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>Wie viele Personen braucht diese Abteilung je Schicht? Fehlen welche, warnt der Plan.</div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+            {WORK_KINDS.map(k=>(
+              <label key={k+dept}><div className="field-label">{k}</div>
+                <input type="number" min="0" max="200" className="input" style={{width:90}} defaultValue={minFor(k)}
+                  key={k+dept+minFor(k)} onBlur={e=>saveMin(k, e.target.value)} />
+              </label>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {toDecide.length>0 && (
+        <Card className="no-print" style={{marginBottom:18,borderColor:WARN}}>
+          <div style={{fontWeight:700,marginBottom:4}}>Anträge zur Entscheidung</div>
+          {toDecide.map(r=>(
+            <RequestLine key={r.id} r={r} actions={
+              <span style={{display:"flex",gap:6}}>
+                <button className="btn-primary" style={{padding:"6px 12px",fontSize:12.5}} onClick={()=>decide(r,true)}>Genehmigen</button>
+                <button style={{...navBtn,color:BAD}} onClick={()=>decide(r,false)}>Ablehnen</button>
+              </span>
+            } />
+          ))}
+        </Card>
+      )}
+
+      {forMe.length>0 && (
+        <Card className="no-print" style={{marginBottom:18}}>
+          <div style={{fontWeight:700,marginBottom:4}}>Schichten, die du übernehmen sollst</div>
+          <div style={{fontSize:12.5,color:INK_MUTED}}>Die Abteilungsleitung entscheidet; sprich dich bei Fragen direkt ab.</div>
+          {forMe.map(r=><RequestLine key={r.id} r={r} />)}
+        </Card>
+      )}
+
+      {role!=="viewer" && myDepts.length + (isAdmin ? 1 : 0) > 0 && (
+        <Card className="no-print" style={{marginBottom:18}}>
+          <div style={{fontWeight:700,marginBottom:10}}>Antrag stellen</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+            {[["Urlaub","Urlaub"],["Frei-Wunsch","Frei-Wunsch"],["Tausch","Schichttausch"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setReq({...emptyReq, kind:k})}
+                style={{border:`1px solid ${req.kind===k?INK:BORDER}`,background:req.kind===k?INK:"#fff",color:req.kind===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{l}</button>
+            ))}
+          </div>
+          <div className="stack" style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+            {req.kind!=="Tausch" ? (
+              <React.Fragment>
+                <label><div className="field-label">Von</div><input type="date" className="input" style={{width:160}} value={req.date_from} onChange={e=>setReq({...req,date_from:e.target.value})} /></label>
+                <label><div className="field-label">Bis</div><input type="date" className="input" style={{width:160}} value={req.date_to} min={req.date_from} onChange={e=>setReq({...req,date_to:e.target.value})} /></label>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <label style={{flex:"1 1 200px"}}><div className="field-label">Meine Schicht</div>
+                  <select className="input" value={req.shift_id} onChange={e=>setReq({...req,shift_id:e.target.value,swap_with:""})}>
+                    <option value="">Bitte wählen</option>
+                    {myUpcoming.map(s=><option key={s.id} value={s.id} data-no-i18n="">{fmtDay(s.shift_date)} · {translateString(s.kind)} {shiftTimes(s)}</option>)}
+                  </select>
+                </label>
+                <label style={{flex:"1 1 200px"}}><div className="field-label">Übernimmt</div>
+                  <select className="input" value={req.swap_with} onChange={e=>setReq({...req,swap_with:e.target.value})}>
+                    <option value="">Bitte wählen</option>
+                    {colleagues.map(m=><option key={m.user_id} value={m.user_id} data-no-i18n="">{m.email}</option>)}
+                  </select>
+                </label>
+              </React.Fragment>
+            )}
+            <label style={{flex:"1 1 200px"}}><div className="field-label">Notiz</div><input className="input" value={req.note} onChange={e=>setReq({...req,note:e.target.value})} /></label>
+            <button className="btn-primary" onClick={submitReq}
+              disabled={req.kind==="Tausch" ? !(req.shift_id && req.swap_with) : !req.date_from}>Antrag stellen</button>
+          </div>
+          {req.kind==="Tausch" && myUpcoming.length===0 && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:8}}>Du hast in diesem Hotel keine kommenden Schichten, die du tauschen könntest.</div>}
+        </Card>
+      )}
+
+      {mine.length>0 && (
+        <Card className="no-print">
+          <div style={{fontWeight:700,marginBottom:4}}>Meine Anträge</div>
+          {mine.map(r=>(
+            <RequestLine key={r.id} r={r} actions={r.status==="Offen" && <button style={linkBtn} onClick={()=>withdraw(r)}>Zurückziehen</button>} />
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+
 /* ------------------------------ Sprachauswahl ------------------------------ */
 // Wählt die eigene Oberflächensprache; "" = Standardsprache der Organisation folgen.
 function LanguageSwitcher({dark, withDefault}){
@@ -2145,12 +2594,27 @@ function AccountView({config, token, me, api, onDeleted}){
   );
 }
 
-const ROLE_LABELS = {admin:"Admin", member:"Mitglied", viewer:"Eigentümer (nur lesen)"};
+const ROLE_LABELS = {admin:"Admin", manager:"Abteilungsleitung", member:"Mitarbeitende", viewer:"Eigentümer (nur lesen)"};
+const ROLES_WITH_DEPTS = ["manager","member"];
+
+// Abteilungen als Auswahl-Chips
+function DeptChips({value, onChange, disabled}){
+  const list = value || [];
+  return (
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+      {DEPARTMENTS.map(d=>{
+        const on = list.includes(d);
+        return <button key={d} type="button" disabled={disabled} onClick={()=>onChange(on ? list.filter(x=>x!==d) : [...list, d])}
+          style={{border:`1px solid ${on?INK:BORDER}`,background:on?INK:"#fff",color:on?"#fff":INK,borderRadius:999,padding:"4px 10px",fontSize:12,cursor:disabled?"default":"pointer"}}>{d}</button>;
+      })}
+    </div>
+  );
+}
 
 function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLanguage, onOrgGone, onLanguageChanged}){
   const [members,setMembers] = useState([]);
   const [invites,setInvites] = useState([]);
-  const [email,setEmail] = useState(""); const [role,setRole] = useState("member");
+  const [email,setEmail] = useState(""); const [role,setRole] = useState("member"); const [inviteDepts,setInviteDepts] = useState([]);
   const [error,setError] = useState(""); const [copiedId,setCopiedId] = useState(null); const [loading,setLoading] = useState(false);
   const [isAdmin,setIsAdmin] = useState(false);
 
@@ -2172,7 +2636,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
     if(!email) return;
     setError(""); setInviteMsg(null); setLoading(true);
     try {
-      const inv = await api("/api/invites","POST",{organization_id:orgId, email, role});
+      const inv = await api("/api/invites","POST",{organization_id:orgId, email, role, departments: ROLES_WITH_DEPTS.includes(role) ? inviteDepts : []});
       setInviteMsg(inv.email_sent
         ? {ok:true, text:"Einladung per E-Mail an "+inv.email+" verschickt."}
         : {ok:false, text:"Einladung angelegt, aber keine E-Mail verschickt (E-Mail-Versand nicht eingerichtet). Bitte unten den Link kopieren und weitergeben."});
@@ -2190,6 +2654,12 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
     setTeamMsg(null);
     try { await api("/api/organizations/"+orgId+"/members/"+m.user_id, "PATCH", {role:newRole}); await load(); setTeamMsg({ok:true, text:m.email+" ist jetzt "+ROLE_LABELS[newRole]+"."}); }
     catch(e){ setTeamMsg({ok:false, text:e.message}); }
+  };
+  const changeDepts = async (m, list) => {
+    setTeamMsg(null);
+    setMembers(ms=>ms.map(x=>x.user_id===m.user_id ? {...x, departments:list} : x));
+    try { await api("/api/organizations/"+orgId+"/members/"+m.user_id, "PATCH", {departments:list}); }
+    catch(e){ setTeamMsg({ok:false, text:e.message}); await load(); }
   };
   const removeMember = async (m) => {
     if(!window.confirm(m.email+" aus der Organisation entfernen? Die Person verliert sofort den Zugriff; ihre Aufgaben bleiben erhalten, aber ohne Zuständigkeit.")) return;
@@ -2235,18 +2705,28 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
         <div style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</div>
         <div className="stack" style={{display:"flex",gap:10}}>
           <input className="input" placeholder="E-Mail-Adresse" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&invite()} />
-          <select className="input" style={{width:150}} value={role} onChange={e=>setRole(e.target.value)}>
-            <option value="member">Mitglied</option>
+          <select className="input" style={{width:190}} value={role} onChange={e=>setRole(e.target.value)}>
+            <option value="member">Mitarbeitende</option>
+            <option value="manager">Abteilungsleitung</option>
             <option value="viewer">Eigentümer (nur lesen)</option>
             <option value="admin">Admin</option>
           </select>
           <button className="btn-primary" onClick={invite} disabled={loading}>{loading?"…":"Einladen"}</button>
         </div>
+        {ROLES_WITH_DEPTS.includes(role) && (
+          <div style={{marginTop:12}}>
+            <div className="field-label">Abteilungen</div>
+            <DeptChips value={inviteDepts} onChange={setInviteDepts} />
+          </div>
+        )}
         {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
         {inviteMsg && <div style={{color:inviteMsg.ok?GOOD:WARN,fontSize:13,marginTop:10}}>{inviteMsg.text}</div>}
         <div style={{fontSize:12,color:INK_MUTED,marginTop:10}}>
           Die Person bekommt den Einladungslink per E-Mail. Sie muss sich damit registrieren oder anmelden,
           dann gehört sie automatisch zu deiner Organisation. Kommt keine Mail an, kannst du den Link unten auch kopieren und selbst weitergeben.
+          <br /><b>Admin</b> sieht und verwaltet alles, auch Abo und Team.
+          <br /><b>Abteilungsleitung</b> sieht und verwaltet ihre Abteilungen komplett – Aufgaben, Budget, Risiken, Personal und Dienstplan – und genehmigt Anträge.
+          <br /><b>Mitarbeitende</b> sehen nur die Aufgaben ihrer Abteilungen und ihre eigenen, ihren Dienstplan und können Urlaub, Frei-Wünsche und Schichttausch beantragen.
           <br /><b>Eigentümer (nur lesen)</b> sehen Dashboard, KI-Lagebericht und Statusbericht und können kommentieren, aber nichts ändern – ideal für Eigentümer und Investoren.
         </div>
       </Card>}
@@ -2258,7 +2738,13 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
             const isMe = me && m.user_id===me.id;
             return (
               <tr key={m.user_id} style={{borderTop:`1px solid ${BORDER}`}}>
-                <td style={{padding:12}}>{m.email}{isMe && <span style={{color:INK_MUTED}}> (du)</span>}</td>
+                <td style={{padding:12}}>
+                  <span data-no-i18n="">{m.email}</span>{isMe && <span style={{color:INK_MUTED}}> (du)</span>}
+                  {ROLES_WITH_DEPTS.includes(m.role) && (isAdmin
+                    ? <div style={{marginTop:8}}><DeptChips value={m.departments} onChange={list=>changeDepts(m, list)} /></div>
+                    : <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{(m.departments||[]).length ? (m.departments||[]).map((d,i)=><React.Fragment key={d}>{i>0 && ", "}<span>{d}</span></React.Fragment>) : <span>Keine Abteilung</span>}</div>)}
+                  {isAdmin && ROLES_WITH_DEPTS.includes(m.role) && (m.departments||[]).length===0 && <div style={{fontSize:12,color:WARN,marginTop:4}}>Ohne Abteilung sieht diese Person nur Aufgaben, die ihr direkt zugewiesen sind.</div>}
+                </td>
                 <td style={{padding:12,color:INK_MUTED}}>
                   {isAdmin && !isMe
                     ? <select className="input" style={{width:200,padding:"5px 8px",fontSize:13}} value={m.role} onChange={e=>changeRole(m, e.target.value)}>
@@ -2297,7 +2783,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
           <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
             {invites.filter(i=>i.status==="ausstehend").map(i=>(
               <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
-                <td style={{padding:12}}>{i.email}<div style={{fontSize:11.5,color:INK_MUTED}}>{i.role}</div>
+                <td style={{padding:12}}><span data-no-i18n="">{i.email}</span><div style={{fontSize:11.5,color:INK_MUTED}}>{ROLE_LABELS[i.role] || i.role}</div>
                   {shownLinkId===i.id && (
                     <input readOnly className="input" value={linkFor(i)} onFocus={e=>e.target.select()} autoFocus
                       style={{marginTop:8,fontSize:12}} />
@@ -2341,6 +2827,20 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
       </Card>
     </div>
   );
+}
+
+// Menü je Rolle
+function navFor(role, hasBilling){
+  const N = (key,label) => ({key,label});
+  if(role==="viewer") return [N("dashboard","Dashboard"), N("timeline","Zeitstrahl"), N("team","Team"), N("account","Konto")];
+  if(role==="member") return [N("dashboard","Dashboard"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben"), N("timeline","Zeitstrahl"),
+    N("roster","Dienstplan"), N("docs","Dokumente"), N("team","Team"), N("account","Konto")];
+  return [
+    N("dashboard","Dashboard"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben"), N("milestones","Meilensteine"), N("timeline","Zeitstrahl"),
+    N("risks","Risiken"), N("budget","Budget"), N("staff","Personal"), N("roster","Dienstplan"), N("docs","Dokumente"), N("team","Team"),
+    ...(role==="admin" && hasBilling ? [N("billing","Abo")] : []),
+    N("account","Konto"),
+  ];
 }
 
 function App(){
@@ -2475,9 +2975,14 @@ function App(){
   const currentOrg = orgs.find(o=>o.id===orgId);
   // Eigentümer-Zugang: alles sehen, nichts ändern (die Datenbank erzwingt das zusätzlich)
   const isViewer = !!(currentOrg && currentOrg.role==="viewer");
+  const role = currentOrg ? currentOrg.role : "member";
+  const myDepts = (currentOrg && currentOrg.departments) || [];
+  ACCESS = {role, depts: myDepts};
+  const isAdmin = role==="admin";
+  const isLead = role==="admin" || role==="manager";
   // Oberfläche in der Sprache der Organisation
   useEffect(()=>{ if(currentOrg) followOrgLanguage(currentOrg.language || "de"); },[currentOrg && currentOrg.language]);
-  useEffect(()=>{ if(isViewer && !["dashboard","timeline","team","account"].includes(tab)) setTab("dashboard"); },[isViewer, tab]);
+  useEffect(()=>{ if(currentOrg && !navFor(role, !!billing).some(n=>n.key===tab)) setTab("dashboard"); },[role, tab, !!billing, !!currentOrg]);
 
   // Wer bin ich, und wer ist im Team? (für Zuständigkeiten)
   useEffect(()=>{
@@ -2510,6 +3015,7 @@ function App(){
   useEffect(()=>{
     setAi(null);
     if(!hotel || !token) return;
+    if(ACCESS.role==="member") return;
     apiCall(config.backendUrl, token, "/api/hotels/"+hotel.id+"/ai-report").then(setAi).catch(()=>setAi(null));
   },[hotel, token, config]);
 
@@ -2539,32 +3045,14 @@ function App(){
       </Card>
     </div>
   );
-  if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api} orgs={orgs} onSwitchOrg={switchOrg} readOnly={isViewer}
+  if(!hotel) return <HotelSetupView hotels={hotels} orgId={orgId} api={api} orgs={orgs} onSwitchOrg={switchOrg} readOnly={!isAdmin}
     onCreated={(h)=>{ setHotels([...hotels,h]); setHotel(h); }} onSelect={setHotel} />;
   if(hotel) HOTEL_CURRENCY = hotel.currency || "EUR";
   if(showReport) return <ReportView hotel={hotel} orgName={currentOrg ? currentOrg.name : ""} me={me}
     readiness={readiness} tasks={tasks} milestones={milestones} risks={risks} budget={budget} staff={staff}
     aiReport={ai && ai.report} onClose={()=>setShowReport(false)} />;
 
-  const NAV = isViewer ? [
-    {key:"dashboard", label:"Dashboard"},
-    {key:"timeline", label:"Zeitstrahl"},
-    {key:"team", label:"Team"},
-    {key:"account", label:"Konto"},
-  ] : [
-    {key:"dashboard", label:"Dashboard"},
-    {key:"mine", label:"Meine Aufgaben"},
-    {key:"tasks", label:"Aufgaben"},
-    {key:"milestones", label:"Meilensteine"},
-    {key:"timeline", label:"Zeitstrahl"},
-    {key:"risks", label:"Risiken"},
-    {key:"budget", label:"Budget"},
-    {key:"staff", label:"Personal"},
-    {key:"docs", label:"Dokumente"},
-    {key:"team", label:"Team"},
-    ...(billing ? [{key:"billing", label:"Abo"}] : []),
-    {key:"account", label:"Konto"},
-  ];
+  const NAV = navFor(role, !!billing);
 
   HOTEL_CURRENCY = hotel.currency || "EUR";
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -2582,7 +3070,7 @@ function App(){
         <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:500,letterSpacing:0.3,padding:"0 8px 20px",borderBottom:"1px solid rgba(201,166,107,0.3)",marginBottom:16,display:"flex",alignItems:"center",gap:9}}><Logo size={22} />Ouverture</div>
         <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={switchOrg} dark />
         {NAV.map(n=>(
-          <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderLeft:"2px solid "+(tab===n.key?"#C9A66B":"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}</div>
+          <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderInlineStart:"2px solid "+(tab===n.key?"#C9A66B":"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}</div>
         ))}
         <div className="nav-item" onClick={()=>setHotel(null)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
         <div style={{marginTop:18}}><LanguageSwitcher dark withDefault /></div>
@@ -2600,30 +3088,34 @@ function App(){
               style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Excel-Export</button>
             <button onClick={()=>downloadIcs({hotel, tasks, milestones})} title="Offene Fristen und Meilensteine für Outlook, Google oder Apple Kalender"
               style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Kalender</button>
-            {hotel.is_demo && !isViewer && <button onClick={async ()=>{
+            {hotel.is_demo && isAdmin && <button onClick={async ()=>{
                 if(!window.confirm("Beispielhotel mit allen Beispieldaten löschen? Du kannst es später jederzeit neu anlegen.")) return;
                 try { await api("/api/hotels/"+hotel.id,"DELETE"); setHotels((hotels||[]).filter(x=>x.id!==hotel.id)); setHotel(null); }
                 catch(e){ setFatalError(e.message); }
               }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer",color:INK_MUTED}}>Beispiel entfernen</button>}
-            {!editingHotel && !isViewer && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
+            {!editingHotel && isAdmin && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
           </div>
         </div>
         <div className="page-content" style={{padding:"22px 28px"}}>
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
-          {tab!=="billing" && !isViewer && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
+          {tab!=="billing" && isAdmin && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
+          {role==="member" && tab==="dashboard" && <div className="no-print" style={{border:`1px solid ${BORDER}`,background:"#fff",borderRadius:8,padding:"9px 14px",marginBottom:16,fontSize:13.5}}>
+            <b>Deine Ansicht:</b> Du siehst die Aufgaben deiner Abteilungen und alle, die dir zugewiesen sind. Budget, Risiken und Personal sieht die Abteilungsleitung.
+          </div>}
           {isViewer && <div className="no-print" style={{border:`1px solid ${BRASS}`,background:BRASS_SOFT,borderRadius:8,padding:"9px 14px",marginBottom:16,fontSize:13.5}}>
             <b>Eigentümer-Ansicht:</b> Du siehst den aktuellen Stand, den KI-Lagebericht und den Statusbericht. Ändern können nur Mitglieder des Projektteams.
           </div>}
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
-          {tab==="dashboard" && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={isViewer} />}
-          {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} onOpen={isViewer ? ()=>{} : setTab} />}
+          {tab==="dashboard" && role!=="member" && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
+          {tab==="dashboard" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} lead={role!=="member"} onOpen={isLead ? setTab : ()=>{}} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
           {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} docCtx={docCtx} />}
           {tab==="timeline" && <TimelineView hotel={hotel} tasks={tasks} milestones={milestones} />}
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="roster" && <RosterView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} orgId={orgId} />}
           {tab==="docs" && <DocumentsPanel hotel={hotel} api={api} upload={docCtx.upload} me={docCtx.me} />}
           {tab==="staff" && <StaffView positions={staff} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="team" && <TeamView orgId={orgId} api={api} inviteLinkBase={window.location.origin + window.location.pathname}
@@ -2634,7 +3126,7 @@ function App(){
           {tab==="account" && <AccountView config={config} token={token} me={me} api={api}
             onDeleted={()=>{ Session.save(null); try { window.localStorage.removeItem(LS_ORG_KEY); } catch(e){} window.location.reload(); }} />}
           {tab==="billing" && <BillingView billing={billing} orgId={orgId} api={api} notice={billingNotice}
-            isAdmin={!!(currentOrg && currentOrg.role==="admin")} onReload={loadBilling} />}
+            isAdmin={isAdmin} onReload={loadBilling} />}
         </div>
       </div>
     </div>

@@ -6,6 +6,8 @@
 <title>Ouverture – Pre-Opening-Software für Hotel-Eröffnungen</title>
 <meta name="description" content="Ouverture plant Hotel-Eröffnungen: Pre-Opening-Vorlage, Bereitschafts-Score je Abteilung, KI-Lagebericht für Eigentümer. 14 Tage kostenlos testen." />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%231C2430%22/><path d=%22M9 26V15a7 7 0 0 1 14 0v11M13 26v-9a3 3 0 0 1 6 0v9M6 26h20%22 fill=%22none%22 stroke=%22%23C9A66B%22 stroke-width=%221.8%22/></svg>" />
+<script src="i18n.js"></script>
+<script src="landing-i18n.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
@@ -37,6 +39,8 @@
   header nav { display: flex; gap: 20px; }
   header .btn { padding: 8px 14px; font-size: 13px; white-space: nowrap; }
   header .btn-primary { background: var(--brass-light); color: var(--ink); }
+  header .lang { background: transparent; color: rgba(246,244,239,.8); border: 1px solid rgba(246,244,239,.25); border-radius: 4px; padding: 7px 6px; font-size: 13px; cursor: pointer; }
+  header .lang option { color: #1C2430; }
   header .btn-ghost { background: transparent; border-color: rgba(246,244,239,.25); color: #F6F4EF; }
 
   .stage { background: var(--ink); color: #F6F4EF; position: relative; overflow: hidden; }
@@ -115,6 +119,10 @@
     header nav { display: none; }
     header .wrap { gap: 10px; }
     header .btn { padding: 7px 10px; font-size: 13px; }
+  }
+  @media (max-width: 480px) {
+    header .btn-ghost { display: none; }
+    header .brand { font-size: 18px; }
     section { padding: 60px 0; }
   }
 </style>
@@ -129,6 +137,10 @@
       <a href="#preise">Preise</a>
       <a href="#faq">FAQ</a>
     </nav>
+    <select class="lang" aria-label="Sprache" data-no-i18n onchange="chooseUiLanguage(this.value)">
+      <option value="de">DE</option><option value="en">EN</option><option value="fr">FR</option><option value="it">IT</option><option value="es">ES</option>
+    </select>
+    <script>document.currentScript.previousElementSibling.value = UI_LANG;</script>
     <a class="btn btn-ghost" href="index.html">Anmelden</a>
     <a class="btn btn-primary" href="index.html">Kostenlos testen</a>
   </div>

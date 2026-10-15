@@ -77,19 +77,21 @@ const INK="#1C2430", INK_SOFT="#2A3444", PAPER="#F6F4EF", CARD="#FFFFFF", BORDER
 const BRASS="#A9834B", BRASS_SOFT="#F1E8D8", GOOD="#3F7A5C", GOOD_SOFT="#E4EFE8";
 const WARN="#B9822E", WARN_SOFT="#F5E9D5", BAD="#A23B32", BAD_SOFT="#F5E1DE", INK_MUTED="#6B7280";
 
-const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Technik","IT & Systeme","Personal","Einkauf","Sicherheit"];
+const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Technik","IT & Systeme","Personal","Einkauf","Sicherheit","Revenue Management","Finanzen & Controlling"];
 // Eigene Rolle und Abteilungen in der gewählten Organisation (setzt App bei jedem Anzeigen).
 // Die Datenbank erzwingt die Rechte; die Oberfläche blendet nur aus, was nicht geht.
 let ACCESS = {role:"admin", depts:[]};
 const isLeadRole = () => ACCESS.role==="admin" || ACCESS.role==="manager";
 // Abteilungen, in denen man Einträge anlegen darf
+// Abteilungsleitung mit zugeordneten Abteilungen: nur diese; ohne Zuordnung (z. B. Direktion): alle
+const isScopedManager = () => ACCESS.role==="manager" && (ACCESS.depts||[]).length>0;
 function editableDepts(){
-  if(ACCESS.role==="admin" || ACCESS.role==="manager") return DEPARTMENTS;
+  if(ACCESS.role==="admin" || (ACCESS.role==="manager" && !isScopedManager())) return DEPARTMENTS;
   const own = ACCESS.depts || [];
   return DEPARTMENTS.filter(d=>own.includes(d)).concat(own.filter(d=>!DEPARTMENTS.includes(d)));
 }
 function deptOptions(current){ const list = editableDepts(); return current && !list.includes(current) ? [current, ...list] : list; }
-function canManageDept(d){ return ACCESS.role==="admin" || ACCESS.role==="manager"; }
+function canManageDept(d){ return ACCESS.role==="admin" || (ACCESS.role==="manager" && (!isScopedManager() || (ACCESS.depts||[]).includes(d))); }
 const PRIORITIES = ["Kritisch","Hoch","Mittel","Niedrig"];
 const TASK_STATUSES = ["Nicht begonnen","In Arbeit","Blockiert","In Prüfung","Abgeschlossen"];
 const MILESTONE_STATUSES = ["Geplant","In Arbeit","Gefährdet","Abgeschlossen"];
@@ -2348,10 +2350,41 @@ function drawRosterImage({hotelName, weekLabel, days, groups}){
   return c;
 }
 
+// Tageseinteilung als Bild: Abteilung, Person, Schicht, Aufgabe
+function drawDutyImage({hotelName, dayLabel, groups}){
+  const scale = 2, pad = 24, width = 860, rowH = 44, deptH = 32, headH = 86;
+  const rows = groups.reduce((n,g)=>n+g.rows.length, 0);
+  const height = headH + groups.length*deptH + rows*rowH + pad + 26;
+  const c = document.createElement("canvas"); c.width = width*scale; c.height = height*scale;
+  const x = c.getContext("2d"); x.scale(scale, scale);
+  const rtl = document.documentElement.dir === "rtl";
+  const font = (w, size) => w+" "+size+"px Inter, 'Segoe UI', 'Noto Sans', 'Hiragino Sans', 'Microsoft YaHei', Arial, sans-serif";
+  const text = (t, px, py, o={}) => { x.font = font(o.weight||"400", o.size||13); x.fillStyle = o.color||"#1C2430"; x.direction = rtl ? "rtl" : "ltr";
+    let s = String(t||""); if(o.max){ while(s.length>1 && x.measureText(s).width>o.max) s = s.slice(0,-1); if(s!==String(t||"")) s = s.slice(0,-1)+"…"; } x.fillText(s, px, py); };
+  x.fillStyle = "#FFFFFF"; x.fillRect(0,0,width,height);
+  x.fillStyle = "#1C2430"; x.fillRect(0,0,width,headH-16);
+  text("Ouverture · " + hotelName, pad, 32, {weight:"600", size:19, color:"#FFFFFF", max: width-pad*2});
+  text(tf("Tageseinteilung") + " · " + dayLabel, pad, 56, {size:14, color:"#C9A66B"});
+  let y = headH;
+  groups.forEach(g=>{
+    x.fillStyle = "#F1E8D8"; x.fillRect(pad, y, width-pad*2, deptH);
+    text(translateString(g.dept), pad+8, y+21, {weight:"700", size:14}); y += deptH;
+    g.rows.forEach((r,i)=>{
+      if(i%2) { x.fillStyle = "#FAF8F4"; x.fillRect(pad, y, width-pad*2, rowH); }
+      text(r.name, pad+8, y+19, {weight:"600", size:13, max:180});
+      text(r.shift, pad+8, y+36, {size:11, color:"#6B7280", max:180});
+      text(r.task || "–", pad+200, y+27, {size:13.5, max: width-pad*2-210});
+      y += rowH;
+    });
+  });
+  text(tf("Erstellt mit Ouverture") + " · " + new Date().toLocaleDateString(UI_LOCALE), pad, height-12, {size:11, color:"#6B7280"});
+  return c;
+}
+
 function RosterView({hotel, api, me, members, role, myDepts, orgId}){
   const isAdmin = role==="admin";
   const canManage = isAdmin || role==="manager";
-  const visibleDepts = (role==="admin" || role==="manager" || role==="viewer") ? DEPARTMENTS
+  const visibleDepts = (role==="admin" || role==="viewer" || (role==="manager" && myDepts.length===0)) ? DEPARTMENTS
     : DEPARTMENTS.filter(d=>myDepts.includes(d)).concat(myDepts.filter(d=>!DEPARTMENTS.includes(d)));
   // "" = alle sichtbaren Abteilungen auf einen Blick
   const [dept,setDeptState] = useState(()=>{
@@ -2372,6 +2405,9 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
   const [minDept,setMinDept] = useState(visibleDepts[0] || "");
   const [sharing,setSharing] = useState(false);
   const [quick,setQuick] = useState(null); // {key, date}: kleines Menü direkt in der Zelle
+  const [duties,setDuties] = useState([]);
+  const [dutyDay,setDutyDay] = useState(null);
+  const [dutyAll,setDutyAll] = useState(false); // auch Personen ohne Schicht an diesem Tag zeigen
   const [view,setViewState] = useState(()=>{
     try { const v = window.localStorage.getItem("hpoos_roster_view"); if(v) return v; } catch(e){}
     return window.innerWidth < 700 ? "days" : "week";
@@ -2384,6 +2420,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
   const load = useCallback(async () => {
     try {
+      api(base+"/duties?from="+week+"&to="+addDaysIso(week,6)).then(setDuties).catch(()=>setDuties([]));
       const [s,m,r,my] = await Promise.all([
         visibleDepts.length ? api(base+"/shifts?from="+week+"&to="+addDaysIso(week,6)+(dept ? "&department="+encodeURIComponent(dept) : "")) : Promise.resolve([]),
         api(base+"/shift-minimums"),
@@ -2442,6 +2479,46 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
     department:row.dept, shift_date:date, kind,
     start_time: SHIFT_TIMES[kind] ? SHIFT_TIMES[kind][0] : null, end_time: SHIFT_TIMES[kind] ? SHIFT_TIMES[kind][1] : null,
     user_id: row.user_id || null, employee_name: row.user_id ? null : row.name })); };
+  // Tageseinteilung: ein freier Text je Person und Tag (Abteilung)
+  const dDay = dutyDay && days.includes(dutyDay) ? dutyDay : (days.includes(today) ? today : days[0]);
+  const dutyOf = (row, date) => duties.find(x=>x.duty_date===date && x.department===row.dept &&
+    (row.user_id ? x.user_id===row.user_id : (!x.user_id && (x.employee_name||"").toLowerCase()===row.name.toLowerCase())));
+  const saveDuty = async (row, date, text) => {
+    const t = text.trim(); const ex = dutyOf(row, date);
+    if(ex && ex.task===t) return;
+    setMsg(null);
+    try {
+      if(ex && !t) await api("/api/duties/"+ex.id, "DELETE");
+      else if(ex) await api("/api/duties/"+ex.id, "PATCH", {task:t});
+      else if(t) await api(base+"/duties", "POST", {department:row.dept, duty_date:date, task:t, user_id:row.user_id||null, employee_name:row.user_id?null:row.name});
+      setDuties(await api(base+"/duties?from="+week+"&to="+addDaysIso(week,6)));
+    } catch(e){ setMsg({ok:false, text:e.message}); }
+  };
+  const dutyRows = (g, date) => {
+    const rows = g.rows.slice();
+    duties.filter(x=>x.duty_date===date && x.department===g.dept && !x.user_id).forEach(x=>{
+      if(!rows.some(r=>!r.user_id && r.name.toLowerCase()===(x.employee_name||"").toLowerCase()))
+        rows.push({key:g.dept+"|n:"+x.employee_name.toLowerCase(), dept:g.dept, user_id:null, name:x.employee_name, title:""});
+    });
+    return rows.filter(r=>dutyAll || dutyOf(r,date) || shiftsFor(r,date).some(s=>WORK_KINDS.includes(s.kind)));
+  };
+  const shareDuties = async () => {
+    setSharing(true); setMsg(null);
+    try {
+      const items = shownDepts.map(d=>({dept:d, rows: dutyRows(groups.find(g=>g.dept===d), dDay).map(r=>({
+        name:r.name, shift: shiftsFor(r,dDay).filter(s=>WORK_KINDS.includes(s.kind)).map(s=>translateString(s.kind)+" "+shiftTimes(s)).join(", "),
+        task: (dutyOf(r,dDay)||{}).task || "" }))})).filter(g=>g.rows.length);
+      const canvas = drawDutyImage({hotelName: hotel.name, dayLabel: fmtDay(dDay,{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}), groups: items});
+      const blob = await new Promise(r=>canvas.toBlob(r, "image/png"));
+      const name = (tf("Tageseinteilung")+" "+hotel.name+" "+dDay).replace(/[\\/:*?"<>|]+/g,"") + ".png";
+      const file = new File([blob], name, {type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]})) await navigator.share({files:[file], title: tf("Tageseinteilung")});
+      else { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+        setMsg({ok:true, text:tf("Bild gespeichert. Du kannst es jetzt in WhatsApp oder per E-Mail verschicken.")}); }
+    } catch(e){ if(e && e.name!=="AbortError") setMsg({ok:false, text:e.message}); }
+    setSharing(false);
+  };
+
   const weekHours = (row) => days.reduce((h,d)=>h + shiftsFor(row,d).filter(s=>WORK_KINDS.includes(s.kind)).reduce((x,s)=>x+shiftHoursOf(s),0), 0);
   const copyPrev = () => {
     if(!window.confirm(tf("Arbeitsschichten der Vorwoche in diese Woche übernehmen? Bereits belegte Tage bleiben unverändert."))) return;
@@ -2592,7 +2669,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
             <span>Dienstplan</span> · <span data-no-i18n="">{hotel.name}</span>
           </div>
           <div className="no-print" style={{display:"flex",border:`1px solid ${BORDER}`,borderRadius:999,overflow:"hidden"}}>
-            {[["week",tf("Wochentabelle")],["days",tf("Tagesübersicht")]].map(([k,l])=>(
+            {[["week",tf("Wochentabelle")],["days",tf("Tagesübersicht")],["duties",tf("Tageseinteilung")]].map(([k,l])=>(
               <button key={k} onClick={()=>setView(k)} style={{border:"none",background:view===k?INK:"#fff",color:view===k?"#fff":INK,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{l}</button>
             ))}
           </div>
@@ -2620,6 +2697,48 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {view==="duties" && (
+          <div style={{padding:"4px 16px 14px"}}>
+            <div className="no-print" style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
+              {days.map(d=>(
+                <button key={d} onClick={()=>setDutyDay(d)} style={{border:`1px solid ${d===dDay?INK:BORDER}`,background:d===dDay?INK:"#fff",color:d===dDay?"#fff":INK,
+                  borderRadius:999,padding:"5px 11px",fontSize:12.5,cursor:"pointer"}} data-no-i18n="">{fmtDay(d)}</button>
+              ))}
+              <label style={{display:"flex",gap:6,alignItems:"center",fontSize:12.5,color:INK_MUTED,marginInlineStart:"auto",cursor:"pointer"}}>
+                <input type="checkbox" checked={dutyAll} onChange={e=>setDutyAll(e.target.checked)} /> {tf("Auch Personen ohne Schicht")}
+              </label>
+              <button className="btn-primary" onClick={shareDuties} disabled={sharing}>{sharing ? "…" : tf("Einteilung als Bild teilen")}</button>
+            </div>
+            <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Trag frei ein, wer heute was macht – z. B. Zimmer 101–120, Frühstück Service, Lobby, Wareneingang.")}</div>
+            {shownDepts.map(d=>{
+              const g = groups.find(x=>x.dept===d); const list = dutyRows(g, dDay);
+              if(!list.length && !canManageDept(d)) return null;
+              return (
+                <div key={d} style={{border:`1px solid ${BORDER}`,borderRadius:8,marginBottom:10,overflow:"hidden"}}>
+                  <div style={{background:"#F1E8D8",padding:"7px 12px",fontWeight:700,fontSize:13}}>{d}</div>
+                  {list.length===0 && <div style={{padding:"10px 12px",fontSize:13,color:INK_MUTED}}>{tf("An diesem Tag ist niemand eingeplant.")}</div>}
+                  {list.map(r=>{
+                    const sh = shiftsFor(r,dDay).filter(s=>WORK_KINDS.includes(s.kind)); const ex = dutyOf(r,dDay);
+                    return (
+                      <div key={r.key+dDay} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 12px",borderTop:`1px solid ${BORDER}`,flexWrap:"wrap"}}>
+                        <div style={{width:170,flexShrink:0}}>
+                          <div data-no-i18n="" style={{fontWeight:600,fontSize:13.5}}>{r.name}</div>
+                          {sh.map(s=><ShiftChip key={s.id} s={s} />)}
+                        </div>
+                        {canManageDept(d)
+                          ? <textarea className="input" rows={1} defaultValue={ex ? ex.task : ""} key={(ex ? ex.id+ex.task : "neu")+dDay}
+                              placeholder={tf("Was macht diese Person heute?")} onBlur={e=>saveDuty(r, dDay, e.target.value)}
+                              style={{flex:"1 1 260px",minHeight:38,resize:"vertical",fontFamily:"inherit"}} />
+                          : <div style={{flex:"1 1 260px",fontSize:13.5,whiteSpace:"pre-wrap",color:ex?INK:INK_MUTED}} data-no-i18n="">{ex ? ex.task : "–"}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -3147,6 +3266,9 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
           <div style={{marginTop:12}}>
             <div className="field-label">Abteilungen</div>
             <DeptChips value={inviteDepts} onChange={setInviteDepts} />
+            <div style={{fontSize:12,color:INK_MUTED,marginTop:6}}>{role==="manager"
+              ? tf("Abteilungsleitung: sieht und plant nur die markierten Abteilungen. Keine Abteilung markiert = alle Abteilungen (z. B. Direktion).")
+              : tf("Mitarbeitende sehen nur Aufgaben und Dienstplan der markierten Abteilungen.")}</div>
           </div>
         )}
         {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
@@ -3155,7 +3277,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
           Die Person bekommt den Einladungslink per E-Mail. Sie muss sich damit registrieren oder anmelden,
           dann gehört sie automatisch zu deiner Organisation. Kommt keine Mail an, kannst du den Link unten auch kopieren und selbst weitergeben.
           <br /><b>Admin</b> sieht und verwaltet alles, auch Abo und Team.
-          <br /><b>Abteilungsleitung</b> {tf("sieht und verwaltet alle Abteilungen – Aufgaben, Budget, Risiken, Personal und Dienstplan – und genehmigt Anträge.")}
+          <br /><b>Abteilungsleitung</b> {tf("sieht und verwaltet die zugeordneten Abteilungen – Aufgaben, Budget, Risiken, Personal und Dienstplan – und genehmigt Anträge. Ohne Abteilung: alle Abteilungen.")}
           <br /><b>Mitarbeitende</b> sehen nur die Aufgaben ihrer Abteilungen und ihre eigenen, ihren Dienstplan und können Urlaub, Frei-Wünsche und Schichttausch beantragen.
           <br /><b>Eigentümer (nur lesen)</b> sehen Dashboard, KI-Lagebericht und Statusbericht und können kommentieren, aber nichts ändern – ideal für Eigentümer und Investoren.
         </div>
@@ -3173,7 +3295,8 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
                   {ROLES_WITH_DEPTS.includes(m.role) && (isAdmin
                     ? <div style={{marginTop:8}}><DeptChips value={m.departments} onChange={list=>changeDepts(m, list)} /></div>
                     : <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{(m.departments||[]).length ? (m.departments||[]).map((d,i)=><React.Fragment key={d}>{i>0 && ", "}<span>{d}</span></React.Fragment>) : <span>Keine Abteilung</span>}</div>)}
-                  {isAdmin && ROLES_WITH_DEPTS.includes(m.role) && (m.departments||[]).length===0 && <div style={{fontSize:12,color:WARN,marginTop:4}}>Ohne Abteilung sieht diese Person nur Aufgaben, die ihr direkt zugewiesen sind.</div>}
+                  {isAdmin && m.role==="member" && (m.departments||[]).length===0 && <div style={{fontSize:12,color:WARN,marginTop:4}}>Ohne Abteilung sieht diese Person nur Aufgaben, die ihr direkt zugewiesen sind.</div>}
+                  {isAdmin && m.role==="manager" && <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{(m.departments||[]).length ? tf("Leitet nur die markierten Abteilungen.") : tf("Ohne Abteilung: leitet alle Abteilungen (z. B. Direktion).")}</div>}
                 </td>
                 <td style={{padding:12,color:INK_MUTED}}>
                   {isAdmin && !isMe

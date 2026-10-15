@@ -1914,7 +1914,7 @@ function TimelineView({hotel, tasks, milestones}){
 
       <div className="no-print" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12,fontSize:12.5,color:INK_MUTED}}>
         {seg("all", tf("Gesamt"))}{seg("3m", tf("3 Monate"))}{seg("6w", tf("6 Wochen"))}
-        <span style={{marginInlineStart:10}}><span style={{color:GOOD}}>●</span> erledigt</span><span><span style={{color:BRASS}}>●</span> offen</span>
+        <span style={{marginInlineStart:10}}><span style={{color:GOOD}}>●</span> erledigt</span><span><span style={{color:BRASS}}>●</span> {tf("noch offen")}</span>
         <span><span style={{color:WARN}}>●</span> blockiert</span><span><span style={{color:BAD}}>●</span> überfällig</span><span>◆ Meilenstein</span>
         <label style={{marginInlineStart:"auto",display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> nur offene Aufgaben</label>
       </div>

@@ -5246,4 +5246,15 @@ I18N_TF.ar = {
   "Preise in\r":"الأسعار بعملة",
 };
 
+// Zeitstrahl-Legende: offene (noch nicht erledigte) Aufgaben
+I18N_TF.en["noch offen"] = "open";
+I18N_TF.fr["noch offen"] = "à faire";
+I18N_TF.it["noch offen"] = "da fare";
+I18N_TF.es["noch offen"] = "pendientes";
+I18N_TF.pt["noch offen"] = "por fazer";
+I18N_TF.tr["noch offen"] = "açık";
+I18N_TF.ja["noch offen"] = "未完了";
+I18N_TF.zh["noch offen"] = "未完成";
+I18N_TF.ar["noch offen"] = "قيد الانتظار";
+
 startI18n(initialUiLanguage());

@@ -23,6 +23,24 @@
   shiftDays(D.shifts, ["shift_date"], weekDelta); shiftDays(D.publications, ["week_start"], weekDelta);
   var runs = {}; Object.keys(D.checklist_runs || {}).forEach(function (k) { runs[k + "|" + todayIso] = D.checklist_runs[k]; });
 
+  // Zeitbuchungen aus den Schichten der letzten Wochen ableiten (leicht abweichend, wie im echten Leben)
+  var TIMES = [], WORKK = ["Früh", "Spät", "Nacht", "Zwischen"], monthAgo = add(todayIso.slice(0, 8) + "01", -31);
+  D.shifts.forEach(function (s, i) {
+    if (!s.user_id || WORKK.indexOf(s.kind) < 0 || !s.start_time || s.shift_date < monthAgo || s.shift_date > todayIso) return;
+    var p0 = s.start_time.split(":"), p1 = s.end_time.split(":");
+    var a = new Date(s.shift_date + "T00:00:00"); a.setHours(Number(p0[0]), Number(p0[1]) + ((i * 7) % 11) - 6, 0, 0);
+    var e = new Date(s.shift_date + "T00:00:00"); e.setHours(Number(p1[0]), Number(p1[1]) + ((i * 5) % 13), 0, 0); if (e <= a) e.setDate(e.getDate() + 1);
+    if (a > now) return;
+    var open = e > now;
+    TIMES.push({ id: "te-" + i, hotel_id: D.hotel.id, department: s.department, user_id: s.user_id, clock_in: a.toISOString(), clock_out: open ? null : e.toISOString(),
+      break_minutes: open ? 0 : ((e - a) / 3600000 > 6 ? 30 : 0), note: null, edited_by: !open && i % 9 === 0 ? "u-hkm" : null, edited_at: !open && i % 9 === 0 ? e.toISOString() : null });
+  });
+  (D.tickets || []).forEach(function (t) {
+    t.created_at = new Date(now.getTime() - t.hoursAgo * 3600000).toISOString();
+    if (t.status === "Erledigt") t.done_at = new Date(now.getTime() - (t.hoursAgo - 4) * 3600000).toISOString();
+  });
+  D.rooms = D.rooms || []; D.tickets = D.tickets || [];
+
   var nextId = 1;
   function nid(p) { return "demo-" + p + "-" + (nextId++); }
   function canSee(dept) { return ROLE === "admin" || MYDEPTS.indexOf(dept) >= 0; }
@@ -140,6 +158,74 @@
     if ((mm = p.match(/^\/api\/checklists\/([^/]+)\/run$/))) { var key = mm[1] + "|" + b.date; runs[key] = runs[key] || {};
       if (b.checked) runs[key][b.item] = { by: meRow.email, at: new Date().toISOString() }; else delete runs[key][b.item]; return ok({ ok: true }); }
     if ((mm = p.match(/^\/api\/checklists\/([^/]+)$/))) { if (m === "DELETE") { remove(D.checklists, mm[1]); return ok({ ok: true }); } var c2 = byId(D.checklists, mm[1]); Object.assign(c2, b); return ok(c2); }
+    // Push gibt es in der Demo nicht
+    if (p === "/api/push/key") return ok({ error: "Push-Benachrichtigungen sind noch nicht eingerichtet." }, 404);
+    // Zeiterfassung
+    if (p === "/api/time/me") {
+      var mineT = TIMES.filter(function (e) { return e.user_id === ME; }).sort(function (a, c) { return a.clock_in < c.clock_in ? 1 : -1; })
+        .map(function (e) { return Object.assign({ hotel_name: D.hotel.name }, e); });
+      return ok({ open: mineT.find(function (e) { return !e.clock_out; }) || null, entries: mineT });
+    }
+    if (p === H + "/time/clock-in") {
+      if (TIMES.some(function (e) { return e.user_id === ME && !e.clock_out; })) return ok({ error: "Du bist bereits eingestempelt." }, 400);
+      var ci = { id: nid("te"), hotel_id: D.hotel.id, department: b.department, user_id: ME, clock_in: new Date().toISOString(), clock_out: null, break_minutes: 0, note: null, edited_by: null };
+      TIMES.push(ci); return ok(ci);
+    }
+    if (p === "/api/time/clock-out") {
+      var op = TIMES.find(function (e) { return e.user_id === ME && !e.clock_out; });
+      if (!op) return ok({ error: "Du bist gerade nicht eingestempelt." }, 400);
+      op.clock_out = new Date().toISOString(); op.break_minutes = Math.min(Number(b.break_minutes) || 0, Math.floor((new Date(op.clock_out) - new Date(op.clock_in)) / 60000)); return ok(op);
+    }
+    if (p === H + "/time-entries") {
+      if (m === "POST") { var te = Object.assign({ id: nid("te"), hotel_id: D.hotel.id, edited_by: ME, edited_at: new Date().toISOString() }, b); TIMES.push(te); return ok(te); }
+      var f0 = add(q.get("from"), -1) + "T00:00:00Z", f1 = add(q.get("to"), 2) + "T00:00:00Z", dq = q.get("department");
+      return ok(TIMES.filter(function (e) { return e.clock_in >= f0 && e.clock_in < f1 && (!dq || e.department === dq) && (lead ? canSee(e.department) : e.user_id === ME); })
+        .sort(function (a, c) { return a.clock_in < c.clock_in ? -1 : 1; }));
+    }
+    if ((mm = p.match(/^\/api\/time-entries\/([^/]+)$/))) {
+      if (m === "DELETE") { remove(TIMES, mm[1]); return ok({ ok: true }); }
+      var tt = byId(TIMES, mm[1]); Object.assign(tt, b, { edited_by: ME, edited_at: new Date().toISOString() }); return ok(tt);
+    }
+    // Zimmer
+    if (p === H + "/rooms") {
+      if (m === "POST") {
+        var made = 0, skipped = 0;
+        String(b.numbers || "").split(/[,;\n]+/).forEach(function (part) {
+          part = part.trim(); if (!part) return; var r = part.match(/^(\d+)\s*[-–]\s*(\d+)$/), list = [];
+          if (r) { for (var n = Number(r[1]); n <= Number(r[2]) && list.length < 500; n++) list.push(String(n)); } else list.push(part);
+          list.forEach(function (num) { if (D.rooms.some(function (x) { return x.number === num; })) { skipped++; return; }
+            D.rooms.push({ id: nid("room"), hotel_id: D.hotel.id, number: num, floor: num.length >= 3 && /^\d+$/.test(num) ? String(Number(num.slice(0, -2))) : null, room_type: b.room_type || null, status: "Schmutzig", occupancy: "Unbelegt", note: null, assigned_to: null }); made++; });
+        });
+        return ok({ created: made, skipped: skipped });
+      }
+      return ok(D.rooms.slice().sort(function (a, c) { return a.number.localeCompare(c.number, "de", { numeric: true }); }));
+    }
+    if (p === H + "/rooms/bulk") {
+      var cnt = 0; D.rooms.forEach(function (r) { if ((b.ids || []).indexOf(r.id) >= 0) { if (b.status) r.status = b.status; if (b.occupancy) r.occupancy = b.occupancy; r.updated_by = ME; r.updated_at = new Date().toISOString(); cnt++; } });
+      return ok({ updated: cnt });
+    }
+    if ((mm = p.match(/^\/api\/rooms\/([^/]+)$/))) {
+      if (m === "DELETE") { remove(D.rooms, mm[1]); return ok({ ok: true }); }
+      var rm = byId(D.rooms, mm[1]); Object.assign(rm, b, { updated_by: ME, updated_at: new Date().toISOString() }); return ok(rm);
+    }
+    // Technik-Meldungen
+    if (p === H + "/tickets") {
+      if (m === "POST") {
+        var tkn = { id: nid("tk"), hotel_id: D.hotel.id, department: b.department || "Technik", location: b.location || null, title: b.title, description: b.description || null,
+          priority: b.priority || "Normal", status: "Offen", has_photo: !!b.photo_data, photo_data: b.photo_data || null, reporter_id: ME, assignee_id: null, created_at: new Date().toISOString() };
+        D.tickets.unshift(tkn); return ok(tkn);
+      }
+      var sq = q.get("status");
+      return ok(D.tickets.filter(function (t) { return (canSee(t.department) || t.reporter_id === ME || t.assignee_id === ME) &&
+        (sq === "open" ? t.status !== "Erledigt" : sq === "done" ? t.status === "Erledigt" : true); }));
+    }
+    if ((mm = p.match(/^\/api\/tickets\/([^/]+)\/photo$/))) return ok({ photo_data: (byId(D.tickets, mm[1]) || {}).photo_data || null });
+    if ((mm = p.match(/^\/api\/tickets\/([^/]+)$/))) {
+      if (m === "DELETE") { remove(D.tickets, mm[1]); return ok({ ok: true }); }
+      var tk = byId(D.tickets, mm[1]); Object.assign(tk, b);
+      if (b.status) { tk.done_by = b.status === "Erledigt" ? ME : null; tk.done_at = b.status === "Erledigt" ? new Date().toISOString() : null; }
+      return ok(tk);
+    }
     return ok({});
   };
 })();

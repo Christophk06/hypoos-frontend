@@ -3,8 +3,21 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ouverture – Pre-Opening-Software für Hotel-Eröffnungen</title>
-<meta name="description" content="Ouverture plant Hotel-Eröffnungen: Pre-Opening-Vorlage, Bereitschafts-Score je Abteilung, KI-Lagebericht für Eigentümer. 14 Tage kostenlos testen." />
+<title>Ouverture – Hotel-Software für Pre-Opening, Dienstplan und Betrieb</title>
+<meta name="description" content="Ouverture plant Hotel-Eröffnungen und den laufenden Betrieb: Pre-Opening-Vorlage, KI-Lagebericht, Dienstplan mit WhatsApp-Versand, Übergabebuch und Checklisten. In 10 Sprachen. 14 Tage kostenlos testen." />
+<link rel="canonical" href="https://hypoos-frontend.onrender.com/landing.html" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Ouverture – Hotel-Software für Pre-Opening, Dienstplan und Betrieb" />
+<meta property="og:description" content="Eröffnung planen, Dienstplan per WhatsApp verteilen, Übergaben und Checklisten am Handy – eine Software für das ganze Hotel." />
+<meta property="og:image" content="https://hypoos-frontend.onrender.com/icon-512.png" />
+<meta name="theme-color" content="#1C2430" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ouverture","applicationCategory":"BusinessApplication","operatingSystem":"Web, iOS, Android",
+ "description":"Hotel-Software für Pre-Opening, Dienstplan, Übergabebuch und Checklisten.",
+ "offers":[{"@type":"Offer","name":"Starter","price":"299","priceCurrency":"EUR"},{"@type":"Offer","name":"Professional","price":"790","priceCurrency":"EUR"}]}
+</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%231C2430%22/><path d=%22M9 26V15a7 7 0 0 1 14 0v11M13 26v-9a3 3 0 0 1 6 0v9M6 26h20%22 fill=%22none%22 stroke=%22%23C9A66B%22 stroke-width=%221.8%22/></svg>" />
 <script src="i18n.js"></script>
 <script src="landing-i18n.js"></script>
@@ -106,6 +119,66 @@
   .final p { color: rgba(255,255,255,.75); margin: 0 auto 24px; max-width: 520px; }
   .final .btn-primary { background: var(--brass-light); color: var(--ink); }
 
+  /* Zwei Phasen */
+  .phases { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .phase { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 26px; }
+  .phase.dark { background: var(--ink); color: #F6F4EF; border-color: rgba(201,166,107,.5); }
+  .phase h3 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 24px; margin: 6px 0 10px; }
+  .phase .k { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--brass); }
+  .phase.dark .k { color: var(--brass-light); }
+  .phase ul { margin: 0; padding-left: 18px; line-height: 1.8; font-size: 15px; }
+  .phase.dark li { color: rgba(246,244,239,.85); }
+
+  /* Nachgebaute App-Ansichten */
+  .shots { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; align-items: start; }
+  .shot { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; box-shadow: 0 18px 40px rgba(28,36,48,.10); }
+  .shot .cap { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .shot .ttl { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .grid7 { display: grid; grid-template-columns: 92px repeat(7, 1fr); gap: 3px; font-size: 11px; }
+  .grid7 .h { color: var(--muted); font-weight: 600; padding: 3px 2px; }
+  .grid7 .n { padding: 5px 2px; font-weight: 600; }
+  .chip { border-radius: 4px; padding: 4px 4px; font-weight: 700; line-height: 1.2; }
+  .chip small { display: block; font-weight: 400; font-size: 9.5px; direction: ltr; unicode-bidi: isolate; }
+  .c-f { background: #F1E8D8; color: #7A5B2B; } .c-s { background: #F5E1D0; color: #8A4B1E; } .c-n { background: #DCE1EA; color: #1C2430; }
+  .c-o { background: #F6F4EF; color: #6B7280; } .c-u { background: #E6EEF7; color: #2F5D8A; }
+  .phone { width: 260px; max-width: 100%; margin: 0 auto; border: 9px solid #1C2430; border-radius: 30px; padding: 14px 12px 18px; background: #F6F4EF; box-shadow: 0 18px 40px rgba(28,36,48,.18); }
+  .phone .bar { height: 5px; background: #E4DFD3; border-radius: 3px; overflow: hidden; margin: 6px 0 8px; }
+  .phone .bar i { display: block; height: 100%; width: 60%; background: var(--good); }
+  .ck { display: flex; gap: 8px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .ck .b { width: 16px; height: 16px; border-radius: 3px; border: 1.5px solid var(--muted); flex-shrink: 0; }
+  .ck.on .b { background: #2F6FE4; border-color: #2F6FE4; }
+  .ck.on span { text-decoration: line-through; color: var(--muted); }
+  .log { border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; margin-top: 8px; font-size: 12.5px; background: #fff; }
+  .tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+
+  /* Vertrauen */
+  .trust { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .trust div { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+  .trust h3 { margin: 0 0 6px; font-size: 16px; }
+  .trust p { margin: 0; color: #4B5563; font-size: 14px; }
+
+  /* Tarifvergleich und Rechner */
+  table.cmp { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-top: 28px; font-size: 14px; }
+  table.cmp th, table.cmp td { padding: 11px 14px; border-top: 1px solid var(--border); text-align: center; }
+  table.cmp th { background: #EFEBE2; font-weight: 600; border-top: none; }
+  table.cmp td:first-child, table.cmp th:first-child { text-align: start; }
+  .yes { color: var(--good); font-weight: 700; } .no { color: #C4BFB4; }
+  .calc { margin-top: 28px; background: var(--ink); color: #F6F4EF; border-radius: 6px; padding: 26px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 26px; align-items: center; }
+  .calc h3 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 24px; margin: 0 0 6px; }
+  .calc label { display: block; font-size: 13px; color: rgba(246,244,239,.75); margin-top: 12px; }
+  .calc input { width: 100%; margin-top: 6px; accent-color: #C9A66B; }
+  .calc .out { background: rgba(255,255,255,.06); border: 1px solid rgba(201,166,107,.45); border-radius: 6px; padding: 18px; }
+  .calc .big { font-family: 'Fraunces', serif; font-size: 34px; color: var(--brass-light); }
+
+  /* Kontakt */
+  .contact { display: grid; grid-template-columns: 1fr 1.2fr; gap: 28px; align-items: start; }
+  .form { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 22px; }
+  .form label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 12px; }
+  .form input, .form select, .form textarea { width: 100%; margin-top: 5px; padding: 10px 11px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-size: 14.5px; background: var(--paper); color: var(--ink); }
+  .form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form button { border: none; cursor: pointer; }
+  .hp, .form .hp { position: absolute; width: 1px !important; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; overflow: hidden; clip-path: inset(50%); pointer-events: none; }
+
   footer { padding: 32px 0 48px; font-size: 13px; color: var(--muted); }
   footer .wrap { display: flex; gap: 18px; flex-wrap: wrap; }
   footer .wrap span { margin-right: auto; }
@@ -115,7 +188,11 @@
     .hero h1 { font-size: 38px; }
     .hero { padding: 56px 20px 64px; }
     section h2 { font-size: 30px; }
-    .pains, .feats, .steps, .plans { grid-template-columns: 1fr; }
+    .pains, .feats, .steps, .plans, .phases, .shots, .trust, .contact, .calc, .form .two { grid-template-columns: minmax(0, 1fr); }
+    table.cmp { font-size: 12.5px; } table.cmp th, table.cmp td { padding: 9px 6px; }
+    .grid7 { grid-template-columns: 52px repeat(7, minmax(0, 1fr)); font-size: 9.5px; gap: 2px; }
+    .grid7 .chip { padding: 3px 1px; } .grid7 .chip small { font-size: 7.5px; letter-spacing: -.2px; }
+    .shot { padding: 12px; }
     header nav { display: none; }
     header .wrap { gap: 10px; }
     header .btn { padding: 7px 10px; font-size: 13px; }
@@ -134,8 +211,9 @@
     <a class="brand" href="#"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 26V15a7 7 0 0 1 14 0v11M13 26v-9a3 3 0 0 1 6 0v9M5 26h22" fill="none" stroke="#C9A66B" stroke-width="1.6"/></svg>Ouverture</a>
     <nav>
       <a href="#funktionen">Funktionen</a>
+      <a href="#betrieb">Betrieb</a>
       <a href="#preise">Preise</a>
-      <a href="#faq">FAQ</a>
+      <a href="#kontakt">Kontakt</a>
     </nav>
     <select class="lang" aria-label="Sprache" data-no-i18n onchange="chooseUiLanguage(this.value)">
       <option value="de">DE</option><option value="en">EN</option><option value="fr">FR</option><option value="it">IT</option><option value="es">ES</option>
@@ -143,7 +221,7 @@
     </select>
     <script>document.currentScript.previousElementSibling.value = UI_LANG;</script>
     <a class="btn btn-ghost" href="index.html">Anmelden</a>
-    <a class="btn btn-primary" href="index.html">Kostenlos testen</a>
+    <a class="btn btn-primary" href="index.html?demo=1">Live-Demo</a>
   </div>
 </header>
 
@@ -157,12 +235,12 @@
       <path d="M0 140H1200M0 148H1200"/></g></svg>
   <div class="wrap hero">
     <div>
-      <div class="eyebrow">Pre-Opening-Software für Hotels</div>
-      <h1>Hotel-Eröffnungen planen, <em>ohne dass etwas durchrutscht.</em></h1>
-      <p class="lead">Ouverture bündelt Aufgaben, Meilensteine, Risiken, Budget und Personal Ihrer Eröffnung an einem Ort – mit einem Bereitschafts-Score je Abteilung und einem KI-Lagebericht, den Sie direkt in die Eigentümersitzung mitnehmen.</p>
+      <div class="eyebrow">Hotel-Software für Eröffnung und Betrieb</div>
+      <h1>Vom Pre-Opening bis zum Alltag – <em>ohne dass etwas durchrutscht.</em></h1>
+      <p class="lead">Ouverture plant Ihre Eröffnung mit Bereitschafts-Score und KI-Lagebericht – und führt danach den Betrieb: Dienstplan per WhatsApp, Tageseinteilung, Übergabebuch und Checklisten am Handy. In zehn Sprachen.</p>
       <div class="cta">
         <a class="btn btn-brass" href="index.html">14 Tage kostenlos testen</a>
-        <a class="btn btn-line" href="#funktionen">Funktionen ansehen</a>
+        <a class="btn btn-line" href="index.html?demo=1">Live-Demo ansehen – ohne Anmeldung</a>
       </div>
       <div class="fine">Keine Kreditkarte nötig · in 5 Minuten startklar · monatlich kündbar</div>
     </div>
@@ -203,13 +281,79 @@
     </div>
   </section>
 
+  <section id="betrieb">
+    <div class="wrap">
+      <div class="eyebrow">Eine Software, zwei Phasen</div>
+      <h2>Erst die Eröffnung. Dann jeder Tag danach.</h2>
+      <p class="intro">Die meisten Tools hören am Eröffnungstag auf. Ouverture geht weiter – mit demselben Team, denselben Abteilungen und denselben Rechten.</p>
+      <div class="phases">
+        <div class="phase">
+          <div class="k">Phase 1 · Pre-Opening</div>
+          <h3>Die Eröffnung im Griff</h3>
+          <ul>
+            <li>Über 90 Vorlagen-Aufgaben in 10 Abteilungen</li>
+            <li>Termine wandern mit dem Eröffnungsdatum</li>
+            <li>Bereitschafts-Score und KI-Lagebericht</li>
+            <li>Budget, Risiken und Personalplanung</li>
+            <li>Statusbericht als PDF für Eigentümer</li>
+          </ul>
+        </div>
+        <div class="phase dark">
+          <div class="k">Phase 2 · Laufender Betrieb</div>
+          <h3>Der Alltag im Team</h3>
+          <ul>
+            <li>Dienstplan je Abteilung – als Bild direkt per WhatsApp</li>
+            <li>Tageseinteilung: wer macht heute was</li>
+            <li>Übergabebuch für jede Schicht</li>
+            <li>Checklisten zum Abhaken am Handy</li>
+            <li>Urlaub, Tausch und Verfügbarkeiten mit Genehmigung</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <div class="eyebrow">So sieht es aus</div>
+      <h2>Gebaut für Menschen, die nicht am Schreibtisch sitzen.</h2>
+      <p class="intro">Abteilungsleitungen planen am Computer, Mitarbeitende sehen ihre Schichten und Aufgaben auf dem Handy – als App, ganz ohne App Store.</p>
+      <div class="shots">
+        <div class="shot">
+          <div class="ttl">Dienstplan · Housekeeping <span class="tag" style="background:var(--good-soft);color:var(--good)">Veröffentlicht</span></div>
+          <div class="grid7" data-no-i18n>
+            <div></div><div class="h">Mo</div><div class="h">Di</div><div class="h">Mi</div><div class="h">Do</div><div class="h">Fr</div><div class="h">Sa</div><div class="h">So</div>
+            <div class="n">Ana P.</div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-o">–</div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-o">–</div>
+            <div class="n">Ewa N.</div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-o">–</div><div class="chip c-u">U</div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-o">–</div><div class="chip c-s">S<small>14–22:30</small></div>
+            <div class="n">Joana S.</div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-o">–</div><div class="chip c-o">–</div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-s">S<small>14–22:30</small></div>
+            <div class="n">Fatma D.</div><div class="chip c-o">–</div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-s">S<small>14–22:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-f">F<small>06–14:30</small></div><div class="chip c-o">–</div>
+          </div>
+          <div class="cap">Wochenplan mit Ziehen &amp; Ablegen, Stundenkonto und Warnung bei Unterbesetzung. Ein Klick – und der Plan geht als Bild an die WhatsApp-Gruppe.</div>
+        </div>
+        <div>
+          <div class="phone">
+            <div style="font-weight:700;font-size:13px">Zimmerabnahme</div>
+            <div class="bar"><i></i></div>
+            <div class="ck on"><div class="b"></div><span>Bett korrekt bezogen, keine Flecken</span></div>
+            <div class="ck on"><div class="b"></div><span>Handtücher und Amenities vollständig</span></div>
+            <div class="ck on"><div class="b"></div><span>Minibar kontrolliert und aufgefüllt</span></div>
+            <div class="ck"><div class="b"></div><span>Licht, TV, Klimaanlage und Safe funktionieren</span></div>
+            <div class="ck"><div class="b"></div><span>Boden gesaugt, Staub gewischt</span></div>
+            <div class="log"><span class="tag" style="background:var(--warn-soft);color:var(--warn)">Offen</span> Zimmer 214: Fernbedienung fehlt – Technik informiert.</div>
+          </div>
+          <div class="cap" style="text-align:center">Checklisten und Übergabebuch am Handy – wer was wann erledigt hat, steht automatisch dabei.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="funktionen" class="alt">
     <div class="wrap">
       <div class="eyebrow">Funktionen</div>
-      <h2>Alles, was ein Pre-Opening-Team braucht</h2>
-      <p class="intro">Entwickelt für Hotel-Eröffnungen, nicht für allgemeines Projektmanagement.</p>
+      <h2>Alles, was ein Hotelteam braucht</h2>
+      <p class="intro">Entwickelt für Hotels, nicht für allgemeines Projektmanagement.</p>
       <div class="feats">
-        <div class="feat"><div class="ic">✓</div><h3>Pre-Opening-Vorlage</h3><p>42 typische Aufgaben und 7 Meilensteine von Organigramm bis Probebetrieb – mit einem Klick angelegt, alle Termine relativ zum Eröffnungsdatum.</p></div>
+        <div class="feat"><div class="ic">✓</div><h3>Pre-Opening-Vorlage</h3><p>Über 90 typische Aufgaben und 7 Meilensteine – von Organigramm bis Revenue und Finanzen, mit einem Klick angelegt, alle Termine relativ zum Eröffnungsdatum.</p></div>
         <div class="feat"><div class="ic">↻</div><h3>Termine wandern mit</h3><p>Verschiebt sich die Eröffnung, rechnet Ouverture alle abhängigen Fristen automatisch neu – mit Verlauf.</p></div>
         <div class="feat"><div class="ic">%</div><h3>Bereitschafts-Score</h3><p>Eine Zahl je Abteilung aus Aufgaben, Risiken, Meilensteinen, Personal und Budget. Sie sehen sofort, wo es brennt.</p></div>
         <div class="feat highlight"><div class="ic">✦</div><h3>KI-Lagebericht</h3><p>Die KI liest den gesamten Projektstand und schreibt eine Einschätzung mit Ampel, Handlungsbedarf und nächsten Schritten – für GM und Eigentümer.</p></div>
@@ -218,6 +362,9 @@
         <div class="feat"><div class="ic">▦</div><h3>Dienstplan</h3><p>Wochenplan je Abteilung mit Früh-, Spät- und Nachtschichten, Warnung bei Unterbesetzung und Anträgen für Urlaub und Schichttausch.</p></div>
         <div class="feat"><div class="ic">⚿</div><h3>Rechte nach Abteilung</h3><p>Abteilungsleitungen sehen ihre Bereiche komplett, Mitarbeitende nur ihre Aufgaben. Budget und Risiken bleiben bei der Führung.</p></div>
         <div class="feat"><div class="ic">文</div><h3>In zehn Sprachen</h3><p>Jede Person wählt ihre eigene Sprache – von Deutsch und Englisch bis Arabisch, Chinesisch und Japanisch.</p></div>
+        <div class="feat"><div class="ic">✎</div><h3>Übergabebuch</h3><p>Was die nächste Schicht wissen muss, steht an einem Ort. Offene Punkte werden abgehakt – mit Name und Uhrzeit.</p></div>
+        <div class="feat"><div class="ic">☑</div><h3>Checklisten</h3><p>Zimmerabnahme, Schichtbeginn, Frühstück, Kontrollgang: Vorlagen übernehmen und am Handy abhaken.</p></div>
+        <div class="feat"><div class="ic">▣</div><h3>App fürs Handy</h3><p>Ouverture lässt sich wie eine App auf den Startbildschirm legen – ohne App Store, auf iPhone und Android.</p></div>
       </div>
     </div>
   </section>
@@ -230,6 +377,21 @@
         <div class="step"><h3>Hotel anlegen</h3><p>Name, Zimmerzahl und Eröffnungsdatum eintragen.</p></div>
         <div class="step"><h3>Vorlage anwenden</h3><p>Der komplette Pre-Opening-Plan steht – mit passenden Terminen.</p></div>
         <div class="step"><h3>Team einladen</h3><p>Abteilungsleitungen per Mail einladen und Aufgaben verteilen.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="sicherheit">
+    <div class="wrap">
+      <div class="eyebrow">Sicherheit und Datenschutz</div>
+      <h2>Ihre Daten gehören Ihnen.</h2>
+      <div class="trust">
+        <div><h3>Strikte Trennung</h3><p>Jede Organisation sieht nur ihre eigenen Daten – erzwungen von der Datenbank selbst, nicht nur von der Anwendung.</p></div>
+        <div><h3>Rechte nach Rolle</h3><p>Admin, Abteilungsleitung, Mitarbeitende und Eigentümer sehen jeweils nur, was sie sehen sollen.</p></div>
+        <div><h3>Verschlüsselt übertragen</h3><p>Alle Verbindungen laufen verschlüsselt über HTTPS. Dokumente liegen in einem privaten Speicher.</p></div>
+        <div><h3>Sichere Zahlung</h3><p>Zahlungen laufen über Stripe. Wir sehen und speichern keine Kartendaten.</p></div>
+        <div><h3>Jederzeit exportierbar</h3><p>Alle Projektdaten lassen sich als Excel-Datei exportieren. Kein Einsperren.</p></div>
+        <div><h3>KI nur auf Wunsch</h3><p>Der KI-Lagebericht wird nur erstellt, wenn Sie ihn anfordern. Es werden nur verdichtete Projektdaten verwendet.</p></div>
       </div>
     </div>
   </section>
@@ -279,7 +441,39 @@
             <li>Eigene Vorlagen je Marke</li>
             <li>Onboarding und Schulung</li>
           </ul>
-          <a class="btn btn-ghost" href="index.html">Kontakt über die App</a>
+          <a class="btn btn-ghost" href="#kontakt">Kontakt aufnehmen</a>
+        </div>
+      </div>
+
+      <table class="cmp">
+        <thead><tr><th>Im Tarif enthalten</th><th>Starter</th><th>Professional</th><th>Enterprise</th></tr></thead>
+        <tbody>
+          <tr><td>Hotels</td><td data-no-i18n>1</td><td data-no-i18n>5</td><td>unbegrenzt</td></tr>
+          <tr><td>Teammitglieder</td><td>unbegrenzt</td><td>unbegrenzt</td><td>unbegrenzt</td></tr>
+          <tr><td>Pre-Opening-Vorlage, Zeitstrahl, Statusbericht</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>KI-Lagebericht</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Dienstplan, Tageseinteilung, Anträge</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Übergabebuch und Checklisten</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Logo und Markenfarbe je Hotel</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Bevorzugter Support</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Eigene Vorlagen je Marke, Onboarding und Schulung</td><td class="no">–</td><td class="no">–</td><td class="yes">✓</td></tr>
+        </tbody>
+      </table>
+
+      <div class="calc">
+        <div>
+          <h3>Was kostet Sie das Listen-Chaos?</h3>
+          <p style="margin:0;color:rgba(246,244,239,.7);font-size:14.5px">Schieben Sie die Regler: Zeit, die Ihre Führungskräfte heute mit Excel, WhatsApp-Abstimmung und Nachfragen verbringen.</p>
+          <label>Führungskräfte und Abteilungsleitungen: <b id="v-people" data-no-i18n>6</b><input id="c-people" type="range" min="1" max="30" value="6" /></label>
+          <label>Stunden pro Woche und Person: <b id="v-hours" data-no-i18n>3</b><input id="c-hours" type="range" min="1" max="15" value="3" /></label>
+          <label>Stundenkosten: <b id="v-rate" data-no-i18n>35</b><input id="c-rate" type="range" min="15" max="120" step="5" value="35" /></label>
+        </div>
+        <div class="out">
+          <div style="font-size:13px;color:rgba(246,244,239,.7)">Kosten pro Monat heute</div>
+          <div class="big" id="c-cost" data-no-i18n>–</div>
+          <div style="font-size:13px;color:rgba(246,244,239,.7);margin-top:10px">Wenn Ouverture die Hälfte davon spart</div>
+          <div class="big" id="c-save" style="font-size:26px" data-no-i18n>–</div>
+          <div style="font-size:12px;color:rgba(246,244,239,.55);margin-top:8px" id="c-note"></div>
         </div>
       </div>
     </div>
@@ -294,7 +488,42 @@
       <details><summary>Kann ich monatlich kündigen?</summary><p>Ja. Starter und Professional sind monatlich kündbar, direkt in der App unter „Abo“. Rechnungen und Zahlungsart verwalten Sie dort ebenfalls.</p></details>
       <details><summary>Sieht ein anderer Kunde meine Daten?</summary><p>Nein. Die Trennung zwischen Organisationen erzwingt die Datenbank selbst – nicht nur die Anwendung. Dokumente liegen in einem privaten Speicher und werden nur über kurzlebige Links ausgeliefert.</p></details>
       <details><summary>Was macht die KI mit meinen Projektdaten?</summary><p>Für den Lagebericht wird ein verdichteter Projektstand (Aufgaben, Meilensteine, Risiken, Budget- und Personalzahlen) an das KI-Modell geschickt. Der Bericht wird nur erstellt, wenn Sie ihn anfordern.</p></details>
+      <details><summary>Kann ich Ouverture auch nach der Eröffnung nutzen?</summary><p>Ja. Dienstplan, Tageseinteilung, Übergabebuch und Checklisten sind für den laufenden Betrieb gemacht – viele Hotels nutzen genau das jeden Tag.</p></details>
+      <details><summary>Brauchen meine Mitarbeitenden eine App?</summary><p>Nein. Ouverture läuft im Browser und lässt sich mit zwei Tipps als App auf den Startbildschirm legen – ohne App Store und ohne Installation durch die IT.</p></details>
+      <details><summary>Wie funktioniert die Live-Demo?</summary><p>Die Live-Demo zeigt ein voll befülltes Beispielhotel. Sie können alles ausprobieren – auch aus Sicht einer Abteilungsleitung oder von Mitarbeitenden. Es wird nichts gespeichert.</p></details>
       <details><summary>Funktioniert Ouverture auch für Umbauten oder Rebrandings?</summary><p>Ja. Die Vorlage ist ein Startpunkt – Aufgaben, Abteilungen und Termine lassen sich frei anpassen.</p></details>
+    </div>
+  </section>
+
+  <section id="kontakt">
+    <div class="wrap contact">
+      <div>
+        <div class="eyebrow">Kontakt</div>
+        <h2>Demo-Termin oder Frage? Schreiben Sie uns.</h2>
+        <p class="intro">Wir zeigen Ihnen Ouverture in 30 Minuten am Bildschirm – mit Ihren Abteilungen und Ihrem Eröffnungsdatum. Oder probieren Sie die Live-Demo sofort selbst aus.</p>
+        <a class="btn btn-ghost" href="index.html?demo=1">Live-Demo öffnen</a>
+      </div>
+      <form class="form" id="contact-form" novalidate>
+        <div class="two">
+          <label>Name<input name="name" required autocomplete="name" /></label>
+          <label>E-Mail<input name="email" type="email" required autocomplete="email" /></label>
+        </div>
+        <div class="two">
+          <label>Hotel / Gruppe<input name="hotel" autocomplete="organization" /></label>
+          <label>Telefon (optional)<input name="phone" autocomplete="tel" /></label>
+        </div>
+        <label>Anliegen
+          <select name="topic">
+            <option value="Demo-Termin">Demo-Termin</option>
+            <option value="Enterprise">Enterprise / Hotelgruppe</option>
+            <option value="Frage">Allgemeine Frage</option>
+          </select>
+        </label>
+        <label>Nachricht<textarea name="message" rows="4"></textarea></label>
+        <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <button type="submit" class="btn btn-primary" style="width:100%">Anfrage senden</button>
+        <div id="contact-msg" style="margin-top:10px;font-size:14px"></div>
+      </form>
     </div>
   </section>
 
@@ -304,6 +533,7 @@
         <h2 class="serif">Ihre nächste Eröffnung, im Griff.</h2>
         <p>Legen Sie Ihr Hotel an, wenden Sie die Vorlage an und sehen Sie in fünf Minuten, wo Ihr Projekt steht.</p>
         <a class="btn btn-primary" href="index.html">14 Tage kostenlos testen</a>
+        <a class="btn btn-line" href="index.html?demo=1" style="margin-inline-start:8px">Live-Demo ansehen – ohne Anmeldung</a>
       </div>
     </div>
   </section>
@@ -312,6 +542,8 @@
 <footer>
   <div class="wrap">
     <span style="display:flex;align-items:center;gap:8px"><svg style="width:18px;height:18px" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 26V15a7 7 0 0 1 14 0v11M13 26v-9a3 3 0 0 1 6 0v9M5 26h22" fill="none" stroke="#C9A66B" stroke-width="1.6"/></svg>© Ouverture · Pre-Opening-Software für Hotels</span>
+    <a href="dienstplan-hotel.html">Dienstplan für Hotels</a>
+    <a href="pre-opening-checkliste.html">Pre-Opening-Checkliste</a>
     <a href="rechtliches.html#impressum">Impressum</a>
     <a href="rechtliches.html#datenschutz">Datenschutz</a>
     <a href="rechtliches.html#agb">AGB</a>
@@ -348,6 +580,56 @@
   }
   init(fallback);
   fetch(API).then(function(r){ return r.json(); }).then(init).catch(function(){});
+  window.__priceCurrency = function(){ return sel.value || "EUR"; };
+})();
+
+// Rechner: Zeitkosten heute vs. Ersparnis
+(function(){
+  var ids = ["people","hours","rate"];
+  function money(n){ var c = (window.__priceCurrency && window.__priceCurrency()) || "EUR"; return Math.round(n).toLocaleString(UI_LOCALE, {style:"currency", currency:c, maximumFractionDigits:0}); }
+  function calc(){
+    var v = {}; ids.forEach(function(k){ v[k] = Number(document.getElementById("c-"+k).value); document.getElementById("v-"+k).textContent = k==="rate" ? money(v[k]) : v[k]; });
+    var month = v.people * v.hours * 4.33 * v.rate;
+    document.getElementById("c-cost").textContent = money(month);
+    document.getElementById("c-save").textContent = money(month/2);
+    document.getElementById("c-note").textContent = tf("Rechnung: {0} Personen × {1} Std./Woche × 4,33 Wochen × Stundenkosten.", v.people, v.hours);
+  }
+  ids.forEach(function(k){ document.getElementById("c-"+k).addEventListener("input", calc); });
+  document.getElementById("price-currency").addEventListener("change", calc);
+  calc(); setTimeout(calc, 1500);
+})();
+
+// Kontaktformular -> Backend (Mail an das Ouverture-Team)
+(function(){
+  var f = document.getElementById("contact-form"), msg = document.getElementById("contact-msg");
+  f.addEventListener("submit", function(e){
+    e.preventDefault();
+    var d = {}; new FormData(f).forEach(function(v, k){ d[k] = v; });
+    if(!d.name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)){ msg.style.color = "#A23B32"; msg.textContent = tf("Bitte Name und eine gültige E-Mail-Adresse angeben."); return; }
+    var btn = f.querySelector("button"); btn.disabled = true;
+    fetch("https://hpoos-backend-1.onrender.com/api/public/contact", {method:"POST", headers:{"Content-Type":"application/json","Accept-Language":UI_LANG}, body: JSON.stringify(d)})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(x){ msg.style.color = x.ok ? "#3F7A5C" : "#A23B32"; msg.textContent = x.ok ? tf("Danke! Wir melden uns so bald wie möglich bei Ihnen.") : (x.j.error || tf("Senden fehlgeschlagen.")); if(x.ok) f.reset(); })
+      .catch(function(){ msg.style.color = "#A23B32"; msg.textContent = tf("Senden fehlgeschlagen."); })
+      .then(function(){ btn.disabled = false; });
+  });
+})();
+
+// Titel und Beschreibung in der gewählten Sprache (für Lesezeichen und Teilen)
+document.title = tf("Ouverture – Hotel-Software für Pre-Opening, Dienstplan und Betrieb");
+</script>
+<script>
+/* Mini-Dienstplan in der Vorschau: Wochentage und Schicht-Kürzel in der gewählten Sprache */
+(function(){
+  var g = document.querySelector(".grid7"); if(!g) return;
+  var fmt = new Intl.DateTimeFormat(UI_LOCALE, {weekday:"short"});
+  var narrow = new Intl.DateTimeFormat(UI_LOCALE, {weekday:"narrow"});
+  g.querySelectorAll(".h").forEach(function(el, i){ var d = new Date(2024, 0, 1 + i), t = fmt.format(d).replace(".", ""); el.textContent = t.length > 4 ? narrow.format(d) : t; });
+  var map = {"c-f":"Früh", "c-s":"Spät", "c-u":"Urlaub"};
+  Object.keys(map).forEach(function(cls){
+    var letter = translateString(map[cls]).charAt(0).toUpperCase();
+    g.querySelectorAll(".chip." + cls).forEach(function(el){ el.firstChild.nodeValue = letter; });
+  });
 })();
 </script>
 </body>

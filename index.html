@@ -5,10 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%231C2430%22/><path d=%22M9 26V15a7 7 0 0 1 14 0v11M13 26v-9a3 3 0 0 1 6 0v9M6 26h20%22 fill=%22none%22 stroke=%22%23C9A66B%22 stroke-width=%221.8%22/></svg>" />
 <title>Ouverture</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#1C2430" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Ouverture" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
 <script src="i18n.js"></script>
+<script>
+  // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
+  if (/[?&]demo\b/.test(location.search)) {
+    document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js"><\/script>');
+    document.write('<script src="demo/demo-mock.js"><\/script>');
+  }
+  // Als App installierbar: Service Worker (nicht in der Demo)
+  if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+  // Installations-Angebot des Browsers merken (Knopf "App installieren")
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); window.__installPrompt = e; window.dispatchEvent(new Event("ouverture-installable")); });
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
   :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -1267,12 +1283,33 @@ function RisksView({risks, callHotel, callId, refresh}){
 }
 
 function HotelEditForm({hotel, api, onSaved, onCancel}){
-  const [form,setForm]=useState({name:hotel.name||"",city:hotel.city||"",country:hotel.country||"",rooms:hotel.rooms||"",opening_date:hotel.opening_date||"",currency:hotel.currency||"EUR"});
+  const [form,setForm]=useState({name:hotel.name||"",city:hotel.city||"",country:hotel.country||"",rooms:hotel.rooms||"",opening_date:hotel.opening_date||"",currency:hotel.currency||"EUR",
+    brand_color:hotel.brand_color||"", logo_data:hotel.logo_data||""});
+  // Logo verkleinern (max. 320 px) und als Bild-Text speichern
+  const pickLogo = (file) => {
+    if(!file) return;
+    if(!/^image\//.test(file.type)){ setError(tf("Bitte eine Bilddatei wählen.")); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if(file.type==="image/svg+xml"){ if(String(reader.result).length>270000) return setError(tf("Das Logo ist zu groß.")); return setForm(f=>({...f, logo_data:reader.result})); }
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 320/Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const data = c.toDataURL("image/png");
+        if(data.length>270000) return setError(tf("Das Logo ist zu groß."));
+        setForm(f=>({...f, logo_data:data}));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
   const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
   const save = async () => {
     if(!form.name) return;
     setSaving(true); setError("");
-    try { onSaved(await api("/api/hotels/"+hotel.id,"PATCH",{...form, rooms: form.rooms==="" ? "" : Number(form.rooms)})); }
+    try { onSaved(await api("/api/hotels/"+hotel.id,"PATCH",{...form, rooms: form.rooms==="" ? "" : Number(form.rooms), brand_color: form.brand_color || null, logo_data: form.logo_data || null})); }
     catch(e){ setError(e.message); }
     setSaving(false);
   };
@@ -1288,6 +1325,30 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
         <label style={{flex:1}}><div className="field-label">Zimmeranzahl</div><input type="number" className="input" value={form.rooms} onChange={e=>setForm({...form,rooms:e.target.value})} /></label>
         <label style={{flex:1}}><div className="field-label">Eröffnungsdatum</div><input type="date" className="input" value={form.opening_date} onChange={e=>setForm({...form,opening_date:e.target.value})} /></label>
         <label style={{flex:1}}><div className="field-label">Währung</div><CurrencySelect value={form.currency} onChange={v=>setForm({...form,currency:v})} /></label>
+      </div>
+      <div className="stack" style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap",marginTop:12,paddingTop:12,borderTop:`1px solid ${BORDER}`}}>
+        <div>
+          <div className="field-label">{tf("Logo")}</div>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+            <div style={{width:56,height:56,border:`1px solid ${BORDER}`,borderRadius:6,display:"grid",placeItems:"center",background:"#fff",overflow:"hidden"}}>
+              {form.logo_data ? <img src={form.logo_data} alt="" style={{maxWidth:"100%",maxHeight:"100%"}} /> : <Logo size={26} color={BRASS} />}
+            </div>
+            <label style={{...linkBtn,border:`1px solid ${BORDER}`,borderRadius:4,padding:"6px 10px",cursor:"pointer"}}>
+              {tf("Logo hochladen")}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style={{display:"none"}} onChange={e=>pickLogo(e.target.files[0])} />
+            </label>
+            {form.logo_data && <button style={{...linkBtn,color:BAD}} onClick={()=>setForm({...form,logo_data:""})}>{tf("Entfernen")}</button>}
+          </div>
+        </div>
+        <div>
+          <div className="field-label">{tf("Markenfarbe")}</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input type="color" value={form.brand_color || "#C9A66B"} onChange={e=>setForm({...form,brand_color:e.target.value})} style={{width:44,height:34,border:`1px solid ${BORDER}`,borderRadius:4,padding:2,background:"#fff"}} />
+            {form.brand_color && <button style={linkBtn} onClick={()=>setForm({...form,brand_color:""})}>{tf("Standard")}</button>}
+          </div>
+        </div>
+        <div style={{fontSize:12,color:INK_MUTED,flex:"1 1 220px"}}>{tf("Logo und Farbe erscheinen in der Seitenleiste, im Statusbericht und auf geteilten Dienstplan-Bildern.")}</div>
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:12}}>
         <button style={linkBtn} onClick={onCancel}>Abbrechen</button>
         <button className="btn-primary" onClick={save} disabled={saving}>{saving?"Speichert…":"Speichern"}</button>
       </div>
@@ -1651,7 +1712,8 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
       <div className="report" style={{boxShadow:"0 1px 8px rgba(0,0,0,0.08)",borderRadius:6}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
           <div>
-            <div style={{fontSize:11,color:INK_MUTED,fontWeight:600,letterSpacing:0.5}}>STATUSBERICHT PRE-OPENING</div>
+            {hotel.logo_data && <img src={hotel.logo_data} alt="" style={{height:44,maxWidth:160,objectFit:"contain",marginBottom:6,display:"block"}} />}
+            <div style={{fontSize:11,color:hotel.brand_color||INK_MUTED,fontWeight:600,letterSpacing:0.5}}>STATUSBERICHT PRE-OPENING</div>
             <div style={{fontFamily:"Fraunces, serif",fontSize:24,fontWeight:600}}>{hotel.name}</div>
             <div style={{color:INK_MUTED}}>{[hotel.city, hotel.country].filter(Boolean).join(", ")}{hotel.rooms ? " · "+tf("{0} Zimmer", hotel.rooms) : ""}{orgName ? " · "+orgName : ""}</div>
           </div>
@@ -2299,7 +2361,14 @@ function ShiftChip({s, onClick, draggable, onDragStart}){
 }
 
 // Dienstplan als Bild zeichnen (zum Teilen per WhatsApp & Co.) – alle Abteilungen, eine Woche
-function drawRosterImage({hotelName, weekLabel, days, groups}){
+// Logo als Bild laden (für die Teilen-Bilder)
+function loadImage(src){ return new Promise(r=>{ if(!src) return r(null); const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); }
+function drawBrand(x, width, height, logo, color){
+  if(color){ x.fillStyle = color; x.fillRect(0, height-4, width, 4); }
+  if(logo){ const h = Math.min(height-20, 46), w = Math.min(140, logo.width*h/logo.height);
+    x.fillStyle = "#FFFFFF"; x.fillRect(width-w-30, 10, w+16, h+8); x.drawImage(logo, width-w-22, 14, w, h); }
+}
+function drawRosterImage({hotelName, weekLabel, days, groups, logo, color}){
   const scale = 2, colName = 190, colDay = 132, rowH = 38, headH = 92, deptH = 34, pad = 24;
   const width = pad*2 + colName + colDay*7;
   const rowsTotal = groups.reduce((n,g)=>n + Math.max(1, g.rows.length), 0);
@@ -2319,6 +2388,7 @@ function drawRosterImage({hotelName, weekLabel, days, groups}){
   };
   // Kopf
   x.fillStyle = "#1C2430"; x.fillRect(0,0,width,headH-22);
+  drawBrand(x, width, headH-22, logo, color);
   text("Ouverture · " + hotelName, pad, 34, {weight:"600", size:20, color:"#FFFFFF", max: width-pad*2});
   text(tf("Dienstplan") + " · " + weekLabel, pad, 58, {size:14, color:"#C9A66B"});
   // Tage
@@ -2350,8 +2420,84 @@ function drawRosterImage({hotelName, weekLabel, days, groups}){
   return c;
 }
 
+// Hinweisleiste in der Live-Demo: Rolle ausprobieren, Konto anlegen
+function DemoBar({role}){
+  const go = (r) => { const u = new URL(location.href); u.searchParams.set("demo","1"); u.searchParams.set("role", r); location.href = u.toString(); };
+  return (
+    <div className="no-print" style={{border:`1px solid ${BRASS}`,background:BRASS_SOFT,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:13.5}}>
+      <b>{tf("Live-Demo")}</b><span style={{flex:"1 1 220px"}}>{tf("Alles ausprobieren – Änderungen werden nicht gespeichert.")}</span>
+      <span style={{color:INK_MUTED}}>{tf("Ansicht als:")}</span>
+      <select className="input" style={{width:"auto",padding:"5px 8px"}} value={role} onChange={e=>go(e.target.value)}>
+        <option value="admin">{tf("Admin / Direktion")}</option>
+        <option value="manager">{tf("Abteilungsleitung Housekeeping")}</option>
+        <option value="member">{tf("Mitarbeitende Housekeeping")}</option>
+      </select>
+      <a className="btn-primary" href="index.html" style={{textDecoration:"none",padding:"7px 12px",fontSize:13}}>{tf("Kostenlos testen")}</a>
+    </div>
+  );
+}
+
+// "App installieren": Android/Chrome über das Browser-Angebot, iPhone mit kurzer Anleitung
+function isStandalone(){ return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true; }
+function InstallAppButton({dark}){
+  const [can,setCan] = useState(!!window.__installPrompt);
+  const [hint,setHint] = useState(false);
+  useEffect(()=>{ const f = () => setCan(true); window.addEventListener("ouverture-installable", f); return () => window.removeEventListener("ouverture-installable", f); },[]);
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isStandalone() || window.OUVERTURE_DEMO || (!can && !ios)) return null;
+  const style = dark ? {width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.18)",color:"rgba(255,255,255,0.85)",borderRadius:6,padding:"8px 10px",fontSize:12.5,cursor:"pointer",textAlign:"start"}
+                     : {background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"8px 12px",fontSize:13,cursor:"pointer"};
+  const click = async () => {
+    if(window.__installPrompt){ window.__installPrompt.prompt(); try { await window.__installPrompt.userChoice; } catch(e){} window.__installPrompt = null; setCan(false); }
+    else setHint(!hint);
+  };
+  return (
+    <div>
+      <button onClick={click} style={style}>📱 {tf("App installieren")}</button>
+      {hint && <div style={{fontSize:12,marginTop:6,color:dark?"rgba(255,255,255,0.75)":INK_MUTED,lineHeight:1.4}}>{tf("Am iPhone: unten auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen.")}</div>}
+    </div>
+  );
+}
+
+// Erste Schritte für neue Kunden (nur Admins; verschwindet, wenn alles erledigt oder ausgeblendet)
+function GettingStarted({hotel, api, tasks, members, onOpen}){
+  const key = "hpoos_onboarding_hidden_"+hotel.id;
+  const [hidden,setHidden] = useState(()=>{ try { return window.localStorage.getItem(key)==="1"; } catch(e){ return false; } });
+  const [hasShifts,setHasShifts] = useState(null);
+  useEffect(()=>{ const m = mondayOfIso(todayIso());
+    api("/api/hotels/"+hotel.id+"/shifts?from="+addDaysIso(m,-28)+"&to="+addDaysIso(m,27)).then(r=>setHasShifts(r.length>0)).catch(()=>setHasShifts(false)); },[hotel.id]);
+  if(hidden || hotel.is_demo) return null;
+  const steps = [
+    {done:true, label:tf("Hotel anlegen"), tab:null},
+    {done:tasks.some(t=>t.template_key), label:tf("Pre-Opening-Vorlage anwenden"), tab:"tasks"},
+    {done:members.length>1, label:tf("Team einladen"), tab:"team"},
+    {done:members.some(m=>(m.departments||[]).length>0), label:tf("Rollen und Abteilungen zuordnen"), tab:"team"},
+    {done:!!hasShifts, label:tf("Ersten Dienstplan anlegen"), tab:"roster"},
+    {done:isStandalone(), label:tf("Ouverture als App aufs Handy holen"), tab:"account"},
+  ];
+  const n = steps.filter(x=>x.done).length;
+  if(n===steps.length) return null;
+  return (
+    <Card style={{marginBottom:18,borderColor:BRASS}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+        <div style={{fontWeight:700,flex:1}}>{tf("Erste Schritte")} <span style={{color:INK_MUTED,fontWeight:400,fontSize:13}} data-no-i18n="">{n}/{steps.length}</span></div>
+        <button style={linkBtn} onClick={()=>{ setHidden(true); try { window.localStorage.setItem(key,"1"); } catch(e){} }}>{tf("Ausblenden")}</button>
+      </div>
+      <div style={{height:5,background:PAPER,borderRadius:3,overflow:"hidden",marginBottom:10}}><div style={{width:(n/steps.length*100)+"%",height:"100%",background:BRASS}} /></div>
+      {steps.map((x,i)=>(
+        <div key={i} style={{display:"flex",gap:10,alignItems:"center",padding:"7px 0",borderTop:`1px solid ${BORDER}`,fontSize:14}}>
+          <span style={{width:22,height:22,borderRadius:"50%",display:"grid",placeItems:"center",fontSize:12,flexShrink:0,
+            background:x.done?GOOD:"#fff",color:x.done?"#fff":INK_MUTED,border:`1px solid ${x.done?GOOD:BORDER}`}} data-no-i18n="">{x.done?"✓":i+1}</span>
+          <span style={{flex:1,color:x.done?INK_MUTED:INK,textDecoration:x.done?"line-through":"none"}}>{x.label}</span>
+          {!x.done && x.tab && <button className="btn-primary" style={{padding:"5px 12px",fontSize:12.5}} onClick={()=>onOpen(x.tab)}>{tf("Los")}</button>}
+        </div>
+      ))}
+    </Card>
+  );
+}
+
 // Tageseinteilung als Bild: Abteilung, Person, Schicht, Aufgabe
-function drawDutyImage({hotelName, dayLabel, groups}){
+function drawDutyImage({hotelName, dayLabel, groups, logo, color}){
   const scale = 2, pad = 24, width = 860, rowH = 44, deptH = 32, headH = 86;
   const rows = groups.reduce((n,g)=>n+g.rows.length, 0);
   const height = headH + groups.length*deptH + rows*rowH + pad + 26;
@@ -2363,6 +2509,7 @@ function drawDutyImage({hotelName, dayLabel, groups}){
     let s = String(t||""); if(o.max){ while(s.length>1 && x.measureText(s).width>o.max) s = s.slice(0,-1); if(s!==String(t||"")) s = s.slice(0,-1)+"…"; } x.fillText(s, px, py); };
   x.fillStyle = "#FFFFFF"; x.fillRect(0,0,width,height);
   x.fillStyle = "#1C2430"; x.fillRect(0,0,width,headH-16);
+  drawBrand(x, width, headH-16, logo, color);
   text("Ouverture · " + hotelName, pad, 32, {weight:"600", size:19, color:"#FFFFFF", max: width-pad*2});
   text(tf("Tageseinteilung") + " · " + dayLabel, pad, 56, {size:14, color:"#C9A66B"});
   let y = headH;
@@ -2563,7 +2710,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
       const items = shownDepts.map(d=>({dept:d, rows: dutyRows(groups.find(g=>g.dept===d), dDay).map(r=>({
         name:r.name, shift: shiftsFor(r,dDay).filter(s=>WORK_KINDS.includes(s.kind)).map(s=>translateString(s.kind)+" "+shiftTimes(s)).join(", "),
         task: (dutyOf(r,dDay)||{}).task || "" }))})).filter(g=>g.rows.length);
-      const canvas = drawDutyImage({hotelName: hotel.name, dayLabel: fmtDay(dDay,{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}), groups: items});
+      const canvas = drawDutyImage({hotelName: hotel.name, dayLabel: fmtDay(dDay,{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}), groups: items, logo: await loadImage(hotel.logo_data), color: hotel.brand_color});
       const blob = await new Promise(r=>canvas.toBlob(r, "image/png"));
       const name = (tf("Tageseinteilung")+" "+hotel.name+" "+dDay).replace(/[\\/:*?"<>|]+/g,"") + ".png";
       const file = new File([blob], name, {type:"image/png"});
@@ -2601,7 +2748,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
     setSharing(true); setMsg(null);
     try {
       const filled = groups.filter(g=>g.rows.length);
-      const canvas = drawRosterImage({hotelName: hotel.name, weekLabel, days, groups: filled.length ? filled : groups});
+      const canvas = drawRosterImage({hotelName: hotel.name, weekLabel, days, groups: filled.length ? filled : groups, logo: await loadImage(hotel.logo_data), color: hotel.brand_color});
       const blob = await new Promise(r=>canvas.toBlob(r, "image/png"));
       const name = (tf("Dienstplan")+" "+hotel.name+" "+week).replace(/[\\/:*?"<>|]+/g,"") + ".png";
       const file = new File([blob], name, {type:"image/png"});
@@ -3502,6 +3649,12 @@ function AccountView({config, token, me, api, onDeleted}){
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>Deine Sprache gilt nur für dich. Ohne Auswahl folgt Ouverture der Standardsprache der Organisation.</div>
         <LanguageSwitcher withDefault api={api} me={me} />
       </Card>
+      <Card style={{marginBottom:18,maxWidth:520}}>
+        <div style={{fontWeight:700,marginBottom:6}}>{tf("Ouverture als App")}</div>
+        <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Symbol auf dem Startbildschirm, Vollbild und schneller Start – ganz ohne App Store. Ideal für Dienstplan und Checklisten.")}</div>
+        {isStandalone() ? <div style={{color:GOOD,fontSize:13.5}}>✓ {tf("Ouverture ist als App installiert.")}</div> : <InstallAppButton />}
+        {!isStandalone() && !/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.__installPrompt && <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.")}</div>}
+      </Card>
       <PasswordCard config={config} token={token} />
       <DeleteAccountCard api={api} onDeleted={onDeleted} />
     </div>
@@ -3767,7 +3920,7 @@ function App(){
   // Verbindungsdaten sofort setzen: eine gespeicherte Sitzung braucht sie schon beim ersten Anzeigen
   const [config,setConfig] = useState(DEFAULT_CONFIG);
   // Gespeicherte Sitzung wiederherstellen – so bleibt man nach dem Neuladen angemeldet
-  const [token,setToken] = useState(() => { const s = Session.load(); return s ? s.access_token : null; });
+  const [token,setToken] = useState(() => { if(window.OUVERTURE_DEMO) return "demo"; const s = Session.load(); return s ? s.access_token : null; });
   const [orgId,setOrgId] = useState(null);
   const [orgs,setOrgs] = useState([]);
   const [members,setMembers] = useState([]);
@@ -3903,7 +4056,7 @@ function App(){
   const isLead = role==="admin" || role==="manager";
   // Oberfläche in der Sprache der Organisation
   useEffect(()=>{ if(currentOrg) followOrgLanguage(currentOrg.language || "de"); },[currentOrg && currentOrg.language]);
-  useEffect(()=>{ if(currentOrg && !navFor(role, !!billing).some(n=>n.key===tab)) setTab("dashboard"); },[role, tab, !!billing, !!currentOrg]);
+  useEffect(()=>{ if(currentOrg && !navFor(role, !!billing && !window.OUVERTURE_DEMO).some(n=>n.key===tab)) setTab("dashboard"); },[role, tab, !!billing, !!currentOrg]);
 
   // Tageskurse für die eigene Anzeigewährung
   useEffect(()=>{
@@ -3924,6 +4077,7 @@ function App(){
   },[hotel && hotel.id, tab, orgId]);
   useEffect(()=>{
     if(hotel || !hotels || !orgId) return;
+    if(window.OUVERTURE_DEMO && hotels.length){ setHotel(hotels[0]); return; }
     let saved = null;
     try { saved = JSON.parse(window.localStorage.getItem(LS_HOTEL_KEY) || "null"); } catch(e){}
     if(!saved || saved.orgId !== orgId) return;
@@ -4000,7 +4154,7 @@ function App(){
     readiness={readiness} tasks={tasks} milestones={milestones} risks={risks} budget={budget} staff={staff}
     aiReport={ai && ai.report} onClose={()=>setShowReport(false)} />;
 
-  const NAV = navFor(role, !!billing);
+  const NAV = navFor(role, !!billing && !window.OUVERTURE_DEMO);
 
   HOTEL_CURRENCY = hotel.currency || "EUR";
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -4015,19 +4169,20 @@ function App(){
   return (
     <div className="app-shell" style={{fontFamily:"Inter, sans-serif",background:PAPER,minHeight:"100vh",display:"flex"}}>
       <div className="sidebar" style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
-        <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:500,letterSpacing:0.3,padding:"0 8px 20px",borderBottom:"1px solid rgba(201,166,107,0.3)",marginBottom:16,display:"flex",alignItems:"center",gap:9}}><Logo size={22} />Ouverture</div>
+        <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:500,letterSpacing:0.3,padding:"0 8px 20px",borderBottom:"1px solid "+(hotel.brand_color||"rgba(201,166,107,0.3)"),marginBottom:16,display:"flex",alignItems:"center",gap:9}}><Logo size={22} color={hotel.brand_color||"#C9A66B"} />Ouverture</div>
         <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={switchOrg} dark />
         {NAV.map(n=>(
-          <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderInlineStart:"2px solid "+(tab===n.key?"#C9A66B":"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}</div>
+          <div key={n.key} className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderInlineStart:"2px solid "+(tab===n.key?(hotel.brand_color||"#C9A66B"):"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}</div>
         ))}
         <div className="nav-item" onClick={leaveHotel} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
         <div style={{marginTop:18}}><LanguageSwitcher dark withDefault api={api} me={me} onCurrency={()=>setFxTick(x=>x+1)} /></div>
+        <div style={{marginTop:8}}><InstallAppButton dark /></div>
         <div className="logout" onClick={logout} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
           <div>
-            <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.name}{hotel.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispielhotel</Pill>}</div>
+            <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.logo_data && <img src={hotel.logo_data} alt="" style={{height:30,maxWidth:90,objectFit:"contain"}} />}<span data-no-i18n="">{hotel.name}</span>{hotel.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispielhotel</Pill>}</div>
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {tf("{0} Zimmer · Eröffnung {1}", hotel.rooms, fmtDate(hotel.opening_date))}</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -4036,7 +4191,7 @@ function App(){
               style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Excel-Export</button>}
             <button onClick={()=>downloadIcs({hotel, tasks, milestones})} title="Offene Fristen und Meilensteine für Outlook, Google oder Apple Kalender"
               style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Kalender</button>
-            {hotel.is_demo && isAdmin && <button onClick={async ()=>{
+            {hotel.is_demo && isAdmin && !window.OUVERTURE_DEMO && <button onClick={async ()=>{
                 if(!window.confirm("Beispielhotel mit allen Beispieldaten löschen? Du kannst es später jederzeit neu anlegen.")) return;
                 try { await api("/api/hotels/"+hotel.id,"DELETE"); setHotels((hotels||[]).filter(x=>x.id!==hotel.id)); setHotel(null); }
                 catch(e){ setFatalError(e.message); }
@@ -4045,14 +4200,16 @@ function App(){
           </div>
         </div>
         <div className="page-content" style={{padding:"22px 28px"}}>
+          {window.OUVERTURE_DEMO && <DemoBar role={role} />}
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
-          {tab!=="billing" && isAdmin && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
+          {tab!=="billing" && isAdmin && !window.OUVERTURE_DEMO && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
           {role==="member" && tab==="dashboard" && <MemberHome hotel={hotel} api={api} me={me} orgId={orgId} tasks={tasks} myDepts={myDepts} onOpen={setTab} />}
           {isViewer && <div className="no-print" style={{border:`1px solid ${BRASS}`,background:BRASS_SOFT,borderRadius:8,padding:"9px 14px",marginBottom:16,fontSize:13.5}}>
             <b>Eigentümer-Ansicht:</b> Du siehst den aktuellen Stand, den KI-Lagebericht und den Statusbericht. Ändern können nur Mitglieder des Projektteams.
           </div>}
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
+          {tab==="dashboard" && isAdmin && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
           {tab==="dashboard" && role!=="member" && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
           {tab==="dashboard" && role!=="member" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} lead={role!=="member"} onOpen={isLead ? setTab : ()=>{}} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}

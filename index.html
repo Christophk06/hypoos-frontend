@@ -1288,7 +1288,7 @@ function RisksView({risks, callHotel, callId, refresh}){
 
 function HotelEditForm({hotel, api, onSaved, onCancel}){
   const [form,setForm]=useState({name:hotel.name||"",city:hotel.city||"",country:hotel.country||"",rooms:hotel.rooms||"",opening_date:hotel.opening_date||"",currency:hotel.currency||"EUR",
-    brand_color:hotel.brand_color||"", logo_data:hotel.logo_data||"", holiday_region:hotel.holiday_region||""});
+    brand_color:hotel.brand_color||"", logo_data:hotel.logo_data||"", holiday_region:hotel.holiday_region||"", disabled_modules:hotel.disabled_modules||[]});
   // Logo verkleinern (max. 320 px) und als Bild-Text speichern
   const pickLogo = (file) => {
     if(!file) return;
@@ -1334,6 +1334,11 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
             <option value="">{tf("Keine")}</option>
             {HOLIDAY_REGIONS.map(c=>[c, holidayRegionLabel(c, UI_LOCALE)]).sort((a,b)=>a[1].localeCompare(b[1])).map(([c,l])=><option key={c} value={c}>{l}</option>)}
           </select></label>
+      </div>
+      <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${BORDER}`}}>
+        <div style={{fontWeight:700,marginBottom:4}}>{tf("Bereiche im Menü")}</div>
+        <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Blende aus, was dieses Hotel nicht braucht – zum Beispiel alles rund um die Eröffnung, sobald das Haus läuft. Daten bleiben erhalten und lassen sich jederzeit wieder einblenden.")}</div>
+        <ModulePicker value={form.disabled_modules} onChange={v=>setForm({...form,disabled_modules:v})} />
       </div>
       <div className="stack" style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap",marginTop:12,paddingTop:12,borderTop:`1px solid ${BORDER}`}}>
         <div>
@@ -4845,6 +4850,88 @@ function HotelStats({s}){
   );
 }
 
+// ------------------------------------------------------------ Bereiche je Hotel und kurze Hilfe
+const MODULE_GROUPS = [
+  ["Pre-Opening", [["tasks","Aufgaben"],["milestones","Meilensteine"],["timeline","Zeitstrahl"],["risks","Risiken"],["budget","Budget"],["staff","Personal"]]],
+  ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"]]],
+  ["Allgemein", [["docs","Dokumente"]]],
+];
+const PRE_MODULES = MODULE_GROUPS[0][1].map(([k])=>k);
+const OPS_MODULES = MODULE_GROUPS[1][1].map(([k])=>k);
+const hotelDisabled = (hotel) => (hotel && hotel.disabled_modules) || [];
+const preOpeningOff = (hotel) => hotelDisabled(hotel).includes("tasks");
+
+function ModulePicker({value, onChange}){
+  const off = value || [];
+  const toggle = (k) => onChange(off.includes(k) ? off.filter(x=>x!==k) : [...off, k]);
+  const preset = (list) => onChange(list);
+  const btn = {background:"#fff",border:`1px solid ${BORDER}`,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"};
+  return (
+    <div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+        <button type="button" style={btn} onClick={()=>preset(OPS_MODULES)}>{tf("Nur Pre-Opening")}</button>
+        <button type="button" style={btn} onClick={()=>preset(PRE_MODULES)}>{tf("Nur laufender Betrieb")}</button>
+        <button type="button" style={btn} onClick={()=>preset([])}>{tf("Alles")}</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:12}}>
+        {MODULE_GROUPS.map(([g, items])=>(
+          <div key={g}>
+            <div className="field-label">{g}</div>
+            {items.map(([k,l])=>(
+              <label key={k} style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,padding:"3px 0",cursor:"pointer"}}>
+                <input type="checkbox" checked={!off.includes(k)} onChange={()=>toggle(k)} /> <span>{l}</span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Kurz erklärt – erscheint beim ersten Besuch eines Bereichs, danach über „?“
+const HELP = {
+  dashboard: "Hier siehst du auf einen Blick, wie weit die Eröffnung ist: Bereitschaft je Abteilung, überfällige Aufgaben, Risiken und den KI-Lagebericht.",
+  home: "Deine Schicht heute, Kommen und Gehen, deine Aufgaben und offene Punkte – alles, was du für den Tag brauchst.",
+  mine: "Alle Aufgaben, für die du zuständig bist – über alle Hotels hinweg. Erledigtes einfach abhaken.",
+  kpis: "Kennzahlen aus dem laufenden Betrieb: Stunden, Stunden je belegtem Zimmer, Reinigungszeit, Meldungen und HACCP. Den Zeitraum wählst du oben.",
+  tasks: "Die Aufgabenliste der Eröffnung. Mit der Pre-Opening-Vorlage bekommst du über 90 typische Aufgaben; alle Termine hängen am Eröffnungsdatum. Filtern, zuweisen, kommentieren und Dateien anhängen.",
+  milestones: "Die großen Etappen bis zur Eröffnung, zum Beispiel Übergabe des Gebäudes oder Soft Opening. Verschiebt sich ein Meilenstein, sieht es das ganze Team im Zeitstrahl.",
+  timeline: "Alle Aufgaben und Meilensteine auf einer Zeitachse – ideal, um Engpässe und Abhängigkeiten zu erkennen.",
+  risks: "Was die Eröffnung gefährden könnte, mit Wahrscheinlichkeit, Auswirkung und Gegenmaßnahme. Hohe Risiken fließen in den Bereitschafts-Score und den KI-Lagebericht ein.",
+  budget: "Das Pre-Opening-Budget je Abteilung: geplant gegenüber ausgegeben. Überschreitungen werden rot markiert.",
+  staff: "Der Stellenplan für die Eröffnung: welche Stellen besetzt sind, welche noch offen sind und ab wann sie gebraucht werden.",
+  roster: "Der Wochenplan je Abteilung. Schichten anklicken oder ziehen, Mindestbesetzung und Bedarf aus der Belegung prüfen, mit dem Plan-Vorschlag automatisch füllen. Erst „Veröffentlichen“ macht die Woche für Mitarbeitende sichtbar.",
+  time: "Kommen und Gehen per Knopfdruck – auch ohne Netz. Die Leitung sieht, wer im Dienst ist, korrigiert Buchungen und lädt die Monatsauswertung für die Lohnverrechnung herunter.",
+  rooms: "Der Status jedes Zimmers: schmutzig, in Reinigung, sauber, kontrolliert. Zum Ändern das Zimmer antippen. Mit PMS-Anbindung kommen Belegung und Status automatisch.",
+  tickets: "Mängel mit Foto melden, Gästewünsche weitergeben und Wartungen planen. Die zuständige Abteilung bekommt eine Nachricht aufs Handy.",
+  logbook: "Das Übergabebuch für jede Schicht: Wichtiges festhalten, offene Punkte abhaken. Texte in anderen Sprachen werden automatisch übersetzt.",
+  checklists: "Wiederkehrende Kontrollen wie Zimmerabnahme oder Schichtbeginn – jeden Tag am Handy abhaken. Oben stehen die HACCP-Temperaturen für die Küche.",
+  stock: "Bestände je Abteilung mit Mindestbestand. Entnahmen mit − buchen; fällt ein Artikel unter das Minimum, bekommt der Einkauf automatisch eine Meldung.",
+  lostfound: "Fundsachen mit Foto erfassen, den Aufbewahrungsort notieren und bei der Rückgabe festhalten, an wen.",
+  trainings: "Unterweisungen wie Brandschutz oder Hygiene. Jede Person bestätigt mit „Gelesen und verstanden“, die Leitung sieht, wer noch fehlt.",
+  chat: "Ein Kanal je Abteilung und einer für das ganze Hotel. Nachrichten in anderen Sprachen werden automatisch übersetzt.",
+  docs: "Verträge, Pläne und Nachweise zentral ablegen – auf Wunsch direkt an einer Aufgabe.",
+  team: "Personen einladen sowie Rollen und Abteilungen festlegen. Mitarbeitende sehen nur ihre eigene Abteilung.",
+};
+const helpKey = (tab, role, hotel) => tab==="dashboard" ? (role==="member" ? "home" : preOpeningOff(hotel) ? "kpis" : "dashboard") : tab;
+function helpSeen(key){ try { return window.localStorage.getItem("hpoos_help_"+key)==="1"; } catch(e){ return false; } }
+function HelpTip({tab, role, hotel, open, onClose}){
+  const key = helpKey(tab, role, hotel);
+  const text = HELP[key];
+  const [seen,setSeen] = useState(()=>helpSeen(key));
+  useEffect(()=>{ setSeen(helpSeen(key)); },[key]);
+  if(!text || (seen && !open)) return null;
+  const close = () => { try { window.localStorage.setItem("hpoos_help_"+key,"1"); } catch(e){} setSeen(true); if(onClose) onClose(); };
+  return (
+    <div className="no-print" style={{display:"flex",gap:10,alignItems:"flex-start",background:"#F4F7FB",border:"1px solid #D6E2F0",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13.5,lineHeight:1.5}}>
+      <span style={{fontSize:16}}>💡</span>
+      <div style={{flex:1}}>{tf(text)}</div>
+      <button onClick={close} style={{...linkBtn,fontWeight:600,color:INK,whiteSpace:"nowrap"}}>{tf("Verstanden")}</button>
+    </div>
+  );
+}
+
 // Startseite für Mitarbeitende: nur das, was sie heute brauchen
 function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen}){
   const [shifts,setShifts] = useState([]);
@@ -5317,7 +5404,11 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 }
 
 // Menü je Rolle
-function navFor(role, hasBilling, myDepts){
+function navFor(role, hasBilling, myDepts, disabled){
+  const off = disabled || [];
+  return navForAll(role, hasBilling, myDepts).filter(n=>!off.includes(n.key));
+}
+function navForAll(role, hasBilling, myDepts){
   const N = (key,label,section) => ({key,label,section});
   if(role==="viewer") return [N("dashboard","Dashboard"), N("timeline","Zeitstrahl"), N("kpis","Kennzahlen"), N("team","Team"), N("account","Konto")];
   // Zimmerstatus sehen alle; im Menü nur für Housekeeping, Rezeption und die Leitung
@@ -5359,6 +5450,7 @@ function App(){
   const [recoveryToken,setRecoveryToken] = useState(null);
   const [recoveryDone,setRecoveryDone] = useState(false);
   const [editingHotel,setEditingHotel] = useState(false);
+  const [helpOpen,setHelpOpen] = useState(false);
   const [showReport,setShowReport] = useState(false);
   const [billing,setBilling] = useState(null);
   const [billingNotice,setBillingNotice] = useState(null);
@@ -5483,7 +5575,7 @@ function App(){
   const isLead = role==="admin" || role==="manager";
   // Oberfläche in der Sprache der Organisation
   useEffect(()=>{ if(currentOrg) followOrgLanguage(currentOrg.language || "de"); },[currentOrg && currentOrg.language]);
-  useEffect(()=>{ if(currentOrg && !navFor(role, !!billing && !window.OUVERTURE_DEMO, myDepts).some(n=>n.key===tab)) setTab("dashboard"); },[role, tab, !!billing, !!currentOrg, myDepts.join("|")]);
+  useEffect(()=>{ if(currentOrg && hotel && !navFor(role, !!billing && !window.OUVERTURE_DEMO, myDepts, hotelDisabled(hotel)).some(n=>n.key===tab)) setTab("dashboard"); },[role, tab, !!billing, !!currentOrg, myDepts.join("|"), hotel && hotelDisabled(hotel).join("|")]);
 
   // Tageskurse für die eigene Anzeigewährung
   useEffect(()=>{
@@ -5587,7 +5679,7 @@ function App(){
     readiness={readiness} tasks={tasks} milestones={milestones} risks={risks} budget={budget} staff={staff}
     aiReport={ai && ai.report} onClose={()=>setShowReport(false)} />;
 
-  const NAV = navFor(role, !!billing && !window.OUVERTURE_DEMO, myDepts);
+  const NAV = navFor(role, !!billing && !window.OUVERTURE_DEMO, myDepts, hotelDisabled(hotel));
 
   HOTEL_CURRENCY = hotel.currency || "EUR";
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -5607,7 +5699,7 @@ function App(){
         {NAV.map((n,i)=>(
           <React.Fragment key={n.key}>
           {n.section && n.section!==(NAV[i-1]||{}).section && <div style={{fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.38)",margin:"14px 0 4px 12px"}}>{n.section}</div>}
-          <div className="nav-item" onClick={()=>setTab(n.key)} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderInlineStart:"2px solid "+(tab===n.key?(hotel.brand_color||"#C9A66B"):"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}{n.key==="chat" && chatUnread>0 && tab!=="chat" && <span style={{color:"#E8A598",marginInlineStart:6,fontSize:11}}>●</span>}</div>
+          <div className="nav-item" onClick={()=>{ setTab(n.key); setHelpOpen(false); }} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderInlineStart:"2px solid "+(tab===n.key?(hotel.brand_color||"#C9A66B"):"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}{n.key==="chat" && chatUnread>0 && tab!=="chat" && <span style={{color:"#E8A598",marginInlineStart:6,fontSize:11}}>●</span>}</div>
           </React.Fragment>
         ))}
         <div className="nav-item" onClick={leaveHotel} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
@@ -5622,11 +5714,13 @@ function App(){
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {tf("{0} Zimmer · Eröffnung {1}", hotel.rooms, fmtDate(hotel.opening_date))}</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {role!=="member" && <button onClick={()=>{ setShowReport(true); window.scrollTo(0,0); }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Statusbericht</button>}
-            {role!=="member" && <button onClick={async ()=>{ try { await exportHotelXlsx({hotel, tasks, milestones, risks, budget, staff, members}); } catch(e){ setFatalError(tf("Export fehlgeschlagen: {0}", e.message)); } }}
+            {HELP[helpKey(tab, role, hotel)] && <button onClick={()=>setHelpOpen(x=>!x)} title={tf("Kurz erklärt")} aria-label={tf("Kurz erklärt")}
+              style={{background:helpOpen?"#F4F7FB":"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 11px",fontSize:12.5,cursor:"pointer",fontWeight:700}}>?</button>}
+            {role!=="member" && !preOpeningOff(hotel) && <button onClick={()=>{ setShowReport(true); window.scrollTo(0,0); }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Statusbericht</button>}
+            {role!=="member" && !preOpeningOff(hotel) && <button onClick={async ()=>{ try { await exportHotelXlsx({hotel, tasks, milestones, risks, budget, staff, members}); } catch(e){ setFatalError(tf("Export fehlgeschlagen: {0}", e.message)); } }}
               style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Excel-Export</button>}
-            <button onClick={()=>downloadIcs({hotel, tasks, milestones})} title="Offene Fristen und Meilensteine für Outlook, Google oder Apple Kalender"
-              style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Kalender</button>
+            {!preOpeningOff(hotel) && <button onClick={()=>downloadIcs({hotel, tasks, milestones})} title="Offene Fristen und Meilensteine für Outlook, Google oder Apple Kalender"
+              style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Kalender</button>}
             {hotel.is_demo && isAdmin && !window.OUVERTURE_DEMO && <button onClick={async ()=>{
                 if(!window.confirm("Beispielhotel mit allen Beispieldaten löschen? Du kannst es später jederzeit neu anlegen.")) return;
                 try { await api("/api/hotels/"+hotel.id,"DELETE"); setHotels((hotels||[]).filter(x=>x.id!==hotel.id)); setHotel(null); }
@@ -5645,9 +5739,11 @@ function App(){
           </div>}
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
-          {tab==="dashboard" && isAdmin && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
-          {tab==="dashboard" && role!=="member" && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
-          {tab==="dashboard" && role!=="member" && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} lead={role!=="member"} onOpen={isLead ? setTab : ()=>{}} />}
+          <HelpTip tab={tab} role={role} hotel={hotel} open={helpOpen} onClose={()=>setHelpOpen(false)} />
+          {tab==="dashboard" && isAdmin && !preOpeningOff(hotel) && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
+          {tab==="dashboard" && role!=="member" && preOpeningOff(hotel) && <KpiView hotel={hotel} api={api} />}
+          {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
+          {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} lead={role!=="member"} onOpen={isLead ? setTab : ()=>{}} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
           {tab==="tasks" && <TasksView tasks={tasks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} members={members} me={me} api={api} docCtx={docCtx} />}
           {tab==="timeline" && <TimelineView hotel={hotel} tasks={tasks} milestones={milestones} />}

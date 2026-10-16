@@ -1,6 +1,6 @@
 /* Monatsauswertung für die Lohnverrechnung (läuft im Browser, Ortszeit des Geräts).
-   Je Person: Soll, geplant, gearbeitet, Pausen, Nacht- (22–6 Uhr) und Sonntagsstunden, Urlaubs- und Krankentage.
-   Feiertage werden nicht automatisch erkannt. */
+   Je Person: Soll, geplant, gearbeitet, Pausen, Nacht- (22–6 Uhr), Sonntags- und Feiertagsstunden, Urlaubs- und Krankentage.
+   Feiertage kommen aus holidays.js (Region des Hotels), als Karte { "JJJJ-MM-TT": Name }. */
 (function (root) {
   var WORK = ["Früh", "Spät", "Nacht", "Zwischen"];
 
@@ -19,21 +19,23 @@
   }
 
   // Arbeitszeit einer Buchung zerlegen: gesamt, Nacht (22–6), Sonntag – in Minuten, ohne Pause
-  function splitEntry(e) {
+  function splitEntry(e, holidays) {
     var a = new Date(e.clock_in).getTime(), b = new Date(e.clock_out).getTime();
-    var gross = Math.max(0, (b - a) / 60000), night = 0, sunday = 0;
+    var gross = Math.max(0, (b - a) / 60000), night = 0, sunday = 0, holiday = 0;
     var day = new Date(a); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - 1);
     while (day.getTime() < b) {
       var n0 = new Date(day); n0.setHours(22, 0, 0, 0);
       var n1 = new Date(day); n1.setDate(n1.getDate() + 1); n1.setHours(6, 0, 0, 0);
       night += overlap(a, b, n0.getTime(), n1.getTime()) / 60000;
-      if (day.getDay() === 0) { var s1 = new Date(day); s1.setDate(s1.getDate() + 1); sunday += overlap(a, b, day.getTime(), s1.getTime()) / 60000; }
+      var d1 = new Date(day); d1.setDate(d1.getDate() + 1);
+      if (day.getDay() === 0) sunday += overlap(a, b, day.getTime(), d1.getTime()) / 60000;
+      if (holidays && holidays[localIso(day)]) holiday += overlap(a, b, day.getTime(), d1.getTime()) / 60000;
       day.setDate(day.getDate() + 1);
     }
     var brk = Math.min(Number(e.break_minutes) || 0, gross);
     // Pause anteilig abziehen, damit Nacht/Sonntag nie über der Arbeitszeit liegen
     var f = gross ? (gross - brk) / gross : 0;
-    return { worked: gross - brk, breakMin: brk, night: night * f, sunday: sunday * f };
+    return { worked: gross - brk, breakMin: brk, night: night * f, sunday: sunday * f, holiday: holiday * f };
   }
 
   function personKey(userId, name) { return userId ? "u:" + userId : "n:" + String(name || "").trim().toLowerCase(); }
@@ -46,7 +48,7 @@
     function row(userId, name, dept) {
       var k = personKey(userId, name);
       if (!rows[k]) { rows[k] = { key: k, user_id: userId || null, name: userId ? (o.nameOf ? o.nameOf(userId) : userId) : name, departments: [],
-        target: null, planned: 0, worked: 0, breaks: 0, night: 0, sunday: 0, vacation: 0, sick: 0, entries: 0, open: 0, corrected: 0 }; list.push(rows[k]); }
+        target: null, planned: 0, worked: 0, breaks: 0, night: 0, sunday: 0, holiday: 0, vacation: 0, sick: 0, entries: 0, open: 0, corrected: 0 }; list.push(rows[k]); }
       if (dept && rows[k].departments.indexOf(dept) < 0) rows[k].departments.push(dept);
       return rows[k];
     }
@@ -62,8 +64,8 @@
       if (t < mb.start || t >= mb.end) return;
       var r = row(e.user_id, null, e.department);
       if (!e.clock_out) { r.open += 1; return; }
-      var p = splitEntry(e);
-      r.worked += p.worked / 60; r.breaks += p.breakMin / 60; r.night += p.night / 60; r.sunday += p.sunday / 60; r.entries += 1;
+      var p = splitEntry(e, o.holidays);
+      r.worked += p.worked / 60; r.breaks += p.breakMin / 60; r.night += p.night / 60; r.sunday += p.sunday / 60; r.holiday += p.holiday / 60; r.entries += 1;
       if (e.edited_by) r.corrected += 1;
     });
     (o.targets || []).forEach(function (t) {
@@ -74,7 +76,7 @@
     });
     list.forEach(function (r) {
       r.diff = r.entries ? (r.target != null ? r.worked - r.target : null) : null;
-      ["target", "planned", "worked", "breaks", "night", "sunday", "diff"].forEach(function (f) { if (r[f] != null) r[f] = Math.round(r[f] * 100) / 100; });
+      ["target", "planned", "worked", "breaks", "night", "sunday", "holiday", "diff"].forEach(function (f) { if (r[f] != null) r[f] = Math.round(r[f] * 100) / 100; });
     });
     return list.sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
   }

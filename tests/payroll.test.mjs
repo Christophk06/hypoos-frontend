@@ -24,3 +24,11 @@ const h = rows.find((r) => r.name === "Aushilfe"); assert.equal(h.planned, 8.5);
 assert.equal(payrollCsv(["a", "b"], [["x;y", 1]]), "\ufeffa;b\r\n\"x;y\";1");
 assert.equal(payrollSummary({ month: "2026-11", today: "2026-11-15", targets: [{ user_id: "z", department: "X", weekly_hours: 7 }] })[0].target, 15, "laufender Monat");
 console.log("payroll ok");
+// Feiertagsstunden: Arbeit am 25.12. (8 h, 30 min Pause) zählt als Feiertag
+{
+  const r = payrollSummary({ month: "2026-12", holidays: { "2026-12-25": "Christtag" }, nameOf: (id) => id,
+    entries: [{ user_id: "a", department: "X", clock_in: "2026-12-25T07:00:00+01:00", clock_out: "2026-12-25T15:00:00+01:00", break_minutes: 30 },
+              { user_id: "a", department: "X", clock_in: "2026-12-24T07:00:00+01:00", clock_out: "2026-12-24T15:00:00+01:00", break_minutes: 30 }] })[0];
+  assert.equal(r.holiday, 7.5); assert.equal(r.worked, 15);
+  console.log("Feiertagsstunden ok");
+}

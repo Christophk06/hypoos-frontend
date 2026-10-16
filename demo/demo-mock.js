@@ -40,6 +40,17 @@
     if (t.status === "Erledigt") t.done_at = new Date(now.getTime() - (t.hoursAgo - 4) * 3600000).toISOString();
   });
   D.rooms = D.rooms || []; D.tickets = D.tickets || [];
+  D.plans = (D.plans || []).map(function (x) { return Object.assign({}, x, { next_due: add(todayIso, x.dueIn) }); });
+  D.temp_points = D.temp_points || []; D.trainings = D.trainings || []; D.stock = D.stock || []; D.forecast = []; D.moves = [];
+  D.rules = [{ department: "Housekeeping", basis: "abreisen+bleiber", units_per_person: 28, minimum: 2 }];
+  D.lost_found = (D.lost_found || []).map(function (x) { return Object.assign({}, x, { found_on: add(todayIso, -x.daysAgo), created_at: new Date(now.getTime() - x.daysAgo * 86400000).toISOString() }); });
+  D.readings = [];
+  D.temp_points.forEach(function (pt, i) {
+    [[-26, "u-fb"], [-2, "u-fb"]].forEach(function (h, j) { var v = pt.min_c + (pt.max_c - pt.min_c) * [0.4, 0.6][j] + i * 0.1;
+      D.readings.push({ id: "rd-" + i + "-" + j, point_id: pt.id, value_c: Math.round(v * 10) / 10, out_of_range: false, action: null, taken_by: h[1], taken_at: new Date(now.getTime() + h[0] * 3600000).toISOString() }); });
+  });
+  D.acks = [{ training_id: "tr-1", user_id: "u-hkm", acked_at: new Date(now.getTime() - 40 * 86400000).toISOString() }, { training_id: "tr-1", user_id: "u-ewa", acked_at: new Date(now.getTime() - 10 * 86400000).toISOString() },
+    { training_id: "tr-2", user_id: "u-fb", acked_at: new Date(now.getTime() - 5 * 86400000).toISOString() }];
   D.chat = (D.chat || []).map(function (c) { return Object.assign({}, c, { created_at: new Date(now.getTime() - c.minutesAgo * 60000).toISOString() }); });
 
   var nextId = 1;
@@ -177,6 +188,106 @@
       var upd = 0, unk = [];
       (b.rows || []).forEach(function (r) { var num = String(r.number || "").trim(); var rm2 = D.rooms.find(function (x) { return x.number === num; }); if (!rm2) { if (num) unk.push(num); return; } upd++; });
       return ok({ updated: upd, unchanged: 0, unknown: unk.slice(0, 50) });
+    }
+    // Übersetzung und Stempel-QR gibt es in der Demo nicht
+    if (p === "/api/translate/status") return ok({ enabled: false });
+    if (p === H + "/clock-code" || /clock-code\/rotate$|\/clock-qr$/.test(p)) return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
+    // Wartungsplan
+    if (p === H + "/maintenance-plans") {
+      if (m === "POST") { var mp = Object.assign({ id: nid("mp"), hotel_id: D.hotel.id, active: true }, b); D.plans.push(mp); return ok(mp); }
+      return ok(D.plans.filter(function (x) { return canSee(x.department); }).sort(function (a, c) { return a.next_due < c.next_due ? -1 : 1; }));
+    }
+    if ((mm = p.match(/^\/api\/maintenance-plans\/([^/]+)\/run$/))) {
+      var pl = byId(D.plans, mm[1]);
+      D.tickets.unshift({ id: nid("tk"), hotel_id: D.hotel.id, department: pl.department, kind: "Wartung", title: pl.title, location: pl.location, priority: "Normal", status: "Offen", reporter_id: ME, created_at: new Date().toISOString() });
+      return ok({ created: 1 });
+    }
+    if ((mm = p.match(/^\/api\/maintenance-plans\/([^/]+)$/))) { if (m === "DELETE") { remove(D.plans, mm[1]); return ok({ ok: true }); } var pl2 = byId(D.plans, mm[1]); Object.assign(pl2, b); return ok(pl2); }
+    // Belegung und Personalbedarf
+    if (p === H + "/forecast") {
+      if (m === "PUT") { (b.days || []).forEach(function (d) { D.forecast = D.forecast.filter(function (x) { return x.day !== d.day; }); D.forecast.push(Object.assign({ source: "manuell" }, d)); }); return ok({ saved: (b.days || []).length }); }
+      var fr = q.get("from"), tt = q.get("to"), outF = [];
+      for (var dd = fr; dd <= tt; dd = add(dd, 1)) {
+        var ex = D.forecast.find(function (x) { return x.day === dd; });
+        if (ex) { outF.push(ex); continue; }
+        var wd = new Date(dd + "T00:00:00Z").getUTCDay(), base = [118, 92, 88, 96, 112, 131, 126][wd];
+        outF.push({ day: dd, occupied: base, arrivals: Math.round(base * 0.27), departures: Math.round(base * 0.24), source: "pms" });
+      }
+      return ok(lead ? outF : []);
+    }
+    if (p === H + "/staffing-rules") {
+      if (m === "PUT") { D.rules = D.rules.filter(function (r) { return r.department !== b.department; }); if (b.units_per_person) D.rules.push({ department: b.department, basis: b.basis || "belegt", units_per_person: Number(b.units_per_person), minimum: Number(b.minimum) || 0 }); return ok(D.rules.find(function (r) { return r.department === b.department; }) || {}); }
+      return ok(D.rules.filter(function (r) { return canSee(r.department); }));
+    }
+    if (p === H + "/roster/suggest") return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
+    // HACCP
+    if (p === H + "/temp-points") {
+      if (m === "POST") { var tp = Object.assign({ id: nid("tp"), hotel_id: D.hotel.id, readings: [] }, b, { min_c: b.min_c === "" ? null : Number(b.min_c), max_c: b.max_c === "" ? null : Number(b.max_c) }); D.temp_points.push(tp); return ok(tp); }
+      return ok(D.temp_points.filter(function (x) { return canSee(x.department) || lead; }).map(function (x) { return Object.assign({}, x, { readings: D.readings.filter(function (r) { return r.point_id === x.id; }).sort(function (a, c) { return a.taken_at < c.taken_at ? 1 : -1; }).slice(0, 6) }); }));
+    }
+    if ((mm = p.match(/^\/api\/temp-points\/([^/]+)\/readings$/))) {
+      var pt = byId(D.temp_points, mm[1]), v = Number(String(b.value).replace(",", "."));
+      var out = (pt.min_c != null && v < pt.min_c) || (pt.max_c != null && v > pt.max_c);
+      if (out && !String(b.action || "").trim()) return ok({ error: "Der Wert liegt außerhalb des Bereichs. Bitte die ergriffene Maßnahme eintragen." }, 400);
+      var rd = { id: nid("rd"), point_id: pt.id, value_c: v, out_of_range: out, action: b.action || null, taken_by: ME, taken_at: new Date().toISOString() }; D.readings.push(rd); return ok(rd);
+    }
+    if ((mm = p.match(/^\/api\/temp-points\/([^/]+)$/))) { remove(D.temp_points, mm[1]); return ok({ ok: true }); }
+    if (p === H + "/temp-readings") return ok(D.readings.map(function (r) { var pt2 = byId(D.temp_points, r.point_id) || {}; return Object.assign({ point_name: pt2.name, min_c: pt2.min_c, max_c: pt2.max_c }, r); }));
+    // Unterweisungen
+    if (p === "/api/organizations/demo-org/trainings") {
+      if (m === "POST") { var tr = Object.assign({ id: nid("tr"), organization_id: "demo-org", acks: [] }, b); D.trainings.unshift(tr); return ok(tr); }
+      return ok(D.trainings.map(function (t) { return Object.assign({}, t, { acks: D.acks.filter(function (a) { return a.training_id === t.id && (lead || a.user_id === ME); }) }); }));
+    }
+    if ((mm = p.match(/^\/api\/trainings\/([^/]+)\/ack$/))) { var ak = { training_id: mm[1], user_id: ME, acked_at: new Date().toISOString() }; D.acks.push(ak); return ok(ak); }
+    if ((mm = p.match(/^\/api\/trainings\/([^/]+)$/))) { if (m === "DELETE") { remove(D.trainings, mm[1]); return ok({ ok: true }); } var tr2 = byId(D.trainings, mm[1]); Object.assign(tr2, b); return ok(tr2); }
+    // Fundsachen
+    if (p === H + "/lost-found") {
+      if (m === "POST") { var lf = Object.assign({ id: nid("lf"), hotel_id: D.hotel.id, status: "Aufbewahrt", found_by: ME, has_photo: !!b.photo_data, created_at: new Date().toISOString() }, b); D.lost_found.unshift(lf); return ok(lf); }
+      return ok(D.lost_found.filter(function (x) { return q.get("status") !== "open" || x.status === "Aufbewahrt"; }));
+    }
+    if ((mm = p.match(/^\/api\/lost-found\/([^/]+)\/photo$/))) return ok({ photo_data: (byId(D.lost_found, mm[1]) || {}).photo_data || null });
+    if ((mm = p.match(/^\/api\/lost-found\/([^/]+)$/))) { if (m === "DELETE") { remove(D.lost_found, mm[1]); return ok({ ok: true }); } var lf2 = byId(D.lost_found, mm[1]); Object.assign(lf2, b); return ok(lf2); }
+    // Lager
+    if (p === H + "/stock") {
+      if (m === "POST") { var si = Object.assign({ id: nid("st"), hotel_id: D.hotel.id, reorder_ticket: null }, b, { quantity: Number(b.quantity) || 0, min_quantity: Number(b.min_quantity) || 0 }); D.stock.push(si); return ok(si); }
+      return ok(D.stock.filter(function (x) { return canSee(x.department) || canSee("Einkauf"); }));
+    }
+    if ((mm = p.match(/^\/api\/stock\/([^/]+)\/move$/))) {
+      var it = byId(D.stock, mm[1]); it.quantity = Math.round((Number(it.quantity) + Number(b.delta)) * 100) / 100;
+      D.moves.unshift({ id: nid("mv"), item_id: it.id, delta: Number(b.delta), by_user: ME, created_at: new Date().toISOString() });
+      var created = null; if (it.quantity < it.min_quantity && !it.reorder_ticket) { created = nid("tk"); it.reorder_ticket = created; }
+      if (it.quantity >= it.min_quantity) it.reorder_ticket = null;
+      return ok(Object.assign({}, it, { reorder_created: created }));
+    }
+    if ((mm = p.match(/^\/api\/stock\/([^/]+)\/moves$/))) return ok(D.moves.filter(function (x) { return x.item_id === mm[1]; }));
+    if ((mm = p.match(/^\/api\/stock\/([^/]+)$/))) { if (m === "DELETE") { remove(D.stock, mm[1]); return ok({ ok: true }); } var it2 = byId(D.stock, mm[1]); Object.assign(it2, b, b.min_quantity !== undefined ? { min_quantity: Number(b.min_quantity) } : {}); return ok(it2); }
+    // Kennzahlen (aus den Demo-Daten)
+    if (p === H + "/kpis") {
+      var k0 = q.get("from") + "T00:00:00", k1 = add(q.get("to"), 1) + "T00:00:00";
+      var inR = function (x) { return x >= new Date(k0).toISOString() && x < new Date(k1).toISOString(); };
+      var es = TIMES.filter(function (e) { return inR(e.clock_in) && e.clock_out; });
+      var hrs = es.reduce(function (s, e) { return s + Math.max(0, (new Date(e.clock_out) - new Date(e.clock_in)) / 3600000 - e.break_minutes / 60); }, 0);
+      var sh = D.shifts.filter(function (s) { return s.shift_date >= q.get("from") && s.shift_date <= q.get("to") && ["Früh", "Spät", "Nacht", "Zwischen"].indexOf(s.kind) >= 0; });
+      var plannedH = sh.reduce(function (s, x) { var a = x.start_time.split(":"), c = x.end_time.split(":"); var d = (c[0] * 60 + +c[1]) - (a[0] * 60 + +a[1]); if (d <= 0) d += 1440; return s + d / 60; }, 0);
+      var depts = {}; es.forEach(function (e) { (depts[e.department] = depts[e.department] || { department: e.department, worked: 0, planned: 0 }).worked += Math.max(0, (new Date(e.clock_out) - new Date(e.clock_in)) / 3600000 - e.break_minutes / 60); });
+      sh.forEach(function (x) { var a = x.start_time.split(":"), c = x.end_time.split(":"); var d = (c[0] * 60 + +c[1]) - (a[0] * 60 + +a[1]); if (d <= 0) d += 1440; (depts[x.department] = depts[x.department] || { department: x.department, worked: 0, planned: 0 }).planned += d / 60; });
+      var nights = 0; for (var kd = q.get("from"); kd <= q.get("to"); kd = add(kd, 1)) nights += [118, 92, 88, 96, 112, 131, 126][new Date(kd + "T00:00:00Z").getUTCDay()];
+      var r1 = function (x) { return Math.round(x * 10) / 10; };
+      return ok({ worked_hours: r1(hrs), planned_hours: r1(plannedH), room_nights: nights, hours_per_room_night: Math.round(hrs / nights * 100) / 100,
+        corrected_entries: es.filter(function (e) { return e.edited_by; }).length, offline_entries: 0,
+        departments: Object.keys(depts).map(function (k2) { return { department: k2, worked: r1(depts[k2].worked), planned: r1(depts[k2].planned) }; }).sort(function (a, c) { return c.worked - a.worked; }),
+        tickets_opened: D.tickets.length, tickets_done: D.tickets.filter(function (t) { return t.status === "Erledigt"; }).length, tickets_open: D.tickets.filter(function (t) { return t.status !== "Erledigt"; }).length,
+        tickets_urgent_open: D.tickets.filter(function (t) { return t.status !== "Erledigt" && t.priority === "Dringend"; }).length, median_hours_to_fix: 4.5,
+        guest_requests: D.tickets.filter(function (t) { return t.kind === "Gästewunsch"; }).length, rooms_cleaned: Math.round(nights * 0.3), avg_cleaning_minutes: 27,
+        temp_readings: D.readings.length, temp_out_of_range: D.readings.filter(function (r) { return r.out_of_range; }).length });
+    }
+    // Gruppenansicht
+    if (p === "/api/organizations/demo-org/overview") {
+      var fcT = [118, 92, 88, 96, 112, 131, 126][new Date(todayIso + "T00:00:00Z").getUTCDay()];
+      return ok([Object.assign({}, D.hotel, { tickets_open: D.tickets.filter(function (t) { return t.status !== "Erledigt"; }).length, tickets_urgent: 1,
+        on_duty: TIMES.filter(function (e) { return !e.clock_out; }).length, rooms_total: D.rooms.length,
+        rooms_ready: D.rooms.filter(function (r) { return r.status === "Sauber" || r.status === "Kontrolliert"; }).length,
+        rooms_dirty: D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).length, arrivals: Math.round(fcT * 0.27), departures: Math.round(fcT * 0.24) })]);
     }
     // Push gibt es in der Demo nicht
     if (p === "/api/push/key") return ok({ error: "Push-Benachrichtigungen sind noch nicht eingerichtet." }, 404);

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#6B7280; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 480px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 14px; }
+  .cat { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cat b { flex: 1; min-width: 130px; font-size: 15px; }
+  .stars button { background: none; border: 0; font-size: 28px; line-height: 1; cursor: pointer; color: #D9D4C7; padding: 0 2px; }
+  .stars button.on { color: #E0A93B; }
+  input, textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 11px; font: inherit; font-size: 15px; background: #fff; }
+  textarea { min-height: 96px; resize: vertical; margin-top: 8px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-top: 12px; }
+  button.send { width: 100%; margin-top: 14px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button.send:disabled { opacity: .5; }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; }
+  .ok { background: #E4EFE8; color: var(--good); } .err { background: #F5E1DE; color: var(--bad); }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <div id="app"></div>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Wie war Ihr Aufenthalt?", zimmer: "Zimmer", sauberkeit: "Sauberkeit", service: "Service", fruehstueck: "Frühstück", checkin: "Check-in", room: "Zimmernummer (optional)", comment: "Was hat Ihnen gefallen, was können wir besser machen?", send: "Bewertung senden", thanks: "Vielen Dank für Ihre Rückmeldung!", invalid: "Dieser Code ist nicht (mehr) gültig.", failed: "Senden fehlgeschlagen. Bitte versuchen Sie es erneut.", need: "Bitte mindestens eine Bewertung abgeben." },
+  en: { title: "How was your stay?", zimmer: "Room", sauberkeit: "Cleanliness", service: "Service", fruehstueck: "Breakfast", checkin: "Check-in", room: "Room number (optional)", comment: "What did you like, and what could we do better?", send: "Send feedback", thanks: "Thank you very much for your feedback!", invalid: "This code is no longer valid.", failed: "Sending failed. Please try again.", need: "Please give at least one rating." },
+  fr: { title: "Comment s’est passé votre séjour ?", zimmer: "Chambre", sauberkeit: "Propreté", service: "Service", fruehstueck: "Petit-déjeuner", checkin: "Arrivée", room: "Numéro de chambre (facultatif)", comment: "Qu’avez-vous apprécié, que pouvons-nous améliorer ?", send: "Envoyer l’avis", thanks: "Merci beaucoup pour votre avis !", invalid: "Ce code n’est plus valable.", failed: "L’envoi a échoué. Veuillez réessayer.", need: "Veuillez donner au moins une note." },
+  it: { title: "Com’è stato il suo soggiorno?", zimmer: "Camera", sauberkeit: "Pulizia", service: "Servizio", fruehstueck: "Colazione", checkin: "Check-in", room: "Numero di camera (facoltativo)", comment: "Cosa le è piaciuto e cosa possiamo migliorare?", send: "Invia valutazione", thanks: "Grazie mille per il suo riscontro!", invalid: "Questo codice non è più valido.", failed: "Invio non riuscito. Riprovi.", need: "Dia almeno una valutazione." },
+  es: { title: "¿Qué tal su estancia?", zimmer: "Habitación", sauberkeit: "Limpieza", service: "Servicio", fruehstueck: "Desayuno", checkin: "Check-in", room: "Número de habitación (opcional)", comment: "¿Qué le ha gustado y qué podemos mejorar?", send: "Enviar valoración", thanks: "¡Muchas gracias por su opinión!", invalid: "Este código ya no es válido.", failed: "No se pudo enviar. Inténtelo de nuevo.", need: "Dé al menos una valoración." },
+  pt: { title: "Como foi a sua estadia?", zimmer: "Quarto", sauberkeit: "Limpeza", service: "Serviço", fruehstueck: "Pequeno-almoço", checkin: "Check-in", room: "Número do quarto (opcional)", comment: "O que gostou e o que podemos melhorar?", send: "Enviar avaliação", thanks: "Muito obrigado pela sua opinião!", invalid: "Este código já não é válido.", failed: "O envio falhou. Tente novamente.", need: "Dê pelo menos uma avaliação." },
+  tr: { title: "Konaklamanız nasıldı?", zimmer: "Oda", sauberkeit: "Temizlik", service: "Hizmet", fruehstueck: "Kahvaltı", checkin: "Check-in", room: "Oda numarası (isteğe bağlı)", comment: "Neyi beğendiniz, neyi daha iyi yapabiliriz?", send: "Değerlendirmeyi gönder", thanks: "Geri bildiriminiz için çok teşekkürler!", invalid: "Bu kod artık geçerli değil.", failed: "Gönderilemedi. Lütfen tekrar deneyin.", need: "Lütfen en az bir puan verin." },
+  ja: { title: "ご滞在はいかがでしたか？", zimmer: "客室", sauberkeit: "清潔さ", service: "サービス", fruehstueck: "朝食", checkin: "チェックイン", room: "部屋番号（任意）", comment: "良かった点、改善してほしい点をお聞かせください", send: "評価を送信", thanks: "ご意見をありがとうございました！", invalid: "このコードは無効です。", failed: "送信できませんでした。もう一度お試しください。", need: "少なくとも 1 つ評価してください。" },
+  zh: { title: "您的入住体验如何？", zimmer: "客房", sauberkeit: "清洁", service: "服务", fruehstueck: "早餐", checkin: "入住办理", room: "房号（选填）", comment: "您喜欢什么？我们可以改进什么？", send: "提交评价", thanks: "非常感谢您的反馈！", invalid: "此二维码已失效。", failed: "发送失败，请重试。", need: "请至少给出一项评分。" },
+  ar: { title: "كيف كانت إقامتك؟", zimmer: "الغرفة", sauberkeit: "النظافة", service: "الخدمة", fruehstueck: "الإفطار", checkin: "تسجيل الوصول", room: "رقم الغرفة (اختياري)", comment: "ما الذي أعجبك، وما الذي يمكننا تحسينه؟", send: "إرسال التقييم", thanks: "شكرًا جزيلًا على ملاحظاتك!", invalid: "هذا الرمز لم يعد صالحًا.", failed: "تعذّر الإرسال. يرجى المحاولة مجددًا.", need: "يرجى إعطاء تقييم واحد على الأقل." },
+};
+var q = new URLSearchParams(location.search), token = q.get("h") || "", demo = q.get("demo") === "1";
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var state = { info: null, ratings: {}, sent: false, error: null, busy: false };
+var $ = function (id) { return document.getElementById(id); };
+function t(k) { return (T[lang] || T.en)[k] || T.en[k]; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+function api(path, opt) {
+  if (demo) return Promise.resolve(opt ? { ok: true } : { hotel: { name: "Beispielhotel Alpenblick" }, categories: ["zimmer", "sauberkeit", "service", "fruehstueck", "checkin"] });
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw Object.assign(new Error(j.error || "Fehler"), { status: r.status }); return j; }); });
+}
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app");
+  if (state.error === "invalid") { a.innerHTML = '<div class="msg err">' + esc(t("invalid")) + "</div>"; return; }
+  if (!state.info) { a.innerHTML = '<div style="color:#6B7280">…</div>'; return; }
+  if (state.sent) { a.innerHTML = '<div class="msg ok">✓ ' + esc(t("thanks")) + "</div>"; return; }
+  var keepRoom = $("room") ? $("room").value : "", keepC = $("comment") ? $("comment").value : "";
+  var h = "<h1>" + esc(t("title")) + "</h1>";
+  state.info.categories.forEach(function (c) {
+    h += '<div class="cat"><b>' + esc(t(c)) + '</b><span class="stars">';
+    for (var i = 1; i <= 5; i++) h += '<button data-c="' + c + '" data-v="' + i + '" class="' + ((state.ratings[c] || 0) >= i ? "on" : "") + '" aria-label="' + i + '">★</button>';
+    h += "</span></div>";
+  });
+  h += '<label>' + esc(t("room")) + '<input id="room" maxlength="20" /></label><textarea id="comment" maxlength="2000" placeholder="' + esc(t("comment")) + '"></textarea>';
+  h += '<input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" /><button class="send" id="send"' + (state.busy ? " disabled" : "") + ">" + esc(t("send")) + "</button>";
+  if (state.error) h += '<div class="msg err">' + esc(state.error) + "</div>";
+  a.innerHTML = h; $("room").value = keepRoom; $("comment").value = keepC;
+  a.querySelectorAll(".stars button").forEach(function (b) { b.onclick = function () { state.ratings[b.getAttribute("data-c")] = Number(b.getAttribute("data-v")); state.error = null; render(); }; });
+  $("send").onclick = function () {
+    var comment = $("comment").value.trim();
+    if (!Object.keys(state.ratings).length && !comment) { state.error = t("need"); render(); return; }
+    state.busy = true; render();
+    api("/api/public/feedback/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ ratings: state.ratings, comment: comment, room: $("room").value, lang: lang, website: $("website").value }) })
+      .then(function () { state.sent = true; }).catch(function (e) { state.error = e.status === 404 ? t("invalid") : e.status === 429 ? e.message : t("failed"); })
+      .then(function () { state.busy = false; render(); });
+  };
+}
+api("/api/public/feedback/" + encodeURIComponent(token)).then(function (r) {
+  state.info = r; $("hotel").textContent = r.hotel.name; document.title = r.hotel.name;
+  if (r.hotel.logo_data) { $("logo").src = r.hotel.logo_data; $("logo").hidden = false; }
+  if (r.hotel.brand_color) document.documentElement.style.setProperty("--brass", r.hotel.brand_color);
+}).catch(function () { state.error = "invalid"; $("hotel").textContent = ""; }).then(render);
+render();
+</script>
+</body>
+</html>

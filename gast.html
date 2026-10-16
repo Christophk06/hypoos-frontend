@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#6B7280; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 460px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 26px; margin: 4px 0 4px; }
+  .room { color: var(--muted); margin-bottom: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .opt { background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 16px 10px; text-align: center; cursor: pointer; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .opt .i { font-size: 28px; display: block; margin-bottom: 6px; }
+  .opt.on { border-color: var(--brass); background: #FBF6EC; }
+  textarea { width: 100%; margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 11px; font: inherit; font-size: 15px; min-height: 84px; resize: vertical; }
+  button.send { width: 100%; margin-top: 12px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button.send:disabled { opacity: .5; }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; }
+  .ok { background: #E4EFE8; color: var(--good); } .err { background: #F5E1DE; color: var(--bad); }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  [dir="rtl"] .grid { direction: rtl; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div>
+    <select class="lang" id="lang" aria-label="Language"></select></header>
+  <div id="app"></div>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Wie können wir helfen?", room: "Zimmer {0}", towels: "Frische Handtücher", cleaning: "Zimmerreinigung", amenities: "Pflegeprodukte", pillow: "Kissen oder Decke", defect: "Etwas ist kaputt", other: "Anderer Wunsch",
+    details: "Details (optional) – z. B. was genau kaputt ist", detailsReq: "Bitte kurz beschreiben, was Sie brauchen", send: "Senden", thanks: "Danke! Unser Team ist informiert und kümmert sich darum.", again: "Weiteren Wunsch senden", invalid: "Dieser Code ist nicht (mehr) gültig. Bitte wenden Sie sich an die Rezeption.", failed: "Senden fehlgeschlagen. Bitte versuchen Sie es erneut oder rufen Sie die Rezeption an." },
+  en: { title: "How can we help?", room: "Room {0}", towels: "Fresh towels", cleaning: "Room cleaning", amenities: "Toiletries", pillow: "Pillow or blanket", defect: "Something is broken", other: "Other request",
+    details: "Details (optional) – e.g. what exactly is broken", detailsReq: "Please briefly describe what you need", send: "Send", thanks: "Thank you! Our team has been informed and will take care of it.", again: "Send another request", invalid: "This code is no longer valid. Please contact reception.", failed: "Sending failed. Please try again or call reception." },
+  fr: { title: "Comment pouvons-nous vous aider ?", room: "Chambre {0}", towels: "Serviettes propres", cleaning: "Ménage de la chambre", amenities: "Produits d’accueil", pillow: "Oreiller ou couverture", defect: "Quelque chose est cassé", other: "Autre demande",
+    details: "Détails (facultatif) – p. ex. ce qui est cassé", detailsReq: "Décrivez brièvement votre demande", send: "Envoyer", thanks: "Merci ! Notre équipe est informée et s’en occupe.", again: "Envoyer une autre demande", invalid: "Ce code n’est plus valable. Veuillez vous adresser à la réception.", failed: "L’envoi a échoué. Réessayez ou appelez la réception." },
+  it: { title: "Come possiamo aiutarla?", room: "Camera {0}", towels: "Asciugamani puliti", cleaning: "Pulizia camera", amenities: "Prodotti da bagno", pillow: "Cuscino o coperta", defect: "Qualcosa è rotto", other: "Altra richiesta",
+    details: "Dettagli (facoltativo) – es. cosa è rotto", detailsReq: "Descriva brevemente cosa le serve", send: "Invia", thanks: "Grazie! Il nostro team è stato avvisato e se ne occuperà.", again: "Invia un’altra richiesta", invalid: "Questo codice non è più valido. Si rivolga alla reception.", failed: "Invio non riuscito. Riprovi o chiami la reception." },
+  es: { title: "¿Cómo podemos ayudarle?", room: "Habitación {0}", towels: "Toallas limpias", cleaning: "Limpieza de la habitación", amenities: "Artículos de aseo", pillow: "Almohada o manta", defect: "Algo está roto", other: "Otra petición",
+    details: "Detalles (opcional) – p. ej. qué está roto", detailsReq: "Describa brevemente lo que necesita", send: "Enviar", thanks: "¡Gracias! Nuestro equipo está informado y se encargará.", again: "Enviar otra petición", invalid: "Este código ya no es válido. Diríjase a recepción.", failed: "No se pudo enviar. Inténtelo de nuevo o llame a recepción." },
+  pt: { title: "Como podemos ajudar?", room: "Quarto {0}", towels: "Toalhas lavadas", cleaning: "Limpeza do quarto", amenities: "Artigos de higiene", pillow: "Almofada ou manta", defect: "Algo está avariado", other: "Outro pedido",
+    details: "Detalhes (opcional) – p. ex. o que está avariado", detailsReq: "Descreva brevemente o que precisa", send: "Enviar", thanks: "Obrigado! A nossa equipa foi informada e vai tratar disso.", again: "Enviar outro pedido", invalid: "Este código já não é válido. Dirija-se à receção.", failed: "O envio falhou. Tente novamente ou ligue para a receção." },
+  tr: { title: "Size nasıl yardımcı olabiliriz?", room: "Oda {0}", towels: "Temiz havlu", cleaning: "Oda temizliği", amenities: "Banyo ürünleri", pillow: "Yastık veya battaniye", defect: "Bir şey bozuk", other: "Başka bir istek",
+    details: "Ayrıntılar (isteğe bağlı) – ör. tam olarak ne bozuk", detailsReq: "Lütfen neye ihtiyacınız olduğunu kısaca yazın", send: "Gönder", thanks: "Teşekkürler! Ekibimiz bilgilendirildi ve ilgilenecek.", again: "Başka bir istek gönder", invalid: "Bu kod artık geçerli değil. Lütfen resepsiyona başvurun.", failed: "Gönderilemedi. Tekrar deneyin veya resepsiyonu arayın." },
+  ja: { title: "ご用件をお聞かせください", room: "{0}号室", towels: "新しいタオル", cleaning: "客室清掃", amenities: "アメニティ", pillow: "枕・毛布", defect: "故障・不具合", other: "その他のご要望",
+    details: "詳細（任意）– 例：どこが故障しているか", detailsReq: "ご要望を簡単にご記入ください", send: "送信", thanks: "ありがとうございます。スタッフに連絡しましたので対応いたします。", again: "別のご要望を送る", invalid: "このコードは無効です。フロントにお問い合わせください。", failed: "送信できませんでした。もう一度お試しいただくか、フロントにお電話ください。" },
+  zh: { title: "需要什么帮助？", room: "{0} 房", towels: "干净毛巾", cleaning: "打扫房间", amenities: "洗漱用品", pillow: "枕头或毯子", defect: "有东西坏了", other: "其他需求",
+    details: "详情（选填）– 例如什么坏了", detailsReq: "请简要说明您的需求", send: "发送", thanks: "谢谢！我们的团队已收到通知，会尽快处理。", again: "再发一个需求", invalid: "此二维码已失效，请联系前台。", failed: "发送失败，请重试或致电前台。" },
+  ar: { title: "كيف يمكننا مساعدتك؟", room: "الغرفة {0}", towels: "مناشف نظيفة", cleaning: "تنظيف الغرفة", amenities: "مستلزمات الاستحمام", pillow: "وسادة أو بطانية", defect: "شيء معطّل", other: "طلب آخر",
+    details: "التفاصيل (اختياري) – مثل ما المعطّل تحديدًا", detailsReq: "يرجى وصف ما تحتاجه باختصار", send: "إرسال", thanks: "شكرًا! تم إبلاغ فريقنا وسيتولى الأمر.", again: "إرسال طلب آخر", invalid: "هذا الرمز لم يعد صالحًا. يرجى التوجه إلى الاستقبال.", failed: "تعذّر الإرسال. حاول مجددًا أو اتصل بالاستقبال." },
+};
+var ICONS = { towels: "🧺", cleaning: "🧹", amenities: "🧴", pillow: "🛏", defect: "🔧", other: "💬" };
+var q = new URLSearchParams(location.search), token = q.get("r") || "", demo = q.get("demo") === "1";
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var state = { info: null, type: null, sent: false, error: null, busy: false };
+var $ = function (id) { return document.getElementById(id); };
+function t(k, a) { return String((T[lang] || T.en)[k] || T.en[k]).replace("{0}", a == null ? "" : a); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+function api(path, opt) {
+  if (demo) return Promise.resolve(opt ? { ok: true } : { hotel: { name: "Beispielhotel Alpenblick" }, room: "214" });
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw Object.assign(new Error(j.error || "Fehler"), { status: r.status }); return j; }); });
+}
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app");
+  if (state.error === "invalid") { a.innerHTML = '<div class="msg err">' + esc(t("invalid")) + "</div>"; return; }
+  if (!state.info) { a.innerHTML = '<div style="color:#6B7280">…</div>'; return; }
+  if (state.sent) { a.innerHTML = '<div class="msg ok">✓ ' + esc(t("thanks")) + '</div><button class="send" id="again">' + esc(t("again")) + "</button>";
+    $("again").onclick = function () { state.sent = false; state.type = null; render(); }; return; }
+  var h = '<h1>' + esc(t("title")) + '</h1><div class="room">' + esc(t("room", state.info.room)) + '</div><div class="grid">';
+  ["towels", "cleaning", "amenities", "pillow", "defect", "other"].forEach(function (k) { h += '<button class="opt' + (state.type === k ? " on" : "") + '" data-k="' + k + '"><span class="i">' + ICONS[k] + "</span>" + esc(t(k)) + "</button>"; });
+  h += '</div><textarea id="txt" placeholder="' + esc(state.type === "other" ? t("detailsReq") : t("details")) + '"></textarea><input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />';
+  h += '<button class="send" id="send"' + (state.type && !state.busy ? "" : " disabled") + ">" + esc(t("send")) + "</button>";
+  if (state.error) h += '<div class="msg err">' + esc(state.error) + "</div>";
+  var keep = $("txt") ? $("txt").value : "";
+  a.innerHTML = h; $("txt").value = keep;
+  a.querySelectorAll(".opt").forEach(function (b) { b.onclick = function () { state.type = b.getAttribute("data-k"); state.error = null; render(); }; });
+  $("send").onclick = function () {
+    var text = $("txt").value.trim();
+    if (state.type === "other" && !text) { state.error = t("detailsReq"); render(); return; }
+    state.busy = true; render();
+    api("/api/public/room/" + encodeURIComponent(token) + "/request", { method: "POST", body: JSON.stringify({ type: state.type, text: text, lang: lang, website: $("website").value }) })
+      .then(function () { state.sent = true; state.error = null; }).catch(function (e) { state.error = e.status === 404 ? t("invalid") : (e.status === 429 || e.status === 400 ? e.message : t("failed")); })
+      .then(function () { state.busy = false; render(); });
+  };
+}
+api("/api/public/room/" + encodeURIComponent(token)).then(function (r) {
+  state.info = r; $("hotel").textContent = r.hotel.name; document.title = r.hotel.name;
+  if (r.hotel.logo_data) { $("logo").src = r.hotel.logo_data; $("logo").hidden = false; }
+  if (r.hotel.brand_color) document.documentElement.style.setProperty("--brass", r.hotel.brand_color);
+}).catch(function () { state.error = "invalid"; $("hotel").textContent = ""; }).then(render);
+render();
+</script>
+</body>
+</html>

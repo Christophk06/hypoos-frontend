@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#6B7280; --good:#3F7A5C; --bad:#A23B32; --warn:#B9822E; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 720px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  header img { height: 36px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; }
+  .who { color: var(--muted); margin-bottom: 16px; }
+  .tabs button { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 6px 13px; font-size: 13px; cursor: pointer; margin: 0 4px 10px 0; }
+  .tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .card.urgent { border-left: 4px solid var(--bad); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
+  .s-Offen { background: #F5E9D5; color: var(--warn); } .s-InArbeit { background: #E3ECF5; color: #2D5B87; } .s-Prüfen { background: #EEE7F7; color: #6B4BA1; } .s-Erledigt { background: #E4EFE8; color: var(--good); }
+  .t { font-weight: 600; font-size: 15px; margin-top: 4px; } .d { color: #3B4552; white-space: pre-wrap; font-size: 13.5px; margin-top: 2px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font: inherit; font-size: 14px; margin-top: 8px; min-height: 56px; }
+  .btn { border: 0; border-radius: 8px; padding: 9px 14px; font-weight: 700; cursor: pointer; font-size: 13.5px; }
+  .b1 { background: var(--good); color: #fff; } .b2 { background: #fff; border: 1px solid var(--border); color: var(--ink); }
+  .link { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12.5px; padding: 0; }
+  img.ph { display: block; max-width: 100%; max-height: 320px; border-radius: 8px; margin-top: 6px; }
+  .msg { padding: 12px; border-radius: 8px; margin-bottom: 10px; } .err { background: #F5E1DE; color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select id="lang" aria-label="Language"></select></header>
+  <div class="who" id="who"></div>
+  <div id="app"></div>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { open: "Offen", all: "Alle", list: "Ihre Mängel in diesem Hotel", none: "Keine offenen Mängel – danke!", photo: "Foto ansehen", start: "In Arbeit", fixed: "Behoben melden", note: "Notiz (optional), z. B. was gemacht wurde", invalid: "Dieser Link ist nicht (mehr) gültig. Bitte wenden Sie sich an Ihren Ansprechpartner im Hotel.", wait: "Behoben gemeldet – das Hotel prüft.", st: { "Offen": "Offen", "In Arbeit": "In Arbeit", "Prüfen": "Wird geprüft", "Erledigt": "Abgenommen" }, urgent: "Dringend" },
+  en: { open: "Open", all: "All", list: "Your defects at this hotel", none: "No open defects – thank you!", photo: "View photo", start: "In progress", fixed: "Report as fixed", note: "Note (optional), e.g. what was done", invalid: "This link is no longer valid. Please contact your contact person at the hotel.", wait: "Reported as fixed – the hotel will check.", st: { "Offen": "Open", "In Arbeit": "In progress", "Prüfen": "Being checked", "Erledigt": "Accepted" }, urgent: "Urgent" },
+  fr: { open: "Ouverts", all: "Tous", list: "Vos réserves dans cet hôtel", none: "Aucune réserve ouverte – merci !", photo: "Voir la photo", start: "En cours", fixed: "Signaler comme levée", note: "Note (facultatif), p. ex. ce qui a été fait", invalid: "Ce lien n’est plus valable. Contactez votre interlocuteur à l’hôtel.", wait: "Signalée comme levée – l’hôtel vérifie.", st: { "Offen": "Ouverte", "In Arbeit": "En cours", "Prüfen": "En vérification", "Erledigt": "Réceptionnée" }, urgent: "Urgent" },
+  it: { open: "Aperti", all: "Tutti", list: "I suoi difetti in questo hotel", none: "Nessun difetto aperto – grazie!", photo: "Vedi foto", start: "In corso", fixed: "Segnala come risolto", note: "Nota (facoltativa), es. cosa è stato fatto", invalid: "Questo link non è più valido. Contatti il suo referente in hotel.", wait: "Segnalato come risolto – l’hotel verifica.", st: { "Offen": "Aperto", "In Arbeit": "In corso", "Prüfen": "In verifica", "Erledigt": "Collaudato" }, urgent: "Urgente" },
+  es: { open: "Abiertos", all: "Todos", list: "Sus defectos en este hotel", none: "Ningún defecto abierto – ¡gracias!", photo: "Ver foto", start: "En curso", fixed: "Marcar como reparado", note: "Nota (opcional), p. ej. qué se hizo", invalid: "Este enlace ya no es válido. Contacte con su persona de contacto en el hotel.", wait: "Marcado como reparado – el hotel lo revisa.", st: { "Offen": "Abierto", "In Arbeit": "En curso", "Prüfen": "En revisión", "Erledigt": "Aceptado" }, urgent: "Urgente" },
+  pt: { open: "Abertos", all: "Todos", list: "Os seus defeitos neste hotel", none: "Nenhum defeito em aberto – obrigado!", photo: "Ver foto", start: "Em curso", fixed: "Marcar como reparado", note: "Nota (opcional), p. ex. o que foi feito", invalid: "Este link já não é válido. Contacte a sua pessoa de contacto no hotel.", wait: "Marcado como reparado – o hotel vai verificar.", st: { "Offen": "Aberto", "In Arbeit": "Em curso", "Prüfen": "Em verificação", "Erledigt": "Aceite" }, urgent: "Urgente" },
+  tr: { open: "Açık", all: "Tümü", list: "Bu oteldeki eksikleriniz", none: "Açık eksik yok – teşekkürler!", photo: "Fotoğrafı gör", start: "Devam ediyor", fixed: "Giderildi olarak bildir", note: "Not (isteğe bağlı), ör. ne yapıldı", invalid: "Bu bağlantı artık geçerli değil. Lütfen oteldeki irtibat kişinize başvurun.", wait: "Giderildi bildirildi – otel kontrol ediyor.", st: { "Offen": "Açık", "In Arbeit": "Devam ediyor", "Prüfen": "Kontrol ediliyor", "Erledigt": "Kabul edildi" }, urgent: "Acil" },
+  ja: { open: "未対応", all: "すべて", list: "このホテルでの担当不具合", none: "未対応の不具合はありません。ありがとうございます！", photo: "写真を見る", start: "対応中", fixed: "修理完了を報告", note: "メモ（任意）例：実施した作業", invalid: "このリンクは無効です。ホテルのご担当者にお問い合わせください。", wait: "修理完了を報告しました – ホテルが確認します。", st: { "Offen": "未対応", "In Arbeit": "対応中", "Prüfen": "確認中", "Erledigt": "検収済み" }, urgent: "緊急" },
+  zh: { open: "未处理", all: "全部", list: "您在本酒店负责的缺陷", none: "没有未处理的缺陷 – 谢谢！", photo: "查看照片", start: "处理中", fixed: "报告已修复", note: "备注（选填），例如做了什么", invalid: "此链接已失效，请联系酒店对接人。", wait: "已报告修复 – 酒店将进行检查。", st: { "Offen": "未处理", "In Arbeit": "处理中", "Prüfen": "待检查", "Erledigt": "已验收" }, urgent: "紧急" },
+  ar: { open: "مفتوحة", all: "الكل", list: "العيوب المسندة إليكم في هذا الفندق", none: "لا توجد عيوب مفتوحة – شكرًا!", photo: "عرض الصورة", start: "قيد التنفيذ", fixed: "الإبلاغ عن الإصلاح", note: "ملاحظة (اختياري)، مثل ما تم إنجازه", invalid: "هذا الرابط لم يعد صالحًا. يرجى التواصل مع جهة الاتصال في الفندق.", wait: "تم الإبلاغ عن الإصلاح – سيتحقق الفندق.", st: { "Offen": "مفتوح", "In Arbeit": "قيد التنفيذ", "Prüfen": "قيد التحقق", "Erledigt": "مقبول" }, urgent: "عاجل" },
+};
+var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
+var lang = (function () { try { var s = localStorage.getItem("ouv_ct_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "de").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var state = { data: null, filter: "open", photos: {}, error: null };
+var $ = function (id) { return document.getElementById(id); };
+function t(k) { return (T[lang] || T.en)[k] || T.en[k]; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang; $("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_ct_lang", lang); } catch (e) {} render(); };
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick" }, contractor: { name: "Elektro Huber", trade: "Elektro" }, tickets: [
+  { id: "1", title: "Steckdose am Schreibtisch ohne Strom", location: "Zimmer 214", priority: "Dringend", status: "Offen", has_photo: false, created_at: new Date().toISOString() },
+  { id: "2", title: "Leselampe flackert", location: "Zimmer 305", priority: "Normal", status: "Prüfen", has_photo: false, created_at: new Date().toISOString() }] };
+function api(path, opt) {
+  if (demo) { if (opt) { var id = path.split("/").pop(), tk = DEMO.tickets.find(function (x) { return x.id === id; }); if (tk) tk.status = JSON.parse(opt.body).status; return Promise.resolve({ ok: true }); } return Promise.resolve(JSON.parse(JSON.stringify(DEMO))); }
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw Object.assign(new Error(j.error || "Fehler"), { status: r.status }); return j; }); });
+}
+function load() { return api("/api/public/contractor/" + encodeURIComponent(token)).then(function (d) { state.data = d; $("hotel").textContent = d.hotel.name; $("who").textContent = d.contractor.name + (d.contractor.trade ? " · " + d.contractor.trade : "");
+  if (d.hotel.logo_data) { $("logo").src = d.hotel.logo_data; $("logo").hidden = false; } }).catch(function (e) { state.error = e.status === 404 ? t("invalid") : e.message; }).then(render); }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app");
+  if (state.error) { a.innerHTML = '<div class="msg err">' + esc(state.error) + "</div>"; return; }
+  if (!state.data) { a.innerHTML = '<div class="muted">…</div>'; return; }
+  var list = state.data.tickets.filter(function (x) { return state.filter === "all" || x.status !== "Erledigt"; });
+  var h = '<div style="font-weight:700;margin-bottom:8px">' + esc(t("list")) + '</div><div class="tabs"><button data-f="open" class="' + (state.filter === "open" ? "on" : "") + '">' + esc(t("open")) + '</button><button data-f="all" class="' + (state.filter === "all" ? "on" : "") + '">' + esc(t("all")) + "</button></div>";
+  if (!list.length) h += '<div class="card">' + esc(t("none")) + "</div>";
+  list.forEach(function (x) {
+    h += '<div class="card' + (x.priority === "Dringend" && x.status !== "Erledigt" ? " urgent" : "") + '"><div class="row"><span class="pill s-' + x.status.replace(" ", "") + '">' + esc(t("st")[x.status] || x.status) + "</span>" + (x.priority === "Dringend" ? '<span class="pill" style="background:#F5E1DE;color:#A23B32">' + esc(t("urgent")) + "</span>" : "") + "<b>" + esc(x.location || "") + "</b></div>";
+    h += '<div class="t">' + esc(x.title) + "</div>" + (x.description ? '<div class="d">' + esc(x.description) + "</div>" : "");
+    if (x.has_photo) h += '<button class="link" data-p="' + x.id + '">📷 ' + esc(t("photo")) + "</button>" + (state.photos[x.id] ? '<img class="ph" src="' + state.photos[x.id] + '" alt="" />' : "");
+    if (x.status === "Offen" || x.status === "In Arbeit") h += '<textarea id="n' + x.id + '" placeholder="' + esc(t("note")) + '"></textarea><div class="row" style="margin-top:8px">' + (x.status === "Offen" ? '<button class="btn b2" data-s="In Arbeit" data-id="' + x.id + '">' + esc(t("start")) + "</button>" : "") + '<button class="btn b1" data-s="Prüfen" data-id="' + x.id + '">✓ ' + esc(t("fixed")) + "</button></div>";
+    if (x.status === "Prüfen") h += '<div class="muted" style="margin-top:6px">' + esc(t("wait")) + "</div>";
+    h += "</div>";
+  });
+  a.innerHTML = h;
+  a.querySelectorAll("[data-f]").forEach(function (b) { b.onclick = function () { state.filter = b.getAttribute("data-f"); render(); }; });
+  a.querySelectorAll("[data-p]").forEach(function (b) { b.onclick = function () { var id = b.getAttribute("data-p"); if (state.photos[id]) { delete state.photos[id]; render(); return; }
+    api("/api/public/contractor/" + encodeURIComponent(token) + "/tickets/" + id + "/photo").then(function (r) { state.photos[id] = r.photo_data; render(); }); }; });
+  a.querySelectorAll("[data-s]").forEach(function (b) { b.onclick = function () { var id = b.getAttribute("data-id"), n = $("n" + id); b.disabled = true;
+    api("/api/public/contractor/" + encodeURIComponent(token) + "/tickets/" + id, { method: "POST", body: JSON.stringify({ status: b.getAttribute("data-s"), note: n ? n.value : "" }) })
+      .then(load).catch(function (e) { alert(e.message); b.disabled = false; }); }; });
+}
+render(); load();
+</script>
+</body>
+</html>

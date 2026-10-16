@@ -40,6 +40,27 @@
     if (t.status === "Erledigt") t.done_at = new Date(now.getTime() - (t.hoursAgo - 4) * 3600000).toISOString();
   });
   D.rooms = D.rooms || []; D.tickets = D.tickets || [];
+  D.open_shifts = []; D.reads = []; D.ob_done = []; D.contractors = [{ id: "ct-1", hotel_id: D.hotel.id, name: "Elektro Huber", trade: "Elektro", url: "handwerk.html?demo=1" }, { id: "ct-2", hotel_id: D.hotel.id, name: "Sanitär Wagner", trade: "Sanitär", url: "handwerk.html?demo=1" }];
+  D.onboarding_items = D.onboarding_items || []; D.onboardings = [{ organization_id: "demo-org", user_id: "u-member", buddy_id: "u-ewa", start_date: add(todayIso, -3), completed_at: null }];
+  D.ob_done = [{ user_id: "u-member", item_id: "ob-1", done_by: "u-member" }, { user_id: "u-member", item_id: "ob-2", done_by: "u-ewa" }];
+  D.procurement = (D.procurement || []).map(function (x) { return Object.assign({}, x, { order_by: add(todayIso, x.orderIn), delivery_date: add(todayIso, x.deliveryIn) }); });
+  D.feedback = (D.feedback || []).map(function (x) { return Object.assign({}, x, { created_at: new Date(now.getTime() - x.daysAgo * 86400000).toISOString() }); });
+  (D.snags || []).forEach(function (t) { D.tickets.push(Object.assign({}, t, { created_at: new Date(now.getTime() - t.hoursAgo * 3600000).toISOString() })); });
+  D.candidates = [{ id: "cd-1", position_id: (D.staff[0] || {}).id, hotel_id: D.hotel.id, name: "Maria Kovač", email: "maria.k@example.com", stage: "Gespräch" }, { id: "cd-2", position_id: (D.staff[0] || {}).id, hotel_id: D.hotel.id, name: "Tomás Ruiz", stage: "Angebot" }];
+  D.staff.forEach(function (s, i) { s.monthly_cost = [3400, 2900, 3100, 4200, 3800][i % 5]; });
+  D.permits = [{ id: "pm-1", hotel_id: D.hotel.id, title: "Betriebsanlagengenehmigung", authority: "Bezirkshauptmannschaft", status: "beantragt", due_date: add(todayIso, 9) },
+    { id: "pm-2", hotel_id: D.hotel.id, title: "Brandschutzabnahme", authority: "Feuerwehr", status: "offen", due_date: add(todayIso, 21) },
+    { id: "pm-3", hotel_id: D.hotel.id, title: "Aufzugsabnahme", authority: "TÜV", status: "erteilt", valid_until: add(todayIso, 360) },
+    { id: "pm-4", hotel_id: D.hotel.id, title: "Lebensmittelrechtliche Registrierung", authority: "Lebensmittelaufsicht", status: "offen", due_date: add(todayIso, -2) }];
+  // Abhängigkeiten für den kritischen Pfad (über die festen Vorlagen-Schlüssel, in jeder Sprache gleich)
+  (function () { var k = function (key) { return D.tasks.find(function (t) { return t.template_key === key; }); };
+    var pms = k("t-pms-config"), mock = k("t-mock-checkins"), snag = k("t-room-snagging"), uni = k("t-uniforms"), evac = k("t-evacuation");
+    if (pms) pms.duration_days = 14;
+    if (mock && pms) { mock.depends_on = [pms.id]; mock.duration_days = 60; }
+    if (snag && uni) { snag.depends_on = [uni.id]; snag.duration_days = 14; }
+    if (evac && snag) { evac.depends_on = [snag.id]; evac.duration_days = 2; } })();
+  // eine offene Schicht für die Demo
+  D.open_shifts.push({ id: "os-demo", hotel_id: D.hotel.id, department: "Housekeeping", shift_date: add(todayIso, 2), kind: "Früh", start_time: "06:00:00", end_time: "14:30:00", reason: "krank", status: "offen", created_by: "u-ewa" });
   D.plans = (D.plans || []).map(function (x) { return Object.assign({}, x, { next_due: add(todayIso, x.dueIn) }); });
   D.temp_points = D.temp_points || []; D.trainings = D.trainings || []; D.stock = D.stock || []; D.forecast = []; D.moves = [];
   D.rules = [{ department: "Housekeeping", basis: "abreisen+bleiber", units_per_person: 28, minimum: 2 }];
@@ -288,6 +309,79 @@
         on_duty: TIMES.filter(function (e) { return !e.clock_out; }).length, rooms_total: D.rooms.length,
         rooms_ready: D.rooms.filter(function (r) { return r.status === "Sauber" || r.status === "Kontrolliert"; }).length,
         rooms_dirty: D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).length, arrivals: Math.round(fcT * 0.27), departures: Math.round(fcT * 0.24) })]);
+    }
+    // Krankmeldung und offene Schichten
+    if (p === H + "/sick") {
+      var n2 = 0; D.shifts.forEach(function (s) { if (s.user_id === ME && s.shift_date >= b.from && s.shift_date <= b.to && ["Früh", "Spät", "Nacht", "Zwischen"].indexOf(s.kind) >= 0) {
+        D.open_shifts.push({ id: nid("os"), hotel_id: D.hotel.id, department: s.department, shift_date: s.shift_date, kind: s.kind, start_time: s.start_time, end_time: s.end_time, reason: "krank", status: "offen", created_by: ME, note: b.note || null });
+        s.kind = "Krank"; s.start_time = null; s.end_time = null; n2++; } });
+      return ok({ shifts: n2 });
+    }
+    if (p === H + "/open-shifts") {
+      if (m === "POST") { var tm = (D.shift_minimums.find(function (x) { return x.department === b.department && x.kind === b.kind; }) || {});
+        var defs = { "Früh": ["06:00", "14:30"], "Spät": ["14:00", "22:30"], "Nacht": ["22:00", "06:30"], "Zwischen": ["10:00", "18:30"] };
+        var os1 = { id: nid("os"), hotel_id: D.hotel.id, department: b.department, shift_date: b.shift_date, kind: b.kind, start_time: (tm.start_time || defs[b.kind][0]) + "", end_time: (tm.end_time || defs[b.kind][1]) + "", reason: "zusatz", status: "offen", created_by: ME, note: b.note || null };
+        D.open_shifts.push(os1); return ok(os1); }
+      return ok(D.open_shifts.filter(function (o) { return o.shift_date >= (q.get("from") || todayIso) && o.status !== "abgesagt" && canSee(o.department); }).sort(function (a, c) { return a.shift_date < c.shift_date ? -1 : 1; }));
+    }
+    if ((mm = p.match(/^\/api\/open-shifts\/([^/]+)\/claim$/))) {
+      var o2 = byId(D.open_shifts, mm[1]);
+      if (D.shifts.some(function (s) { return s.user_id === ME && s.shift_date === o2.shift_date && s.kind !== "Frei"; })) return ok({ error: "Du hast an diesem Tag schon eine Schicht." }, 400);
+      D.shifts = D.shifts.filter(function (s) { return !(s.user_id === ME && s.shift_date === o2.shift_date && s.kind === "Frei"); });
+      var ns = { id: nid("s"), hotel_id: D.hotel.id, department: o2.department, shift_date: o2.shift_date, kind: o2.kind, start_time: o2.start_time, end_time: o2.end_time, user_id: ME };
+      D.shifts.push(ns); o2.status = "vergeben"; o2.taken_by = ME; return ok({ shift_id: ns.id });
+    }
+    if ((mm = p.match(/^\/api\/open-shifts\/([^/]+)$/))) { var o3 = byId(D.open_shifts, mm[1]); if (o3) o3.status = "abgesagt"; return ok({ ok: true }); }
+    // Schichtbriefing
+    if (p === H + "/briefing") {
+      var dep = q.get("department"), today2 = todayIso;
+      var staff = D.shifts.filter(function (s) { return s.department === dep && s.shift_date === today2 && ["Früh", "Spät", "Nacht", "Zwischen"].indexOf(s.kind) >= 0; }).map(function (s) { var mb = D.members.find(function (x) { return x.user_id === s.user_id; }); return { name: mb ? mb.email.split("@")[0] : s.employee_name, kind: s.kind }; });
+      var wd2 = new Date(today2 + "T00:00:00Z").getUTCDay(), bse = [118, 92, 88, 96, 112, 131, 126][wd2];
+      var tks = D.tickets.filter(function (t) { return t.department === dep && t.status !== "Erledigt"; });
+      return ok({ department: dep, day: today2, staff: staff, forecast: { occupied: bse, arrivals: Math.round(bse * 0.27), departures: Math.round(bse * 0.24) },
+        rooms: dep === "Housekeeping" || dep === "Rezeption & Empfang" ? { dirty: D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).length, ready: D.rooms.filter(function (r) { return r.status === "Sauber" || r.status === "Kontrolliert"; }).length,
+          departures: 0, arrivals: 0, out_of_order: D.rooms.filter(function (r) { return r.status === "Außer Betrieb"; }).map(function (r) { return r.number; }) } : null,
+        logbook: D.logbook.filter(function (e) { return e.department === dep && (e.kind === "Wichtig" || (e.kind === "Offen" && !e.done)); }).map(function (e) { return { kind: e.kind, body: e.body }; }),
+        tickets: tks.slice(0, 5).map(function (t) { return { title: t.title, location: t.location, priority: t.priority, kind: t.kind, status: t.status }; }), tickets_open: tks.length, guest_requests_open: 0,
+        haccp_missing: D.temp_points.filter(function (pt) { return pt.department === dep && !D.readings.some(function (r) { return r.point_id === pt.id && r.taken_at.slice(0, 10) === today2; }); }).map(function (pt) { return pt.name; }),
+        open_shifts: D.open_shifts.filter(function (o) { return o.department === dep && o.status === "offen"; }), read_by_me: D.reads.indexOf(dep + "|" + ME) >= 0,
+        reads: D.reads.filter(function (r) { return r.indexOf(dep + "|") === 0; }).map(function (r) { var mb = D.members.find(function (x) { return x.user_id === r.split("|")[1]; }); return { name: mb ? mb.email.split("@")[0] : "" }; }) });
+    }
+    if (p === H + "/briefing/read") { D.reads.push(b.department + "|" + ME); return ok({ ok: true }); }
+    // Zimmer verteilen (gleiche Regel wie der Server)
+    if (p === H + "/rooms/assign") {
+      var dirty = D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).sort(function (a, c) { return String(a.floor).localeCompare(String(c.floor), "de", { numeric: true }) || a.number.localeCompare(c.number, "de", { numeric: true }); });
+      var us = b.user_ids || [], tot = dirty.reduce(function (s, r) { return s + (r.occupancy === "Belegt" ? 0.5 : 1); }, 0), per = 0, acc = 0, asg = [], load = {};
+      us.forEach(function (u) { load[u] = { rooms: 0, credits: 0 }; });
+      dirty.forEach(function (r) { var c = r.occupancy === "Belegt" ? 0.5 : 1; if (per < us.length - 1 && acc + c / 2 > tot * (per + 1) / us.length) per++; acc += c; asg.push({ id: r.id, number: r.number, user_id: us[per] }); load[us[per]].rooms++; load[us[per]].credits += c; });
+      if (b.apply) asg.forEach(function (a) { var rr = byId(D.rooms, a.id); rr.assigned_to = a.user_id; });
+      return ok({ assign: asg, load: load, applied: !!b.apply });
+    }
+    // Einarbeitung
+    if (p === "/api/organizations/demo-org/onboarding") return ok({ items: D.onboarding_items, onboardings: D.onboardings, done: D.ob_done });
+    if (p === "/api/organizations/demo-org/onboarding/items") { var it3 = { id: nid("ob"), organization_id: "demo-org", text: b.text, department: b.department || null, position: D.onboarding_items.length }; D.onboarding_items.push(it3); return ok(it3); }
+    if ((mm = p.match(/^\/api\/onboarding-items\/([^/]+)$/))) { remove(D.onboarding_items, mm[1]); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/organizations\/demo-org\/onboarding\/([^/]+)\/toggle$/))) { var uid = mm[1];
+      D.ob_done = D.ob_done.filter(function (x) { return !(x.user_id === uid && x.item_id === b.item_id); }); if (b.done) D.ob_done.push({ user_id: uid, item_id: b.item_id, done_by: ME }); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/organizations\/demo-org\/onboarding\/([^/]+)$/))) { var uid2 = mm[1]; D.onboardings = D.onboardings.filter(function (x) { return x.user_id !== uid2; });
+      if (m !== "DELETE") D.onboardings.push({ organization_id: "demo-org", user_id: uid2, buddy_id: b.buddy_id || null, start_date: b.start_date || todayIso, completed_at: b.completed ? new Date().toISOString() : null }); return ok({}); }
+    // Handwerker
+    if (p === H + "/contractors") { if (m === "POST") { var ct = { id: nid("ct"), hotel_id: D.hotel.id, name: b.name, trade: b.trade, url: "handwerk.html?demo=1" }; D.contractors.push(ct); return ok(ct); } return ok(lead ? D.contractors : []); }
+    if ((mm = p.match(/^\/api\/contractors\/([^/]+)(\/rotate)?$/))) { if (m === "DELETE") { remove(D.contractors, mm[1]); return ok({ ok: true }); } return ok(byId(D.contractors, mm[1])); }
+    // Bestellungen
+    if (p === H + "/procurement") { if (m === "POST") { var pc = Object.assign({ id: nid("pc"), hotel_id: D.hotel.id }, b); D.procurement.push(pc); return ok(pc); } return ok(lead ? D.procurement : []); }
+    if ((mm = p.match(/^\/api\/procurement\/([^/]+)$/))) { if (m === "DELETE") { remove(D.procurement, mm[1]); return ok({ ok: true }); } var pc2 = byId(D.procurement, mm[1]); Object.assign(pc2, b); return ok(pc2); }
+    // Bewerbungen
+    if (p === H + "/candidates") { if (m === "POST") { var cd = Object.assign({ id: nid("cd"), hotel_id: D.hotel.id, stage: "Eingegangen" }, b); D.candidates.push(cd); return ok(cd); } return ok(lead ? D.candidates : []); }
+    if ((mm = p.match(/^\/api\/candidates\/([^/]+)$/))) { if (m === "DELETE") { remove(D.candidates, mm[1]); return ok({ ok: true }); } var cd2 = byId(D.candidates, mm[1]); Object.assign(cd2, b); return ok(cd2); }
+    // Genehmigungen
+    if (p === H + "/permits") { if (m === "POST") { var pm = Object.assign({ id: nid("pm"), hotel_id: D.hotel.id, status: "offen" }, b); D.permits.push(pm); return ok(pm); } return ok(lead ? D.permits : []); }
+    if ((mm = p.match(/^\/api\/permits\/([^/]+)$/))) { if (m === "DELETE") { remove(D.permits, mm[1]); return ok({ ok: true }); } var pm2 = byId(D.permits, mm[1]); Object.assign(pm2, b); return ok(pm2); }
+    // Gäste-Feedback
+    if (p === H + "/feedback") {
+      var cats = ["zimmer", "sauberkeit", "service", "fruehstueck", "checkin"], avg = {};
+      cats.forEach(function (c) { var v = D.feedback.map(function (f) { return f.ratings[c]; }).filter(function (x) { return x; }); avg[c] = v.length ? Math.round(v.reduce(function (a, c2) { return a + c2; }, 0) / v.length * 10) / 10 : null; });
+      return ok({ entries: D.feedback, averages: avg, count: D.feedback.length });
     }
     // Push gibt es in der Demo nicht
     if (p === "/api/push/key") return ok({ error: "Push-Benachrichtigungen sind noch nicht eingerichtet." }, 404);

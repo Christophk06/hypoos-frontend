@@ -40,6 +40,7 @@
     if (t.status === "Erledigt") t.done_at = new Date(now.getTime() - (t.hoursAgo - 4) * 3600000).toISOString();
   });
   D.rooms = D.rooms || []; D.tickets = D.tickets || [];
+  D.chat = (D.chat || []).map(function (c) { return Object.assign({}, c, { created_at: new Date(now.getTime() - c.minutesAgo * 60000).toISOString() }); });
 
   var nextId = 1;
   function nid(p) { return "demo-" + p + "-" + (nextId++); }
@@ -158,6 +159,25 @@
     if ((mm = p.match(/^\/api\/checklists\/([^/]+)\/run$/))) { var key = mm[1] + "|" + b.date; runs[key] = runs[key] || {};
       if (b.checked) runs[key][b.item] = { by: meRow.email, at: new Date().toISOString() }; else delete runs[key][b.item]; return ok({ ok: true }); }
     if ((mm = p.match(/^\/api\/checklists\/([^/]+)$/))) { if (m === "DELETE") { remove(D.checklists, mm[1]); return ok({ ok: true }); } var c2 = byId(D.checklists, mm[1]); Object.assign(c2, b); return ok(c2); }
+    // Team-Chat
+    if (p === H + "/chat/latest") { var lt = {}; D.chat.forEach(function (c) { if (canSee(c.channel) || c.channel === "_all") if (!lt[c.channel] || lt[c.channel].at < c.created_at) lt[c.channel] = { channel: c.channel, at: c.created_at, author_id: c.author_id }; });
+      return ok(Object.keys(lt).map(function (k) { return lt[k]; })); }
+    if (p === H + "/chat") {
+      if (m === "POST") { var cm = { id: nid("chat"), hotel_id: D.hotel.id, channel: b.channel, body: b.body, author_id: ME, created_at: new Date().toISOString() }; D.chat.push(cm); return ok(cm); }
+      var ch = q.get("channel"), af = q.get("after");
+      return ok(D.chat.filter(function (c) { return c.channel === ch && (ch === "_all" || canSee(ch)) && (!af || c.created_at > af); }).sort(function (a, c) { return a.created_at < c.created_at ? -1 : 1; }));
+    }
+    if ((mm = p.match(/^\/api\/chat\/([^/]+)$/))) { remove(D.chat, mm[1]); return ok({ ok: true }); }
+    // PMS-Anbindung: in der Demo nur zum Ansehen
+    if (p === H + "/pms") { if (m === "GET") return ok(D.pms || null); if (m === "DELETE") { D.pms = null; return ok({ ok: true }); }
+      D.pms = { hotel_id: D.hotel.id, provider: b.provider, settings: b.settings || {}, has_token: false, last_sync_at: null, last_result: null,
+        webhook_url: b.provider === "webhook" ? "https://hpoos-backend-1.onrender.com/api/pms/webhook/demo-nur-zum-ansehen" : null }; return ok(D.pms); }
+    if (p === H + "/pms/sync" || p === H + "/pms/rotate-token") return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
+    if (p === H + "/rooms/import") {
+      var upd = 0, unk = [];
+      (b.rows || []).forEach(function (r) { var num = String(r.number || "").trim(); var rm2 = D.rooms.find(function (x) { return x.number === num; }); if (!rm2) { if (num) unk.push(num); return; } upd++; });
+      return ok({ updated: upd, unchanged: 0, unknown: unk.slice(0, 50) });
+    }
     // Push gibt es in der Demo nicht
     if (p === "/api/push/key") return ok({ error: "Push-Benachrichtigungen sind noch nicht eingerichtet." }, 404);
     // Zeiterfassung

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%231C2430%22/><path d=%22M9 26V15a7 7 0 0 1 14 0v11M13 26v-9a3 3 0 0 1 6 0v9M6 26h20%22 fill=%22none%22 stroke=%22%23C9A66B%22 stroke-width=%221.8%22/></svg>" />
+<title>Ouverture</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#1C2430" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Ouverture" />
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="i18n.js"></script>
+<script src="payroll.js"></script>
+<script src="holidays.js"></script>
+<script src="planning.js"></script>
+<script>
+  // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
+  if (/[?&]demo\b/.test(location.search)) {
+    document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js"><\/script>');
+    document.write('<script src="demo/demo-mock.js"><\/script>');
+  }
+  // Als App installierbar: Service Worker (nicht in der Demo)
+  if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+  // Installations-Angebot des Browsers merken (Knopf "App installieren")
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); window.__installPrompt = e; window.dispatchEvent(new Event("ouverture-installable")); });
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+  :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { height: 100%; }
+  body { margin: 0; font-family: 'Inter', sans-serif; background: #F6F4EF; color: #1C2430; }
+  input, select, button, textarea { font-family: 'Inter', sans-serif; }
+  .card { background: #fff; border: 1px solid #E4DFD3; border-radius: 6px; padding: 22px; }
+  .btn-primary { background: #1C2430; color: #fff; border: none; border-radius: 4px; padding: 9px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer; letter-spacing: .01em; }
+  .btn-primary:hover { background: #2A3444; }
+  .nav-item:hover { color: #fff !important; }
+  .login-side { display: flex; }
+  @media (max-width: 760px) { .login-side { display: none !important; } }
+  .input { width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #E4DFD3; font-size: 14px; color: #1C2430; background: #F6F4EF; }
+  .field-label { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-bottom: 5px; }
+
+  /* ---------- Handy-Ansicht ---------- */
+  /* ---------- Statusbericht (Druck / PDF) ---------- */
+  .report { max-width: 210mm; margin: 0 auto; background: #fff; color: #1C2430; padding: 14mm 14mm 10mm; font-size: 12.5px; }
+  .report h2 { font-family: 'Fraunces', serif; font-size: 15px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #E4DFD3; }
+  .report table { width: 100%; border-collapse: collapse; }
+  .report td, .report th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #F0ECE3; vertical-align: top; }
+  .report th { font-size: 11px; color: #6B7280; font-weight: 600; }
+  .report .avoid-break { break-inside: avoid; }
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff !important; }
+    .no-print, .sidebar, .page-header { display: none !important; }
+    .page-content { padding: 8mm !important; }
+    .report-wrap { background: #fff !important; padding: 0 !important; min-height: 0 !important; }
+    .report { max-width: none; padding: 12mm 14mm; box-shadow: none !important; border-radius: 0 !important; margin: 0; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  @media (max-width: 640px) {
+    .app-shell { flex-direction: column !important; }
+    .sidebar { width: auto !important; padding: 8px 10px !important; display: flex; align-items: center; gap: 2px;
+               overflow-x: auto; position: sticky; top: 0; z-index: 10; -webkit-overflow-scrolling: touch; }
+    .sidebar .brand { padding: 0 10px 0 4px !important; border: none !important; margin: 0 !important; }
+    .sidebar .nav-item { margin: 0 !important; white-space: nowrap; }
+    .sidebar .logout { margin: 0 0 0 auto !important; padding: 9px 10px; white-space: nowrap; }
+    .sidebar .org-switcher { margin: 0 6px 0 0 !important; min-width: 130px; }
+    .sidebar .org-switcher > div:first-child { display: none; }
+    .page-header { padding: 14px 16px !important; flex-wrap: wrap; }
+    .page-content { padding: 16px !important; }
+    .stack { display: flex !important; flex-direction: column !important; align-items: stretch !important; }
+    .stack > * { width: 100% !important; }
+    .resp-table tr { display: flex; flex-wrap: wrap; align-items: center; }
+    .resp-table td { padding: 8px 12px !important; }
+    .resp-table td:first-child { flex-basis: 100%; padding-bottom: 2px !important; }
+    .dept-label { width: 110px !important; }
+    .card { padding: 16px; }
+    .input { font-size: 16px; } /* verhindert automatisches Hineinzoomen auf dem iPhone */
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!--APP-->
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Bei jedem Push: Tests ausführen und prüfen, ob die gebauten Dateien (app.js, i18n.js, lang/)
+# zum Quellcode in src/ passen. Rot = vor dem Veröffentlichen `npm run build` vergessen.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test

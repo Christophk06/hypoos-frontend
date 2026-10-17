@@ -1,9 +1,9 @@
 // Ouverture – Service Worker: App-Oberfläche offline verfügbar, Daten immer frisch vom Server.
 // Dateien dieser Seite: erst Netzwerk (neueste Version), bei Funkloch aus dem Speicher.
-// Bibliotheken vom CDN (React, Babel, Schriften): aus dem Speicher, im Hintergrund aktualisiert.
+// Bibliotheken vom CDN (React, Schriften): aus dem Speicher, im Hintergrund aktualisiert.
 // Server-Anfragen (API) werden nie zwischengespeichert.
-const CACHE = "ouverture-v3";
-const SHELL = ["./", "index.html", "i18n.js", "payroll.js", "holidays.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+const CACHE = "ouverture-v4";
+const SHELL = ["./", "index.html", "i18n.js", "app.js", "payroll.js", "holidays.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

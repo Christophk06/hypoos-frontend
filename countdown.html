@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#6B7280; --good:#3F7A5C; --warn:#B9822E; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 760px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 44px; max-width: 140px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 22px; font-weight: 600; flex: 1; }
+  .city { font-size: 13px; color: var(--muted); font-family: Inter, sans-serif; font-weight: 400; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; }
+  .hero { background: var(--ink); color: #fff; border-radius: 16px; padding: 26px 22px; text-align: center; margin-bottom: 14px; }
+  .days { font-family: Georgia, serif; font-size: 64px; line-height: 1; font-weight: 600; }
+  .days small { display: block; font-family: Inter, sans-serif; font-size: 15px; font-weight: 500; opacity: .8; margin-top: 8px; }
+  .date { margin-top: 10px; font-size: 14px; opacity: .75; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .k { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .k .l { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .k .v { font-family: Georgia, serif; font-size: 30px; font-weight: 600; margin-top: 4px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  h2 { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 10px; }
+  .dep { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+  .dep .n { flex: 0 0 44%; }
+  .bar { flex: 1; height: 9px; background: #EEE9DE; border-radius: 9px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 9px; }
+  .dep .s { width: 40px; text-align: end; font-weight: 600; }
+  .ms { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .ms:first-of-type { border-top: 0; }
+  .ms .d { width: 92px; color: var(--muted); flex: none; }
+  .tag { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-inline-start: 6px; }
+  .late { background: #F5E1DE; color: var(--bad); } .risk { background: #F5E9D5; color: var(--warn); }
+  .msg { padding: 14px; border-radius: 10px; background: #F5E1DE; color: var(--bad); }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <div id="app"></div>
+  <footer id="foot">Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { days: "Tage bis zur Eröffnung", open: "Seit {n} Tagen eröffnet", today: "Heute ist Eröffnung!", opening: "Eröffnung am {date}", ready: "Bereitschaft", progress: "Aufgaben erledigt", staff: "Personal besetzt", ms: "Meilensteine", depts: "Bereitschaft je Abteilung", next: "Nächste Meilensteine", late: "überfällig", risk: "gefährdet", none: "Alle Meilensteine erreicht.", updated: "Stand: {date} · bereitgestellt mit Ouverture", invalid: "Dieser Link ist nicht (mehr) gültig.", loading: "Lädt…", noDate: "Eröffnungstermin noch offen" },
+  en: { days: "days until opening", open: "Open for {n} days", today: "Opening day is today!", opening: "Opening on {date}", ready: "Readiness", progress: "Tasks done", staff: "Positions filled", ms: "Milestones", depts: "Readiness by department", next: "Next milestones", late: "overdue", risk: "at risk", none: "All milestones reached.", updated: "As of {date} · provided with Ouverture", invalid: "This link is not (or no longer) valid.", loading: "Loading…", noDate: "Opening date not set yet" },
+  fr: { days: "jours avant l’ouverture", open: "Ouvert depuis {n} jours", today: "C’est le jour de l’ouverture !", opening: "Ouverture le {date}", ready: "Préparation", progress: "Tâches terminées", staff: "Postes pourvus", ms: "Jalons", depts: "Préparation par service", next: "Prochains jalons", late: "en retard", risk: "menacé", none: "Tous les jalons sont atteints.", updated: "État au {date} · fourni par Ouverture", invalid: "Ce lien n’est pas (ou plus) valable.", loading: "Chargement…", noDate: "Date d’ouverture pas encore fixée" },
+  it: { days: "giorni all’apertura", open: "Aperto da {n} giorni", today: "Oggi è il giorno dell’apertura!", opening: "Apertura il {date}", ready: "Prontezza", progress: "Attività completate", staff: "Posizioni coperte", ms: "Milestone", depts: "Prontezza per reparto", next: "Prossime milestone", late: "in ritardo", risk: "a rischio", none: "Tutte le milestone raggiunte.", updated: "Aggiornato al {date} · fornito con Ouverture", invalid: "Questo link non è (più) valido.", loading: "Caricamento…", noDate: "Data di apertura non ancora fissata" },
+  es: { days: "días para la apertura", open: "Abierto desde hace {n} días", today: "¡Hoy es la apertura!", opening: "Apertura el {date}", ready: "Preparación", progress: "Tareas completadas", staff: "Puestos cubiertos", ms: "Hitos", depts: "Preparación por departamento", next: "Próximos hitos", late: "vencido", risk: "en riesgo", none: "Todos los hitos alcanzados.", updated: "Datos a {date} · con Ouverture", invalid: "Este enlace no es (o ya no es) válido.", loading: "Cargando…", noDate: "Fecha de apertura aún sin fijar" },
+  pt: { days: "dias até à abertura", open: "Aberto há {n} dias", today: "Hoje é o dia da abertura!", opening: "Abertura a {date}", ready: "Prontidão", progress: "Tarefas concluídas", staff: "Funções preenchidas", ms: "Marcos", depts: "Prontidão por departamento", next: "Próximos marcos", late: "em atraso", risk: "em risco", none: "Todos os marcos alcançados.", updated: "Atualizado a {date} · com Ouverture", invalid: "Este link não é (ou já não é) válido.", loading: "A carregar…", noDate: "Data de abertura ainda por definir" },
+  tr: { days: "gün açılışa kaldı", open: "{n} gündür açık", today: "Bugün açılış günü!", opening: "Açılış {date}", ready: "Hazırlık", progress: "Tamamlanan görevler", staff: "Dolu pozisyonlar", ms: "Kilometre taşları", depts: "Departmana göre hazırlık", next: "Sıradaki kilometre taşları", late: "gecikmiş", risk: "risk altında", none: "Tüm kilometre taşlarına ulaşıldı.", updated: "{date} itibarıyla · Ouverture ile", invalid: "Bu bağlantı geçerli değil (artık).", loading: "Yükleniyor…", noDate: "Açılış tarihi henüz belirlenmedi" },
+  ja: { days: "開業まであと（日）", open: "開業から{n}日", today: "本日開業です！", opening: "開業日 {date}", ready: "準備度", progress: "完了したタスク", staff: "充足した職位", ms: "マイルストーン", depts: "部門別の準備度", next: "次のマイルストーン", late: "期限超過", risk: "リスクあり", none: "すべてのマイルストーンを達成しました。", updated: "{date} 時点 · Ouverture 提供", invalid: "このリンクは無効です（期限切れの可能性があります）。", loading: "読み込み中…", noDate: "開業日は未定です" },
+  zh: { days: "天后开业", open: "已开业 {n} 天", today: "今天开业！", opening: "开业日期 {date}", ready: "准备度", progress: "已完成任务", staff: "岗位到位", ms: "里程碑", depts: "各部门准备度", next: "接下来的里程碑", late: "已逾期", risk: "有风险", none: "所有里程碑均已达成。", updated: "截至 {date} · 由 Ouverture 提供", invalid: "此链接无效（或已失效）。", loading: "加载中…", noDate: "开业日期尚未确定" },
+  ar: { days: "يومًا حتى الافتتاح", open: "مفتوح منذ {n} يومًا", today: "اليوم هو يوم الافتتاح!", opening: "الافتتاح في {date}", ready: "الجاهزية", progress: "المهام المنجزة", staff: "الوظائف المشغولة", ms: "المحطات", depts: "الجاهزية حسب القسم", next: "المحطات القادمة", late: "متأخر", risk: "معرّض للخطر", none: "تم تحقيق جميع المحطات.", updated: "حتى {date} · مقدّم من Ouverture", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", loading: "جارٍ التحميل…", noDate: "لم يُحدَّد موعد الافتتاح بعد" },
+};
+var DEPT = {
+  "Rezeption & Empfang": ["Rezeption & Empfang","Front office","Réception","Reception","Recepción","Receção","Resepsiyon","フロント","前台","الاستقبال"],
+  "Housekeeping": ["Housekeeping","Housekeeping","Housekeeping","Housekeeping","Housekeeping","Housekeeping","Kat hizmetleri","ハウスキーピング","客房部","التدبير الفندقي"],
+  "Food & Beverage": ["Food & Beverage","Food & Beverage","Restauration","Food & Beverage","Alimentos y bebidas","Comidas e bebidas","Yiyecek & İçecek","料飲","餐饮","الأغذية والمشروبات"],
+  "Technik": ["Technik","Engineering","Technique","Manutenzione","Mantenimiento","Manutenção","Teknik","施設管理","工程部","الصيانة"],
+  "IT & Systeme": ["IT & Systeme","IT & systems","IT & systèmes","IT & sistemi","IT y sistemas","TI e sistemas","BT & sistemler","IT・システム","IT 与系统","تقنية المعلومات"],
+  "Personal": ["Personal","HR","RH","Personale","Personal","Recursos humanos","İnsan kaynakları","人事","人事","الموارد البشرية"],
+  "Einkauf": ["Einkauf","Purchasing","Achats","Acquisti","Compras","Compras","Satın alma","購買","采购","المشتريات"],
+  "Sicherheit": ["Sicherheit","Safety & security","Sécurité","Sicurezza","Seguridad","Segurança","Güvenlik","安全","安全","الأمن والسلامة"],
+  "Revenue Management": ["Revenue Management","Revenue management","Revenue management","Revenue management","Revenue management","Revenue management","Gelir yönetimi","レベニューマネジメント","收益管理","إدارة الإيرادات"],
+  "Finanzen & Controlling": ["Finanzen & Controlling","Finance & controlling","Finances & contrôle","Finanza & controllo","Finanzas y control","Finanças e controlo","Finans & kontrol","財務・管理","财务与控制","المالية والرقابة"],
+};
+var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "de").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var data = null, error = null;
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function dept(n) { var i = LANGS.findIndex(function (l) { return l[0] === lang; }); return DEPT[n] ? DEPT[n][i] : n; }
+function fmt(iso, long) { try { return new Date(String(iso).slice(0, 10) + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : lang, long ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : { day: "2-digit", month: "short", timeZone: "UTC" }); } catch (e) { return iso; } }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} load(); };
+function demoData() {
+  var add = function (n) { return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10); };
+  var ms = { de: ["Übergabe Gebäude abgeschlossen", "Personal vollständig an Bord", "Soft Opening", "Offizielle Eröffnung"], en: ["Building handover complete", "Staff fully on board", "Soft opening", "Official opening"] };
+  var m = ms[lang] || ms.en;
+  return { hotel: { name: "Beispielhotel Alpenblick", city: "Innsbruck", opening_date: add(30), rooms: 140 }, readiness: 72, progress: 64, staffing: 83, days_to_opening: 30,
+    departments: [["IT & Systeme", 48], ["Personal", 61], ["Food & Beverage", 70], ["Housekeeping", 78], ["Rezeption & Empfang", 84], ["Technik", 88]].map(function (d) { return { name: d[0], score: d[1] }; }),
+    milestones: [{ title: m[0], date: add(-2), late: true }, { title: m[1], date: add(9), endangered: true }, { title: m[2], date: add(23) }, { title: m[3], date: add(30) }], milestones_done: 5, milestones_total: 9, updated_at: new Date().toISOString() };
+}
+function load() {
+  if (demo) { data = demoData(); render(); return; }
+  if (!token) { error = t("invalid"); render(); return; }
+  fetch(API + "/api/public/owner/" + encodeURIComponent(token) + "?lang=" + lang, { headers: { "Accept-Language": lang } })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || t("invalid")); return j; }); })
+    .then(function (j) { data = j; error = null; render(); }).catch(function (e) { error = e.message; render(); });
+}
+function color(s) { return s >= 80 ? "var(--good)" : s >= 60 ? "var(--warn)" : "var(--bad)"; }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app");
+  if (error) { a.innerHTML = '<div class="msg">' + esc(error) + "</div>"; return; }
+  if (!data) { a.innerHTML = '<div class="city">' + t("loading") + "</div>"; return; }
+  var h = data.hotel; $("hotel").innerHTML = esc(h.name) + (h.city ? '<div class="city">' + esc(h.city) + "</div>" : ""); document.title = h.name;
+  if (h.logo_data) { $("logo").src = h.logo_data; $("logo").hidden = false; }
+  if (h.brand_color) document.documentElement.style.setProperty("--ink", h.brand_color);
+  var d = data.days_to_opening, hero;
+  if (!h.opening_date || d == null) hero = '<div class="days" style="font-size:28px">' + esc(t("noDate")) + "</div>";
+  else if (d > 0) hero = '<div class="days">' + d + "<small>" + esc(t("days")) + '</small></div><div class="date">' + esc(t("opening", { date: fmt(h.opening_date, true) })) + "</div>";
+  else if (d === 0) hero = '<div class="days" style="font-size:34px">🎉 ' + esc(t("today")) + "</div>";
+  else hero = '<div class="days" style="font-size:34px">' + esc(t("open", { n: -d })) + "</div>";
+  var k = function (l, v, c) { return '<div class="k"><div class="l">' + esc(l) + '</div><div class="v"' + (c ? ' style="color:' + c + '"' : "") + ">" + (v == null ? "–" : v) + "</div></div>"; };
+  var html = '<div class="hero">' + hero + '</div><div class="grid">' + k(t("ready"), data.readiness + " %", color(data.readiness)) + k(t("progress"), data.progress == null ? null : data.progress + " %") + k(t("staff"), data.staffing == null ? null : data.staffing + " %") + k(t("ms"), data.milestones_done + " / " + data.milestones_total) + "</div>";
+  if (data.departments.length) html += '<div class="box"><h2>' + esc(t("depts")) + "</h2>" + data.departments.map(function (x) { return '<div class="dep"><span class="n">' + esc(dept(x.name)) + '</span><span class="bar"><i style="width:' + x.score + "%;background:" + color(x.score) + '"></i></span><span class="s">' + x.score + "</span></div>"; }).join("") + "</div>";
+  html += '<div class="box"><h2>' + esc(t("next")) + "</h2>" + (data.milestones.length ? data.milestones.map(function (m) { return '<div class="ms"><span class="d">' + esc(fmt(m.date)) + "</span><span>" + esc(m.title) + (m.late ? '<span class="tag late">' + esc(t("late")) + "</span>" : m.endangered ? '<span class="tag risk">' + esc(t("risk")) + "</span>" : "") + "</span></div>"; }).join("") : '<div class="city">' + esc(t("none")) + "</div>") + "</div>";
+  a.innerHTML = html;
+  $("foot").textContent = t("updated", { date: new Date(data.updated_at).toLocaleString(lang === "en" ? "en-GB" : lang, { dateStyle: "medium", timeStyle: "short" }) });
+}
+render(); load();
+</script>
+</body>
+</html>

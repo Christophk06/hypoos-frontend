@@ -87,6 +87,40 @@
     return "﻿" + [header].concat(rows).map(function (r) { return r.map(q).join(";"); }).join("\r\n");
   }
 
+  // Lohnarten-Export: je Person und Lohnart eine Zeile (Normalstunden, Überstunden, Zuschläge, Urlaub, Krank).
+  // settings: { la: {worked, overtime, night, sunday, holiday, vacation, sick}, pnr: {personKey: "1001"}, berater, mandant }
+  var LA_FIELDS = ["worked", "overtime", "night", "sunday", "holiday", "vacation", "sick"];
+  function payrollLines(rows, settings) {
+    var la = (settings && settings.la) || {}, pnr = (settings && settings.pnr) || {};
+    var lines = [];
+    rows.forEach(function (r) {
+      var overtime = r.target != null && r.entries ? Math.max(0, r.worked - r.target) : 0;
+      var vals = { worked: r.entries ? r.worked - overtime : 0, overtime: overtime, night: r.night, sunday: r.sunday, holiday: r.holiday, vacation: r.vacation, sick: r.sick };
+      LA_FIELDS.forEach(function (f) {
+        var v = Math.round((Number(vals[f]) || 0) * 100) / 100;
+        if (!v || !la[f]) return;
+        lines.push({ pnr: pnr[r.key] || "", name: r.name, key: r.key, field: f, la: la[f], value: v });
+      });
+    });
+    return lines;
+  }
+  function comma(v) { return String(v).replace(".", ","); }
+  // Allgemeine CSV (BMD, Sage, Lexware, Excel …): Personalnummer;Name;Lohnart;Menge;Zeitraum
+  function payrollLinesCsv(lines, month, header) {
+    return toCsv(header || ["Personalnummer", "Name", "Lohnart", "Menge", "Zeitraum"], lines.map(function (l) { return [l.pnr, l.name, l.la, comma(l.value), month]; }));
+  }
+  // DATEV LODAS: ASCII-Import "Bewegungsdaten" (bitte einmal mit der Lohnverrechnung testen)
+  function payrollDatevLodas(lines, month, settings) {
+    var y = month.slice(0, 4), m = month.slice(5, 7);
+    var out = ["[Allgemein]", "Ziel=LODAS", "Version_SST=1.0", "BeraterNr=" + ((settings && settings.berater) || ""), "MandantenNr=" + ((settings && settings.mandant) || ""), "Datumsangaben=DDMMJJJJ", "",
+      "[Satzbeschreibung]", "1;u_lod_bwd_buchung_standard;abrechnung_zeitraum#bwd;pnr#bwd;la_eigene#bwd;bs_nr#bwd;bs_wert_butab#bwd;", "", "[Bewegungsdaten]"];
+    lines.filter(function (l) { return l.pnr; }).forEach(function (l) { out.push("1;01" + m + y + ";" + l.pnr + ";" + l.la + ";1;" + comma(l.value.toFixed(2)) + ";"); });
+    return out.join("\r\n") + "\r\n";
+  }
+
+  root.payrollLines = payrollLines;
+  root.payrollLinesCsv = payrollLinesCsv;
+  root.payrollDatevLodas = payrollDatevLodas;
   root.payrollSummary = payrollSummary;
   root.splitTimeEntry = splitEntry;
   root.payrollMonthBounds = monthBounds;

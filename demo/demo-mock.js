@@ -52,6 +52,27 @@
     { id: "pm-2", hotel_id: D.hotel.id, title: "Brandschutzabnahme", authority: "Feuerwehr", status: "offen", due_date: add(todayIso, 21) },
     { id: "pm-3", hotel_id: D.hotel.id, title: "Aufzugsabnahme", authority: "TÜV", status: "erteilt", valid_until: add(todayIso, 360) },
     { id: "pm-4", hotel_id: D.hotel.id, title: "Lebensmittelrechtliche Registrierung", authority: "Lebensmittelaufsicht", status: "offen", due_date: add(todayIso, -2) }];
+  // 024: Bewertungen, Zähler mit Ständen, Anreisen, Dokumente mit Ablaufdatum
+  D.reviews = (D.reviews || []).map(function (r) { return Object.assign({}, r, { review_date: add(todayIso, -r.daysAgo), created_at: now.toISOString() }); });
+  D.review_summary = D.review_summary ? { id: "rs-1", hotel_id: D.hotel.id, review_count: 24, language: D.lang, created_at: new Date(now.getTime() - 2 * 86400000).toISOString(), summary: D.review_summary } : null;
+  D.meter_readings = [];
+  (D.meters || []).forEach(function (mt, mi) {
+    var base = [182000, 41000, 9800][mi], perDay = [610, 95, 31][mi], v = base;
+    for (var w = 56; w >= 0; w--) {
+      var d = add(todayIso, -w * 7 - 2), month = Number(d.slice(5, 7)), season = mi === 1 ? (month <= 3 || month >= 11 ? 1.8 : month >= 6 && month <= 8 ? 0.4 : 1) : 1;
+      var spike = mi === 0 && w === 0 ? 1.55 : 1;
+      if (w < 56) v += Math.round(perDay * 7 * season * spike * (0.92 + ((w * 37) % 17) / 100));
+      D.meter_readings.push({ id: "mr-" + mi + "-" + w, meter_id: mt.id, read_on: d, value: v, note: null, created_by: "u-admin" });
+    }
+  });
+  D.hotel.guest_mail = { enabled: true, days_before: 3, checkin_time: "15:00", info: "", extras: (D.guest_extras || []).map(function (name, i) { return { id: "x" + i, name: name, price: [24, 18, 35][i] }; }) };
+  D.arrivals = [["Familie Weber", "de", 1, true], ["Sarah Collins", "en", 1, false], ["Lucía Romero", "es", 2, true], ["Kenji Sato", "ja", 2, false], ["Ahmet Yılmaz", "tr", 3, false], ["Marie Dubois", "fr", 4, false]].map(function (g, i) {
+    return { id: "ar-" + i, hotel_id: D.hotel.id, guest_name: g[0], language: g[1], arrival_date: add(todayIso, g[2]), departure_date: add(todayIso, g[2] + 3), email: "gast" + i + "@example.com",
+      room_type: i % 2 ? "Superior" : "Deluxe", source: i < 4 ? "pms" : "import", mail_sent_at: g[2] <= 3 ? new Date(now.getTime() - 86400000 * (4 - g[2])).toISOString() : null,
+      answered_at: g[3] ? now.toISOString() : null, eta: g[3] ? ["17:30", "21:00"][i ? 1 : 0] : null, extras: g[3] ? (i ? ["x0"] : ["x0", "x1"]) : [], guest_note: g[3] ? (D.guest_notes || [])[i ? 1 : 0] || null : null };
+  });
+  D.docs = (D.doc_names || []).map(function (name, i) { return { id: "dc-" + i, hotel_id: D.hotel.id, name: name, size_bytes: [480000, 210000, 1300000][i], mime_type: "application/pdf", uploaded_by: "u-admin", uploaded_by_email: "admin@alpenblick.at",
+    created_at: new Date(now.getTime() - (i + 2) * 86400000 * 9).toISOString(), task_id: null, task_title: null, category: ["Wartungsvertrag", "Zertifikat", "Versicherung"][i], expires_at: add(todayIso, [21, -4, 280][i]), remind_days: 30 }; });
   // Abhängigkeiten für den kritischen Pfad (über die festen Vorlagen-Schlüssel, in jeder Sprache gleich)
   (function () { var k = function (key) { return D.tasks.find(function (t) { return t.template_key === key; }); };
     var pms = k("t-pms-config"), mock = k("t-mock-checkins"), snag = k("t-room-snagging"), uni = k("t-uniforms"), evac = k("t-evacuation");
@@ -136,8 +157,37 @@
     }
     if (p === H + "/readiness") return ok(D.readiness);
     if (p === H + "/ai-report") return ok(lead ? { enabled: true, report: D.ai } : { enabled: true, report: null });
-    if (p === H + "/documents") return ok([]);
-    if (p === H + "/template-preview") return ok({ tasks: 0, milestones: 0, alreadyApplied: D.tasks.length, past: 0 });
+    if (p === H + "/documents") return ok(lead ? D.docs : []);
+    if ((mm = p.match(/^\/api\/documents\/([^/]+)$/)) && m === "PATCH") { var dc = byId(D.docs, mm[1]); Object.assign(dc, b); return ok(dc); }
+    if (/^\/api\/documents\/[^/]+\/download$/.test(p)) return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
+    // Anreisen
+    if (p === H + "/arrivals") { if (m === "POST") { var ag = Object.assign({ id: nid("ar"), hotel_id: D.hotel.id, source: "hand", extras: [], mail_sent_at: null, answered_at: null }, b); D.arrivals.push(ag); return ok({ ok: true }); }
+      return ok(D.arrivals.filter(function (g) { return g.arrival_date >= add(todayIso, -1); }).sort(function (a, c) { return a.arrival_date < c.arrival_date ? -1 : 1; })); }
+    if (p === H + "/arrivals/import") return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
+    if ((mm = p.match(/^\/api\/arrivals\/([^/]+)\/send$/))) { byId(D.arrivals, mm[1]).mail_sent_at = new Date().toISOString(); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/arrivals\/([^/]+)$/))) { remove(D.arrivals, mm[1]); return ok({ ok: true }); }
+    // Bewertungen
+    if (p === H + "/reviews") {
+      var rated = D.reviews.filter(function (r) { return r.rating != null; }), five = function (r) { return r.rating / (r.scale || 5) * 5; };
+      var avgR = function (l) { return l.length ? Math.round(l.reduce(function (a, r) { return a + five(r); }, 0) / l.length * 100) / 100 : null; };
+      var bySrc = {}; D.reviews.forEach(function (r) { (bySrc[r.source] = bySrc[r.source] || []).push(r); });
+      var months = []; for (var i2 = 5; i2 >= 0; i2--) { var dd = new Date(now.getFullYear(), now.getMonth() - i2, 15); months.push({ month: dd.getFullYear() + "-" + String(dd.getMonth() + 1).padStart(2, "0"), count: [9, 11, 14, 12, 16, 7][5 - i2], average: [4.1, 4.0, 4.2, 4.3, 4.4, 4.5][5 - i2] }); }
+      return ok({ reviews: D.reviews, ai: true, summary: D.review_summary, stats: { count: 69, average: 4.3, months: months,
+        sources: Object.keys(bySrc).map(function (k) { return { source: k, count: { google: 31, booking: 27, tripadvisor: 11 }[k] || bySrc[k].length, average: avgR(bySrc[k]) }; }) } });
+    }
+    if (p === H + "/reviews/summary") { D.review_summary.created_at = new Date().toISOString(); return ok(D.review_summary); }
+    if (p === H + "/reviews/import") return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
+    if ((mm = p.match(/^\/api\/reviews\/([^/]+)$/))) { remove(D.reviews, mm[1]); return ok({ ok: true }); }
+    // Energie
+    if (p === H + "/meters") { if (m === "POST") { var mt2 = Object.assign({ id: nid("mt"), hotel_id: D.hotel.id }, b); D.meters.push(mt2); return ok(mt2); } return ok({ meters: D.meters, readings: D.meter_readings }); }
+    if ((mm = p.match(/^\/api\/meters\/([^/]+)\/readings$/))) { if (D.meter_readings.some(function (r) { return r.meter_id === mm[1] && r.read_on === b.read_on; })) return ok({ error: "Für diesen Tag gibt es schon einen Zählerstand." }, 400);
+      var rd = { id: nid("rd"), meter_id: mm[1], read_on: b.read_on, value: Number(String(b.value).replace(",", ".")), created_by: ME }; D.meter_readings.push(rd); D.meter_readings.sort(function (a, c) { return a.read_on < c.read_on ? -1 : 1; }); return ok(rd); }
+    if ((mm = p.match(/^\/api\/meter-readings\/([^/]+)$/))) { remove(D.meter_readings, mm[1]); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/meters\/([^/]+)$/))) { if (m === "DELETE") { remove(D.meters, mm[1]); return ok({ ok: true }); } var mt3 = byId(D.meters, mm[1]); Object.assign(mt3, b); return ok(mt3); }
+    // Eigentümer-Countdown und Kalender-Abo
+    if (p === H + "/owner-link") { if (m === "DELETE") { D.ownerLink = null; return ok({ ok: true }); } if (m === "POST") D.ownerLink = location.origin + location.pathname.replace(/[^/]*$/, "") + "countdown.html?demo=1"; return ok(D.ownerLink ? { url: D.ownerLink } : null); }
+    if (p === "/api/me/calendar") { if (m === "DELETE") { D.cal = null; return ok({ ok: true }); } if (m === "POST") D.cal = { url: "https://hpoos-backend-1.onrender.com/api/calendar/demo.ics", webcal: "webcal://hpoos-backend-1.onrender.com/api/calendar/demo.ics" }; return ok(D.cal || null); }
+    if (p === H + "/template-preview") return ok({ tasks: q.get("hotelType") ? 6 : 0, milestones: 0, alreadyApplied: D.tasks.length, past: 0 });
     if (p === H + "/apply-template") return ok({ tasksCreated: 0, milestonesCreated: 0, skippedExisting: D.tasks.length, skippedPast: 0 });
 
     // Dienstplan

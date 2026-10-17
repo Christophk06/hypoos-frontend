@@ -5,3 +5,5 @@ Disallow: /gast.html
 Disallow: /feedback.html
 Disallow: /handwerk.html
 Sitemap: https://hypoos-frontend.onrender.com/sitemap.xml
+Disallow: /anreise.html
+Disallow: /countdown.html

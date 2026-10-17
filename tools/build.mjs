@@ -76,7 +76,10 @@ let html = read("src/index.html");
 if (!html.includes("<!--APP-->")) throw new Error("<!--APP--> fehlt in src/index.html");
 html = html
   .replace("<!--APP-->", `<script>window.__APP_VERSION=${JSON.stringify(appVersion)};</script>\n<script src="${ver("app.js")}"></script>`)
-  .replace(/<script src="(i18n\.js|payroll\.js|holidays\.js|planning\.js)"><\/script>/g, (m, f) => `<script src="${ver(f)}"></script>`);
+  .replace(/<script src="(i18n\.js|payroll\.js|holidays\.js|planning\.js|labor\.js|energy\.js)"><\/script>/g, (m, f) => `<script src="${ver(f)}"></script>`)
+  // Live-Demo: Daten und Mock ebenfalls mit Versions-Kennung
+  .replace(`'<script src="demo/demo-mock.js"><\\/script>'`, `'<script src="${ver("demo/demo-mock.js")}"><\\/script>'`)
+  .replace(`+ '.js"><\\/script>'`, `+ '.js?v=${hash(fs.readdirSync(path.join(ROOT, "demo")).filter((f) => f.startsWith("data-")).sort().map((f) => read("demo/" + f)).join(""))}"><\\/script>'`);
 emit("index.html", "<!-- Gebaut aus src/index.html und src/app.jsx (npm run build) – nicht von Hand ändern. -->\n" + html);
 
 // ---------- Schreiben oder prüfen ----------

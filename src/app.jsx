@@ -6644,7 +6644,7 @@ function App(){
   const [hotels,setHotels] = useState(null);
   const [hotel,setHotel] = useState(null);
   const [tab,setTab] = useState("dashboard");
-  useEffect(()=>{ window.__ouvTab = tab; },[tab]); // für Fehlermeldungen: welche Ansicht offen war
+  useEffect(()=>{ window.__ouvTab = tab; window.scrollTo(0,0); },[tab]); // neue Ansicht beginnt oben; Ansicht merken für Fehlermeldungen
   const [tasks,setTasks] = useState([]);
   const [milestones,setMilestones] = useState([]);
   const [risks,setRisks] = useState([]);

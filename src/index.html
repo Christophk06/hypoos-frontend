@@ -46,6 +46,16 @@
   .input { width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #E4DFD3; font-size: 14px; color: #1C2430; background: #F6F4EF; }
   .field-label { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-bottom: 5px; }
 
+  /* ---------- Menü links: eigener Bildlauf, bleibt beim Scrollen der rechten Seite stehen ---------- */
+  @media (min-width: 641px) {
+    .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; overscroll-behavior: contain;
+               scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent; }
+    .sidebar::-webkit-scrollbar { width: 6px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 6px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+  }
+  @media print { .sidebar { position: static; height: auto; overflow: visible; } }
+
   /* ---------- Handy-Ansicht ---------- */
   /* ---------- Statusbericht (Druck / PDF) ---------- */
   .report { max-width: 210mm; margin: 0 auto; background: #fff; color: #1C2430; padding: 14mm 14mm 10mm; font-size: 12.5px; }

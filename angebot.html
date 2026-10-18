@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#6B7280; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 680px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 42px; max-width: 130px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 27px; margin: 2px 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 16px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .box h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--brass); margin: 0 0 8px; }
+  .pre { white-space: pre-wrap; font-size: 14.5px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  td { padding: 7px 0; border-top: 1px solid #F0ECE3; vertical-align: top; }
+  td.r { text-align: end; white-space: nowrap; padding-inline-start: 10px; }
+  td.q { color: var(--muted); font-size: 13px; white-space: nowrap; padding-inline-start: 10px; }
+  tr.sum td { font-weight: 700; font-size: 16px; border-top: 2px solid var(--ink); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .f { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+  .f .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .f .v { font-weight: 700; margin-top: 2px; }
+  input[type=text], textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 11px; font: inherit; font-size: 15px; background: #fff; }
+  textarea { min-height: 70px; margin-top: 8px; }
+  label.c { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 10px 0; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  button.yes { flex: 2; background: var(--good); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button.no { flex: 1; background: #fff; color: var(--bad); border: 1px solid var(--border); border-radius: 10px; padding: 15px; font-size: 15px; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  .msg { padding: 14px; border-radius: 10px; font-size: 15px; margin-bottom: 12px; }
+  .ok { background: #E4EFE8; color: var(--good); } .err { background: #F5E1DE; color: var(--bad); }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  @media print { header select, .actions, footer { display: none; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <div id="app"></div>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { offer: "Angebot", date: "Datum", time: "Zeit", room: "Raum", guests: "Personen", perPerson: "pro Person", total: "Gesamt", menu: "Menü und Getränke", setup: "Aufbau", tech: "Technik", notes: "Hinweise", valid: "Gültig bis {0}", name: "Ihr Name", agree: "Ich nehme das Angebot verbindlich an.", comment: "Anmerkung (optional)", accept: "Angebot annehmen", decline: "Ablehnen", declineQ: "Angebot wirklich ablehnen?", accepted: "Vielen Dank! Sie haben das Angebot angenommen. Das Hotel meldet sich mit den nächsten Schritten.", declined: "Sie haben das Angebot abgelehnt. Vielen Dank für Ihre Rückmeldung.", acceptedBy: "Angenommen von {0} am {1}.", expired: "Dieses Angebot ist abgelaufen. Bitte wenden Sie sich an das Hotel.", invalid: "Dieser Link ist nicht (mehr) gültig.", print: "Drucken", needName: "Bitte Ihren Namen angeben und das Kästchen bestätigen." },
+  en: { offer: "Offer", date: "Date", time: "Time", room: "Room", guests: "Guests", perPerson: "per person", total: "Total", menu: "Menu and drinks", setup: "Setup", tech: "Equipment", notes: "Notes", valid: "Valid until {0}", name: "Your name", agree: "I accept this offer as binding.", comment: "Comment (optional)", accept: "Accept offer", decline: "Decline", declineQ: "Really decline the offer?", accepted: "Thank you! You have accepted the offer. The hotel will get in touch with the next steps.", declined: "You have declined the offer. Thank you for letting us know.", acceptedBy: "Accepted by {0} on {1}.", expired: "This offer has expired. Please contact the hotel.", invalid: "This link is not (or no longer) valid.", print: "Print", needName: "Please enter your name and tick the box." },
+  fr: { offer: "Offre", date: "Date", time: "Horaire", room: "Salle", guests: "Personnes", perPerson: "par personne", total: "Total", menu: "Menu et boissons", setup: "Installation", tech: "Technique", notes: "Remarques", valid: "Valable jusqu’au {0}", name: "Votre nom", agree: "J’accepte cette offre de manière ferme.", comment: "Remarque (facultatif)", accept: "Accepter l’offre", decline: "Refuser", declineQ: "Refuser vraiment l’offre ?", accepted: "Merci ! Vous avez accepté l’offre. L’hôtel vous contactera pour la suite.", declined: "Vous avez refusé l’offre. Merci pour votre retour.", acceptedBy: "Acceptée par {0} le {1}.", expired: "Cette offre a expiré. Veuillez contacter l’hôtel.", invalid: "Ce lien n’est pas (ou plus) valable.", print: "Imprimer", needName: "Indiquez votre nom et cochez la case." },
+  it: { offer: "Offerta", date: "Data", time: "Orario", room: "Sala", guests: "Persone", perPerson: "a persona", total: "Totale", menu: "Menù e bevande", setup: "Allestimento", tech: "Tecnica", notes: "Note", valid: "Valida fino al {0}", name: "Il suo nome", agree: "Accetto l’offerta in modo vincolante.", comment: "Nota (facoltativa)", accept: "Accetta l’offerta", decline: "Rifiuta", declineQ: "Rifiutare davvero l’offerta?", accepted: "Grazie! Ha accettato l’offerta. L’hotel la contatterà per i prossimi passi.", declined: "Ha rifiutato l’offerta. Grazie per il riscontro.", acceptedBy: "Accettata da {0} il {1}.", expired: "Questa offerta è scaduta. Si rivolga all’hotel.", invalid: "Questo link non è (più) valido.", print: "Stampa", needName: "Inserisca il nome e spunti la casella." },
+  es: { offer: "Oferta", date: "Fecha", time: "Hora", room: "Sala", guests: "Personas", perPerson: "por persona", total: "Total", menu: "Menú y bebidas", setup: "Montaje", tech: "Técnica", notes: "Notas", valid: "Válida hasta el {0}", name: "Su nombre", agree: "Acepto esta oferta de forma vinculante.", comment: "Comentario (opcional)", accept: "Aceptar oferta", decline: "Rechazar", declineQ: "¿Rechazar realmente la oferta?", accepted: "¡Gracias! Ha aceptado la oferta. El hotel se pondrá en contacto con los siguientes pasos.", declined: "Ha rechazado la oferta. Gracias por avisarnos.", acceptedBy: "Aceptada por {0} el {1}.", expired: "Esta oferta ha caducado. Póngase en contacto con el hotel.", invalid: "Este enlace no es (o ya no es) válido.", print: "Imprimir", needName: "Indique su nombre y marque la casilla." },
+  pt: { offer: "Proposta", date: "Data", time: "Hora", room: "Sala", guests: "Pessoas", perPerson: "por pessoa", total: "Total", menu: "Menu e bebidas", setup: "Montagem", tech: "Técnica", notes: "Notas", valid: "Válida até {0}", name: "O seu nome", agree: "Aceito esta proposta de forma vinculativa.", comment: "Observação (opcional)", accept: "Aceitar proposta", decline: "Recusar", declineQ: "Recusar mesmo a proposta?", accepted: "Obrigado! Aceitou a proposta. O hotel entrará em contacto com os próximos passos.", declined: "Recusou a proposta. Obrigado pela resposta.", acceptedBy: "Aceite por {0} em {1}.", expired: "Esta proposta expirou. Contacte o hotel.", invalid: "Este link não é (ou já não é) válido.", print: "Imprimir", needName: "Indique o seu nome e assinale a caixa." },
+  tr: { offer: "Teklif", date: "Tarih", time: "Saat", room: "Salon", guests: "Kişi", perPerson: "kişi başı", total: "Toplam", menu: "Menü ve içecekler", setup: "Kurulum", tech: "Teknik", notes: "Notlar", valid: "{0} tarihine kadar geçerli", name: "Adınız", agree: "Bu teklifi bağlayıcı olarak kabul ediyorum.", comment: "Not (isteğe bağlı)", accept: "Teklifi kabul et", decline: "Reddet", declineQ: "Teklif gerçekten reddedilsin mi?", accepted: "Teşekkürler! Teklifi kabul ettiniz. Otel sonraki adımlar için sizinle iletişime geçecek.", declined: "Teklifi reddettiniz. Geri bildiriminiz için teşekkürler.", acceptedBy: "{0} tarafından {1} tarihinde kabul edildi.", expired: "Bu teklifin süresi doldu. Lütfen otelle iletişime geçin.", invalid: "Bu bağlantı geçerli değil (artık).", print: "Yazdır", needName: "Lütfen adınızı girin ve kutuyu işaretleyin." },
+  ja: { offer: "お見積り", date: "日付", time: "時間", room: "会場", guests: "人数", perPerson: "1名あたり", total: "合計", menu: "料理と飲み物", setup: "設営", tech: "機材", notes: "備考", valid: "有効期限 {0}", name: "お名前", agree: "このお見積りを正式に承諾します。", comment: "コメント（任意）", accept: "お見積りを承諾する", decline: "辞退する", declineQ: "本当に辞退しますか？", accepted: "ありがとうございます。お見積りを承諾されました。ホテルから今後の流れをご連絡します。", declined: "お見積りを辞退されました。ご連絡ありがとうございます。", acceptedBy: "{0} 様が {1} に承諾", expired: "このお見積りは有効期限切れです。ホテルにお問い合わせください。", invalid: "このリンクは無効です。", print: "印刷", needName: "お名前を入力し、チェックを入れてください。" },
+  zh: { offer: "报价", date: "日期", time: "时间", room: "场地", guests: "人数", perPerson: "每人", total: "合计", menu: "菜单与饮品", setup: "布置", tech: "设备", notes: "备注", valid: "有效期至 {0}", name: "您的姓名", agree: "我确认接受此报价。", comment: "备注（选填）", accept: "接受报价", decline: "拒绝", declineQ: "确定拒绝此报价？", accepted: "谢谢！您已接受报价，酒店会联系您安排后续事宜。", declined: "您已拒绝报价。感谢您的反馈。", acceptedBy: "由 {0} 于 {1} 接受。", expired: "此报价已过期，请联系酒店。", invalid: "此链接无效（或已失效）。", print: "打印", needName: "请填写姓名并勾选确认。" },
+  ar: { offer: "العرض", date: "التاريخ", time: "الوقت", room: "القاعة", guests: "الأشخاص", perPerson: "للشخص", total: "الإجمالي", menu: "القائمة والمشروبات", setup: "التجهيز", tech: "التقنية", notes: "ملاحظات", valid: "صالح حتى {0}", name: "اسمك", agree: "أقبل هذا العرض بشكل ملزم.", comment: "ملاحظة (اختياري)", accept: "قبول العرض", decline: "رفض", declineQ: "هل تريد رفض العرض فعلًا؟", accepted: "شكرًا! لقد قبلت العرض. سيتواصل معك الفندق بالخطوات التالية.", declined: "لقد رفضت العرض. شكرًا على ردك.", acceptedBy: "قُبل من {0} بتاريخ {1}.", expired: "انتهت صلاحية هذا العرض. يرجى التواصل مع الفندق.", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", print: "طباعة", needName: "يرجى إدخال اسمك وتحديد المربع." },
+};
+var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "de").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var state = { info: null, error: null, busy: false, done: null, msg: null };
+var $ = function (id) { return document.getElementById(id); };
+function t(k, a) { return String((T[lang] || T.en)[k] || T.en[k]).replace("{0}", a == null ? "" : a).replace("{1}", arguments[2] == null ? "" : arguments[2]); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick", city: "Innsbruck", currency: "EUR" }, event: { title: "Hochzeit Familie Berger", event_date: new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10), start_time: "14:00:00", end_time: "23:59:00", guests: 80, space: "Festsaal",
+  menu: "Sektempfang mit Fingerfood\n4-Gang-Menü\nHochzeitstorte\nMitternachtsimbiss", setup: "Runde Tische à 10, Brauttisch vorne", tech: "Mikrofon, Beamer für Fotoshow" },
+  items: [{ label: "4-Gang-Menü inkl. Sektempfang", unit_price: 69, per_person: true }, { label: "Getränkepauschale (8 Stunden)", unit_price: 45, per_person: true }, { label: "Raummiete Festsaal", qty: 1, unit_price: 800 }, { label: "Hochzeitstorte", qty: 1, unit_price: 380 }],
+  note: "Anzahlung 30 % bei Bestätigung. Kostenlose Stornierung bis 60 Tage vor der Veranstaltung.", valid_until: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10), status: "offen" };
+function api(path, opt) {
+  if (demo) return Promise.resolve(opt ? { ok: true, status: JSON.parse(opt.body).decision === "accept" ? "angenommen" : "abgelehnt" } : DEMO);
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || t("invalid")); return j; }); });
+}
+function money(n, cur) { try { return new Intl.NumberFormat(lang, { style: "currency", currency: cur || "EUR" }).format(n); } catch (e) { return n + " " + cur; } }
+function fmtDate(iso, long) { try { return new Date(String(iso).slice(0, 10) + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : lang, long ? { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return iso; } }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app"), i = state.info;
+  if (state.error && !i) { a.innerHTML = '<div class="msg err">' + esc(state.error) + "</div>"; return; }
+  if (!i) { a.innerHTML = '<div class="sub">…</div>'; return; }
+  var e = i.event, cur = i.hotel.currency || "EUR", g = Number(e.guests) || 0, total = 0;
+  var rows = (i.items || []).map(function (x) { var qty = x.per_person ? g : Number(x.qty) || 0, sum = qty * (Number(x.unit_price) || 0); total += sum;
+    return "<tr><td>" + esc(x.label) + '</td><td class="q">' + esc(qty) + " × " + esc(money(x.unit_price, cur)) + (x.per_person ? " " + esc(t("perPerson")) : "") + '</td><td class="r">' + esc(money(sum, cur)) + "</td></tr>"; }).join("");
+  var time = [e.start_time && e.start_time.slice(0, 5), e.end_time && e.end_time.slice(0, 5)].filter(Boolean).join("–");
+  var h = '<div class="sub">' + esc(t("offer")) + "</div><h1>" + esc(e.title) + "</h1>";
+  h += '<div class="facts"><div class="f"><div class="l">' + esc(t("date")) + '</div><div class="v">' + esc(fmtDate(e.event_date, true)) + "</div></div>" + (time ? '<div class="f"><div class="l">' + esc(t("time")) + '</div><div class="v">' + esc(time) + "</div></div>" : "")
+    + (e.space ? '<div class="f"><div class="l">' + esc(t("room")) + '</div><div class="v">' + esc(e.space) + "</div></div>" : "") + (g ? '<div class="f"><div class="l">' + esc(t("guests")) + '</div><div class="v">' + g + "</div></div>" : "") + "</div>";
+  h += '<div class="box"><table>' + rows + '<tr class="sum"><td>' + esc(t("total")) + '</td><td></td><td class="r">' + esc(money(total, cur)) + "</td></tr></table>" + (i.valid_until ? '<div class="sub" style="margin:8px 0 0">' + esc(t("valid", fmtDate(i.valid_until))) + "</div>" : "") + "</div>";
+  if (i.note) h += '<div class="box"><h2>' + esc(t("notes")) + '</h2><div class="pre">' + esc(i.note) + "</div></div>";
+  [["menu", e.menu], ["setup", e.setup], ["tech", e.tech]].forEach(function (x) { if (x[1]) h += '<div class="box"><h2>' + esc(t(x[0])) + '</h2><div class="pre">' + esc(x[1]) + "</div></div>"; });
+  var status = state.done || i.status;
+  if (status === "angenommen") h += '<div class="msg ok">✓ ' + esc(state.done ? t("accepted") : t("acceptedBy", i.answer_name || "", i.answered_at ? fmtDate(i.answered_at) : "")) + "</div>";
+  else if (status === "abgelehnt") h += '<div class="msg err">' + esc(t("declined")) + "</div>";
+  else if (i.expired) h += '<div class="msg err">' + esc(t("expired")) + "</div>";
+  else h += '<div class="box actions"><input type="text" id="nm" placeholder="' + esc(t("name")) + '" /><label class="c"><input type="checkbox" id="ag" /> <span>' + esc(t("agree")) + '</span></label><textarea id="cm" placeholder="' + esc(t("comment")) + '"></textarea><input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />'
+    + (state.msg ? '<div class="msg err" style="margin-top:10px">' + esc(state.msg) + "</div>" : "")
+    + '<div class="row"><button class="yes" id="yes"' + (state.busy ? " disabled" : "") + ">" + esc(t("accept")) + '</button><button class="no" id="no"' + (state.busy ? " disabled" : "") + ">" + esc(t("decline")) + "</button></div></div>";
+  h += '<div class="actions" style="text-align:center;margin-top:8px"><button onclick="window.print()" style="background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer">' + esc(t("print")) + "</button></div>";
+  a.innerHTML = h;
+  var send = function (decision) {
+    var name = $("nm").value.trim();
+    if (decision === "accept" && (!name || !$("ag").checked)) { state.msg = t("needName"); render(); return; }
+    if (decision === "decline" && !window.confirm(t("declineQ"))) return;
+    state.busy = true; state.msg = null; render();
+    api("/api/public/offer/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ decision: decision, name: name, note: $("cm") ? $("cm").value : "", website: $("website").value }) })
+      .then(function (r) { state.done = r.status; }).catch(function (e) { state.msg = e.message; }).then(function () { state.busy = false; render(); });
+  };
+  if ($("yes")) { $("yes").onclick = function () { send("accept"); }; $("no").onclick = function () { send("decline"); }; }
+}
+render();
+if (!token && !demo) { state.error = t("invalid"); render(); }
+else api("/api/public/offer/" + encodeURIComponent(token)).then(function (r) {
+  state.info = r; $("hotel").textContent = r.hotel.name; document.title = r.hotel.name;
+  if (r.hotel.logo_data) { $("logo").src = r.hotel.logo_data; $("logo").hidden = false; }
+  if (r.hotel.brand_color) document.documentElement.style.setProperty("--brass", r.hotel.brand_color);
+  render();
+}).catch(function (e) { state.error = e.message; $("hotel").textContent = ""; render(); });
+</script>
+</body>
+</html>

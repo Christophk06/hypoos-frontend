@@ -79,6 +79,16 @@
   D.events = (D.event_seed || []).map(function (e, i) { return Object.assign({ id: "ev-" + i, hotel_id: D.hotel.id }, e, { event_date: add(todayIso, e.inDays) }); });
   D.guest_threads = (D.chat_seed || []).map(function (c, i) { var t0 = now.getTime() - (i + 1) * 3600000; return { thread: "demo-thread-" + i + "-xxxxxxxx", room_number: c.room,
     messages: c.msgs.map(function (m, j) { return { id: "gm-" + i + "-" + j, sender: m[0], body: m[1], read_at: m[0] === "staff" || i ? new Date().toISOString() : null, created_at: new Date(t0 + j * 300000).toISOString() }; }) }; });
+  // 026: Räume, Angebote, eigene Vorlagen
+  D.event_spaces = []; D.event_templates = [];
+  D.events.forEach(function (e, i) {
+    var sp = D.event_spaces.find(function (x) { return x.name === e.location; });
+    if (!sp && e.location) { sp = { id: "es-" + i, hotel_id: D.hotel.id, name: e.location, capacity: [120, 40, 150][i] || 60, position: i }; D.event_spaces.push(sp); }
+    e.space_id = sp ? sp.id : null; e.offer_items = []; e.offer_status = "keins";
+  });
+  if (D.events[0]) { D.events[0].offer_items = [{ label: (D.events[0].menu || "").split("\n")[1] || "Menü", unit_price: 69, per_person: true }, { label: "Getränkepauschale", unit_price: 45, per_person: true }, { label: D.events[0].location || "Raum", qty: 1, unit_price: 800, per_person: false }];
+    D.events[0].offer_status = "angenommen"; D.events[0].offer_answer_name = D.events[0].client; D.events[0].offer_answered_at = new Date(now.getTime() - 5 * 86400000).toISOString(); }
+  if (D.events[1]) { D.events[1].offer_items = [{ label: "Tagungspauschale", unit_price: 58, per_person: true }]; D.events[1].offer_status = "offen"; D.events[1].offer_valid_until = add(todayIso, 10); }
   // Abhängigkeiten für den kritischen Pfad (über die festen Vorlagen-Schlüssel, in jeder Sprache gleich)
   (function () { var k = function (key) { return D.tasks.find(function (t) { return t.template_key === key; }); };
     var pms = k("t-pms-config"), mock = k("t-mock-checkins"), snag = k("t-room-snagging"), uni = k("t-uniforms"), evac = k("t-evacuation");
@@ -178,6 +188,12 @@
     if (p === H + "/events") { if (m === "POST") { var ev = Object.assign({ id: nid("ev"), hotel_id: D.hotel.id }, b); D.events.push(ev); return ok(ev); }
       return ok(D.events.filter(function (e) { return e.event_date >= (q.get("from") || add(todayIso, -7)); }).sort(function (a, c) { return a.event_date < c.event_date ? -1 : 1; })); }
     if ((mm = p.match(/^\/api\/events\/([^/]+)$/))) { if (m === "DELETE") { remove(D.events, mm[1]); return ok({ ok: true }); } var ev2 = byId(D.events, mm[1]); Object.assign(ev2, b); return ok(ev2); }
+    // Räume, Angebote, eigene Vorlagen
+    if (p === H + "/event-spaces") { if (m === "POST") { var es = { id: nid("es"), hotel_id: D.hotel.id, name: b.name, capacity: Number(b.capacity) || null, position: D.event_spaces.length }; D.event_spaces.push(es); return ok(es); } return ok(D.event_spaces); }
+    if ((mm = p.match(/^\/api\/event-spaces\/([^/]+)$/))) { if (m === "DELETE") { remove(D.event_spaces, mm[1]); D.events.forEach(function (e) { if (e.space_id === mm[1]) e.space_id = null; }); return ok({ ok: true }); } var es2 = byId(D.event_spaces, mm[1]); Object.assign(es2, b); return ok(es2); }
+    if (p === H + "/event-templates") { if (m === "POST") { var et = { id: nid("et"), hotel_id: D.hotel.id, name: b.name, data: b.data }; D.event_templates.push(et); return ok(et); } return ok(D.event_templates); }
+    if ((mm = p.match(/^\/api\/event-templates\/([^/]+)$/))) { remove(D.event_templates, mm[1]); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/events\/([^/]+)\/offer$/))) { var eo = byId(D.events, mm[1]); if (eo.offer_status === "keins") eo.offer_status = "offen"; return ok(Object.assign({ url: location.origin + location.pathname.replace(/[^/]*$/, "") + "angebot.html?demo=1", email_sent: false }, eo)); }
     // Gäste-Chat
     if (p === H + "/guest-chats") return ok(D.guest_threads.map(function (t) { return Object.assign({ last_at: t.messages[t.messages.length - 1].created_at, unread: t.messages.filter(function (x) { return x.sender === "guest" && !x.read_at; }).length }, t); }));
     if ((mm = p.match(/^\/api\/hotels\/[^/]+\/guest-chats\/([^/]+)$/))) { var th = D.guest_threads.find(function (t) { return t.thread === mm[1]; }); if (!th) return ok({ error: "Nicht gefunden." }, 404);

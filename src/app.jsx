@@ -6465,16 +6465,16 @@ const FS_CSS = `
   .fs .hd{display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--fs-accent);padding-bottom:10px;margin-bottom:12px}
   .fs .hd img{height:38px;max-width:110px;object-fit:contain}
   .fs .hd .h{flex:1}
-  .fs .hd .hotel{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.08em}
+  .fs .hd .hotel{font-size:11px;color:#6B7280;letter-spacing:.08em}
   .fs h1{font-family:Georgia,serif;font-size:22px;margin:2px 0 0;font-weight:600}
   .fs .st{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#F1E8D8;color:#7a5c22;white-space:nowrap}
   .fs .facts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
   .fs .f{background:#F6F4EF;border-radius:6px;padding:7px 9px}
-  .fs .f .l{font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.06em}
+  .fs .f .l{font-size:9.5px;color:#6B7280;letter-spacing:.06em}
   .fs .f .v{font-weight:700;font-size:13px;margin-top:1px}
   .fs .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .fs .box{border:1px solid #E4DFD3;border-radius:8px;padding:9px 11px;break-inside:avoid;page-break-inside:avoid}
-  .fs .box h3{margin:0 0 5px;font-size:10.5px;color:var(--fs-accent);text-transform:uppercase;letter-spacing:.07em}
+  .fs .box h3{margin:0 0 5px;font-size:10.5px;color:var(--fs-accent);letter-spacing:.07em}
   .fs .box .b{white-space:pre-wrap}
   .fs .full{grid-column:1 / -1}
   .fs .tl{display:flex;flex-wrap:wrap;gap:6px}
@@ -6576,7 +6576,7 @@ function SheetButtons({ev, hotel}){
 
 const fsHead = (hotel, title, sub) => '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel">'+fsEsc(hotel.name)+(sub?' · '+fsEsc(sub):'')+'</div><h1>'+fsEsc(title)+'</h1></div></div>';
 const fsFoot = () => '<div class="ft"><span>'+fsT("Erstellt mit Ouverture")+'</span><span>'+fsEsc(fmtDateTime(new Date().toISOString()))+'</span></div>';
-const FS_TABLE = '<style>.fs table.t{width:100%;border-collapse:collapse;font-size:11px}.fs table.t th{text-align:start;font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;padding:4px;border-bottom:2px solid var(--fs-accent)}.fs table.t td{padding:4px;border-bottom:1px solid #F0ECE3;vertical-align:top}.fs table.t tr.g td{background:#F6F4EF;font-weight:700}.fs table.t .r{text-align:end}.fs table.t .bad{color:#A23B32;font-weight:700}.fs.land{width:269mm}</style>';
+const FS_TABLE = '<style>.fs table.t{width:100%;border-collapse:collapse;font-size:11px}.fs table.t th{text-align:start;font-size:10px;font-weight:700;color:#6B7280;letter-spacing:.02em;padding:4px;border-bottom:2px solid var(--fs-accent)}.fs table.t td{padding:4px;border-bottom:1px solid #F0ECE3;vertical-align:top}.fs table.t tr.g td{background:#F6F4EF;font-weight:700}.fs table.t .r{text-align:end}.fs table.t .bad{color:#A23B32;font-weight:700}.fs.land{width:269mm}</style>';
 
 // ------------------------------------------------------------ Dienstplan als PDF (A4 quer)
 function rosterSheetHtml({hotel, weekLabel, days, groups, shiftsFor}){

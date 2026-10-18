@@ -4716,6 +4716,7 @@ function StockView({hotel, api, me, role, myDepts}){
   const fmtQ = (n) => Number(n).toLocaleString(UI_LOCALE, {maximumFractionDigits:2});
   return (
     <div>
+      <OrdersPanel hotel={hotel} api={api} onStockChanged={load} />
       <DeptTabs depts={depts} value={dept} onChange={setDept} />
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {low.length>0 && <Card style={{marginBottom:12,borderColor:BAD,background:BAD_SOFT,fontSize:13}}><b>{tf("Unter Mindestbestand:")}</b> <span data-no-i18n="">{low.map(i=>i.name).join(", ")}</span></Card>}
@@ -4827,7 +4828,7 @@ function HotelStats({s}){
 // ------------------------------------------------------------ Bereiche je Hotel und kurze Hilfe
 const MODULE_GROUPS = [
   ["Pre-Opening", [["tasks","Aufgaben"],["milestones","Meilensteine"],["timeline","Zeitstrahl"],["risks","Risiken"],["budget","Budget"],["staff","Personal"],["procurement","Bestellungen"]]],
-  ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["arrivals","Anreisen"],["reviews","Bewertungen"],["energy","Energie"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"],["feedback","Gäste-Feedback"]]],
+  ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["arrivals","Anreisen"],["guestchat","Gäste-Chat"],["events","Veranstaltungen"],["reviews","Bewertungen"],["energy","Energie"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"],["feedback","Gäste-Feedback"]]],
   ["Allgemein", [["docs","Dokumente"],["permits","Genehmigungen"]]],
 ];
 const PRE_MODULES = MODULE_GROUPS[0][1].map(([k])=>k);
@@ -4894,6 +4895,8 @@ const HELP = {
   reviews: "Bewertungen aus Google, Booking.com & Co. an einem Ort: Schnitt je Portal und Monat. Die KI fasst Lob und wiederkehrende Probleme zusammen – mit Abteilung und Vorschlag.",
   energy: "Zähler für Strom, Gas, Wasser und Wärme. Zählerstände eintragen – Ouverture rechnet den Verbrauch je Monat aus und warnt bei Ausreißern.",
   help: "Kurze Anleitungen zu allen Bereichen. Oben suchen oder ein Thema aufklappen.",
+  events: "Hochzeiten, Tagungen und Feiern mit Datum, Raum, Personen, Menü, Aufbau und Technik. Das Function Sheet druckt alles für Küche, Service und Technik auf eine Seite.",
+  guestchat: "Gäste schreiben über den QR-Code im Zimmer, die Rezeption antwortet hier. Nachrichten in anderen Sprachen werden übersetzt.",
 };
 const helpKey = (tab, role, hotel) => tab==="dashboard" ? (role==="member" ? "home" : preOpeningOff(hotel) ? "kpis" : "dashboard") : tab;
 function helpSeen(key){ try { return window.localStorage.getItem("hpoos_help_"+key)==="1"; } catch(e){ return false; } }
@@ -6127,6 +6130,432 @@ function OAuthButtons({config}){
   );
 }
 
+// ============================================================ Migration 025: Suche, Menü, Glocke, Handy-Leiste, Dunkelmodus,
+// Feedback, Änderungsverlauf, Lieferanten und Bestellungen, Veranstaltungen, Gäste-Chat
+
+// ------------------------------------------------------------ Suche über alles (Strg+K)
+function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, hotel, api, onOpen}){
+  const [q,setQ] = useState(""); const [sel,setSel] = useState(0);
+  const [extra,setExtra] = useState({rooms:null, docs:null, events:null});
+  const inputRef = React.useRef(null);
+  useEffect(()=>{ if(!open) return; setQ(""); setSel(0); setTimeout(()=>inputRef.current && inputRef.current.focus(), 30);
+    if(extra.rooms===null){ const base = "/api/hotels/"+hotel.id;
+      Promise.all([api(base+"/rooms").catch(()=>[]), api(base+"/documents").catch(()=>[]), api(base+"/events").catch(()=>[])]).then(([rooms,docs,events])=>setExtra({rooms:rooms||[], docs:docs||[], events:Array.isArray(events)?events:[]})); }
+  },[open]);
+  if(!open) return null;
+  const norm = (s) => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  const hit = (...xs) => { const t = norm(xs.join(" ")); return words.every(w=>t.includes(w)); };
+  const openTask = (t) => { try { window.localStorage.setItem(LS_TASK_FILTERS, JSON.stringify({...TASK_FILTER_DEFAULTS, q:t.title})); } catch(e){} onOpen("tasks"); };
+  const groups = !words.length ? [[tf("Bereiche"), nav.slice(0,12).map(n=>({icon:"↗", label:translateString(n.label), go:()=>onOpen(n.key)}))]] : [
+    [tf("Bereiche"), nav.filter(n=>hit(translateString(n.label), n.label)).map(n=>({icon:"↗", label:translateString(n.label), go:()=>onOpen(n.key)}))],
+    [tf("Aufgaben"), (tasks||[]).filter(t=>hit(t.title, t.department, t.owner)).slice(0,8).map(t=>({icon:t.status==="Abgeschlossen"?"✓":"□", label:t.title, sub:[t.department, t.due_date && fmtDate(t.due_date)].filter(Boolean).join(" · "), go:()=>openTask(t)}))],
+    [tf("Meilensteine"), (milestones||[]).filter(m=>hit(m.title)).slice(0,5).map(m=>({icon:"◆", label:m.title, sub:fmtDate(m.date), go:()=>onOpen("milestones")}))],
+    [tf("Risiken"), (risks||[]).filter(r=>hit(r.title, r.department)).slice(0,5).map(r=>({icon:"⚠", label:r.title, sub:r.department, go:()=>onOpen("risks")}))],
+    [tf("Zimmer"), (extra.rooms||[]).filter(r=>hit(r.number, r.room_type, r.status)).slice(0,6).map(r=>({icon:"🛏", label:r.number, sub:[r.status, r.occupancy].filter(Boolean).join(" · "), go:()=>onOpen("rooms")}))],
+    [tf("Personen"), (members||[]).filter(m=>hit(m.email, (m.departments||[]).join(" "))).slice(0,6).map(m=>({icon:"👤", label:shortName(m.email), sub:m.email, go:()=>onOpen("team")}))],
+    [tf("Dokumente"), (extra.docs||[]).filter(d=>hit(d.name, d.category)).slice(0,5).map(d=>({icon:"📄", label:d.name, sub:d.category, go:()=>onOpen("docs")}))],
+    [tf("Veranstaltungen"), (extra.events||[]).filter(e=>hit(e.title, e.client, e.location)).slice(0,5).map(e=>({icon:"🎉", label:e.title, sub:fmtDate(e.event_date), go:()=>onOpen("events")}))],
+  ];
+  const flat = groups.flatMap(([,items])=>items);
+  const choose = (it) => { if(it){ onClose(); it.go(); } };
+  const onKey = (e) => {
+    if(e.key==="Escape") onClose();
+    else if(e.key==="ArrowDown"){ e.preventDefault(); setSel(s=>Math.min(flat.length-1, s+1)); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); setSel(s=>Math.max(0, s-1)); }
+    else if(e.key==="Enter") choose(flat[sel]);
+  };
+  let idx = -1;
+  return (
+    <div className="no-print" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(20,24,31,0.45)",zIndex:200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"10vh 14px 14px"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:CARD,width:"100%",maxWidth:560,borderRadius:12,boxShadow:"0 20px 60px rgba(0,0,0,0.25)",overflow:"hidden",border:`1px solid ${BORDER}`}}>
+        <input ref={inputRef} className="input" style={{border:"none",borderBottom:`1px solid ${BORDER}`,borderRadius:0,fontSize:16,padding:"14px 16px",background:CARD}} placeholder={tf("Suchen: Aufgabe, Zimmer, Person, Dokument, Bereich …")} value={q} onChange={e=>{ setQ(e.target.value); setSel(0); }} onKeyDown={onKey} />
+        <div style={{maxHeight:"60vh",overflowY:"auto",padding:"6px 0"}}>
+          {flat.length===0 && <div style={{padding:"14px 16px",fontSize:13,color:INK_MUTED}}>{tf("Nichts gefunden.")}</div>}
+          {groups.filter(([,items])=>items.length).map(([g,items])=>(
+            <div key={g}>
+              <div style={{fontSize:11,fontWeight:700,color:INK_MUTED,textTransform:"uppercase",letterSpacing:0.6,padding:"8px 16px 4px"}}>{g}</div>
+              {items.map((it)=>{ idx++; const i = idx; return (
+                <div key={i} onMouseEnter={()=>setSel(i)} onClick={()=>choose(it)} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 16px",cursor:"pointer",background:sel===i?BRASS_SOFT:"transparent"}}>
+                  <span style={{width:20,textAlign:"center"}}>{it.icon}</span>
+                  <span style={{flex:1,minWidth:0}}><span style={{fontSize:14}} data-no-i18n="">{it.label}</span>{it.sub && <span style={{fontSize:12,color:INK_MUTED}} data-no-i18n=""> · {it.sub}</span>}</span>
+                  {sel===i && <span style={{fontSize:11,color:INK_MUTED}}>↵</span>}
+                </div>); })}
+            </div>
+          ))}
+        </div>
+        <div style={{fontSize:11,color:INK_MUTED,padding:"7px 16px",borderTop:`1px solid ${BORDER}`}}>{tf("↑↓ auswählen · ↵ öffnen · Esc schließen")}</div>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Menü: Bereiche einklappen und Favoriten
+const LS_NAV_COLLAPSED = "hpoos_nav_collapsed", LS_NAV_FAVS = "hpoos_nav_favs";
+function useStoredList(key){
+  const [v,setV] = useState(()=>{ try { return JSON.parse(window.localStorage.getItem(key)||"[]"); } catch(e){ return []; } });
+  const set = (n) => { setV(n); try { window.localStorage.setItem(key, JSON.stringify(n)); } catch(e){} };
+  return [v, set];
+}
+function SideNav({nav, tab, onOpen, accent}){
+  const [collapsed,setCollapsed] = useStoredList(LS_NAV_COLLAPSED);
+  const [favs,setFavs] = useStoredList(LS_NAV_FAVS);
+  const favItems = favs.map(k=>nav.find(n=>n.key===k)).filter(Boolean);
+  const item = (n, fav) => (
+    <div key={(fav?"f-":"")+n.key} className="nav-item nav-row" onClick={()=>onOpen(n.key)} style={{padding:"8px 10px 8px 12px",cursor:"pointer",marginBottom:2,fontSize:13.5,display:"flex",alignItems:"center",gap:6,
+      borderInlineStart:"2px solid "+(tab===n.key?accent:"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.72)"}}>
+      <span style={{flex:1}}>{n.label}</span>
+      <button className="nav-star" title={favs.includes(n.key)?tf("Aus Favoriten entfernen"):tf("Zu Favoriten")} aria-label={tf("Favorit")}
+        onClick={e=>{ e.stopPropagation(); setFavs(favs.includes(n.key) ? favs.filter(k=>k!==n.key) : [...favs, n.key]); }}
+        style={{background:"none",border:"none",padding:0,cursor:"pointer",fontSize:12,color:favs.includes(n.key)?accent:"rgba(255,255,255,0.35)"}}>{favs.includes(n.key)?"★":"☆"}</button>
+    </div>
+  );
+  const sections = []; nav.forEach(n=>{ const s = n.section || ""; let g = sections.find(x=>x.name===s); if(!g){ g = {name:s, items:[]}; sections.push(g); } g.items.push(n); });
+  return (
+    <div>
+      {favItems.length>0 && <div style={{marginBottom:6}}>
+        <div style={{fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.38)",margin:"6px 0 4px 12px"}}>★ {tf("Favoriten")}</div>
+        {favItems.map(n=>item(n, true))}
+      </div>}
+      {sections.map(g=>{
+        const closed = g.name && collapsed.includes(g.name);
+        return (
+          <div key={g.name||"_"}>
+            {g.name && <button className="nav-section" onClick={()=>setCollapsed(closed ? collapsed.filter(x=>x!==g.name) : [...collapsed, g.name])}
+              style={{display:"flex",alignItems:"center",gap:6,width:"100%",background:"none",border:"none",cursor:"pointer",fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.45)",margin:"14px 0 4px",padding:"0 0 0 12px",textAlign:"start"}}>
+              <span style={{flex:1}}>{g.name}</span><span style={{fontSize:10}}>{closed?"▸":"▾"}</span></button>}
+            {g.items.filter(n=>!closed || n.key===tab).map(n=>item(n, false))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Benachrichtigungs-Zentrale (Glocke)
+function NotificationBell({api, onOpen}){
+  const [data,setData] = useState({items:[], unread:0}); const [open,setOpen] = useState(false);
+  const load = useCallback(()=>{ if(document.hidden) return; api("/api/me/notifications").then(setData).catch(()=>{}); },[api]);
+  useEffect(()=>{ load(); const t = setInterval(load, 60000); const v = ()=>load(); document.addEventListener("visibilitychange", v); return ()=>{ clearInterval(t); document.removeEventListener("visibilitychange", v); }; },[load]);
+  const openItem = async (n) => {
+    setOpen(false);
+    if(!n.read_at){ try { await api("/api/me/notifications/read","POST",{ids:[n.id]}); } catch(e){} load(); }
+    const m = String(n.url||"").match(/[?&]open=([a-z]+)/); if(m) onOpen(m[1]);
+  };
+  const readAll = async () => { try { await api("/api/me/notifications/read","POST",{}); } catch(e){} load(); };
+  return (
+    <div style={{position:"relative"}}>
+      <button onClick={()=>{ setOpen(!open); if(!open) load(); }} title={tf("Benachrichtigungen")} aria-label={tf("Benachrichtigungen")}
+        style={{position:"relative",background:open?BRASS_SOFT:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"5px 10px",fontSize:15,cursor:"pointer",lineHeight:1}}>
+        🔔{data.unread>0 && <span style={{position:"absolute",top:-6,insetInlineEnd:-6,background:BAD,color:"#fff",borderRadius:999,fontSize:10.5,fontWeight:700,padding:"1px 5px",minWidth:16}} data-no-i18n="">{data.unread>99?"99+":data.unread}</span>}
+      </button>
+      {open && <div className="no-print" style={{position:"absolute",top:"calc(100% + 6px)",insetInlineEnd:0,width:340,maxWidth:"86vw",background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,boxShadow:"0 14px 40px rgba(0,0,0,0.18)",zIndex:120}}>
+        <div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${BORDER}`}}>
+          <b style={{flex:1,fontSize:14}}>{tf("Benachrichtigungen")}</b>
+          {data.unread>0 && <button style={{...linkBtn,fontSize:12}} onClick={readAll}>{tf("Alle gelesen")}</button>}
+        </div>
+        <div style={{maxHeight:380,overflowY:"auto"}}>
+          {data.items.length===0 && <div style={{padding:"16px 14px",fontSize:13,color:INK_MUTED}}>{tf("Keine Benachrichtigungen.")}</div>}
+          {data.items.map(n=>(
+            <div key={n.id} onClick={()=>openItem(n)} style={{padding:"9px 14px",borderTop:`1px solid ${BORDER}`,cursor:"pointer",background:n.read_at?"transparent":BRASS_SOFT}}>
+              <div style={{fontSize:13.5,fontWeight:n.read_at?500:700}} data-no-i18n="">{n.title}</div>
+              {n.body && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}} data-no-i18n="">{n.body}</div>}
+              <div style={{fontSize:11,color:INK_MUTED,marginTop:3}}>{fmtDateTime(n.created_at)}</div>
+            </div>
+          ))}
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Untere Leiste am Handy (Mitarbeitende)
+function MobileTabBar({nav, tab, onOpen}){
+  const want = [["dashboard","🏠"],["roster","🗓"],["time","⏱"],["tickets","🔧"],["chat","💬"]];
+  const items = want.map(([k,icon])=>{ const n = nav.find(x=>x.key===k); return n && {...n, icon}; }).filter(Boolean);
+  if(items.length<3) return null;
+  return (
+    <div className="mobile-tabbar no-print">
+      {items.map(n=>(
+        <button key={n.key} onClick={()=>onOpen(n.key)} className={tab===n.key?"on":""}>
+          <span style={{fontSize:19,lineHeight:1}}>{n.icon}</span><span className="lbl">{String(n.label).replace("●","")}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Dunkler Modus
+const LS_THEME = "hpoos_theme";
+function applyTheme(mode){
+  const dark = mode==="dark" || (mode!=="light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+}
+function ThemeCard(){
+  const [mode,setMode] = useState(()=>{ try { return window.localStorage.getItem(LS_THEME)||"auto"; } catch(e){ return "auto"; } });
+  const set = (m) => { setMode(m); try { window.localStorage.setItem(LS_THEME, m); } catch(e){} applyTheme(m); };
+  return (
+    <Card style={{marginBottom:18,maxWidth:520}}>
+      <div style={{fontWeight:700,marginBottom:6}}>🌙 {tf("Darstellung")}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Dunkel schont die Augen in der Nachtschicht. „Automatisch“ folgt der Einstellung des Geräts.")}</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {[["auto","Automatisch"],["light","Hell"],["dark","Dunkel"]].map(([k,l])=><button key={k} onClick={()=>set(k)} style={{border:`1px solid ${mode===k?INK:BORDER}`,background:mode===k?INK:CARD,color:mode===k?"#fff":INK,borderRadius:999,padding:"6px 14px",fontSize:13,cursor:"pointer"}}>{tf(l)}</button>)}
+      </div>
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------ Feedback mit Bildschirmfoto
+function FeedbackButton({api, orgId, tab}){
+  const [open,setOpen] = useState(false); const [text,setText] = useState(""); const [shot,setShot] = useState(null);
+  const [busy,setBusy] = useState(""); const [msg,setMsg] = useState(null);
+  const capture = async () => {
+    setBusy("shot"); setOpen(false);
+    try {
+      await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+      await new Promise(r=>setTimeout(r,150));
+      const c = await window.html2canvas(document.body, {scale:Math.min(1, 1400/document.body.clientWidth), logging:false, useCORS:true, ignoreElements:(el)=>el.classList && el.classList.contains("feedback-ui")});
+      setShot(c.toDataURL("image/jpeg", 0.7));
+    } catch(e){ setMsg({ok:false,text:tf("Bildschirmfoto nicht möglich – du kannst trotzdem senden.")}); }
+    setOpen(true); setBusy("");
+  };
+  const send = async () => {
+    setBusy("send"); setMsg(null);
+    try { await api("/api/feedback","POST",{message:text, page:tab, screenshot:shot, organization_id:orgId}); setText(""); setShot(null); setMsg({ok:true,text:tf("Danke! Wir melden uns, falls wir Fragen haben.")}); }
+    catch(e){ setMsg({ok:false,text:e.message}); }
+    setBusy("");
+  };
+  if(window.OUVERTURE_DEMO) return null;
+  return (
+    <div className="feedback-ui no-print">
+      {!open && <button className="feedback-fab" onClick={()=>{ setOpen(true); setMsg(null); }} disabled={busy==="shot"}>💬 {tf("Feedback")}</button>}
+      {open && <div className="feedback-panel" style={{background:CARD,border:`1px solid ${BORDER}`}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:8}}><b style={{flex:1}}>{tf("Feedback oder Problem melden")}</b><button style={linkBtn} onClick={()=>setOpen(false)}>✕</button></div>
+        <textarea className="input" rows={4} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Was ist passiert oder was wünschst du dir?")} />
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"8px 0"}}>
+          {shot ? <span style={{fontSize:12.5,color:GOOD}}>📷 {tf("Bildschirmfoto angehängt")} <button style={{...linkBtn,fontSize:12}} onClick={()=>setShot(null)}>✕</button></span>
+            : <button style={smallBtn} onClick={capture}>📷 {tf("Bildschirmfoto anhängen")}</button>}
+        </div>
+        {shot && <img src={shot} alt="" style={{width:"100%",maxHeight:140,objectFit:"cover",borderRadius:6,border:`1px solid ${BORDER}`,marginBottom:8}} />}
+        <button className="btn-primary" disabled={!text.trim()||busy==="send"} onClick={send}>{busy==="send"?"…":tf("Senden")}</button>
+        {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:12.5,marginTop:8}}>{msg.text}</div>}
+      </div>}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Änderungsverlauf (Admins)
+const AUDIT_TABLES = {tasks:"Aufgabe", milestones:"Meilenstein", risks:"Risiko", budget_items:"Budget", staff_positions:"Stelle", shifts:"Schicht", documents:"Dokument", permits:"Genehmigung", procurement_items:"Bestellposition", organization_members:"Teammitglied", hotels:"Hotel", events:"Veranstaltung"};
+const AUDIT_ACTIONS = {INSERT:"angelegt", UPDATE:"geändert", DELETE:"gelöscht"};
+const AUDIT_FIELDS = {title:"Titel", status:"Status", due_date:"Termin", priority:"Priorität", assignee_id:"Zuständig", department:"Abteilung", date:"Datum", kind:"Art", start_time:"Beginn", end_time:"Ende", user_id:"Person", planned:"Plan", actual:"Ist", headcount:"Anzahl", filled:"Besetzt", role:"Rolle", departments:"Abteilungen", name:"Name", opening_date:"Eröffnungstermin", expires_at:"Gültig bis", probability:"Wahrscheinlichkeit", impact:"Auswirkung", owner:"Verantwortlich", event_date:"Datum", guests:"Gäste", shift_date:"Datum"};
+function AuditView({orgId, api, hotel}){
+  const [list,setList] = useState(null); const [table,setTable] = useState(""); const [err,setErr] = useState("");
+  useEffect(()=>{ setList(null); api("/api/organizations/"+orgId+"/audit?limit=300"+(table?"&table="+table:"")).then(setList).catch(e=>{ setErr(e.message); setList([]); }); },[orgId, table]);
+  const val = (v) => { try { const x = JSON.parse(v); return x===null ? "–" : Array.isArray(x) ? x.join(", ") : String(x); } catch(e){ return String(v); } };
+  return (
+    <Card style={{marginTop:18}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}}>
+        <div style={{fontWeight:700,flex:1}}>🕘 {tf("Änderungsverlauf")}</div>
+        <select className="input" style={{width:"auto"}} value={table} onChange={e=>setTable(e.target.value)}>
+          <option value="">{tf("Alles")}</option>{Object.entries(AUDIT_TABLES).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}
+        </select>
+      </div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Wer hat was wann geändert – die letzten Einträge der Organisation. Nur Admins sehen den Verlauf.")}</div>
+      {err && <div style={{color:BAD,fontSize:13}}>{err}</div>}
+      {list===null ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Lädt…")}</div> : list.length===0 ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Noch keine Einträge.")}</div> :
+        <div style={{maxHeight:460,overflowY:"auto"}}>{list.map(r=>(
+          <div key={r.id} style={{padding:"7px 0",borderTop:`1px solid ${BORDER}`,fontSize:13}}>
+            <div><span style={{color:INK_MUTED}}>{fmtDateTime(r.created_at)}</span> · <b data-no-i18n="">{r.actor_email ? shortName(r.actor_email) : tf("System")}</b> · {tf(AUDIT_TABLES[r.table_name]||r.table_name)} <span data-no-i18n="">„{r.label}“</span> {tf(AUDIT_ACTIONS[r.action]||r.action)}</div>
+            {r.action==="UPDATE" && <div style={{fontSize:12,color:INK_MUTED,marginTop:2}}>{Object.entries(r.changes||{}).slice(0,6).map(([k,[a,b]])=><div key={k}>{tf(AUDIT_FIELDS[k]||k)}: <span data-no-i18n="">{val(a)} → {val(b)}</span></div>)}</div>}
+          </div>
+        ))}</div>}
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------ Lieferanten und Bestellungen (im Lager)
+const PO_STATUS = {"Entwurf":[INK_MUTED,PAPER], "Bestellt":[BRASS,BRASS_SOFT], "Geliefert":[GOOD,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
+function OrdersPanel({hotel, api, onStockChanged}){
+  const [open,setOpen] = useState(false);
+  const [sup,setSup] = useState([]); const [sugg,setSugg] = useState([]); const [orders,setOrders] = useState([]);
+  const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
+  const base = "/api/hotels/"+hotel.id;
+  const lead = ACCESS.role==="admin" || ACCESS.role==="manager" || canManageDept("Einkauf");
+  const load = useCallback(()=>Promise.all([api(base+"/suppliers").catch(()=>[]), api(base+"/purchase-suggestions").catch(()=>[]), api(base+"/purchase-orders").catch(()=>[])])
+    .then(([s,g,o])=>{ setSup(s); setSugg(g); setOrders(o); }),[api, base]);
+  useEffect(()=>{ if(open) load(); },[open, load]);
+  const run = async (fn, ok) => { setBusy(true); setMsg(null); try { const r = await fn(); if(ok) setMsg({ok:true,text:typeof ok==="function"?ok(r):ok}); await load(); } catch(e){ setMsg({ok:false,text:e.message}); } setBusy(false); };
+  const groups = {}; sugg.forEach(i=>{ const k = i.supplier_id||""; (groups[k]=groups[k]||[]).push(i); });
+  const supName = (id) => (sup.find(s=>s.id===id)||{}).name || tf("Ohne Lieferant");
+  const setItemSup = (i, supplier_id) => run(async()=>{ await api("/api/stock/"+i.stock_item_id+"/ordering","PATCH",{supplier_id}); });
+  if(!lead) return null;
+  return (
+    <Card style={{marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+        <div style={{fontWeight:700,flex:1}}>🚚 {tf("Lieferanten und Bestellungen")}</div><span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
+      </div>
+      {open && <div style={{marginTop:12}}>
+        {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:8}}>{msg.text}</div>}
+        <div className="field-label">{tf("Unter Mindestbestand")}</div>
+        {sugg.length===0 ? <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>{tf("Alles über dem Mindestbestand.")}</div> :
+          Object.entries(groups).map(([sid,items])=>(
+            <div key={sid||"none"} style={{background:PAPER,borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><b style={{flex:1}} data-no-i18n="">{supName(sid)}</b>
+                {sid && <button className="btn-primary" style={{padding:"6px 12px",fontSize:12.5}} disabled={busy} onClick={()=>run(async()=>api(base+"/purchase-orders","POST",{supplier_id:sid, items}), tf("Bestellung angelegt – unten prüfen und senden."))}>{tf("Bestellung anlegen")}</button>}
+              </div>
+              {items.map(i=><div key={i.stock_item_id} style={{display:"flex",gap:8,alignItems:"center",fontSize:13,padding:"3px 0",flexWrap:"wrap"}}>
+                <span style={{flex:1}} data-no-i18n="">{i.name}</span><span data-no-i18n="">{i.quantity} {i.unit}</span>
+                <select className="input" style={{width:"auto",padding:"3px 6px",fontSize:12}} value={i.supplier_id||""} onChange={e=>setItemSup(i, e.target.value||null)}>
+                  <option value="">{tf("Lieferant wählen")}</option>{sup.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+              </div>)}
+            </div>
+          ))}
+        <div className="field-label" style={{marginTop:12}}>{tf("Bestellungen")}</div>
+        {orders.length===0 && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Noch keine Bestellungen.")}</div>}
+        {orders.slice(0,20).map(o=>{ const [c,bg] = PO_STATUS[o.status]||PO_STATUS.Entwurf; return (
+          <div key={o.id} style={{borderTop:`1px solid ${BORDER}`,padding:"8px 0",fontSize:13}}>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <Pill color={c} bg={bg}>{tf(o.status)}</Pill><b data-no-i18n="">{o.supplier_name || tf("Ohne Lieferant")}</b>
+              <span style={{color:INK_MUTED}}>{fmtDateTime(o.sent_at || o.created_at)}</span><span style={{flex:1}} />
+              {o.status==="Entwurf" && o.supplier_email && <button className="btn-primary" style={{padding:"5px 10px",fontSize:12}} disabled={busy} onClick={()=>run(()=>api("/api/purchase-orders/"+o.id+"/send","POST",{}), tf("Bestellung per E-Mail verschickt."))}>{tf("Per E-Mail senden")}</button>}
+              {o.status==="Entwurf" && !o.supplier_email && <span style={{fontSize:12,color:WARN}}>{tf("Lieferant ohne E-Mail")}</span>}
+              {o.status==="Bestellt" && <button style={smallBtn} disabled={busy} onClick={()=>run(async()=>{ await api("/api/purchase-orders/"+o.id,"PATCH",{status:"Geliefert"}); if(onStockChanged) onStockChanged(); }, tf("Geliefert – Bestand wurde erhöht."))}>{tf("Geliefert")}</button>}
+              {o.status==="Entwurf" && <button style={linkBtn} onClick={()=>{ if(window.confirm(tf("Bestellung löschen?"))) run(()=>api("/api/purchase-orders/"+o.id,"DELETE")); }}>✕</button>}
+            </div>
+            <div style={{color:INK_MUTED,fontSize:12.5,marginTop:3}} data-no-i18n="">{(o.items||[]).map(i=>i.name+" "+i.quantity+" "+i.unit).join(" · ")}</div>
+          </div>); })}
+        <div className="field-label" style={{marginTop:12}}>{tf("Lieferanten")}</div>
+        {sup.map(s=><div key={s.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:13,padding:"4px 0",borderTop:`1px solid ${BORDER}`}}>
+          <b style={{flex:1}} data-no-i18n="">{s.name}</b><span style={{color:INK_MUTED}} data-no-i18n="">{s.email||"–"}</span>
+          <button style={linkBtn} onClick={()=>setForm({...s, email:s.email||"", phone:s.phone||""})}>{tf("Bearbeiten")}</button></div>)}
+        {!form && <button style={{...linkBtn,paddingInlineStart:0}} onClick={()=>setForm({name:"",email:"",phone:""})}>{tf("+ Lieferant")}</button>}
+        {form && <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end",marginTop:8}}>
+          <Field label={tf("Name")}><input className="input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></Field>
+          <Field label={tf("E-Mail für Bestellungen")}><input className="input" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} /></Field>
+          <Field label={tf("Telefon")}><input className="input" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} /></Field>
+          <div style={{marginBottom:14,display:"flex",gap:6}}>
+            <button className="btn-primary" disabled={!form.name.trim()} onClick={()=>run(async()=>{ const {id,...b} = form; if(id) await api("/api/suppliers/"+id,"PATCH",b); else await api(base+"/suppliers","POST",b); setForm(null); })}>{tf("Speichern")}</button>
+            {form.id && <button style={linkBtn} onClick={()=>{ if(window.confirm(tf("Lieferant löschen?"))) run(async()=>{ await api("/api/suppliers/"+form.id,"DELETE"); setForm(null); }); }}>{tf("Löschen")}</button>}
+            <button style={linkBtn} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button>
+          </div>
+        </div>}
+      </div>}
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------ Veranstaltungen und Bankett
+const EVENT_STATUS = {"Anfrage":[INK_MUTED,PAPER], "Option":[WARN,WARN_SOFT], "Fix":[GOOD,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
+function printFunctionSheet(ev, hotel){
+  const esc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const block = (l, v) => v ? '<h3>'+esc(translateString(l))+'</h3><div class="b">'+esc(v)+'</div>' : "";
+  const w = window.open("", "_blank"); if(!w) return;
+  w.document.write('<!doctype html><meta charset="utf-8"><title>'+esc(ev.title)+'</title><style>body{font-family:Inter,Arial,sans-serif;margin:18mm;color:#1C2430}h1{font-family:Georgia,serif;margin:0 0 4px}h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:18px 0 6px;border-bottom:1px solid #E4DFD3;padding-bottom:4px}.b{white-space:pre-wrap;font-size:14px;line-height:1.5}table{border-collapse:collapse;font-size:14px}td{padding:3px 14px 3px 0;vertical-align:top}td:first-child{color:#6B7280}</style>'
+    + '<div style="font-size:12px;color:#6B7280">'+esc(hotel.name)+' · '+esc(translateString("Function Sheet"))+'</div><h1>'+esc(ev.title)+'</h1><table>'
+    + [[ "Datum", fmtDay(ev.event_date,{weekday:"long",day:"numeric",month:"long",year:"numeric"}) ], ["Zeit", [ev.start_time&&ev.start_time.slice(0,5), ev.end_time&&ev.end_time.slice(0,5)].filter(Boolean).join("–")], ["Raum", ev.location], ["Personen", ev.guests], ["Kunde", ev.client], ["Kontakt", ev.contact], ["Status", translateString(ev.status)]]
+      .filter(([,v])=>v!=null && v!=="").map(([l,v])=>'<tr><td>'+esc(translateString(l))+'</td><td><b>'+esc(v)+'</b></td></tr>').join("")
+    + '</table>' + block("Menü und Getränke", ev.menu) + block("Aufbau und Bestuhlung", ev.setup) + block("Technik", ev.tech) + block("Hinweise", ev.notes)
+    + '<script>setTimeout(function(){window.print()},300)<\/script>');
+  w.document.close();
+}
+function EventsView({hotel, api, role}){
+  const [list,setList] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [past,setPast] = useState(false);
+  const lead = canManageDept("Food & Beverage") || canManageDept("Rezeption & Empfang");
+  const base = "/api/hotels/"+hotel.id+"/events";
+  const load = useCallback(()=>api(base+(past?"?from="+addDaysIso(todayIso(),-120):"")).then(setList).catch(e=>{ setMsg({ok:false,text:e.message}); setList([]); }),[api, base, past]);
+  useEffect(()=>{ load(); },[load]);
+  const save = async () => { setMsg(null); try { const {id,...b} = form; if(id) await api("/api/events/"+id,"PATCH",b); else await api(base,"POST",b); setForm(null); load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  const F = (k, label, props={}) => <Field label={tf(label)}><input className="input" value={form[k]??""} onChange={e=>setForm({...form,[k]:e.target.value})} {...props} /></Field>;
+  const T = (k, label) => <Field label={tf(label)}><textarea className="input" rows={3} value={form[k]??""} onChange={e=>setForm({...form,[k]:e.target.value})} /></Field>;
+  const byMonth = {}; (list||[]).forEach(e=>{ const m = e.event_date.slice(0,7); (byMonth[m]=byMonth[m]||[]).push(e); });
+  return (
+    <div>
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
+        {lead && !form && <button className="btn-primary" onClick={()=>setForm({title:"", event_date:addDaysIso(todayIso(),14), start_time:"", end_time:"", location:"", guests:"", status:"Anfrage", client:"", contact:"", menu:"", setup:"", tech:"", notes:""})}>{tf("+ Veranstaltung")}</button>}
+        <label style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={past} onChange={e=>setPast(e.target.checked)} /> {tf("Vergangene anzeigen")}</label>
+      </div>
+      {form && <Card style={{marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:"0 10px"}}>
+          {F("title","Titel")}{F("event_date","Datum",{type:"date"})}{F("start_time","Beginn",{type:"time"})}{F("end_time","Ende",{type:"time"})}
+          {F("location","Raum")}{F("guests","Personen",{type:"number",min:0})}
+          <Field label={tf("Status")}><select className="input" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>{Object.keys(EVENT_STATUS).map(s=><option key={s} value={s}>{tf(s)}</option>)}</select></Field>
+          {F("client","Kunde")}{F("contact","Kontakt (Name, Telefon, E-Mail)")}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:"0 10px"}}>
+          {T("menu","Menü und Getränke")}{T("setup","Aufbau und Bestuhlung")}{T("tech","Technik")}{T("notes","Hinweise")}
+        </div>
+        <button className="btn-primary" disabled={!String(form.title).trim()} onClick={save}>{tf("Speichern")}</button>
+        <button style={linkBtn} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button>
+        {form.id && <button style={{...linkBtn,color:BAD}} onClick={async()=>{ if(window.confirm(tf("Veranstaltung löschen?"))){ try { await api("/api/events/"+form.id,"DELETE"); setForm(null); load(); } catch(e){ setMsg({ok:false,text:e.message}); } } }}>{tf("Löschen")}</button>}
+      </Card>}
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+      {list===null ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Lädt…")}</div> : list.length===0 ? <Card><div style={{fontSize:13,color:INK_MUTED}}>{tf("Noch keine Veranstaltungen. Lege Hochzeiten, Tagungen oder Feiern an – Küche, Service und Technik sehen alles auf einen Blick.")}</div></Card> :
+        Object.keys(byMonth).sort().map(m=>(
+          <div key={m} style={{marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,color:INK_MUTED,margin:"0 0 6px"}} data-no-i18n="">{new Date(m+"-15T12:00:00").toLocaleDateString(UI_LOCALE,{month:"long",year:"numeric"})}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))",gap:10}}>
+              {byMonth[m].map(e=>{ const [c,bg] = EVENT_STATUS[e.status]||EVENT_STATUS.Anfrage; return (
+                <Card key={e.id} style={{padding:"14px 16px",opacity:e.status==="Storniert"?0.6:1}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}><Pill color={c} bg={bg}>{tf(e.status)}</Pill><span style={{fontSize:12.5,color:INK_MUTED}}>{fmtDay(e.event_date,{weekday:"short",day:"2-digit",month:"2-digit"})}{e.start_time?" · "+e.start_time.slice(0,5)+(e.end_time?"–"+e.end_time.slice(0,5):""):""}</span></div>
+                  <div style={{fontWeight:700,fontSize:15}} data-no-i18n="">{e.title}</div>
+                  <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{[e.location, e.guests!=null && tf("{0} Personen", e.guests), e.client].filter(Boolean).join(" · ")}</div>
+                  <div style={{display:"flex",gap:6,marginTop:8}}>
+                    <button style={smallBtn} onClick={()=>printFunctionSheet(e, hotel)}>🖨 {tf("Function Sheet")}</button>
+                    {lead && <button style={linkBtn} onClick={()=>setForm({...e, start_time:(e.start_time||"").slice(0,5), end_time:(e.end_time||"").slice(0,5), guests:e.guests??""})}>{tf("Bearbeiten")}</button>}
+                  </div>
+                </Card>); })}
+            </div>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Gäste-Chat (Rezeption)
+function GuestChatView({hotel, api}){
+  const [threads,setThreads] = useState(null); const [cur,setCur] = useState(null); const [text,setText] = useState(""); const [msg,setMsg] = useState(null);
+  const base = "/api/hotels/"+hotel.id+"/guest-chats";
+  const load = useCallback(()=>api(base).then(setThreads).catch(e=>{ setMsg({ok:false,text:e.message}); setThreads([]); }),[api, base]);
+  useEffect(()=>{ load(); const t = setInterval(()=>{ if(!document.hidden) load(); }, 15000); return ()=>clearInterval(t); },[load]);
+  const th = (threads||[]).find(t=>t.thread===cur);
+  useEffect(()=>{ if(th && th.unread) api(base+"/"+th.thread,"POST",{}).then(load).catch(()=>{}); },[cur]);
+  const { tr } = useTranslated(api, th ? th.messages.filter(m=>m.sender==="guest").map(m=>m.body) : []);
+  const send = async () => { const b = text.trim(); if(!b) return; setText(""); try { await api(base+"/"+cur,"POST",{body:b}); load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"minmax(200px, 280px) 1fr",gap:14}} className="stack">
+      <Card style={{padding:0,alignSelf:"start"}}>
+        {threads===null ? <div style={{padding:14,fontSize:13,color:INK_MUTED}}>{tf("Lädt…")}</div> : threads.length===0 ? <div style={{padding:14,fontSize:13,color:INK_MUTED}}>{tf("Noch keine Nachrichten. Gäste schreiben über den QR-Code im Zimmer.")}</div> :
+          threads.map(t=>(
+            <div key={t.thread} onClick={()=>setCur(t.thread)} style={{padding:"10px 14px",borderTop:`1px solid ${BORDER}`,cursor:"pointer",background:cur===t.thread?BRASS_SOFT:"transparent"}}>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}><b style={{flex:1}}>{tf("Zimmer {0}", t.room_number||"?")}</b>{t.unread>0 && <Pill color="#fff" bg={BAD}>{t.unread}</Pill>}</div>
+              <div style={{fontSize:12.5,color:INK_MUTED,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} data-no-i18n="">{t.messages[t.messages.length-1].body}</div>
+              <div style={{fontSize:11,color:INK_MUTED}}>{fmtDateTime(t.last_at)}</div>
+            </div>
+          ))}
+      </Card>
+      <Card style={{display:"flex",flexDirection:"column",minHeight:320}}>
+        {!th ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Links einen Verlauf wählen.")}</div> : <React.Fragment>
+          <div style={{fontWeight:700,marginBottom:8}}>{tf("Zimmer {0}", th.room_number||"?")}</div>
+          <div style={{flex:1,overflowY:"auto",maxHeight:420,display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+            {th.messages.map(m=>{ const t2 = m.sender==="guest" && tr ? tr(m.body) : null; return (
+              <div key={m.id} style={{alignSelf:m.sender==="staff"?"flex-end":"flex-start",maxWidth:"80%",background:m.sender==="staff"?INK:PAPER,color:m.sender==="staff"?"#fff":INK,borderRadius:12,padding:"8px 12px",fontSize:14}}>
+                <div data-no-i18n="" style={{whiteSpace:"pre-wrap"}}>{t2 && t2!==m.body ? t2 : m.body}</div>
+                {t2 && t2!==m.body && <div data-no-i18n="" style={{fontSize:11.5,opacity:0.7,marginTop:3}}>{m.body}</div>}
+                <div style={{fontSize:10.5,opacity:0.6,marginTop:3}}>{fmtDateTime(m.created_at)}</div>
+              </div>); })}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <input className="input" value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={tf("Antwort an den Gast …")} />
+            <button className="btn-primary" onClick={send} disabled={!text.trim()}>{tf("Senden")}</button>
+          </div>
+          <div style={{fontSize:11.5,color:INK_MUTED,marginTop:6}}>{tf("Der Gast sieht die Antwort auf seiner Zimmer-Seite. Verläufe werden nach 7 Tagen ausgeblendet.")}</div>
+        </React.Fragment>}
+        {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
+      </Card>
+    </div>
+  );
+}
+
 // Startseite für Mitarbeitende: nur das, was sie heute brauchen
 function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
   const [shifts,setShifts] = useState([]);
@@ -6349,6 +6778,7 @@ function AccountView({config, token, me, api, onDeleted}){
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>Deine Sprache gilt nur für dich. Ohne Auswahl folgt Ouverture der Standardsprache der Organisation.</div>
         <LanguageSwitcher withDefault api={api} me={me} />
       </Card>
+      <ThemeCard />
       <CalendarCard api={api} />
       <Card style={{marginBottom:18,maxWidth:520}}>
         <div style={{fontWeight:700,marginBottom:6}}>{tf("Ouverture als App")}</div>
@@ -6611,21 +7041,21 @@ function navFor(role, hasBilling, myDepts, disabled){
 }
 function navForAll(role, hasBilling, myDepts){
   const N = (key,label,section) => ({key,label,section});
-  if(role==="viewer") return [N("dashboard","Dashboard"), N("timeline","Zeitstrahl"), N("kpis","Kennzahlen"), N("procurement","Bestellungen"), N("feedback","Gäste-Feedback"), N("reviews","Bewertungen"), N("energy","Energie"), N("permits","Genehmigungen"), N("team","Team"), N("help","Hilfe"), N("account","Konto")];
+  if(role==="viewer") return [N("dashboard","Dashboard"), N("timeline","Zeitstrahl"), N("kpis","Kennzahlen"), N("procurement","Bestellungen"), N("feedback","Gäste-Feedback"), N("reviews","Bewertungen"), N("energy","Energie"), N("events","Veranstaltungen"), N("permits","Genehmigungen"), N("team","Team"), N("help","Hilfe"), N("account","Konto")];
   // Zimmerstatus sehen alle; im Menü nur für Housekeeping, Rezeption und die Leitung
   const rooms = role!=="member" || (myDepts||[]).some(d=>d==="Housekeeping" || d==="Rezeption & Empfang");
   const ops = [N("roster","Dienstplan","Betrieb"), N("time","Zeiterfassung","Betrieb"), ...(rooms ? [N("rooms","Zimmerstatus","Betrieb")] : []), N("tickets","Meldungen","Betrieb"),
     N("logbook","Übergabebuch","Betrieb"), N("checklists","Checklisten","Betrieb"), N("stock","Lager","Betrieb"), N("lostfound","Fundsachen","Betrieb"), N("trainings","Unterweisungen","Betrieb"), N("chat","Chat","Betrieb")];
   // Anreisen und Bewertungen für Rezeption, Energie für Technik (Mitarbeitende); die Leitung sieht alles
   const reception = (myDepts||[]).includes("Rezeption & Empfang"), technik = (myDepts||[]).includes("Technik");
-  const memberExtra = [...(reception ? [N("arrivals","Anreisen","Betrieb"), N("reviews","Bewertungen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : [])];
+  const memberExtra = [...(reception ? [N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
   if(role==="member") return [N("dashboard","Start"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     ...ops, ...memberExtra, N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"), N("account","Konto","Allgemein")];
   return [
     N("dashboard","Dashboard"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"),
     N("tasks","Aufgaben","Projekt"), N("milestones","Meilensteine","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     N("risks","Risiken","Projekt"), N("budget","Budget","Projekt"), N("staff","Personal","Projekt"), N("procurement","Bestellungen","Projekt"),
-    ...ops, N("arrivals","Anreisen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
+    ...ops, N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
     N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
     ...(role==="admin" && hasBilling ? [N("billing","Abo","Allgemein")] : []),
     N("account","Konto","Allgemein"),
@@ -6644,7 +7074,9 @@ function App(){
   const [hotels,setHotels] = useState(null);
   const [hotel,setHotel] = useState(null);
   const [tab,setTab] = useState("dashboard");
-  useEffect(()=>{ window.__ouvTab = tab; window.scrollTo(0,0); },[tab]); // neue Ansicht beginnt oben; Ansicht merken für Fehlermeldungen
+  useEffect(()=>{ window.__ouvTab = tab; window.scrollTo(0,0); },[tab]);
+  const [searchOpen,setSearchOpen] = useState(false);
+  useEffect(()=>{ const k = (e) => { if((e.ctrlKey||e.metaKey) && (e.key==="k"||e.key==="K")){ e.preventDefault(); setSearchOpen(true); } }; window.addEventListener("keydown", k); return ()=>window.removeEventListener("keydown", k); },[]); // neue Ansicht beginnt oben; Ansicht merken für Fehlermeldungen
   const [tasks,setTasks] = useState([]);
   const [milestones,setMilestones] = useState([]);
   const [risks,setRisks] = useState([]);
@@ -6909,12 +7341,7 @@ function App(){
       <div className="sidebar" style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
         <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:500,letterSpacing:0.3,padding:"0 8px 20px",borderBottom:"1px solid "+(hotel.brand_color||"rgba(201,166,107,0.3)"),marginBottom:16,display:"flex",alignItems:"center",gap:9}}><Logo size={22} color={hotel.brand_color||"#C9A66B"} />Ouverture</div>
         <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={switchOrg} dark />
-        {NAV.map((n,i)=>(
-          <React.Fragment key={n.key}>
-          {n.section && n.section!==(NAV[i-1]||{}).section && <div style={{fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.38)",margin:"14px 0 4px 12px"}}>{n.section}</div>}
-          <div className="nav-item" onClick={()=>{ setTab(n.key); setHelpOpen(false); }} style={{padding:"8px 10px 8px 12px",borderRadius:0,cursor:"pointer",marginBottom:2,fontSize:13.5,borderInlineStart:"2px solid "+(tab===n.key?(hotel.brand_color||"#C9A66B"):"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.62)"}}>{n.label}{n.key==="chat" && chatUnread>0 && tab!=="chat" && <span style={{color:"#E8A598",marginInlineStart:6,fontSize:11}}>●</span>}</div>
-          </React.Fragment>
-        ))}
+        <SideNav nav={NAV} tab={tab} onOpen={(k)=>{ setTab(k); setHelpOpen(false); }} accent={hotel.brand_color||"#C9A66B"} />
         <div className="nav-item" onClick={leaveHotel} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
         <div style={{marginTop:18}}><LanguageSwitcher dark withDefault api={api} me={me} onCurrency={()=>setFxTick(x=>x+1)} /></div>
         <div style={{marginTop:8}}><InstallAppButton dark /></div>
@@ -6926,7 +7353,9 @@ function App(){
             <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.logo_data && <img src={hotel.logo_data} alt="" style={{height:30,maxWidth:90,objectFit:"contain"}} />}<span data-no-i18n="">{hotel.name}</span>{hotel.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispielhotel</Pill>}</div>
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {tf("{0} Zimmer · Eröffnung {1}", hotel.rooms, fmtDate(hotel.opening_date))}</div>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <button className="no-print" onClick={()=>setSearchOpen(true)} title={tf("Suchen (Strg+K)")} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 11px",fontSize:12.5,cursor:"pointer",color:INK_MUTED,display:"flex",gap:8,alignItems:"center"}}>🔍 <span>{tf("Suchen")}</span><kbd className="kbd-hint" style={{fontSize:10.5,border:`1px solid ${BORDER}`,borderRadius:4,padding:"0 4px"}}>Strg K</kbd></button>
+            {!window.OUVERTURE_DEMO && <NotificationBell api={api} onOpen={(k)=>setTab(k)} />}
             {HELP[helpKey(tab, role, hotel)] && <button onClick={()=>setHelpOpen(x=>!x)} title={tf("Kurz erklärt")} aria-label={tf("Kurz erklärt")}
               style={{background:helpOpen?"#F4F7FB":"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 11px",fontSize:12.5,cursor:"pointer",fontWeight:700}}>?</button>}
             {role!=="member" && !preOpeningOff(hotel) && <button onClick={()=>{ setShowReport(true); window.scrollTo(0,0); }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Statusbericht</button>}
@@ -6943,6 +7372,9 @@ function App(){
           </div>
         </div>
         <div className="page-content" style={{padding:"22px 28px"}}>
+          <SearchPalette open={searchOpen} onClose={()=>setSearchOpen(false)} nav={NAV} tasks={tasks} milestones={milestones} risks={risks} members={members} hotel={hotel} api={api} onOpen={(k)=>{ setTab(k); setHelpOpen(false); }} />
+          {role==="member" && <MobileTabBar nav={NAV} tab={tab} onOpen={(k)=>setTab(k)} />}
+          <FeedbackButton api={api} orgId={orgId} tab={tab} />
           {window.OUVERTURE_DEMO && <DemoBar role={role} />}
           <HelpTip tab={tab} role={role} hotel={hotel} open={helpOpen} onClose={()=>setHelpOpen(false)} />
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
@@ -6982,6 +7414,8 @@ function App(){
           {tab==="reviews" && <ReviewsView hotel={hotel} api={api} role={role} />}
           {tab==="energy" && <EnergyView hotel={hotel} api={api} role={role} />}
           {tab==="help" && <HelpView onOpen={setTab} />}
+          {tab==="events" && <EventsView hotel={hotel} api={api} role={role} />}
+          {tab==="guestchat" && <GuestChatView hotel={hotel} api={api} />}
           {tab==="roster" && <RosterView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} orgId={orgId} />}
           {tab==="docs" && <DocumentsPanel hotel={hotel} api={api} upload={docCtx.upload} me={docCtx.me} />}
           {tab==="staff" && <StaffView positions={staff} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} hotel={hotel} api={api} />}
@@ -6991,6 +7425,7 @@ function App(){
             onLanguageChanged={(lang)=>setOrgs(orgs.map(o=>o.id===orgId?{...o,language:lang}:o))}
             onOrgGone={()=>{ try { window.localStorage.removeItem(LS_ORG_KEY); } catch(e){} window.location.reload(); }} />}
           {tab==="team" && (role==="admin"||role==="manager") && <OnboardingAdmin orgId={orgId} api={api} me={me} members={members} />}
+          {tab==="team" && role==="admin" && !window.OUVERTURE_DEMO && <AuditView orgId={orgId} api={api} hotel={hotel} />}
           {tab==="account" && <AccountView config={config} token={token} me={me} api={api}
             onDeleted={()=>{ Session.save(null); try { window.localStorage.removeItem(LS_ORG_KEY); } catch(e){} window.location.reload(); }} />}
           {tab==="billing" && <BillingView billing={billing} orgId={orgId} api={api} notice={billingNotice}

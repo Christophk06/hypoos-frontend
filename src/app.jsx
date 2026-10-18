@@ -6460,7 +6460,12 @@ function printFunctionSheet(ev, hotel){
 }
 function EventsView({hotel, api, role}){
   const [list,setList] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [past,setPast] = useState(false);
+  const [picker,setPicker] = useState(false);
   const lead = canManageDept("Food & Beverage") || canManageDept("Rezeption & Empfang");
+  const emptyEvent = {title:"", event_date:addDaysIso(todayIso(),14), start_time:"", end_time:"", location:"", guests:"", status:"Anfrage", client:"", contact:"", menu:"", setup:"", tech:"", notes:""};
+  // Vorlage (vorgefertigtes Function Sheet) oder bestehende Veranstaltung als Ausgangspunkt
+  const startFrom = (t) => { setPicker(false); setForm({...emptyEvent, ...t, id:undefined, created_at:undefined, updated_at:undefined, created_by:undefined, hotel_id:undefined, organization_id:undefined,
+    event_date: addDaysIso(todayIso(),14), status:"Anfrage", client:"", contact:"", guests: t.guests ?? "", start_time:(t.start_time||"").slice(0,5), end_time:(t.end_time||"").slice(0,5)}); window.scrollTo(0,0); };
   const base = "/api/hotels/"+hotel.id+"/events";
   const load = useCallback(()=>api(base+(past?"?from="+addDaysIso(todayIso(),-120):"")).then(setList).catch(e=>{ setMsg({ok:false,text:e.message}); setList([]); }),[api, base, past]);
   useEffect(()=>{ load(); },[load]);
@@ -6471,9 +6476,19 @@ function EventsView({hotel, api, role}){
   return (
     <div>
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
-        {lead && !form && <button className="btn-primary" onClick={()=>setForm({title:"", event_date:addDaysIso(todayIso(),14), start_time:"", end_time:"", location:"", guests:"", status:"Anfrage", client:"", contact:"", menu:"", setup:"", tech:"", notes:""})}>{tf("+ Veranstaltung")}</button>}
+        {lead && !form && <button className="btn-primary" onClick={()=>setPicker(!picker)}>{tf("+ Veranstaltung")}</button>}
         <label style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={past} onChange={e=>setPast(e.target.checked)} /> {tf("Vergangene anzeigen")}</label>
       </div>
+      {picker && !form && <Card style={{marginBottom:14}}>
+        <div style={{fontWeight:700,marginBottom:4}}>{tf("Womit beginnen?")}</div>
+        <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Vorlagen füllen Menü, Aufbau, Technik und den Ablauf mit Aufgaben je Abteilung vor – alles lässt sich danach anpassen.")}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:8}}>
+          <button onClick={()=>startFrom({})} style={{border:`1px dashed ${BORDER}`,background:CARD,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"start",fontSize:13.5}}><div style={{fontSize:20}}>＋</div><b>{tf("Leer beginnen")}</b></button>
+          {eventTemplates(UI_LANG).map(t=><button key={t.id} onClick={()=>startFrom(t)} style={{border:`1px solid ${BORDER}`,background:CARD,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"start",fontSize:13.5}}>
+            <div style={{fontSize:20}}>{t.icon}</div><b data-no-i18n="">{t.title}</b><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{t.start_time}–{t.end_time} · {tf("{0} Personen", t.guests)}</div></button>)}
+        </div>
+        <button style={{...linkBtn,marginTop:8,paddingInlineStart:0}} onClick={()=>setPicker(false)}>{tf("Abbrechen")}</button>
+      </Card>}
       {form && <Card style={{marginBottom:14}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:"0 10px"}}>
           {F("title","Titel")}{F("event_date","Datum",{type:"date"})}{F("start_time","Beginn",{type:"time"})}{F("end_time","Ende",{type:"time"})}
@@ -6502,6 +6517,7 @@ function EventsView({hotel, api, role}){
                   <div style={{display:"flex",gap:6,marginTop:8}}>
                     <button style={smallBtn} onClick={()=>printFunctionSheet(e, hotel)}>🖨 {tf("Function Sheet")}</button>
                     {lead && <button style={linkBtn} onClick={()=>setForm({...e, start_time:(e.start_time||"").slice(0,5), end_time:(e.end_time||"").slice(0,5), guests:e.guests??""})}>{tf("Bearbeiten")}</button>}
+                    {lead && <button style={linkBtn} title={tf("Neue Veranstaltung mit gleichem Menü, Aufbau, Technik und Ablauf")} onClick={()=>startFrom(e)}>{tf("Als Vorlage nutzen")}</button>}
                   </div>
                 </Card>); })}
             </div>

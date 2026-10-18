@@ -29,6 +29,17 @@
   .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
   footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
   [dir="rtl"] .grid { direction: rtl; }
+  .chat { margin-top: 26px; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .chat h2 { font-family: Georgia, serif; font-weight: 500; font-size: 19px; margin: 0 0 4px; }
+  .chat .hint { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .bubbles { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; margin-bottom: 10px; }
+  .bubble { max-width: 85%; padding: 8px 12px; border-radius: 14px; font-size: 15px; white-space: pre-wrap; }
+  .bubble.guest { align-self: flex-end; background: var(--ink); color: #fff; }
+  .bubble.staff { align-self: flex-start; background: var(--paper); }
+  .bubble small { display: block; font-size: 11px; opacity: .65; margin-top: 2px; }
+  .chatrow { display: flex; gap: 8px; }
+  .chatrow input { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 11px; font: inherit; font-size: 15px; }
+  .chatrow button { background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 0 16px; font-weight: 700; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -36,31 +47,32 @@
   <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div>
     <select class="lang" id="lang" aria-label="Language"></select></header>
   <div id="app"></div>
+  <div id="chat"></div>
   <footer>Ouverture</footer>
 </div>
 <script>
 var API = "https://hpoos-backend-1.onrender.com";
 var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
 var T = {
-  de: { title: "Wie können wir helfen?", room: "Zimmer {0}", towels: "Frische Handtücher", cleaning: "Zimmerreinigung", amenities: "Pflegeprodukte", pillow: "Kissen oder Decke", defect: "Etwas ist kaputt", other: "Anderer Wunsch",
+  de: { chatTitle: "Nachricht an die Rezeption", chatHint: "Die Rezeption antwortet hier – meist innerhalb weniger Minuten.", chatPh: "Ihre Nachricht …", chatSend: "Senden", title: "Wie können wir helfen?", room: "Zimmer {0}", towels: "Frische Handtücher", cleaning: "Zimmerreinigung", amenities: "Pflegeprodukte", pillow: "Kissen oder Decke", defect: "Etwas ist kaputt", other: "Anderer Wunsch",
     details: "Details (optional) – z. B. was genau kaputt ist", detailsReq: "Bitte kurz beschreiben, was Sie brauchen", send: "Senden", thanks: "Danke! Unser Team ist informiert und kümmert sich darum.", again: "Weiteren Wunsch senden", invalid: "Dieser Code ist nicht (mehr) gültig. Bitte wenden Sie sich an die Rezeption.", failed: "Senden fehlgeschlagen. Bitte versuchen Sie es erneut oder rufen Sie die Rezeption an." },
-  en: { title: "How can we help?", room: "Room {0}", towels: "Fresh towels", cleaning: "Room cleaning", amenities: "Toiletries", pillow: "Pillow or blanket", defect: "Something is broken", other: "Other request",
+  en: { chatTitle: "Message reception", chatHint: "Reception replies here – usually within a few minutes.", chatPh: "Your message …", chatSend: "Send", title: "How can we help?", room: "Room {0}", towels: "Fresh towels", cleaning: "Room cleaning", amenities: "Toiletries", pillow: "Pillow or blanket", defect: "Something is broken", other: "Other request",
     details: "Details (optional) – e.g. what exactly is broken", detailsReq: "Please briefly describe what you need", send: "Send", thanks: "Thank you! Our team has been informed and will take care of it.", again: "Send another request", invalid: "This code is no longer valid. Please contact reception.", failed: "Sending failed. Please try again or call reception." },
-  fr: { title: "Comment pouvons-nous vous aider ?", room: "Chambre {0}", towels: "Serviettes propres", cleaning: "Ménage de la chambre", amenities: "Produits d’accueil", pillow: "Oreiller ou couverture", defect: "Quelque chose est cassé", other: "Autre demande",
+  fr: { chatTitle: "Message à la réception", chatHint: "La réception répond ici – généralement en quelques minutes.", chatPh: "Votre message …", chatSend: "Envoyer", title: "Comment pouvons-nous vous aider ?", room: "Chambre {0}", towels: "Serviettes propres", cleaning: "Ménage de la chambre", amenities: "Produits d’accueil", pillow: "Oreiller ou couverture", defect: "Quelque chose est cassé", other: "Autre demande",
     details: "Détails (facultatif) – p. ex. ce qui est cassé", detailsReq: "Décrivez brièvement votre demande", send: "Envoyer", thanks: "Merci ! Notre équipe est informée et s’en occupe.", again: "Envoyer une autre demande", invalid: "Ce code n’est plus valable. Veuillez vous adresser à la réception.", failed: "L’envoi a échoué. Réessayez ou appelez la réception." },
-  it: { title: "Come possiamo aiutarla?", room: "Camera {0}", towels: "Asciugamani puliti", cleaning: "Pulizia camera", amenities: "Prodotti da bagno", pillow: "Cuscino o coperta", defect: "Qualcosa è rotto", other: "Altra richiesta",
+  it: { chatTitle: "Messaggio alla reception", chatHint: "La reception risponde qui – di solito entro pochi minuti.", chatPh: "Il suo messaggio …", chatSend: "Invia", title: "Come possiamo aiutarla?", room: "Camera {0}", towels: "Asciugamani puliti", cleaning: "Pulizia camera", amenities: "Prodotti da bagno", pillow: "Cuscino o coperta", defect: "Qualcosa è rotto", other: "Altra richiesta",
     details: "Dettagli (facoltativo) – es. cosa è rotto", detailsReq: "Descriva brevemente cosa le serve", send: "Invia", thanks: "Grazie! Il nostro team è stato avvisato e se ne occuperà.", again: "Invia un’altra richiesta", invalid: "Questo codice non è più valido. Si rivolga alla reception.", failed: "Invio non riuscito. Riprovi o chiami la reception." },
-  es: { title: "¿Cómo podemos ayudarle?", room: "Habitación {0}", towels: "Toallas limpias", cleaning: "Limpieza de la habitación", amenities: "Artículos de aseo", pillow: "Almohada o manta", defect: "Algo está roto", other: "Otra petición",
+  es: { chatTitle: "Mensaje a recepción", chatHint: "Recepción responde aquí, normalmente en pocos minutos.", chatPh: "Su mensaje…", chatSend: "Enviar", title: "¿Cómo podemos ayudarle?", room: "Habitación {0}", towels: "Toallas limpias", cleaning: "Limpieza de la habitación", amenities: "Artículos de aseo", pillow: "Almohada o manta", defect: "Algo está roto", other: "Otra petición",
     details: "Detalles (opcional) – p. ej. qué está roto", detailsReq: "Describa brevemente lo que necesita", send: "Enviar", thanks: "¡Gracias! Nuestro equipo está informado y se encargará.", again: "Enviar otra petición", invalid: "Este código ya no es válido. Diríjase a recepción.", failed: "No se pudo enviar. Inténtelo de nuevo o llame a recepción." },
-  pt: { title: "Como podemos ajudar?", room: "Quarto {0}", towels: "Toalhas lavadas", cleaning: "Limpeza do quarto", amenities: "Artigos de higiene", pillow: "Almofada ou manta", defect: "Algo está avariado", other: "Outro pedido",
+  pt: { chatTitle: "Mensagem para a receção", chatHint: "A receção responde aqui – normalmente em poucos minutos.", chatPh: "A sua mensagem …", chatSend: "Enviar", title: "Como podemos ajudar?", room: "Quarto {0}", towels: "Toalhas lavadas", cleaning: "Limpeza do quarto", amenities: "Artigos de higiene", pillow: "Almofada ou manta", defect: "Algo está avariado", other: "Outro pedido",
     details: "Detalhes (opcional) – p. ex. o que está avariado", detailsReq: "Descreva brevemente o que precisa", send: "Enviar", thanks: "Obrigado! A nossa equipa foi informada e vai tratar disso.", again: "Enviar outro pedido", invalid: "Este código já não é válido. Dirija-se à receção.", failed: "O envio falhou. Tente novamente ou ligue para a receção." },
-  tr: { title: "Size nasıl yardımcı olabiliriz?", room: "Oda {0}", towels: "Temiz havlu", cleaning: "Oda temizliği", amenities: "Banyo ürünleri", pillow: "Yastık veya battaniye", defect: "Bir şey bozuk", other: "Başka bir istek",
+  tr: { chatTitle: "Resepsiyona mesaj", chatHint: "Resepsiyon burada yanıt verir – genellikle birkaç dakika içinde.", chatPh: "Mesajınız …", chatSend: "Gönder", title: "Size nasıl yardımcı olabiliriz?", room: "Oda {0}", towels: "Temiz havlu", cleaning: "Oda temizliği", amenities: "Banyo ürünleri", pillow: "Yastık veya battaniye", defect: "Bir şey bozuk", other: "Başka bir istek",
     details: "Ayrıntılar (isteğe bağlı) – ör. tam olarak ne bozuk", detailsReq: "Lütfen neye ihtiyacınız olduğunu kısaca yazın", send: "Gönder", thanks: "Teşekkürler! Ekibimiz bilgilendirildi ve ilgilenecek.", again: "Başka bir istek gönder", invalid: "Bu kod artık geçerli değil. Lütfen resepsiyona başvurun.", failed: "Gönderilemedi. Tekrar deneyin veya resepsiyonu arayın." },
-  ja: { title: "ご用件をお聞かせください", room: "{0}号室", towels: "新しいタオル", cleaning: "客室清掃", amenities: "アメニティ", pillow: "枕・毛布", defect: "故障・不具合", other: "その他のご要望",
+  ja: { chatTitle: "フロントへメッセージ", chatHint: "フロントがここで返信します（通常は数分以内）。", chatPh: "メッセージを入力…", chatSend: "送信", title: "ご用件をお聞かせください", room: "{0}号室", towels: "新しいタオル", cleaning: "客室清掃", amenities: "アメニティ", pillow: "枕・毛布", defect: "故障・不具合", other: "その他のご要望",
     details: "詳細（任意）– 例：どこが故障しているか", detailsReq: "ご要望を簡単にご記入ください", send: "送信", thanks: "ありがとうございます。スタッフに連絡しましたので対応いたします。", again: "別のご要望を送る", invalid: "このコードは無効です。フロントにお問い合わせください。", failed: "送信できませんでした。もう一度お試しいただくか、フロントにお電話ください。" },
-  zh: { title: "需要什么帮助？", room: "{0} 房", towels: "干净毛巾", cleaning: "打扫房间", amenities: "洗漱用品", pillow: "枕头或毯子", defect: "有东西坏了", other: "其他需求",
+  zh: { chatTitle: "给前台留言", chatHint: "前台会在这里回复——通常几分钟内。", chatPh: "您的留言……", chatSend: "发送", title: "需要什么帮助？", room: "{0} 房", towels: "干净毛巾", cleaning: "打扫房间", amenities: "洗漱用品", pillow: "枕头或毯子", defect: "有东西坏了", other: "其他需求",
     details: "详情（选填）– 例如什么坏了", detailsReq: "请简要说明您的需求", send: "发送", thanks: "谢谢！我们的团队已收到通知，会尽快处理。", again: "再发一个需求", invalid: "此二维码已失效，请联系前台。", failed: "发送失败，请重试或致电前台。" },
-  ar: { title: "كيف يمكننا مساعدتك؟", room: "الغرفة {0}", towels: "مناشف نظيفة", cleaning: "تنظيف الغرفة", amenities: "مستلزمات الاستحمام", pillow: "وسادة أو بطانية", defect: "شيء معطّل", other: "طلب آخر",
+  ar: { chatTitle: "رسالة إلى الاستقبال", chatHint: "يرد الاستقبال هنا – عادةً خلال دقائق قليلة.", chatPh: "رسالتك …", chatSend: "إرسال", title: "كيف يمكننا مساعدتك؟", room: "الغرفة {0}", towels: "مناشف نظيفة", cleaning: "تنظيف الغرفة", amenities: "مستلزمات الاستحمام", pillow: "وسادة أو بطانية", defect: "شيء معطّل", other: "طلب آخر",
     details: "التفاصيل (اختياري) – مثل ما المعطّل تحديدًا", detailsReq: "يرجى وصف ما تحتاجه باختصار", send: "إرسال", thanks: "شكرًا! تم إبلاغ فريقنا وسيتولى الأمر.", again: "إرسال طلب آخر", invalid: "هذا الرمز لم يعد صالحًا. يرجى التوجه إلى الاستقبال.", failed: "تعذّر الإرسال. حاول مجددًا أو اتصل بالاستقبال." },
 };
 var ICONS = { towels: "🧺", cleaning: "🧹", amenities: "🧴", pillow: "🛏", defect: "🔧", other: "💬" };
@@ -77,7 +89,33 @@ function api(path, opt) {
   if (demo) return Promise.resolve(opt ? { ok: true } : { hotel: { name: "Beispielhotel Alpenblick" }, room: "214" });
   return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw Object.assign(new Error(j.error || "Fehler"), { status: r.status }); return j; }); });
 }
+// Chat mit der Rezeption: je Gast (Browser) ein eigener Verlauf, nie der des Vorgängers im Zimmer
+var chat = { list: [], busy: false, thread: (function () {
+  var k = "ouv_chat_" + token, v = null;
+  try { var o = JSON.parse(localStorage.getItem(k) || "null"); if (o && o.t && Date.now() - o.at < 14 * 86400000) v = o.t; } catch (e) {}
+  if (!v) { var a = new Uint8Array(18); (window.crypto || window.msCrypto).getRandomValues(a); v = Array.prototype.map.call(a, function (x) { return ("0" + x.toString(16)).slice(-2); }).join(""); try { localStorage.setItem(k, JSON.stringify({ t: v, at: Date.now() })); } catch (e) {} }
+  return v; })() };
+function chatApi(opt) {
+  if (demo) { if (opt) { var m = { id: Date.now(), sender: "guest", body: JSON.parse(opt.body).body, created_at: new Date().toISOString() }; return Promise.resolve(m); } return Promise.resolve(chat.list); }
+  return api("/api/public/room/" + encodeURIComponent(token) + "/chat" + (opt ? "" : "?thread=" + chat.thread), opt);
+}
+function renderChat() {
+  var c = $("chat"); if (!state.info || state.error === "invalid") { c.innerHTML = ""; return; }
+  var keep = $("chatin") ? $("chatin").value : "";
+  var h = '<div class="chat"><h2>💬 ' + esc(t("chatTitle")) + '</h2><div class="hint">' + esc(t("chatHint")) + '</div><div class="bubbles" id="bubbles">';
+  chat.list.forEach(function (m) { h += '<div class="bubble ' + (m.sender === "staff" ? "staff" : "guest") + '">' + esc(m.body) + "<small>" + esc(new Date(m.created_at).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })) + "</small></div>"; });
+  h += '</div><div class="chatrow"><input id="chatin" maxlength="1000" placeholder="' + esc(t("chatPh")) + '" /><button id="chatsend"' + (chat.busy ? " disabled" : "") + ">" + esc(t("chatSend")) + "</button></div></div>";
+  c.innerHTML = h; $("chatin").value = keep;
+  var b = $("bubbles"); b.scrollTop = b.scrollHeight;
+  var send = function () { var v = $("chatin").value.trim(); if (!v || chat.busy) return; chat.busy = true;
+    chatApi({ method: "POST", body: JSON.stringify({ thread: chat.thread, body: v, website: "" }) }).then(function (m) { chat.list.push(m); $("chatin").value = ""; })
+      .catch(function (e) { alert(e.message || t("failed")); }).then(function () { chat.busy = false; renderChat(); }); };
+  $("chatsend").onclick = send; $("chatin").onkeydown = function (e) { if (e.key === "Enter") send(); };
+}
+function loadChat() { if (document.hidden || !state.info) return; chatApi().then(function (l) { if (JSON.stringify(l) !== JSON.stringify(chat.list)) { chat.list = l; renderChat(); } }).catch(function () {}); }
+setInterval(loadChat, 10000);
 function render() {
+  renderChat();
   document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   var a = $("app");
   if (state.error === "invalid") { a.innerHTML = '<div class="msg err">' + esc(t("invalid")) + "</div>"; return; }
@@ -105,7 +143,7 @@ api("/api/public/room/" + encodeURIComponent(token)).then(function (r) {
   state.info = r; $("hotel").textContent = r.hotel.name; document.title = r.hotel.name;
   if (r.hotel.logo_data) { $("logo").src = r.hotel.logo_data; $("logo").hidden = false; }
   if (r.hotel.brand_color) document.documentElement.style.setProperty("--brass", r.hotel.brand_color);
-}).catch(function () { state.error = "invalid"; $("hotel").textContent = ""; }).then(render);
+}).catch(function () { state.error = "invalid"; $("hotel").textContent = ""; }).then(function () { render(); loadChat(); });
 render();
 </script>
 </body>

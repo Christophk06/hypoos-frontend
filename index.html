@@ -24,8 +24,8 @@
 <script>
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
-    document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=58a07eff7b"><\/script>');
-    document.write('<script src="demo/demo-mock.js?v=94e3a345a3"><\/script>');
+    document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=95ca8bac72"><\/script>');
+    document.write('<script src="demo/demo-mock.js?v=3dbbf5d483"><\/script>');
   }
   // Als App installierbar: Service Worker (nicht in der Demo)
   if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
@@ -71,6 +71,12 @@
     html[data-theme="dark"] .sidebar, html[data-theme="dark"] .login-side { background: #0b0e13 !important; }
     html[data-theme="dark"] a { color: #d6b47a; }
     html[data-theme="dark"] img { opacity: 0.92; }
+  }
+
+  /* Handy: Menü bleibt eine waagrechte Leiste – Gruppen, Favoriten-Kopf und Sterne ausblenden */
+  @media (max-width: 640px) {
+    .sidenav, .sidenav-group { display: contents; }
+    .sidenav-favs, .nav-section, .nav-star { display: none !important; }
   }
 
   /* ---------- Untere Leiste am Handy (Mitarbeitende) ---------- */
@@ -151,7 +157,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="10509c7";</script>
-<script src="app.js?v=03ead95cfe"></script>
+<script>window.__APP_VERSION="2d50841";</script>
+<script src="app.js?v=fd9d701526"></script>
 </body>
 </html>

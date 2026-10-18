@@ -72,6 +72,12 @@
     html[data-theme="dark"] img { opacity: 0.92; }
   }
 
+  /* Handy: Menü bleibt eine waagrechte Leiste – Gruppen, Favoriten-Kopf und Sterne ausblenden */
+  @media (max-width: 640px) {
+    .sidenav, .sidenav-group { display: contents; }
+    .sidenav-favs, .nav-section, .nav-star { display: none !important; }
+  }
+
   /* ---------- Untere Leiste am Handy (Mitarbeitende) ---------- */
   .mobile-tabbar { display: none; }
   @media (max-width: 640px) {

@@ -6212,15 +6212,15 @@ function SideNav({nav, tab, onOpen, accent}){
   );
   const sections = []; nav.forEach(n=>{ const s = n.section || ""; let g = sections.find(x=>x.name===s); if(!g){ g = {name:s, items:[]}; sections.push(g); } g.items.push(n); });
   return (
-    <div>
-      {favItems.length>0 && <div style={{marginBottom:6}}>
+    <div className="sidenav">
+      {favItems.length>0 && <div className="sidenav-favs" style={{marginBottom:6}}>
         <div style={{fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.38)",margin:"6px 0 4px 12px"}}>★ {tf("Favoriten")}</div>
         {favItems.map(n=>item(n, true))}
       </div>}
       {sections.map(g=>{
         const closed = g.name && collapsed.includes(g.name);
         return (
-          <div key={g.name||"_"}>
+          <div key={g.name||"_"} className="sidenav-group">
             {g.name && <button className="nav-section" onClick={()=>setCollapsed(closed ? collapsed.filter(x=>x!==g.name) : [...collapsed, g.name])}
               style={{display:"flex",alignItems:"center",gap:6,width:"100%",background:"none",border:"none",cursor:"pointer",fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.45)",margin:"14px 0 4px",padding:"0 0 0 12px",textAlign:"start"}}>
               <span style={{flex:1}}>{g.name}</span><span style={{fontSize:10}}>{closed?"▸":"▾"}</span></button>}

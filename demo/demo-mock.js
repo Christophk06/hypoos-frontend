@@ -73,6 +73,12 @@
   });
   D.docs = (D.doc_names || []).map(function (name, i) { return { id: "dc-" + i, hotel_id: D.hotel.id, name: name, size_bytes: [480000, 210000, 1300000][i], mime_type: "application/pdf", uploaded_by: "u-admin", uploaded_by_email: "admin@alpenblick.at",
     created_at: new Date(now.getTime() - (i + 2) * 86400000 * 9).toISOString(), task_id: null, task_title: null, category: ["Wartungsvertrag", "Zertifikat", "Versicherung"][i], expires_at: add(todayIso, [21, -4, 280][i]), remind_days: 30 }; });
+  // 025: Lieferanten, Bestellungen, Veranstaltungen, Gäste-Chat
+  D.suppliers = [{ id: "sp-1", hotel_id: D.hotel.id, name: "Textil Moser", email: "bestellung@moser.example" }, { id: "sp-2", hotel_id: D.hotel.id, name: "GastroGroß", email: "order@gastrogross.example" }];
+  D.purchase_orders = [{ id: "po-1", hotel_id: D.hotel.id, supplier_id: "sp-1", status: "Bestellt", items: [{ name: (D.procurement[0] || {}).name || "Handtücher", quantity: 40, unit: "Stück" }], sent_at: new Date(now.getTime() - 2 * 86400000).toISOString(), created_at: new Date(now.getTime() - 2 * 86400000).toISOString() }];
+  D.events = (D.event_seed || []).map(function (e, i) { return Object.assign({ id: "ev-" + i, hotel_id: D.hotel.id }, e, { event_date: add(todayIso, e.inDays) }); });
+  D.guest_threads = (D.chat_seed || []).map(function (c, i) { var t0 = now.getTime() - (i + 1) * 3600000; return { thread: "demo-thread-" + i + "-xxxxxxxx", room_number: c.room,
+    messages: c.msgs.map(function (m, j) { return { id: "gm-" + i + "-" + j, sender: m[0], body: m[1], read_at: m[0] === "staff" || i ? new Date().toISOString() : null, created_at: new Date(t0 + j * 300000).toISOString() }; }) }; });
   // Abhängigkeiten für den kritischen Pfad (über die festen Vorlagen-Schlüssel, in jeder Sprache gleich)
   (function () { var k = function (key) { return D.tasks.find(function (t) { return t.template_key === key; }); };
     var pms = k("t-pms-config"), mock = k("t-mock-checkins"), snag = k("t-room-snagging"), uni = k("t-uniforms"), evac = k("t-evacuation");
@@ -158,6 +164,25 @@
     if (p === H + "/readiness") return ok(D.readiness);
     if (p === H + "/ai-report") return ok(lead ? { enabled: true, report: D.ai } : { enabled: true, report: null });
     if (p === H + "/documents") return ok(lead ? D.docs : []);
+    // Lieferanten und Bestellungen
+    if (p === H + "/suppliers") { if (m === "POST") { var sp = Object.assign({ id: nid("sp"), hotel_id: D.hotel.id }, b); D.suppliers.push(sp); return ok(sp); } return ok(D.suppliers); }
+    if ((mm = p.match(/^\/api\/suppliers\/([^/]+)$/))) { if (m === "DELETE") { remove(D.suppliers, mm[1]); return ok({ ok: true }); } var sp2 = byId(D.suppliers, mm[1]); Object.assign(sp2, b); return ok(sp2); }
+    if ((mm = p.match(/^\/api\/stock\/([^/]+)\/ordering$/))) { var st = byId(D.stock || [], mm[1]); if (st) Object.assign(st, b); return ok(st || {}); }
+    if (p === H + "/purchase-suggestions") return ok((D.stock || []).filter(function (i) { return Number(i.quantity) < Number(i.min_quantity); }).map(function (i) {
+      return { stock_item_id: i.id, name: i.name, unit: i.unit, department: i.department, supplier_id: i.supplier_id || (i.department === "Housekeeping" ? "sp-1" : "sp-2"), quantity: i.order_quantity || Math.max(1, Math.ceil(i.min_quantity * 2 - i.quantity)) }; }));
+    if (p === H + "/purchase-orders") { if (m === "POST") { var po = { id: nid("po"), hotel_id: D.hotel.id, supplier_id: b.supplier_id, status: "Entwurf", items: b.items, created_at: new Date().toISOString() }; D.purchase_orders.unshift(po); return ok(po); }
+      return ok(D.purchase_orders.map(function (o) { var s2 = byId(D.suppliers, o.supplier_id) || {}; return Object.assign({ supplier_name: s2.name, supplier_email: s2.email }, o); })); }
+    if ((mm = p.match(/^\/api\/purchase-orders\/([^/]+)\/send$/))) { var po2 = byId(D.purchase_orders, mm[1]); po2.status = "Bestellt"; po2.sent_at = new Date().toISOString(); return ok(po2); }
+    if ((mm = p.match(/^\/api\/purchase-orders\/([^/]+)$/))) { if (m === "DELETE") { remove(D.purchase_orders, mm[1]); return ok({ ok: true }); } var po3 = byId(D.purchase_orders, mm[1]); Object.assign(po3, b); return ok(po3); }
+    // Veranstaltungen
+    if (p === H + "/events") { if (m === "POST") { var ev = Object.assign({ id: nid("ev"), hotel_id: D.hotel.id }, b); D.events.push(ev); return ok(ev); }
+      return ok(D.events.filter(function (e) { return e.event_date >= (q.get("from") || add(todayIso, -7)); }).sort(function (a, c) { return a.event_date < c.event_date ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/events\/([^/]+)$/))) { if (m === "DELETE") { remove(D.events, mm[1]); return ok({ ok: true }); } var ev2 = byId(D.events, mm[1]); Object.assign(ev2, b); return ok(ev2); }
+    // Gäste-Chat
+    if (p === H + "/guest-chats") return ok(D.guest_threads.map(function (t) { return Object.assign({ last_at: t.messages[t.messages.length - 1].created_at, unread: t.messages.filter(function (x) { return x.sender === "guest" && !x.read_at; }).length }, t); }));
+    if ((mm = p.match(/^\/api\/hotels\/[^/]+\/guest-chats\/([^/]+)$/))) { var th = D.guest_threads.find(function (t) { return t.thread === mm[1]; }); if (!th) return ok({ error: "Nicht gefunden." }, 404);
+      th.messages.forEach(function (x) { if (x.sender === "guest") x.read_at = new Date().toISOString(); });
+      if (b.body) { var gm = { id: nid("gm"), sender: "staff", body: b.body, created_at: new Date().toISOString() }; th.messages.push(gm); return ok(gm); } return ok({ ok: true }); }
     if ((mm = p.match(/^\/api\/documents\/([^/]+)$/)) && m === "PATCH") { var dc = byId(D.docs, mm[1]); Object.assign(dc, b); return ok(dc); }
     if (/^\/api\/documents\/[^/]+\/download$/.test(p)) return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
     // Anreisen

@@ -6446,18 +6446,120 @@ function OrdersPanel({hotel, api, onStockChanged}){
 
 // ------------------------------------------------------------ Veranstaltungen und Bankett
 const EVENT_STATUS = {"Anfrage":[INK_MUTED,PAPER], "Option":[WARN,WARN_SOFT], "Fix":[GOOD,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
-function printFunctionSheet(ev, hotel){
-  const esc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const block = (l, v) => v ? '<h3>'+esc(translateString(l))+'</h3><div class="b">'+esc(v)+'</div>' : "";
+// ------------------------------------------------------------ Function Sheet als gestaltetes PDF (Drucken, Herunterladen, Teilen)
+const FS_CSS = `
+  .fs{font-family:Inter,Arial,sans-serif;color:#1C2430;font-size:12.5px;line-height:1.45;width:182mm;background:#fff}
+  .fs *{box-sizing:border-box}
+  .fs .hd{display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--fs-accent);padding-bottom:10px;margin-bottom:12px}
+  .fs .hd img{height:38px;max-width:110px;object-fit:contain}
+  .fs .hd .h{flex:1}
+  .fs .hd .hotel{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.08em}
+  .fs h1{font-family:Georgia,serif;font-size:22px;margin:2px 0 0;font-weight:600}
+  .fs .st{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#F1E8D8;color:#7a5c22;white-space:nowrap}
+  .fs .facts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+  .fs .f{background:#F6F4EF;border-radius:6px;padding:7px 9px}
+  .fs .f .l{font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.06em}
+  .fs .f .v{font-weight:700;font-size:13px;margin-top:1px}
+  .fs .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .fs .box{border:1px solid #E4DFD3;border-radius:8px;padding:9px 11px;break-inside:avoid;page-break-inside:avoid}
+  .fs .box h3{margin:0 0 5px;font-size:10.5px;color:var(--fs-accent);text-transform:uppercase;letter-spacing:.07em}
+  .fs .box .b{white-space:pre-wrap}
+  .fs .full{grid-column:1 / -1}
+  .fs .tl{display:flex;flex-wrap:wrap;gap:6px}
+  .fs .tl span{background:#F6F4EF;border-left:3px solid var(--fs-accent);padding:4px 8px;border-radius:4px;font-size:12px}
+  .fs .tl b{margin-inline-end:4px}
+  .fs table.dp{width:100%;border-collapse:collapse}
+  .fs table.dp td{padding:5px 4px;border-top:1px solid #F0ECE3;vertical-align:top}
+  .fs table.dp td.c{width:18px}
+  .fs table.dp td.c i{display:inline-block;width:11px;height:11px;border:1.5px solid #9aa3af;border-radius:2px}
+  .fs table.dp td.k{width:34%;font-weight:700}
+  .fs .sig{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px}
+  .fs .sig div{border-top:1px solid #1C2430;padding-top:4px;font-size:10.5px;color:#6B7280}
+  .fs .ft{margin-top:12px;font-size:9.5px;color:#9aa3af;display:flex;justify-content:space-between}
+  .fs .wk h2{font-family:Georgia,serif;font-size:15px;margin:14px 0 6px;border-bottom:1px solid #E4DFD3;padding-bottom:3px}
+  .fs .wk table{width:100%;border-collapse:collapse;font-size:12px}
+  .fs .wk td{padding:5px 4px;border-top:1px solid #F0ECE3;vertical-align:top}
+  .fs .pb{page-break-before:always;break-before:page}
+`;
+const fsEsc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fsT = (s) => fsEsc(translateString(s));
+// Hinweise: Zeile "Ablauf: 14:00 Trauung · 15:00 Empfang …" wird zur Zeitleiste, "Küche: …" zu Aufgaben je Abteilung
+function fsNotes(notes){
+  const lines = String(notes||"").split(/\n+/).map(l=>l.trim()).filter(Boolean);
+  let timeline = null; const rows = [], rest = [];
+  lines.forEach((l, i)=>{
+    const m = l.match(/^([^:：]{1,40})[:：]\s*(.+)$/);
+    if(i===0 && m && /\d{1,2}[:.]\d{2}|\d{1,2}\s?(am|pm|h)/i.test(m[2])) timeline = m[2].split(/\s*·\s*/).filter(Boolean);
+    else if(m) rows.push([m[1], m[2]]);
+    else rest.push(l);
+  });
+  return {timeline, rows, rest};
+}
+function functionSheetHtml(ev, hotel){
+  const time = [ev.start_time&&String(ev.start_time).slice(0,5), ev.end_time&&String(ev.end_time).slice(0,5)].filter(Boolean).join("–");
+  const facts = [["Datum", fmtDay(ev.event_date,{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"})], ["Zeit", time], ["Raum", ev.location], ["Personen", ev.guests]]
+    .map(([l,v])=>'<div class="f"><div class="l">'+fsT(l)+'</div><div class="v">'+fsEsc(v==null||v===""?"–":v)+'</div></div>').join("");
+  const box = (l, v, cls) => v ? '<div class="box '+(cls||"")+'"><h3>'+fsT(l)+'</h3><div class="b">'+fsEsc(v)+'</div></div>' : "";
+  const n = fsNotes(ev.notes);
+  const contact = [ev.client, ev.contact].filter(Boolean).join(" · ");
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'
+    + '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel">'+fsEsc(hotel.name)+' · '+fsT("Function Sheet")+'</div><h1>'+fsEsc(ev.title)+'</h1></div><span class="st">'+fsT(ev.status||"Anfrage")+'</span></div>'
+    + '<div class="facts">'+facts+'</div>'
+    + (contact ? '<div class="box" style="margin-bottom:10px"><h3>'+fsT("Kunde")+'</h3><div class="b">'+fsEsc(contact)+'</div></div>' : "")
+    + (n.timeline ? '<div class="box" style="margin-bottom:10px"><h3>'+fsT("Ablauf")+'</h3><div class="tl">'+n.timeline.map(t=>{ const m = t.match(/^(\S+\s?(am|pm)?)\s+(.+)$/i); return '<span>'+(m?'<b>'+fsEsc(m[1])+'</b>'+fsEsc(m[3]):fsEsc(t))+'</span>'; }).join("")+'</div></div>' : "")
+    + '<div class="grid">'+box("Menü und Getränke", ev.menu)+box("Aufbau und Bestuhlung", ev.setup)+box("Technik", ev.tech)
+    + (n.rows.length ? '<div class="box'+(ev.tech?'':' ')+'"><h3>'+fsT("Aufgaben je Abteilung")+'</h3><table class="dp">'+n.rows.map(([k,v])=>'<tr><td class="c"><i></i></td><td class="k">'+fsEsc(k)+'</td><td>'+fsEsc(v)+'</td></tr>').join("")+'</table></div>' : "")
+    + (n.rest.length ? '<div class="box full"><h3>'+fsT("Hinweise")+'</h3><div class="b">'+fsEsc(n.rest.join("\n"))+'</div></div>' : "")
+    + '</div>'
+    + '<div class="sig"><div>'+fsT("Kunde")+' – '+fsT("Datum und Unterschrift")+'</div><div>'+fsT("Bankettleitung")+' – '+fsT("Datum und Unterschrift")+'</div></div>'
+    + '<div class="ft"><span>'+fsT("Erstellt mit Ouverture")+'</span><span>'+fsEsc(fmtDateTime(new Date().toISOString()))+'</span></div></div>';
+}
+function weekSheetHtml(events, hotel, from){
+  const to = addDaysIso(from, 6);
+  const list = events.filter(e=>e.event_date>=from && e.event_date<=to && e.status!=="Storniert").sort((a,b)=>(a.event_date+(a.start_time||"")).localeCompare(b.event_date+(b.start_time||"")));
+  const days = {}; list.forEach(e=>{ (days[e.event_date]=days[e.event_date]||[]).push(e); });
+  return '<div class="fs wk" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'
+    + '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel">'+fsEsc(hotel.name)+'</div><h1>'+fsT("Veranstaltungen")+' '+fsEsc(fmtDay(from,{day:"2-digit",month:"2-digit"}))+'–'+fsEsc(fmtDay(to,{day:"2-digit",month:"2-digit",year:"numeric"}))+'</h1></div></div>'
+    + (list.length ? Object.keys(days).map(d=>'<h2>'+fsEsc(fmtDay(d,{weekday:"long",day:"numeric",month:"long"}))+'</h2><table>'+days[d].map(e=>'<tr><td style="width:70px"><b>'+fsEsc((e.start_time||"").slice(0,5))+'</b>'+(e.end_time?'–'+fsEsc(e.end_time.slice(0,5)):'')+'</td><td><b>'+fsEsc(e.title)+'</b> · '+fsEsc([e.location, e.guests!=null&&e.guests!==""?tf("{0} Personen", e.guests):null].filter(Boolean).join(" · "))+'<div style="color:#6B7280;white-space:pre-wrap">'+fsEsc(e.menu||"")+'</div></td><td style="width:70px;text-align:end">'+fsT(e.status)+'</td></tr>').join("")+'</table>').join("")
+      : '<p>'+fsT("Keine Veranstaltungen in diesem Zeitraum.")+'</p>')
+    + '<div class="ft"><span>'+fsT("Erstellt mit Ouverture")+'</span><span>'+fsEsc(fmtDateTime(new Date().toISOString()))+'</span></div></div>';
+}
+function printSheet(html, title){
   const w = window.open("", "_blank"); if(!w) return;
-  w.document.write('<!doctype html><meta charset="utf-8"><title>'+esc(ev.title)+'</title><style>body{font-family:Inter,Arial,sans-serif;margin:18mm;color:#1C2430}h1{font-family:Georgia,serif;margin:0 0 4px}h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#6B7280;margin:18px 0 6px;border-bottom:1px solid #E4DFD3;padding-bottom:4px}.b{white-space:pre-wrap;font-size:14px;line-height:1.5}table{border-collapse:collapse;font-size:14px}td{padding:3px 14px 3px 0;vertical-align:top}td:first-child{color:#6B7280}</style>'
-    + '<div style="font-size:12px;color:#6B7280">'+esc(hotel.name)+' · '+esc(translateString("Function Sheet"))+'</div><h1>'+esc(ev.title)+'</h1><table>'
-    + [[ "Datum", fmtDay(ev.event_date,{weekday:"long",day:"numeric",month:"long",year:"numeric"}) ], ["Zeit", [ev.start_time&&ev.start_time.slice(0,5), ev.end_time&&ev.end_time.slice(0,5)].filter(Boolean).join("–")], ["Raum", ev.location], ["Personen", ev.guests], ["Kunde", ev.client], ["Kontakt", ev.contact], ["Status", translateString(ev.status)]]
-      .filter(([,v])=>v!=null && v!=="").map(([l,v])=>'<tr><td>'+esc(translateString(l))+'</td><td><b>'+esc(v)+'</b></td></tr>').join("")
-    + '</table>' + block("Menü und Getränke", ev.menu) + block("Aufbau und Bestuhlung", ev.setup) + block("Technik", ev.tech) + block("Hinweise", ev.notes)
-    + '<script>setTimeout(function(){window.print()},300)<\/script>');
+  w.document.write('<!doctype html><html lang="'+UI_LANG+'" dir="'+(UI_LANG==="ar"?"rtl":"ltr")+'"><meta charset="utf-8"><title>'+fsEsc(title)+'</title><style>@page{size:A4;margin:14mm}body{margin:0}'+FS_CSS+'</style>'+html+'<script>setTimeout(function(){window.print()},350)<\/script>');
   w.document.close();
 }
+// PDF erzeugen (html2pdf) und herunterladen bzw. am Handy teilen
+async function sheetPdf(html, fileName, share){
+  await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js");
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;left:-10000px;top:0;background:#fff";
+  host.dir = UI_LANG==="ar" ? "rtl" : "ltr";
+  host.innerHTML = "<style>"+FS_CSS+"</style>"+html;
+  document.body.appendChild(host);
+  try {
+    const opt = {margin:[12,14,12,14], filename:fileName, image:{type:"jpeg", quality:0.95}, html2canvas:{scale:2, useCORS:true, backgroundColor:"#ffffff"}, jsPDF:{unit:"mm", format:"a4", orientation:"portrait"}, pagebreak:{mode:["css","legacy"]}};
+    const blob = await window.html2pdf().set(opt).from(host.querySelector(".fs")).outputPdf("blob");
+    const file = new File([blob], fileName, {type:"application/pdf"});
+    if(share && navigator.canShare && navigator.canShare({files:[file]})){ try { await navigator.share({files:[file], title:fileName}); return; } catch(e){ if(e && e.name==="AbortError") return; } }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  } finally { host.remove(); }
+}
+const sheetName = (ev) => (translateString("Function Sheet")+" "+ev.title+" "+ev.event_date).replace(/[\\/:*?"<>|]+/g,"").slice(0,90)+".pdf";
+function printFunctionSheet(ev, hotel){ printSheet(functionSheetHtml(ev, hotel), ev.title); }
+function SheetButtons({ev, hotel}){
+  const [busy,setBusy] = useState("");
+  const run = async (k, fn) => { setBusy(k); try { await fn(); } catch(e){ window.alert(tf("PDF konnte nicht erstellt werden: {0}", e.message)); } setBusy(""); };
+  const canShare = typeof navigator!=="undefined" && !!navigator.share;
+  return (
+    <React.Fragment>
+      <button style={smallBtn} disabled={!!busy} onClick={()=>run("pdf", ()=>sheetPdf(functionSheetHtml(ev, hotel), sheetName(ev), false))}>{busy==="pdf"?"…":"📄 PDF"}</button>
+      {canShare && <button style={smallBtn} disabled={!!busy} onClick={()=>run("share", ()=>sheetPdf(functionSheetHtml(ev, hotel), sheetName(ev), true))}>{busy==="share"?"…":"↗ "+tf("Teilen")}</button>}
+      <button style={smallBtn} onClick={()=>printFunctionSheet(ev, hotel)} title={tf("Drucken")}>🖨</button>
+    </React.Fragment>
+  );
+}
+
 function EventsView({hotel, api, role}){
   const [list,setList] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [past,setPast] = useState(false);
   const [picker,setPicker] = useState(false);
@@ -6478,6 +6580,7 @@ function EventsView({hotel, api, role}){
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
         {lead && !form && <button className="btn-primary" onClick={()=>setPicker(!picker)}>{tf("+ Veranstaltung")}</button>}
         <label style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={past} onChange={e=>setPast(e.target.checked)} /> {tf("Vergangene anzeigen")}</label>
+        {list && list.length>0 && <button style={smallBtn} onClick={async()=>{ try { await sheetPdf(weekSheetHtml(list, hotel, todayIso()), (translateString("Veranstaltungen")+" "+todayIso()+".pdf")); } catch(e){ setMsg({ok:false,text:e.message}); } }}>📄 {tf("Wochen-Übersicht (PDF)")}</button>}
       </div>
       {picker && !form && <Card style={{marginBottom:14}}>
         <div style={{fontWeight:700,marginBottom:4}}>{tf("Womit beginnen?")}</div>
@@ -6515,7 +6618,7 @@ function EventsView({hotel, api, role}){
                   <div style={{fontWeight:700,fontSize:15}} data-no-i18n="">{e.title}</div>
                   <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{[e.location, e.guests!=null && tf("{0} Personen", e.guests), e.client].filter(Boolean).join(" · ")}</div>
                   <div style={{display:"flex",gap:6,marginTop:8}}>
-                    <button style={smallBtn} onClick={()=>printFunctionSheet(e, hotel)}>🖨 {tf("Function Sheet")}</button>
+                    <SheetButtons ev={e} hotel={hotel} />
                     {lead && <button style={linkBtn} onClick={()=>setForm({...e, start_time:(e.start_time||"").slice(0,5), end_time:(e.end_time||"").slice(0,5), guests:e.guests??""})}>{tf("Bearbeiten")}</button>}
                     {lead && <button style={linkBtn} title={tf("Neue Veranstaltung mit gleichem Menü, Aufbau, Technik und Ablauf")} onClick={()=>startFrom(e)}>{tf("Als Vorlage nutzen")}</button>}
                   </div>

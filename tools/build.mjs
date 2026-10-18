@@ -10,7 +10,7 @@ import path from "node:path";
 import vm from "node:vm";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { transform } from "esbuild";
+import { transform, build } from "esbuild";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CHECK = process.argv.includes("--check");
@@ -25,6 +25,11 @@ const app = (await transform(read("src/app.jsx"), {
   loader: "jsx", minify: true, target: "es2019", charset: "utf8", legalComments: "none",
 })).code;
 emit("app.js", app);
+
+// ---------- Word-Bibliotheken (nur bei Bedarf geladen) ----------
+const vendor = await build({ entryPoints: [path.join(ROOT, "src/vendor-docx.js")], bundle: true, write: false, minify: true, format: "iife",
+  target: "es2019", charset: "utf8", legalComments: "none", platform: "browser", logLevel: "silent" });
+emit("vendor/docx.js", "// Gebaut aus src/vendor-docx.js (docxtemplater, pizzip) – nicht von Hand ändern.\n" + lf(vendor.outputFiles[0].text));
 
 // ---------- Übersetzungen ----------
 const src = read("src/i18n.js");
@@ -75,7 +80,7 @@ const appVersion = hash(app + core).slice(0, 7);
 let html = read("src/index.html");
 if (!html.includes("<!--APP-->")) throw new Error("<!--APP--> fehlt in src/index.html");
 html = html
-  .replace("<!--APP-->", `<script>window.__APP_VERSION=${JSON.stringify(appVersion)};</script>\n<script src="${ver("app.js")}"></script>`)
+  .replace("<!--APP-->", `<script>window.__APP_VERSION=${JSON.stringify(appVersion)};window.__DOCX_SRC=${JSON.stringify(ver("vendor/docx.js"))};</script>\n<script src="${ver("app.js")}"></script>`)
   .replace(/<script src="(i18n\.js|payroll\.js|holidays\.js|planning\.js|labor\.js|energy\.js|event-templates\.js)"><\/script>/g, (m, f) => `<script src="${ver(f)}"></script>`)
   // Live-Demo: Daten und Mock ebenfalls mit Versions-Kennung
   .replace(`'<script src="demo/demo-mock.js"><\\/script>'`, `'<script src="${ver("demo/demo-mock.js")}"><\\/script>'`)

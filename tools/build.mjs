@@ -1,5 +1,5 @@
 // Baut die App für den Browser – damit sie am Handy schnell öffnet:
-//  - src/app.jsx  → app.js (JSX vorab übersetzt und verkleinert, kein Babel im Browser)
+//  - src/app/*.jsx → app.js (JSX vorab übersetzt und verkleinert, kein Babel im Browser)
 //  - src/i18n.js  → i18n.js (nur die Übersetzungs-Logik) + lang/<sprache>.js (je Sprache ein Wörterbuch,
 //                   geladen wird nur die Sprache, die gerade gebraucht wird)
 //  - src/index.html → index.html (mit Versions-Kennung an jeder Datei, damit nichts Altes aus dem Cache kommt)
@@ -21,7 +21,9 @@ const outputs = new Map();
 const emit = (f, content) => outputs.set(f, content);
 
 // ---------- App ----------
-const app = (await transform(read("src/app.jsx"), {
+// Quellcode liegt thematisch aufgeteilt in src/app/*.jsx; zusammengefügt in Dateireihenfolge (gemeinsamer Gültigkeitsbereich wie vorher)
+const appSource = fs.readdirSync(path.join(ROOT, "src/app")).filter((f) => f.endsWith(".jsx")).sort().map((f) => read("src/app/" + f)).join("");
+const app = (await transform(appSource, {
   loader: "jsx", minify: true, target: "es2019", charset: "utf8", legalComments: "none",
 })).code;
 emit("app.js", app);
@@ -85,7 +87,7 @@ html = html
   // Live-Demo: Daten und Mock ebenfalls mit Versions-Kennung
   .replace(`'<script src="demo/demo-mock.js"><\\/script>'`, `'<script src="${ver("demo/demo-mock.js")}"><\\/script>'`)
   .replace(`+ '.js"><\\/script>'`, `+ '.js?v=${hash(fs.readdirSync(path.join(ROOT, "demo")).filter((f) => f.startsWith("data-")).sort().map((f) => read("demo/" + f)).join(""))}"><\\/script>'`);
-emit("index.html", "<!-- Gebaut aus src/index.html und src/app.jsx (npm run build) – nicht von Hand ändern. -->\n" + html);
+emit("index.html", "<!-- Gebaut aus src/index.html und src/app/*.jsx (npm run build) – nicht von Hand ändern. -->\n" + html);
 
 // ---------- Schreiben oder prüfen ----------
 let stale = [];

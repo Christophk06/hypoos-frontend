@@ -6630,7 +6630,8 @@ async function sheetPdf(html, fileName, share, orientation, asBlob){
   document.body.appendChild(host);
   try {
     const opt = {margin:orientation==="landscape"?[10,12,10,12]:[12,14,12,14], filename:fileName, image:{type:"jpeg", quality:0.95}, html2canvas:{scale:2, useCORS:true, backgroundColor:"#ffffff"}, jsPDF:{unit:"mm", format:"a4", orientation:orientation||"portrait"}, pagebreak:{mode:["css","legacy"]}};
-    const blob = await window.html2pdf().set(opt).from(host.querySelector(".fs")).outputPdf("blob");
+    // html2pdf zentriert den Inhalt; mit Bildlaufleiste verrutscht er dabei um ein paar Pixel nach rechts – daher linksbündig
+    const blob = await window.html2pdf().set(opt).from(host.querySelector(".fs")).toContainer().then(function(){ this.prop.container.style.margin = "0"; this.prop.container.style.right = "auto"; }).outputPdf("blob");
     if(asBlob) return blob;
     const file = new File([blob], fileName, {type:"application/pdf"});
     if(share && navigator.canShare && navigator.canShare({files:[file]})){ try { await navigator.share({files:[file], title:fileName}); return; } catch(e){ if(e && e.name==="AbortError") return; } }
@@ -7126,40 +7127,48 @@ async function logoPng(dataUrl){
     return {bytes:dataUrlToBytes(c.toDataURL("image/png")), w, h};
   } catch(e){ return null; }
 }
-// Word-Dokument im gleichen Stil; data = null lässt die Platzhalter stehen (Vorlage zum Gestalten in Word)
+// Word-Dokument im gleichen Stil; data = null lässt die Platzhalter stehen (Vorlage zum Gestalten in Word).
+// Reihenfolge der Word-Formatangaben folgt dem Office-Schema (Word ist dabei streng).
 async function docxFromText(text, {hotel, data, rtl} = {}){
   const {PizZip} = await loadDocx();
   const accent = String((hotel && hotel.brand_color) || "#A9834B").replace("#","");
   const s = (hotel && hotel.invoice_settings) || {};
-  const R = (t, props) => '<w:r>'+(props||rtl ? '<w:rPr>'+(props||"")+(rtl?'<w:rtl/>':'')+'</w:rPr>' : '')+'<w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>';
-  const runs = (lines, props) => lines.map((l,i)=>(i?'<w:r><w:br/></w:r>':'')+R(l, props)).join("");
-  const P = (inner, ppr) => '<w:p><w:pPr>'+(ppr||"")+(rtl?'<w:bidi/>':'')+'</w:pPr>'+inner+'</w:p>';
+  // Zeichenformat: Schrift, fett, Farbe, Größe, RTL
+  const rp = ({font, b, color, sz} = {}) => (font?'<w:rFonts w:ascii="'+font+'" w:hAnsi="'+font+'"/>':'')+(b?'<w:b/>':'')+(color?'<w:color w:val="'+color+'"/>':'')+(sz?'<w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>':'')+(rtl?'<w:rtl/>':'');
+  const R = (t, f) => { const p = rp(f); return '<w:r>'+(p?'<w:rPr>'+p+'</w:rPr>':'')+'<w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>'; };
+  const runs = (lines, f) => lines.map((l,i)=>(i?'<w:r><w:br/></w:r>':'')+R(l, f)).join("");
+  // Absatzformat: Vorlage, Rahmen, Schattierung, RTL, Abstand, Einzug, Ausrichtung
+  const P = (inner, {style, bdr, shd, after, before, ind, jc} = {}) => '<w:p><w:pPr>'+(style?'<w:pStyle w:val="'+style+'"/>':'')+(bdr||'')+(shd?'<w:shd w:val="clear" w:color="auto" w:fill="'+shd+'"/>':'')+(rtl?'<w:bidi/>':'')
+    +(after!=null||before!=null?'<w:spacing'+(before!=null?' w:before="'+before+'"':'')+(after!=null?' w:after="'+after+'"':'')+'/>':'')+(ind?'<w:ind w:left="'+ind+'"/>':'')+(jc?'<w:jc w:val="'+jc+'"/>':'')+'</w:pPr>'+inner+'</w:p>';
+  const tblPr = (borders, mar) => '<w:tblPr>'+(rtl?'<w:bidiVisual/>':'')+'<w:tblW w:w="9070" w:type="dxa"/>'+(borders||'')+'<w:tblLayout w:type="fixed"/>'+(mar||'')+'</w:tblPr>';
   const blocks = fillLetter(parseLetter(text), data);
   let body = "";
   const logo = hotel && hotel.logo_data ? await logoPng(hotel.logo_data) : null;
-  // Briefkopf: Logo bzw. Name links, Anschrift rechts, Linie in der Hotelfarbe
-  const head = [hotel && hotel.logo_data ? (s.company||hotel.name) : null, ...String(s.address||"").split("\n"), s.phone, s.email, s.web].filter(Boolean);
   if(hotel){
+    // Briefkopf: Logo bzw. Name links, Anschrift rechts, Linie in der Hotelfarbe
+    const head = [logo ? (s.company||hotel.name) : null, ...String(s.address||"").split("\n"), s.phone, s.email, s.web].filter(Boolean);
+    const cx = logo ? Math.round(logo.w/logo.h*540000) : 0;
     const left = logo
-      ? '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="'+Math.round(logo.w/logo.h*540000)+'" cy="540000"/><wp:docPr id="1" name="Logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+Math.round(logo.w/logo.h*540000)+'" cy="540000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
-      : R(s.company||hotel.name, '<w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="30"/>');
-    const cell = (inner, w) => '<w:tc><w:tcPr><w:tcW w:w="'+w+'" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="18" w:color="'+accent+'"/></w:tcBorders></w:tcPr>'+inner+'</w:tc>';
-    body += '<w:tbl><w:tblPr><w:tblW w:w="9070" w:type="dxa"/><w:tblLayout w:type="fixed"/>'+(rtl?'<w:bidiVisual/>':'')+'</w:tblPr><w:tblGrid><w:gridCol w:w="4535"/><w:gridCol w:w="4535"/></w:tblGrid><w:tr>'
-      + cell(P(left, '<w:spacing w:after="120"/>'), 4535)
-      + cell(P(runs(head, '<w:sz w:val="17"/><w:color w:val="6B7280"/>'), '<w:jc w:val="'+(rtl?"left":"right")+'"/><w:spacing w:after="120"/>'), 4535)
-      + '</w:tr></w:tbl>' + P("", '<w:spacing w:after="240"/>');
+      ? '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="540000"/><wp:docPr id="1" name="Logo"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="540000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
+      : R(s.company||hotel.name, {font:"Georgia", b:true, sz:30});
+    const cell = (inner) => '<w:tc><w:tcPr><w:tcW w:w="4535" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="18" w:space="0" w:color="'+accent+'"/></w:tcBorders></w:tcPr>'+inner+'</w:tc>';
+    body += '<w:tbl>'+tblPr()+'<w:tblGrid><w:gridCol w:w="4535"/><w:gridCol w:w="4535"/></w:tblGrid><w:tr>'
+      + cell(P(left, {after:120})) + cell(P(runs(head, {color:"6B7280", sz:17}), {after:120, jc:rtl?"left":"right"}))
+      + '</w:tr></w:tbl>' + P("", {after:240});
   }
   for(const b of blocks){
-    if(b.t==="title") body += P(R(b.text), '<w:pStyle w:val="Title"/>');
-    else if(b.t==="sub") body += P(R(b.text, '<w:sz w:val="19"/><w:color w:val="6B7280"/>'), '<w:spacing w:after="240"/>');
+    if(b.t==="title") body += P(R(b.text), {style:"Title"});
+    else if(b.t==="sub") body += P(R(b.text, {color:"6B7280", sz:19}), {after:240});
     else if(b.t==="facts"){
-      body += '<w:tbl><w:tblPr><w:tblW w:w="9070" w:type="dxa"/><w:tblLayout w:type="fixed"/>'+(rtl?'<w:bidiVisual/>':'')+'<w:tblBorders><w:left w:val="single" w:sz="24" w:color="'+accent+'"/><w:insideH w:val="single" w:sz="4" w:color="ECE7DC"/></w:tblBorders><w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="140" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="140" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="3400"/><w:gridCol w:w="5670"/></w:tblGrid>'
+      body += '<w:tbl>'+tblPr('<w:tblBorders><w:left w:val="single" w:sz="24" w:space="0" w:color="'+accent+'"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="ECE7DC"/></w:tblBorders>',
+          '<w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="140" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="140" w:type="dxa"/></w:tblCellMar>')
+        + '<w:tblGrid><w:gridCol w:w="3400"/><w:gridCol w:w="5670"/></w:tblGrid>'
         + b.rows.map(([l,v])=>'<w:tr>'
-          + '<w:tc><w:tcPr><w:tcW w:w="3400" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8F6F1"/></w:tcPr>'+P(R(l, '<w:color w:val="6B7280"/><w:sz w:val="20"/>'), '<w:spacing w:after="0"/>')+'</w:tc>'
-          + '<w:tc><w:tcPr><w:tcW w:w="5670" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8F6F1"/></w:tcPr>'+P(runs(String(v).split("\n"), '<w:b/>'), '<w:spacing w:after="0"/>')+'</w:tc></w:tr>').join("")
-        + '</w:tbl>' + P("", '<w:spacing w:after="120"/>');
+          + '<w:tc><w:tcPr><w:tcW w:w="3400" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8F6F1"/></w:tcPr>'+P(R(l, {color:"6B7280", sz:20}), {after:0})+'</w:tc>'
+          + '<w:tc><w:tcPr><w:tcW w:w="5670" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8F6F1"/></w:tcPr>'+P(runs(String(v).split("\n"), {b:true}), {after:0})+'</w:tc></w:tr>').join("")
+        + '</w:tbl>' + P("", {after:120});
     }
-    else if(b.t==="note") body += P(runs(String(b.text).split("\n")), '<w:pBdr><w:left w:val="single" w:sz="24" w:space="8" w:color="'+accent+'"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="FBFAF7"/><w:ind w:left="200"/><w:spacing w:before="60" w:after="240"/>');
+    else if(b.t==="note") body += P(runs(String(b.text).split("\n")), {bdr:'<w:pBdr><w:left w:val="single" w:sz="24" w:space="8" w:color="'+accent+'"/></w:pBdr>', shd:"FBFAF7", before:60, after:240, ind:200});
     else body += P(runs(b.lines));
   }
   const foot = hotel ? letterFooter(hotel).join("  ·  ") : "";
@@ -7169,8 +7178,8 @@ async function docxFromText(text, {hotel, data, rtl} = {}){
   zip.file("word/_rels/document.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdFoot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>'+(logo?'<Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>':'')+'</Relationships>');
   if(logo) zip.file("word/media/logo.png", logo.bytes);
   zip.file("word/styles.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Arial"/><w:color w:val="1C2430"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="120" w:after="80"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style></w:styles>');
-  zip.file("word/footer1.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="4" w:space="6" w:color="E4DFD3"/></w:pBdr><w:jc w:val="center"/>'+(rtl?'<w:bidi/>':'')+'</w:pPr>'+(foot?R(foot, '<w:sz w:val="15"/><w:color w:val="9AA3AF"/>'):'')+'</w:p></w:ftr>');
-  zip.file("word/document.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'+body+'<w:sectPr><w:footerReference w:type="default" r:id="rIdFoot"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1418" w:bottom="1134" w:left="1418" w:header="708" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>');
+  zip.file("word/footer1.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+P(foot ? R(foot, {color:"9AA3AF", sz:15}) : "", {bdr:'<w:pBdr><w:top w:val="single" w:sz="4" w:space="6" w:color="E4DFD3"/></w:pBdr>', jc:"center"})+'</w:ftr>');
+  zip.file("word/document.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>'+body+'<w:sectPr><w:footerReference w:type="default" r:id="rIdFoot"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1418" w:bottom="1134" w:left="1418" w:header="708" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>');
   return zip.generate({type:"blob", mimeType:DOCX_MIME});
 }
 

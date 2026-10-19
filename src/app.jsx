@@ -1449,7 +1449,7 @@ function BudgetView({items, callHotel, callId, refresh, hotel}){
       <div className="stack" style={{display:"flex",gap:14,marginBottom:18}}>
         <StatTile label="PLAN" value={fmtEur(planned)} sub={tf("{0} Posten", items.length)} />
         <StatTile label="IST" value={fmtEur(actual)} sub={planned>0 ? tf("{0} % vom Plan", Math.round(actual/planned*100)) : "—"} />
-        <StatTile label={tf("Beauftragt")} value={fmtEur(committed)} sub={tf("Prognose {0}", fmtEur(actual+committed))} color={actual+committed>planned && planned>0 ? WARN : undefined} />
+        <StatTile label="BEAUFTRAGT" value={fmtEur(committed)} sub={tf("Prognose {0}", fmtEur(actual+committed))} color={actual+committed>planned && planned>0 ? WARN : undefined} />
         <StatTile label={diff>=0 ? "NOCH VERFÜGBAR" : "ÜBERSCHRITTEN"} value={fmtEur(Math.abs(diff))} color={diff>=0?GOOD:BAD} />
       </div>
 
@@ -7284,7 +7284,7 @@ function invoiceSheetHtml(inv, hotel, cancelsNumber){
   const cur = inv.currency || "EUR";
   const m = (n) => (Number(n)||0).toLocaleString(UI_LOCALE,{style:"currency",currency:cur});
   const t = invTotals(inv.items, inv.prices_gross);
-  const facts = [["Rechnungsnummer", inv.number], ["Rechnungsdatum", fmtDate(inv.issued_on)], ["Leistungszeitraum", inv.service_date||"–"], ...(inv.due_on && inv.kind!=="Storno" ? [["Zahlbar bis", fmtDate(inv.due_on)]] : [])]
+  const facts = [["Rechnungsnummer", inv.number], ["Rechnungsdatum", fmtDate(inv.issued_on)], ["Leistungszeitraum", /^\d{4}-\d{2}-\d{2}$/.test(inv.service_date||"") ? fmtDate(inv.service_date) : (inv.service_date||"–")], ...(inv.due_on && inv.kind!=="Storno" ? [["Zahlbar bis", fmtDate(inv.due_on)]] : [])]
     .map(([l,v])=>'<div class="f"><div class="l">'+fsT(l)+'</div><div class="v">'+fsEsc(v)+'</div></div>').join("");
   const rows = (inv.items||[]).map((i,n)=>'<tr><td>'+(n+1)+'</td><td>'+fsEsc(i.label)+'</td><td class="r">'+fsEsc(String(i.qty).replace(".",","))+(i.unit?' '+fsEsc(i.unit):'')+'</td><td class="r">'+m(i.unit_price)+'</td><td class="r">'+(s.small_business?'–':fsEsc(i.tax_rate)+' %')+'</td><td class="r">'+m(r2(i.qty*i.unit_price))+'</td></tr>').join("");
   const sumRow = (l, v, strong) => '<tr'+(strong?' style="font-weight:700;font-size:13px"':'')+'><td colspan="5" class="r">'+l+'</td><td class="r">'+v+'</td></tr>';

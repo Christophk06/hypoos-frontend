@@ -27,7 +27,7 @@
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
     document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=95ca8bac72"><\/script>');
-    document.write('<script src="demo/demo-mock.js?v=b5f3807784"><\/script>');
+    document.write('<script src="demo/demo-mock.js?v=cb91d1fdf1"><\/script>');
   }
   // Als App installierbar: Service Worker (nicht in der Demo)
   if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
@@ -159,7 +159,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="e1c6463";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
-<script src="app.js?v=823cf04c9f"></script>
+<script>window.__APP_VERSION="9aa57f2";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
+<script src="app.js?v=7380dfe359"></script>
 </body>
 </html>

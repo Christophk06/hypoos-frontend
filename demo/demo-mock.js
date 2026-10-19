@@ -79,6 +79,10 @@
   D.events = (D.event_seed || []).map(function (e, i) { return Object.assign({ id: "ev-" + i, hotel_id: D.hotel.id }, e, { event_date: add(todayIso, e.inDays) }); });
   D.guest_threads = (D.chat_seed || []).map(function (c, i) { var t0 = now.getTime() - (i + 1) * 3600000; return { thread: "demo-thread-" + i + "-xxxxxxxx", room_number: c.room,
     messages: c.msgs.map(function (m, j) { return { id: "gm-" + i + "-" + j, sender: m[0], body: m[1], read_at: m[0] === "staff" || i ? new Date().toISOString() : null, created_at: new Date(t0 + j * 300000).toISOString() }; }) }; });
+  // 027: Rechnungsdaten, Rechnungen, eigene Vorlagen
+  D.hotel.invoice_settings = D.hotel.invoice_settings || { company: D.hotel.name + " GmbH", address: "Ringstraße 1\n1010 Wien", uid: "ATU12345678", iban: "AT61 1904 3002 3457 3201", bic: "GIBAATWWXXX", bank: "Demo Bank", phone: "+43 1 234 56 78", email: "info@hotel.example", prefix: "RE-", payment_days: 14, default_tax_rate: 10, prices_gross: true };
+  D.invoices = []; D.doc_templates = [];
+  (D.budget || []).slice(0, 2).forEach(function (x, i) { x.committed = Math.round(Number(x.planned || 0) * [0.15, 0.1][i]); });
   // 026: Räume, Angebote, eigene Vorlagen
   D.event_spaces = []; D.event_templates = [];
   D.events.forEach(function (e, i) {
@@ -87,7 +91,11 @@
     e.space_id = sp ? sp.id : null; e.offer_items = []; e.offer_status = "keins";
   });
   if (D.events[0]) { D.events[0].offer_items = [{ label: (D.events[0].menu || "").split("\n")[1] || "Menü", unit_price: 69, per_person: true }, { label: "Getränkepauschale", unit_price: 45, per_person: true }, { label: D.events[0].location || "Raum", qty: 1, unit_price: 800, per_person: false }];
-    D.events[0].offer_status = "angenommen"; D.events[0].offer_answer_name = D.events[0].client; D.events[0].offer_answered_at = new Date(now.getTime() - 5 * 86400000).toISOString(); }
+    D.events[0].offer_status = "angenommen"; D.events[0].offer_answer_name = D.events[0].client; D.events[0].offer_answered_at = new Date(now.getTime() - 5 * 86400000).toISOString();
+    var g0 = Number(D.events[0].guests) || 80, dep = Math.round((69 + 45) * g0 * 0.3 + 800 * 0.3);
+    D.invoices.push({ id: "inv-1", hotel_id: D.hotel.id, event_id: D.events[0].id, kind: "Anzahlung", year: Number(todayIso.slice(0, 4)), seq: 1, number: "RE-" + todayIso.slice(0, 4) + "-0001", issued_on: add(todayIso, -4), due_on: add(todayIso, 10),
+      service_date: D.events[0].event_date, recipient: D.events[0].client || "Kunde", recipient_email: null, items: [{ label: "Anzahlung 30 %", qty: 1, unit: "", unit_price: dep, tax_rate: 10 }], prices_gross: true,
+      net_total: Math.round(dep / 1.1 * 100) / 100, tax_total: Math.round((dep - dep / 1.1) * 100) / 100, gross_total: dep, deducted: 0, currency: D.hotel.currency || "EUR", seller: Object.assign({ hotel: D.hotel.name }, D.hotel.invoice_settings), status: "bezahlt", paid_on: add(todayIso, -1) }); }
   if (D.events[1]) { D.events[1].offer_items = [{ label: "Tagungspauschale", unit_price: 58, per_person: true }]; D.events[1].offer_status = "offen"; D.events[1].offer_valid_until = add(todayIso, 10); }
   // Abhängigkeiten für den kritischen Pfad (über die festen Vorlagen-Schlüssel, in jeder Sprache gleich)
   (function () { var k = function (key) { return D.tasks.find(function (t) { return t.template_key === key; }); };
@@ -194,6 +202,38 @@
     if (p === H + "/event-templates") { if (m === "POST") { var et = { id: nid("et"), hotel_id: D.hotel.id, name: b.name, data: b.data }; D.event_templates.push(et); return ok(et); } return ok(D.event_templates); }
     if ((mm = p.match(/^\/api\/event-templates\/([^/]+)$/))) { remove(D.event_templates, mm[1]); return ok({ ok: true }); }
     if ((mm = p.match(/^\/api\/events\/([^/]+)\/offer$/))) { var eo = byId(D.events, mm[1]); if (eo.offer_status === "keins") eo.offer_status = "offen"; return ok(Object.assign({ url: location.origin + location.pathname.replace(/[^/]*$/, "") + "angebot.html?demo=1", email_sent: false }, eo)); }
+    // Rechnungen
+    if (p === H + "/invoices") {
+      if (m === "POST") {
+        var set = D.hotel.invoice_settings || {}, gross = set.prices_gross !== false, its = (b.items || []).filter(function (i) { return i.label && i.qty; });
+        if (b.kind === "Anzahlung") { var byR = {}; its.forEach(function (i) { byR[i.tax_rate] = (byR[i.tax_rate] || 0) + i.qty * i.unit_price; }); var ks = Object.keys(byR);
+          its = ks.map(function (r) { return { label: "Anzahlung " + b.deposit_percent + " %" + (ks.length > 1 ? " (" + r + " %)" : ""), qty: 1, unit: "", unit_price: Math.round(byR[r] * b.deposit_percent) / 100, tax_rate: Number(r) }; }); }
+        if (!its.length) return ok({ error: "Bitte mindestens eine Position eintragen." }, 400);
+        var gT = 0, tT = 0; var byR2 = {}; its.forEach(function (i) { byR2[i.tax_rate] = (byR2[i.tax_rate] || 0) + i.qty * i.unit_price; });
+        Object.keys(byR2).forEach(function (r) { var a = byR2[r], tx = gross ? a * r / (100 + Number(r)) : a * r / 100; tT += Math.round(tx * 100) / 100; gT += gross ? a : a + tx; });
+        var yr = Number(todayIso.slice(0, 4)), sq2 = D.invoices.filter(function (x) { return x.year === yr; }).length + 1;
+        var ded = b.kind === "Schlussrechnung" ? D.invoices.filter(function (x) { return x.event_id === b.event_id && x.kind === "Anzahlung" && x.status !== "storniert"; }).reduce(function (s3, x) { return s3 + x.gross_total; }, 0) : 0;
+        var inv = { id: nid("inv"), hotel_id: D.hotel.id, event_id: b.event_id || null, kind: b.kind || "Rechnung", year: yr, seq: sq2, number: (set.prefix || "") + yr + "-" + String(sq2).padStart(4, "0"), issued_on: todayIso, due_on: add(todayIso, set.payment_days || 14),
+          service_date: b.service_date || null, recipient: b.recipient, recipient_email: b.recipient_email || null, items: its, prices_gross: gross, net_total: Math.round((gT - tT) * 100) / 100, tax_total: Math.round(tT * 100) / 100, gross_total: Math.round(gT * 100) / 100,
+          deducted: ded, currency: D.hotel.currency || "EUR", note: b.note || null, seller: Object.assign({ hotel: D.hotel.name }, set), status: "offen", paid_on: null };
+        D.invoices.unshift(inv); return ok(inv);
+      }
+      return ok(D.invoices.filter(function (x) { return !q.get("event_id") || x.event_id === q.get("event_id"); }));
+    }
+    if ((mm = p.match(/^\/api\/invoices\/([^/]+)\/cancel$/))) { var oi = byId(D.invoices, mm[1]); oi.status = "storniert"; var yr2 = Number(todayIso.slice(0, 4)), sq3 = D.invoices.filter(function (x) { return x.year === yr2; }).length + 1;
+      var st2 = Object.assign({}, oi, { id: nid("inv"), kind: "Storno", seq: sq3, number: ((D.hotel.invoice_settings || {}).prefix || "") + yr2 + "-" + String(sq3).padStart(4, "0"), issued_on: todayIso, due_on: null, cancels: oi.id, status: "storniert",
+        items: oi.items.map(function (i) { return Object.assign({}, i, { qty: -i.qty }); }), net_total: -oi.net_total, tax_total: -oi.tax_total, gross_total: -oi.gross_total, deducted: -(oi.deducted || 0) });
+      D.invoices.unshift(st2); return ok(st2); }
+    if ((mm = p.match(/^\/api\/invoices\/([^/]+)\/send$/))) return ok({ ok: true });
+    if ((mm = p.match(/^\/api\/invoices\/([^/]+)$/))) { var iv = byId(D.invoices, mm[1]); if (b.status) { iv.status = b.status; iv.paid_on = b.status === "bezahlt" ? todayIso : null; } return ok(iv); }
+    // Dokument-Vorlagen
+    if (p === H + "/doc-templates") { if (m === "POST") { var dt = Object.assign({ id: nid("dt"), hotel_id: D.hotel.id, has_file: !!b.file_data, created_at: new Date().toISOString() }, b); D.doc_templates.push(dt); return ok(dt); }
+      return ok(D.doc_templates.map(function (x) { return Object.assign({}, x, { file_data: undefined }); })); }
+    if ((mm = p.match(/^\/api\/doc-templates\/([^/]+)\/file$/))) { var df = byId(D.doc_templates, mm[1]) || {}; return ok({ file_data: df.file_data, file_name: df.file_name }); }
+    if ((mm = p.match(/^\/api\/doc-templates\/([^/]+)$/))) { if (m === "DELETE") { remove(D.doc_templates, mm[1]); return ok({ ok: true }); } var dt2 = byId(D.doc_templates, mm[1]); Object.assign(dt2, b, b.file_data !== undefined ? { has_file: !!b.file_data } : {}); return ok(dt2); }
+    if (p === H + "/send-document") return ok({ ok: true });
+    if ((mm = p.match(/^\/api\/lost-found\/([^/]+)\/notify$/))) { var lfn = byId(D.lost_found, mm[1]); lfn.notified_at = new Date().toISOString(); if (!lfn.guest_contact) lfn.guest_contact = b.email; return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/trainings\/([^/]+)\/proof$/))) { var trp = byId(D.trainings, mm[1]); return ok({ training: trp, acks: D.acks.filter(function (a) { return a.training_id === trp.id; }) }); }
     // Gäste-Chat
     if (p === H + "/guest-chats") return ok(D.guest_threads.map(function (t) { return Object.assign({ last_at: t.messages[t.messages.length - 1].created_at, unread: t.messages.filter(function (x) { return x.sender === "guest" && !x.read_at; }).length }, t); }));
     if ((mm = p.match(/^\/api\/hotels\/[^/]+\/guest-chats\/([^/]+)$/))) { var th = D.guest_threads.find(function (t) { return t.thread === mm[1]; }); if (!th) return ok({ error: "Nicht gefunden." }, 404);
@@ -323,7 +363,7 @@
         var ex = D.forecast.find(function (x) { return x.day === dd; });
         if (ex) { outF.push(ex); continue; }
         var wd = new Date(dd + "T00:00:00Z").getUTCDay(), base = [118, 92, 88, 96, 112, 131, 126][wd];
-        outF.push({ day: dd, occupied: base, arrivals: Math.round(base * 0.27), departures: Math.round(base * 0.24), source: "pms" });
+        outF.push({ day: dd, occupied: base, arrivals: Math.round(base * 0.27), departures: Math.round(base * 0.24), revenue: Math.round(base * [142, 128, 124, 129, 138, 159, 152][wd]), source: "pms" });
       }
       return ok(lead ? outF : []);
     }
@@ -350,7 +390,7 @@
       if (m === "POST") { var tr = Object.assign({ id: nid("tr"), organization_id: "demo-org", acks: [] }, b); D.trainings.unshift(tr); return ok(tr); }
       return ok(D.trainings.map(function (t) { return Object.assign({}, t, { acks: D.acks.filter(function (a) { return a.training_id === t.id && (lead || a.user_id === ME); }) }); }));
     }
-    if ((mm = p.match(/^\/api\/trainings\/([^/]+)\/ack$/))) { var ak = { training_id: mm[1], user_id: ME, acked_at: new Date().toISOString() }; D.acks.push(ak); return ok(ak); }
+    if ((mm = p.match(/^\/api\/trainings\/([^/]+)\/ack$/))) { var ak = { training_id: mm[1], user_id: ME, acked_at: new Date().toISOString(), signer_name: b.signer_name || null, signature_data: b.signature_data || null }; D.acks.push(ak); return ok(ak); }
     if ((mm = p.match(/^\/api\/trainings\/([^/]+)$/))) { if (m === "DELETE") { remove(D.trainings, mm[1]); return ok({ ok: true }); } var tr2 = byId(D.trainings, mm[1]); Object.assign(tr2, b); return ok(tr2); }
     // Fundsachen
     if (p === H + "/lost-found") {
@@ -391,7 +431,9 @@
         tickets_opened: D.tickets.length, tickets_done: D.tickets.filter(function (t) { return t.status === "Erledigt"; }).length, tickets_open: D.tickets.filter(function (t) { return t.status !== "Erledigt"; }).length,
         tickets_urgent_open: D.tickets.filter(function (t) { return t.status !== "Erledigt" && t.priority === "Dringend"; }).length, median_hours_to_fix: 4.5,
         guest_requests: D.tickets.filter(function (t) { return t.kind === "Gästewunsch"; }).length, rooms_cleaned: Math.round(nights * 0.3), avg_cleaning_minutes: 27,
-        temp_readings: D.readings.length, temp_out_of_range: D.readings.filter(function (r) { return r.out_of_range; }).length });
+        temp_readings: D.readings.length, temp_out_of_range: D.readings.filter(function (r) { return r.out_of_range; }).length,
+        rooms_available: (D.hotel.rooms || 140) * Math.round((new Date(k1) - new Date(k0)) / 86400000), occupancy_pct: Math.round(nights / ((D.hotel.rooms || 140) * Math.round((new Date(k1) - new Date(k0)) / 86400000)) * 1000) / 10,
+        room_revenue: Math.round(nights * 141), adr: 141, revpar: Math.round(nights * 141 / ((D.hotel.rooms || 140) * Math.round((new Date(k1) - new Date(k0)) / 86400000)) * 100) / 100 });
     }
     // Gruppenansicht
     if (p === "/api/organizations/demo-org/overview") {
@@ -399,7 +441,9 @@
       return ok([Object.assign({}, D.hotel, { tickets_open: D.tickets.filter(function (t) { return t.status !== "Erledigt"; }).length, tickets_urgent: 1,
         on_duty: TIMES.filter(function (e) { return !e.clock_out; }).length, rooms_total: D.rooms.length,
         rooms_ready: D.rooms.filter(function (r) { return r.status === "Sauber" || r.status === "Kontrolliert"; }).length,
-        rooms_dirty: D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).length, arrivals: Math.round(fcT * 0.27), departures: Math.round(fcT * 0.24) })]);
+        rooms_dirty: D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).length, arrivals: Math.round(fcT * 0.27), departures: Math.round(fcT * 0.24),
+        month_occupancy: 79.1, month_adr: 141, month_revpar: 111.5, tasks_overdue: D.tasks.filter(function (t) { return t.status !== "Erledigt" && t.due_date && t.due_date < todayIso; }).length, review_avg: 4.5, feedback_avg: 4.6,
+        budget_planned: D.budget.reduce(function (s4, x) { return s4 + Number(x.planned || 0); }, 0), budget_spent: D.budget.reduce(function (s4, x) { return s4 + Number(x.actual || 0) + Number(x.committed || 0); }, 0) })]);
     }
     // Krankmeldung und offene Schichten
     if (p === H + "/sick") {
@@ -528,12 +572,13 @@
     if (p === H + "/tickets") {
       if (m === "POST") {
         var tkn = { id: nid("tk"), hotel_id: D.hotel.id, department: b.department || "Technik", location: b.location || null, title: b.title, description: b.description || null,
-          priority: b.priority || "Normal", status: "Offen", has_photo: !!b.photo_data, photo_data: b.photo_data || null, reporter_id: ME, assignee_id: null, created_at: new Date().toISOString() };
+          priority: b.priority || "Normal", status: "Offen", has_photo: !!b.photo_data, photo_data: b.photo_data || null, reporter_id: ME, assignee_id: null, created_at: new Date().toISOString(),
+          kind: b.kind || "Mangel", contractor_id: b.contractor_id || null, due_on: b.due_on || null };
         D.tickets.unshift(tkn); return ok(tkn);
       }
       var sq = q.get("status");
       return ok(D.tickets.filter(function (t) { return (canSee(t.department) || t.reporter_id === ME || t.assignee_id === ME) &&
-        (sq === "open" ? t.status !== "Erledigt" : sq === "done" ? t.status === "Erledigt" : true); }));
+        (sq === "open" ? t.status !== "Erledigt" : sq === "done" ? t.status === "Erledigt" : true) && (!q.get("kind") || t.kind === q.get("kind")) && (!q.get("plan_id") || t.plan_id === q.get("plan_id")); }));
     }
     if ((mm = p.match(/^\/api\/tickets\/([^/]+)\/photo$/))) return ok({ photo_data: (byId(D.tickets, mm[1]) || {}).photo_data || null });
     if ((mm = p.match(/^\/api\/tickets\/([^/]+)$/))) {

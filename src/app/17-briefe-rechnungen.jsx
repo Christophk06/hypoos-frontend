@@ -440,7 +440,7 @@ function invoiceSheetHtml(inv, hotel, cancelsNumber){
   return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
     + '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel">'+fsEsc(s.company||s.hotel||hotel.name)+'</div><h1>'+fsT(INV_KIND_TITLE[inv.kind]||"Rechnung")+'</h1></div>'
     + '<div style="font-size:10.5px;color:#6B7280;white-space:pre-wrap;text-align:end">'+fsEsc([s.address, s.phone, s.email, s.web].filter(Boolean).join("\n"))+'</div></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px"><div class="box"><h3>'+fsT("Rechnungsempfänger")+'</h3><div class="b">'+fsEsc(inv.recipient)+'</div></div><div class="facts" style="grid-template-columns:1fr 1fr;margin:0">'+facts+'</div></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px"><div class="box"><h3>'+fsT("Rechnungsempfänger")+'</h3><div class="b">'+fsEsc(inv.recipient)+'</div>'+(inv.recipient_uid?'<div style="margin-top:4px;font-size:10.5px">'+fsT("UID")+': '+fsEsc(inv.recipient_uid)+'</div>':'')+'</div><div class="facts" style="grid-template-columns:1fr 1fr;margin:0">'+facts+'</div></div>'
     + (inv.kind==="Storno" && cancelsNumber ? '<p style="margin:0 0 8px">'+fsEsc(tf("Storno zu Rechnung {0}", cancelsNumber))+'</p>' : '')
     + '<table class="t"><thead><tr><th>#</th><th>'+fsT("Bezeichnung")+'</th><th class="r">'+fsT("Menge")+'</th><th class="r">'+fsT("Einzelpreis")+'</th><th class="r">'+fsT("USt")+'</th><th class="r">'+fsT("Betrag")+'</th></tr></thead><tbody>'+rows+sums+'</tbody></table>'
     + (inv.prices_gross && !s.small_business ? '<p style="font-size:10.5px;color:#6B7280;margin:6px 0 0">'+fsT("Alle Preise inklusive Umsatzsteuer.")+'</p>' : '')
@@ -486,7 +486,7 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
   const hasDeposit = ev && (invoices||[]).some(i=>i.event_id===ev.id && i.kind==="Anzahlung" && i.status!=="storniert");
   const fromOffer = () => ev ? offerSum(ev.offer_items, ev.guests).lines.filter(l=>l.label).map(l=>({label:l.label, qty:l.qtyEff, unit:"", unit_price:Number(String(l.unit_price??0).replace(",","."))||0, tax_rate:rate0})) : [];
   const [f,setF] = useState({kind: ev ? (hasDeposit ? "Schlussrechnung" : "Anzahlung") : "Rechnung", deposit_percent:30,
-    recipient:[ev && ev.client, ev && ev.contact].filter(Boolean).join("\n"), recipient_email:((ev && ev.contact)||"").match(/[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/)?.[0]||"",
+    recipient:[ev && ev.client, ev && ev.contact].filter(Boolean).join("\n"), recipient_email:((ev && ev.contact)||"").match(/[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/)?.[0]||"", recipient_uid:"",
     service_date: ev ? fmtDate(ev.event_date) : "", note:"", items: fromOffer().length ? fromOffer() : [{label:"", qty:1, unit:"", unit_price:"", tax_rate:rate0}]});
   const [busy,setBusy] = useState(false); const [msg,setMsg] = useState(null);
   const items = f.items.map(i=>({...i, qty:Number(String(i.qty).replace(",","."))||0, unit_price:Number(String(i.unit_price).replace(",","."))||0, tax_rate:Number(String(i.tax_rate).replace(",","."))||0}));
@@ -514,6 +514,8 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
         <div>
           <Field label={tf("E-Mail des Empfängers")}><input className="input" type="email" value={f.recipient_email} onChange={e=>setF({...f,recipient_email:e.target.value})} /></Field>
           <Field label={tf("Leistungsdatum / -zeitraum")}><input className="input" value={f.service_date} onChange={e=>setF({...f,service_date:e.target.value})} /></Field>
+          <Field label={tf("UID-Nummer des Empfängers (bei Unternehmen)")}><input className="input" placeholder="ATU12345678" value={f.recipient_uid} onChange={e=>setF({...f,recipient_uid:e.target.value})} data-no-i18n="" /></Field>
+          {!f.recipient_uid.trim() && (depAmount ?? t.gross) > 10000 && <div style={{fontSize:12.5,color:WARN,marginTop:-4,marginBottom:8}}>{tf("Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG).")}</div>}
         </div>
       </div>
       <div style={{overflowX:"auto"}}>

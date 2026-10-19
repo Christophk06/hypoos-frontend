@@ -16410,4 +16410,23 @@ I18N.ja["{0} bis {1} Zimmer"] = "客室{0}～{1}室";
 I18N.zh["{0} bis {1} Zimmer"] = "{0} 至 {1} 间客房";
 I18N.ar["{0} bis {1} Zimmer"] = "من {0} إلى {1} غرفة";
 
+I18N.en["UID-Nummer des Empfängers (bei Unternehmen)"] = "Recipient's VAT ID (for businesses)";
+I18N.fr["UID-Nummer des Empfängers (bei Unternehmen)"] = "N° de TVA du destinataire (pour les entreprises)";
+I18N.it["UID-Nummer des Empfängers (bei Unternehmen)"] = "Partita IVA del destinatario (per le aziende)";
+I18N.es["UID-Nummer des Empfängers (bei Unternehmen)"] = "NIF-IVA del destinatario (para empresas)";
+I18N.pt["UID-Nummer des Empfängers (bei Unternehmen)"] = "NIF do destinatário (para empresas)";
+I18N.tr["UID-Nummer des Empfängers (bei Unternehmen)"] = "Alıcının KDV numarası (şirketler için)";
+I18N.ja["UID-Nummer des Empfängers (bei Unternehmen)"] = "受取人の付加価値税番号(法人の場合)";
+I18N.zh["UID-Nummer des Empfängers (bei Unternehmen)"] = "收件方增值税号（企业适用）";
+I18N.ar["UID-Nummer des Empfängers (bei Unternehmen)"] = "الرقم الضريبي للمستلم (للشركات)";
+I18N.en["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "Above €10,000 gross, a business recipient's VAT ID must appear on the invoice (§ 11 UStG).";
+I18N.fr["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "Au-delà de 10 000 € TTC, le n° de TVA d'une entreprise destinataire doit figurer sur la facture (§ 11 UStG).";
+I18N.it["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "Oltre 10.000 € lordi la partita IVA di un'azienda destinataria deve comparire in fattura (§ 11 UStG).";
+I18N.es["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "Por encima de 10.000 € brutos, el NIF-IVA de una empresa destinataria debe figurar en la factura (§ 11 UStG).";
+I18N.pt["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "Acima de 10.000 € brutos, o NIF de uma empresa destinatária tem de constar da fatura (§ 11 UStG).";
+I18N.tr["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "Brüt 10.000 €'nun üzerinde alıcı şirketin KDV numarası faturada yer almalıdır (§ 11 UStG).";
+I18N.ja["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "税込10,000ユーロを超える場合、法人の受取人の付加価値税番号を請求書に記載する必要があります(§ 11 UStG)。";
+I18N.zh["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "含税金额超过 10,000 欧元时，发票上必须注明企业收件方的增值税号（§ 11 UStG）。";
+I18N.ar["Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG)."] = "فوق 10.000 يورو إجمالي يجب أن يظهر الرقم الضريبي للشركة المستلمة على الفاتورة (§ 11 UStG).";
+
 startI18n(initialUiLanguage());

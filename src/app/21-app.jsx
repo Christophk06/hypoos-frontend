@@ -324,6 +324,7 @@ function App(){
           {editingHotel && <HotelEditForm hotel={hotel} api={api} onCancel={()=>setEditingHotel(false)}
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
           {tab==="dashboard" && isAdmin && hotel.setup_completed===false && !hotel.is_demo && !window.OUVERTURE_DEMO && <SetupWizard hotel={hotel} api={api} orgId={orgId} onOpen={setTab} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); loadHotelData(h); }} />}
+          {tab==="dashboard" && isAdmin && !window.OUVERTURE_DEMO && <PhaseHint key={hotel.id} hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="dashboard" && isAdmin && !preOpeningOff(hotel) && hotel.setup_completed!==false && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
           {tab==="dashboard" && role!=="member" && preOpeningOff(hotel) && <KpiView hotel={hotel} api={api} />}
           {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
@@ -369,7 +370,7 @@ function App(){
           {tab==="team" && role==="admin" && !window.OUVERTURE_DEMO && <AuditView orgId={orgId} api={api} hotel={hotel} />}
           {tab==="account" && <AccountView config={config} token={token} me={me} api={api}
             onDeleted={()=>{ Session.save(null); try { window.localStorage.removeItem(LS_ORG_KEY); } catch(e){} window.location.reload(); }} />}
-          {tab==="billing" && <BillingView billing={billing} orgId={orgId} api={api} notice={billingNotice}
+          {tab==="billing" && <BillingView hotel={hotel} billing={billing} orgId={orgId} api={api} notice={billingNotice}
             isAdmin={isAdmin} onReload={loadBilling} />}
         </div>
       </div>

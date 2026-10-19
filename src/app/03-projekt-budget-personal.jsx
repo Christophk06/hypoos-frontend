@@ -105,7 +105,7 @@ function RisksView({risks, callHotel, callId, refresh}){
 
 function HotelEditForm({hotel, api, onSaved, onCancel}){
   const [form,setForm]=useState({name:hotel.name||"",city:hotel.city||"",country:hotel.country||"",rooms:hotel.rooms||"",opening_date:hotel.opening_date||"",currency:hotel.currency||"EUR",
-    brand_color:hotel.brand_color||"", logo_data:hotel.logo_data||"", holiday_region:hotel.holiday_region||"", disabled_modules:hotel.disabled_modules||[], weekly_report:!!hotel.weekly_report});
+    brand_color:hotel.brand_color||"", logo_data:hotel.logo_data||"", holiday_region:hotel.holiday_region||"", disabled_modules:hotel.disabled_modules||[], weekly_report:!!hotel.weekly_report, phase:hotel.phase});
   const [testMsg,setTestMsg] = useState(null);
   // Logo verkleinern (max. 320 px) und als Bild-Text speichern
   const pickLogo = (file) => {
@@ -153,6 +153,18 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
             {HOLIDAY_REGIONS.map(c=>[c, holidayRegionLabel(c, UI_LOCALE)]).sort((a,b)=>a[1].localeCompare(b[1])).map(([c,l])=><option key={c} value={c}>{l}</option>)}
           </select></label>
       </div>
+      {hotel.phase!==undefined && (
+        <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${BORDER}`}}>
+          <div style={{fontWeight:700,marginBottom:4}}>{tf("Phase des Hotels")}</div>
+          <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("In Eröffnung: Aufgaben, Meilensteine, Budget und Personalplanung stehen im Mittelpunkt. Im Betrieb: Dienstplan, Zimmer, Meldungen und Kennzahlen – die Eröffnungsplanung wird ausgeblendet, bleibt aber gespeichert.")}</div>
+          <div role="radiogroup" aria-label={tf("Phase des Hotels")} style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {[["opening", tf("In Eröffnung")], ["operations", tf("Im Betrieb")]].map(([k,l])=>(
+              <button key={k} type="button" role="radio" aria-checked={form.phase===k} onClick={()=>setForm({...form,phase:k})}
+                style={{border:`1px solid ${form.phase===k?INK:BORDER}`,background:form.phase===k?INK:"#fff",color:form.phase===k?"#fff":INK,borderRadius:999,padding:"8px 16px",fontSize:13.5,fontWeight:600,cursor:"pointer",minHeight:40}}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${BORDER}`}}>
         <div style={{fontWeight:700,marginBottom:4}}>{tf("Bereiche im Menü")}</div>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Blende aus, was dieses Hotel nicht braucht – zum Beispiel alles rund um die Eröffnung, sobald das Haus läuft. Daten bleiben erhalten und lassen sich jederzeit wieder einblenden.")}</div>

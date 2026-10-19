@@ -21,11 +21,12 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ouverture","applicationCategory":"BusinessApplication","operatingSystem":"Web, iOS, Android",
  "description":"Hotel-Software für Pre-Opening, Dienstplan, Übergabebuch und Checklisten.",
  "areaServed":["AT","DE","CH"],"inLanguage":["de","en","fr","it","es","pt","tr","ja","zh","ar"],
- "offers":[{"@type":"Offer","name":"Starter","price":"299","priceCurrency":"EUR"},{"@type":"Offer","name":"Professional","price":"790","priceCurrency":"EUR"}]}
+ "offers":[{"@type":"Offer","name":"Starter","price":"299","priceCurrency":"EUR"},{"@type":"Offer","name":"Professional","price":"790","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb S","price":"149","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb M","price":"249","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb L","price":"399","priceCurrency":"EUR"}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
  {"@type":"Question","name":"Was passiert nach den 14 Tagen Testphase?","acceptedAnswer":{"@type":"Answer","text":"Sie wählen einen Tarif – oder nicht. Ohne Abo bleiben alle Daten erhalten und lesbar, nur Änderungen sind dann nicht mehr möglich. Es wird nichts automatisch abgebucht."}},
+ {"@type":"Question","name":"Was kostet Ouverture, wenn das Hotel schon läuft?","acceptedAnswer":{"@type":"Answer","text":"Für Hotels im laufenden Betrieb gibt es den Betriebs-Tarif ohne Eröffnungsplanung: 149 € bis 40 Zimmer, 249 € bis 120 Zimmer und 399 € darüber – pro Hotel und Monat zzgl. USt., monatlich kündbar."}},
  {"@type":"Question","name":"Wie viele Personen können mitarbeiten?","acceptedAnswer":{"@type":"Answer","text":"Unbegrenzt viele. Sie zahlen pro Hotel-Eröffnung, nicht pro Kopf – so kann das ganze Pre-Opening-Team inklusive externer Partner mitarbeiten."}},
  {"@type":"Question","name":"Kann ich monatlich kündigen?","acceptedAnswer":{"@type":"Answer","text":"Ja. Starter und Professional sind monatlich kündbar, direkt in der App unter „Abo“. Rechnungen und Zahlungsart verwalten Sie dort ebenfalls."}},
  {"@type":"Question","name":"Kann ich Ouverture auch nach der Eröffnung nutzen?","acceptedAnswer":{"@type":"Answer","text":"Ja. Dienstplan, Tageseinteilung, Übergabebuch und Checklisten sind für den laufenden Betrieb gemacht – viele Hotels nutzen genau das jeden Tag."}},
@@ -235,6 +236,19 @@
   .plan li::before { content: ''; position: absolute; left: 0; top: 15px; width: 10px; height: 1px; background: var(--brass-light); }
   .plan .btn { text-align: center; width: 100%; }
 
+  .pgroup { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin: 0 0 18px; }
+  .pgroup .ghead { font-size: 26px; }
+  .pgroup p { margin: 0; color: var(--text-2); font-size: 15px; max-width: 40em; }
+  .ops { margin-top: 64px; }
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border: 1px solid var(--line); border-radius: var(--r-m); overflow: hidden; }
+  .tier { padding: 26px 28px 28px; display: flex; flex-direction: column; }
+  .tier + .tier { border-left: 1px solid var(--line); }
+  .tier h3 { margin: 0; font-size: 18px; font-weight: 600; }
+  .tier .rooms { color: var(--brass); font-weight: 600; font-size: 14px; margin-top: 4px; }
+  .tier .price { font-family: 'Fraunces', serif; font-size: 40px; font-weight: 500; margin: 14px 0 0; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tier .per { font-size: 14px; color: var(--muted); margin: 4px 0 20px; flex: 1; }
+  .ops-foot { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 18px; color: var(--text-2); font-size: 15px; }
+  [dir="rtl"] .tier + .tier { border-left: none; border-right: 1px solid var(--line); }
   table.cmp { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-m); overflow: hidden; margin-top: 36px; font-size: 14.5px; }
   table.cmp th, table.cmp td { padding: 13px 16px; border-top: 1px solid var(--line); text-align: center; }
   table.cmp th { background: var(--paper-2); font-weight: 600; border-top: none; }
@@ -305,6 +319,8 @@
     .flist { grid-template-columns: minmax(0, 1fr); }
     .flist .feat:nth-child(2) { border-top: 1px solid var(--line); padding-top: 18px; }
     .plans { gap: 28px; }
+    .tiers { grid-template-columns: minmax(0, 1fr); }
+    .tier + .tier, [dir="rtl"] .tier + .tier { border-left: none; border-right: none; border-top: 1px solid var(--line); }
     table.cmp { font-size: 13px; } table.cmp th, table.cmp td { padding: 10px 6px; }
     .grid7 { grid-template-columns: 52px repeat(7, minmax(0, 1fr)); font-size: 10px; gap: 2px; }
     .grid7 .chip { padding: 3px 1px; } .grid7 .chip small { font-size: 8px; letter-spacing: -.2px; }
@@ -556,12 +572,13 @@
   <section id="preise">
     <div class="wrap">
       <div class="eyebrow">Preise</div>
-      <h2>Ein fairer Preis pro Eröffnung</h2>
+      <h2>Faire Preise – für die Eröffnung und den Betrieb</h2>
       <p class="intro">Alle Tarife mit unbegrenzt vielen Teammitgliedern. 14 Tage kostenlos testen, danach monatlich kündbar.</p>
       <div class="cur-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-6px 0 22px">
         <span class="cur-label" style="font-size:14px;color:var(--muted)"></span>
         <select id="price-currency" aria-label="Währung" data-no-i18n style="font:inherit;font-size:14px;padding:7px 10px;border:1px solid #E4DFD3;border-radius:6px;background:#fff;color:#1C2430"></select>
       </div>
+      <div class="pgroup"><h3 class="ghead">Für die Eröffnung</h3><p>Pre-Opening-Plan, KI-Lagebericht und alle Bereiche für den Betrieb – für die Zeit rund um die Eröffnung.</p></div>
       <div class="plans">
         <div class="plan">
           <h3>Starter</h3>
@@ -600,6 +617,16 @@
           </ul>
           <a class="btn btn-ghost" href="#kontakt">Kontakt aufnehmen</a>
         </div>
+      </div>
+
+      <div class="ops" id="preise-betrieb">
+        <div class="pgroup"><h3 class="ghead">Für den Betrieb</h3><p>Für Hotels, die schon laufen: Dienstplan, Zeiterfassung, Zimmer, Meldungen, Übergabebuch, Gäste und Rechnungen – ohne Eröffnungsplanung. Ein Hotel pro Abo, der Preis richtet sich nach der Zimmerzahl.</p></div>
+        <div class="tiers">
+          <div class="tier"><h3 data-no-i18n>Betrieb S</h3><div class="rooms">bis 40 Zimmer</div><div class="price" data-plan="betrieb_s" data-no-i18n>149 €</div><div class="per">pro Monat zzgl. USt.</div><a class="btn btn-ghost" href="index.html">Kostenlos testen</a></div>
+          <div class="tier"><h3 data-no-i18n>Betrieb M</h3><div class="rooms">41 bis 120 Zimmer</div><div class="price" data-plan="betrieb_m" data-no-i18n>249 €</div><div class="per">pro Monat zzgl. USt.</div><a class="btn btn-ghost" href="index.html">Kostenlos testen</a></div>
+          <div class="tier"><h3 data-no-i18n>Betrieb L</h3><div class="rooms">ab 121 Zimmern</div><div class="price" data-plan="betrieb_l" data-no-i18n>399 €</div><div class="per">pro Monat zzgl. USt.</div><a class="btn btn-ghost" href="index.html">Kostenlos testen</a></div>
+        </div>
+        <div class="ops-foot">Nach der Eröffnung wechseln Sie mit einem Klick vom Eröffnungs- in den Betriebs-Tarif. Alle Daten bleiben erhalten.</div>
       </div>
 
       <table class="cmp">
@@ -641,6 +668,7 @@
       <div class="eyebrow">FAQ</div>
       <h2>Häufige Fragen</h2>
       <details><summary>Was passiert nach den 14 Tagen Testphase?</summary><p>Sie wählen einen Tarif – oder nicht. Ohne Abo bleiben alle Daten erhalten und lesbar, nur Änderungen sind dann nicht mehr möglich. Es wird nichts automatisch abgebucht.</p></details>
+      <details><summary>Was kostet Ouverture, wenn das Hotel schon läuft?</summary><p>Für Hotels im laufenden Betrieb gibt es den Betriebs-Tarif ohne Eröffnungsplanung: 149 € bis 40 Zimmer, 249 € bis 120 Zimmer und 399 € darüber – pro Hotel und Monat zzgl. USt., monatlich kündbar.</p></details>
       <details><summary>Wie viele Personen können mitarbeiten?</summary><p>Unbegrenzt viele. Sie zahlen pro Hotel-Eröffnung, nicht pro Kopf – so kann das ganze Pre-Opening-Team inklusive externer Partner mitarbeiten.</p></details>
       <details><summary>Kann ich monatlich kündigen?</summary><p>Ja. Starter und Professional sind monatlich kündbar, direkt in der App unter „Abo“. Rechnungen und Zahlungsart verwalten Sie dort ebenfalls.</p></details>
       <details><summary>Sieht ein anderer Kunde meine Daten?</summary><p>Nein. Die Trennung zwischen Organisationen erzwingt die Datenbank selbst – nicht nur die Anwendung. Dokumente liegen in einem privaten Speicher und werden nur über kurzlebige Links ausgeliefert.</p></details>
@@ -717,7 +745,7 @@
   var LANG = {ja:"JPY",zh:"CNY",ko:"KRW",tr:"TRY",ar:"AED",sv:"SEK",nb:"NOK",da:"DKK",pl:"PLN",cs:"CZK",hu:"HUF"};
   var parts = (navigator.language || "").toLowerCase().split(/[-_]/);
   var saved = null; try { saved = localStorage.getItem("hpoos_billing_currency"); } catch(e){}
-  var fallback = {plans:[{key:"starter",monthly:{EUR:299}},{key:"professional",monthly:{EUR:790}}], currencies:["EUR"]};
+  var fallback = {plans:[{key:"starter",monthly:{EUR:299}},{key:"professional",monthly:{EUR:790}},{key:"betrieb_s",monthly:{EUR:149}},{key:"betrieb_m",monthly:{EUR:249}},{key:"betrieb_l",monthly:{EUR:399}}], currencies:["EUR"]};
   function name(c){ try { return new Intl.DisplayNames([UI_LOCALE], {type:"currency"}).of(c); } catch(e){ return c; } }
   function show(data){
     var cur = sel.value;

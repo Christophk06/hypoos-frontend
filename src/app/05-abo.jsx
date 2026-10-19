@@ -30,7 +30,7 @@ function suggestBillingCurrency(){
 }
 function fmtPrice(n, cur){ return Number(n).toLocaleString(UI_LOCALE,{style:"currency",currency:cur,maximumFractionDigits:0}); }
 
-function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
+function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
   const [cur,setCur] = useState(() => { try { return window.localStorage.getItem("hpoos_billing_currency") || (DISPLAY_CURRENCY && billing && (billing.currencies||[]).includes(DISPLAY_CURRENCY) ? DISPLAY_CURRENCY : suggestBillingCurrency()); } catch(e){ return suggestBillingCurrency(); } });
   const pickCur = (c) => { setCur(c); try { window.localStorage.setItem("hpoos_billing_currency", c); } catch(e){} };
   const [busy,setBusy] = useState(null);
@@ -82,8 +82,10 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
           <span style={{fontSize:12,color:INK_MUTED}}>{tf("Abgebucht wird genau in dieser Währung.")}</span>
         </div>
       )}
+      <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,margin:"6px 0 2px"}}>{tf("Eröffnung")}</div>
+      <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>{tf("Für Hotels vor und während der Eröffnung: Pre-Opening-Plan, KI-Lagebericht und alle Betriebsbereiche. Läuft das Haus, wechselst du in den günstigeren Betriebs-Tarif.")}</div>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:18}}>
-        {(billing.plans||[]).map(p=>{
+        {(billing.plans||[]).filter(p=>(p.group||"opening")==="opening").map(p=>{
           const current = billing.plan===p.key && billing.active;
           return (
             <Card key={p.key} style={{display:"flex",flexDirection:"column",borderColor:current?BRASS:BORDER}}>
@@ -112,10 +114,54 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload}){
           {CONTACT_EMAIL && <a href={"mailto:"+CONTACT_EMAIL+"?subject=Ouverture%20Enterprise"} style={{textAlign:"center",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,color:INK,textDecoration:"none"}}>Kontakt aufnehmen</a>}
         </Card>
       </div>
+      <OperationsPlans billing={billing} cur={cur} hotel={hotel} isAdmin={isAdmin} paid={paid} busy={busy} go={go} />
       <div style={{fontSize:12,color:INK_MUTED,marginTop:14}}>
         Die Bezahlung läuft sicher über Stripe. Rechnungen kommen per E-Mail und sind unter „Abo verwalten“ abrufbar.
         <button style={{...linkBtn,marginLeft:6}} onClick={onReload}>Status aktualisieren</button>
       </div>
+    </div>
+  );
+}
+
+// Betriebs-Tarife (ohne Pre-Opening), Preis nach Zimmerzahl. Die Stufe legt der Server fest.
+function OperationsPlans({billing, cur, hotel, isAdmin, paid, busy, go}){
+  const tiers = (billing.plans||[]).filter(p=>p.group==="operations");
+  if(!tiers.length) return null;
+  const rooms = Number(hotel && hotel.rooms) || 0;
+  const mine = rooms ? tiers.find(t=>!t.maxRooms || rooms<=t.maxRooms) : null;
+  const current = tiers.find(t=>t.key===billing.plan && billing.active);
+  const range = (t, i) => i===0 ? tf("bis {0} Zimmer", t.maxRooms) : t.maxRooms ? tf("{0} bis {1} Zimmer", tiers[i-1].maxRooms+1, t.maxRooms) : tf("ab {0} Zimmern", tiers[i-1].maxRooms+1);
+  const price = (t) => fmtPrice((t.monthly && t.monthly[cur]) || t.monthlyEur, t.monthly && t.monthly[cur] ? cur : "EUR");
+  return (
+    <div style={{marginTop:28}}>
+      <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,margin:"0 0 2px"}}>{tf("Betrieb")}</div>
+      <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>{tf("Für Hotels im laufenden Betrieb: Dienstplan, Zeiterfassung, Zimmer, Meldungen, Übergabebuch, Gäste und Rechnungen – ohne Eröffnungsplanung. Ein Hotel, Preis nach Zimmerzahl.")}</div>
+      <Card style={{borderColor:current?BRASS:BORDER}}>
+        <div className="stack" style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:22,alignItems:"start"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
+            <tbody>
+              {tiers.map((t,i)=>(
+                <tr key={t.key} style={{borderTop:i?`1px solid ${BORDER}`:"none",background:mine&&mine.key===t.key?BRASS_SOFT:"transparent"}}>
+                  <td style={{padding:"10px 8px",fontWeight:600}}>{t.name}</td>
+                  <td style={{padding:"10px 8px",color:INK_MUTED}}>{range(t,i)}</td>
+                  <td style={{padding:"10px 8px",textAlign:"end",fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600}} data-no-i18n="">{price(t)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div>
+            {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
+            <div style={{fontSize:13.5,margin:"6px 0 12px"}}>
+              {mine ? tf("Für {0} Zimmer gilt {1}: {2} pro Monat zzgl. USt., monatlich kündbar.", rooms, mine.name, price(mine)) : tf("Trag unter „Hotel bearbeiten“ die Zimmerzahl ein – danach richtet sich der Preis.")}
+            </div>
+            {isAdmin && billing.stripe_enabled && !current && mine && (
+              paid
+                ? <button onClick={()=>go("portal", null, "portal")} disabled={!!busy} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer"}}>Über „Abo verwalten“ wechseln</button>
+                : <button className="btn-primary" onClick={()=>go("checkout", {plan:"betrieb", currency:cur}, "betrieb")} disabled={!!busy || !mine.available}>{busy==="betrieb" ? "Öffnet Bezahlseite…" : mine.available ? tf("{0} wählen", mine.name) : "Bald verfügbar"}</button>
+            )}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

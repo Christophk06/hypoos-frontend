@@ -18,6 +18,7 @@
   var weekDelta = Math.round(delta / 7) * 7;
   function shiftDays(list, fields, n) { (list || []).forEach(function (r) { fields.forEach(function (f) { if (r[f]) r[f] = add(r[f], n); }); }); }
   shiftDays([D.hotel], ["opening_date"], delta);
+  if (D.hotel.phase === undefined) D.hotel.phase = "opening"; // Phase des Hotels (Migration 029)
   shiftDays(D.tasks, ["due_date"], delta); shiftDays(D.milestones, ["date"], delta); shiftDays(D.staff, ["start_date"], delta);
   shiftDays(D.logbook, ["entry_date"], delta); shiftDays(D.duties, ["duty_date"], delta); shiftDays(D.availabilities, ["avail_date"], delta);
   shiftDays(D.shifts, ["shift_date"], weekDelta); shiftDays(D.publications, ["week_start"], weekDelta);

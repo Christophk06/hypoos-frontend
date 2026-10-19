@@ -6,7 +6,36 @@ const MODULE_GROUPS = [
 ];
 const PRE_MODULES = MODULE_GROUPS[0][1].map(([k])=>k);
 const OPS_MODULES = MODULE_GROUPS[1][1].map(([k])=>k);
-const hotelDisabled = (hotel) => (hotel && hotel.disabled_modules) || [];
+// Phase des Hotels (Migration 029): "operations" = Im Betrieb – dann sind die Pre-Opening-Bereiche ausgeblendet
+const inOperations = (hotel) => !!hotel && hotel.phase === "operations";
+const hotelDisabled = (hotel) => {
+  const off = (hotel && hotel.disabled_modules) || [];
+  return inOperations(hotel) ? [...new Set([...off, ...PRE_MODULES])] : off;
+};
+
+// Hotel ist eröffnet, steht aber noch auf „In Eröffnung“: Wechsel in den Betrieb anbieten (nur Admins)
+function PhaseHint({hotel, api, onHotel}){
+  const [busy,setBusy] = useState(false); const [error,setError] = useState("");
+  const [hidden,setHidden] = useState(() => { try { return window.localStorage.getItem("hpoos_phase_hint_"+hotel.id)==="1"; } catch(e){ return false; } });
+  if(hidden || hotel.phase!=="opening" || !hotel.opening_date || hotel.opening_date > todayIso() || hotel.is_demo) return null;
+  const go = async () => {
+    setBusy(true); setError("");
+    try { onHotel(await api("/api/hotels/"+hotel.id, "PATCH", {phase:"operations"})); }
+    catch(e){ setError(e.message); setBusy(false); }
+  };
+  const later = () => { try { window.localStorage.setItem("hpoos_phase_hint_"+hotel.id, "1"); } catch(e){} setHidden(true); };
+  return (
+    <Card style={{marginBottom:18,borderColor:BRASS}}>
+      <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:4}}>{tf("Das Hotel ist eröffnet")}</div>
+      <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Im Betrieb blendet Ouverture die Eröffnungsplanung aus und zeigt auf der Startseite die Kennzahlen des Hauses. Aufgaben, Budget und Berichte bleiben gespeichert und lassen sich jederzeit wieder einblenden.")}</div>
+      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <button className="btn-primary" onClick={go} disabled={busy}>{busy ? tf("Speichert…") : tf("In den Betrieb wechseln")}</button>
+        <button style={{...linkBtn,fontSize:13.5}} onClick={later}>{tf("Später")}</button>
+      </div>
+    </Card>
+  );
+}
 const preOpeningOff = (hotel) => hotelDisabled(hotel).includes("tasks");
 
 function ModulePicker({value, onChange}){

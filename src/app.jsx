@@ -6995,28 +6995,6 @@ const dataUrlToBytes = (u) => { const b = atob(String(u).split(",")[1]||""); con
 function downloadBlob(blob, name){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 3000); }
 const safeFile = (s) => String(s||"Dokument").replace(/[\\/:*?"<>|]+/g,"").slice(0,90);
 
-// Einfaches Word-Dokument aus Text: "# " = Überschrift, Leerzeile = neuer Absatz
-const xmlEsc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-async function docxFromText(text, {letterhead, rtl} = {}){
-  const {PizZip} = await loadDocx();
-  const run = (t, props) => '<w:r>'+(props||rtl ? '<w:rPr>'+(props||"")+(rtl?'<w:rtl/>':'')+'</w:rPr>' : '')+'<w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>';
-  const para = (lines, style, props, align) => '<w:p><w:pPr>'+(style?'<w:pStyle w:val="'+style+'"/>':'')+(rtl?'<w:bidi/>':'')+(align?'<w:jc w:val="'+align+'"/>':'')+'</w:pPr>'+lines.map((l,i)=>(i?'<w:r><w:br/></w:r>':'')+run(l, props)).join("")+'</w:p>';
-  const blocks = String(text||"").replace(/\r\n/g,"\n").split(/\n\s*\n/);
-  let body = "";
-  if(letterhead && letterhead.length) body += para(letterhead, null, '<w:sz w:val="18"/><w:color w:val="6B7280"/>', rtl ? "left" : "right");
-  for(const b of blocks){
-    const lines = b.split("\n");
-    if(lines[0].startsWith("# ")){ body += para([lines[0].slice(2)], "Title"); if(lines.length>1) body += para(lines.slice(1)); }
-    else body += para(lines);
-  }
-  const zip = new PizZip();
-  zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>');
-  zip.file("_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
-  zip.file("word/_rels/document.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
-  zip.file("word/styles.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Arial"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="240" w:after="240"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style></w:styles>');
-  zip.file("word/document.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1134" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>');
-  return zip.generate({type:"blob", mimeType:DOCX_MIME});
-}
 // Platzhalter in einer hochgeladenen Word-Datei finden und befüllen
 async function docxTags(dataUrl){
   const {PizZip} = await loadDocx();
@@ -7042,11 +7020,18 @@ const textTags = (text) => Array.from(new Set((String(text||"").match(/\{([a-zA-
 
 // Platzhalter mit Beschriftung (Reihenfolge = Reihenfolge im Formular)
 const DOC_FIELDS = [
-  ["guest_name","Name Gast / Kunde"],["reservation_no","Reservierungsnummer"],["arrival","Anreise","date"],["departure","Abreise","date"],["nights","Nächte"],["room_type","Zimmer"],["persons","Personen"],["rate","Preis pro Nacht"],["total","Gesamtpreis"],
-  ["event_title","Veranstaltung"],["event_date","Datum","date"],["event_time","Zeit"],["event_room","Raum"],["guests","Personen (Veranstaltung)"],["items","Positionen","area"],["offer_total","Gesamtsumme"],["valid_until","Gültig bis","date"],
-  ["voucher_value","Gutscheinwert"],["voucher_code","Gutscheincode"],["wifi","WLAN-Zugang"],
-  ["hotel_name","Hotel"],["hotel_address","Adresse Hotel","area"],["hotel_phone","Telefon Hotel"],["hotel_email","E-Mail Hotel"],["today","Heutiges Datum"],["sender","Absender"],
+  ["guest_name","Name Gast / Kunde",null,"guest","z. B. Familie Weber"],["persons","Personen",null,"guest","z. B. 2 Erwachsene, 1 Kind"],
+  ["reservation_no","Reservierungsnummer",null,"stay"],["arrival","Anreise","date","stay"],["departure","Abreise","date","stay"],["nights","Nächte",null,"stay"],
+  ["room_type","Zimmer",null,"stay","z. B. Doppelzimmer Deluxe"],["room_no","Zimmernummer",null,"stay","z. B. 214"],["board","Verpflegung","board","stay"],["wifi","WLAN-Zugang",null,"stay"],
+  ["rate","Preis pro Nacht",null,"price","z. B. 149"],["total","Gesamtpreis",null,"price"],["payment","Zahlung / Anzahlung",null,"price","z. B. Anzahlung 30 % bis 1. Dezember"],
+  ["event_title","Veranstaltung",null,"event"],["event_date","Datum","date","event"],["event_time","Zeit",null,"event"],["event_room","Raum",null,"event"],["guests","Personen (Veranstaltung)",null,"event"],["items","Positionen","area","event"],["offer_total","Gesamtsumme",null,"event"],["valid_until","Gültig bis","date","event"],
+  ["voucher_value","Gutscheinwert",null,"voucher"],["voucher_code","Gutscheincode",null,"voucher"],
+  ["notes","Notizen für den Gast","area","notes","z. B. Late Check-out bis 13 Uhr, Babybett im Zimmer, Parkplatz reserviert"],
+  ["hotel_name","Hotel",null,"hotel"],["hotel_address","Adresse Hotel","area","hotel"],["hotel_phone","Telefon Hotel",null,"hotel"],["hotel_email","E-Mail Hotel",null,"hotel"],["today","Heutiges Datum","date","hotel"],["sender","Absender",null,"hotel"],
 ];
+const DOC_GROUPS = [["guest","Gast"],["stay","Aufenthalt"],["price","Preis und Zahlung"],["event","Veranstaltung"],["voucher","Gutschein"],["notes","Notizen"],["other","Weitere Felder"],["hotel","Absender und Hotel"]];
+const BOARD_OPTIONS = ["Nur Übernachtung","Übernachtung mit Frühstück","Halbpension","Vollpension","All inclusive"];
+const numIn = (v) => { const t = String(v==null?"":v).replace(/[^\d,.-]/g,""); if(!t) return null; const n = Number(t.includes(",") && !t.includes(".") ? t.replace(",",".") : t.replace(/,/g,"")); return Number.isFinite(n) ? n : null; };
 const DOC_FIELD_KEYS = DOC_FIELDS.map(f=>f[0]);
 const DOC_KIND_LABELS = {reservierung:"Reservierung", storno:"Storno", willkommen:"Willkommen", angebot:"Angebot", veranstaltung:"Veranstaltung", gutschein:"Gutschein", rechnung:"Rechnung", sonstiges:"Sonstiges"};
 const docLongDate = (iso, lang) => { if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||""))) return iso||""; try { return new Date(iso+"T12:00:00").toLocaleDateString(LOCALES[lang]||UI_LOCALE,{day:"numeric",month:"long",year:"numeric"}); } catch(e){ return iso; } };
@@ -7055,10 +7040,15 @@ function hotelDocDefaults(hotel, me){
   const s = hotel.invoice_settings || {};
   return {hotel_name: s.company || hotel.name, hotel_address: s.address || [hotel.name, hotel.city].filter(Boolean).join(", "), hotel_phone: s.phone || "", hotel_email: s.email || "", today: todayIso(), sender: me && me.email ? shortName(me.email) : ""};
 }
+function autoNights(form){ return /^\d{4}-/.test(form.arrival||"") && /^\d{4}-/.test(form.departure||"") ? Math.max(0, Math.round((new Date(form.departure) - new Date(form.arrival))/86400000)) : null; }
+function autoTotal(form){ const n = form.nights ? numIn(form.nights) : autoNights(form), r = numIn(form.rate); return n && r!=null && /^[\s\d.,€$£¥]*$/.test(String(form.rate)) ? moneyIn(r*n) : null; }
 function docData(form, lang){
   const out = {...form};
   ["arrival","departure","event_date","valid_until","today"].forEach(k=>{ out[k] = docLongDate(form[k], lang); });
-  if(!out.nights && /^\d{4}-/.test(form.arrival||"") && /^\d{4}-/.test(form.departure||"")) out.nights = String(Math.max(0, Math.round((new Date(form.departure) - new Date(form.arrival))/86400000)));
+  if(!out.nights){ const n = autoNights(form); if(n) out.nights = String(n); }
+  if(form.rate && /^[\s\d.,]+$/.test(String(form.rate)) && numIn(form.rate)!=null) out.rate = moneyIn(numIn(form.rate));
+  if(!out.total){ const t = autoTotal(form); if(t) out.total = t; }
+  else if(/^[\s\d.,]+$/.test(String(form.total)) && numIn(form.total)!=null) out.total = moneyIn(numIn(form.total));
   return out;
 }
 function fromArrival(a){ return {guest_name:a.guest_name, arrival:a.arrival_date, departure:a.departure_date||"", room_type:a.room_type||"", reservation_no:a.reservation_ref||"", email:a.email||""}; }
@@ -7069,14 +7059,119 @@ function fromEvent(e){
   return {guest_name:e.client||"", event_title:e.title, event_date:e.event_date, event_time:[e.start_time&&e.start_time.slice(0,5), e.end_time&&e.end_time.slice(0,5)].filter(Boolean).join("–"), event_room:e.location||"",
     guests:e.guests==null?"":String(e.guests), items, offer_total: sum.total ? moneyIn(sum.total) : "", valid_until:e.offer_valid_until||"", email: m ? m[0] : ""};
 }
-// Brief als PDF (gleiche Gestaltung wie die anderen Blätter)
-function letterHtml(text, hotel){
+const xmlEsc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// Brief-Vorlagen: Text → Abschnitte (Überschrift, Daten-Tabelle, Notiz, Absatz); gleiche Gestaltung für PDF, Vorschau und Word
+const KV_RE = /^([^:：{}\s][^:：{}]{0,38}[^:：{}\s\d])\s?[:：]\s*(.*)$/;
+function parseLetter(text){
+  const blocks = [];
+  String(text||"").replace(/\r\n/g,"\n").split(/\n\s*\n/).forEach(b=>{
+    let lines = b.split("\n").map(l=>l.replace(/\s+$/,"")).filter((l,i,a)=>l || (i>0 && i<a.length-1));
+    if(!lines.length) return;
+    if(lines[0].startsWith("# ")){ blocks.push({t:"title", text:lines[0].slice(2)}); lines = lines.slice(1); if(!lines.length) return; if(lines.length===1){ blocks.push({t:"sub", text:lines[0]}); return; } }
+    if(lines.length===1 && lines[0].trim()==="{notes}"){ blocks.push({t:"note", text:"{notes}"}); return; }
+    if(lines.length>=2 && lines.every(l=>KV_RE.test(l))){ blocks.push({t:"facts", rows:lines.map(l=>{ const m = l.match(KV_RE); return [m[1], m[2]]; })}); return; }
+    blocks.push({t:"para", lines});
+  });
+  return blocks;
+}
+// Platzhalter füllen; leere Zeilen, leere Tabellenzeilen und leere Klammern fallen weg (nur beim Befüllen)
+function fillLetter(blocks, data){
+  if(!data) return blocks;
+  const f = (s) => fillText(s, data).replace(/\s*[（(][^()（）\d]*[)）]/g, "").trim();
+  return blocks.map(b=>{
+    if(b.t==="facts"){ const rows = b.rows.map(([l,v])=>[l, f(v)]).filter(([,v])=>v); return rows.length ? {...b, rows} : null; }
+    if(b.t==="para"){ const lines = b.lines.map(f).filter(Boolean); return lines.length ? {...b, lines} : null; }
+    if(b.t==="sub"){ const m = b.text.match(KV_RE); if(m && !f(m[2])) return null; }
+    const text = f(b.text); return text ? {...b, text} : null;
+  }).filter(Boolean);
+}
+function letterFooter(hotel){
   const s = hotel.invoice_settings || {};
-  const blocks = String(text||"").replace(/\r\n/g,"\n").split(/\n\s*\n/);
-  const html = blocks.map(b=>{ const l = b.split("\n"); return l[0].startsWith("# ") ? '<h1 style="margin:6px 0 12px">'+fsEsc(l[0].slice(2))+'</h1>'+(l.length>1?'<p>'+fsEsc(l.slice(1).join("\n"))+'</p>':'') : '<p>'+fsEsc(b)+'</p>'; }).join("");
-  return '<div class="fs lt" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'"><style>.fs.lt p{margin:0 0 11px;white-space:pre-wrap;font-size:13px;line-height:1.55}.fs.lt .ad{font-size:10.5px;color:#6B7280;white-space:pre-wrap;text-align:end}</style>'
-    + '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel" style="font-size:13px;color:#1C2430;font-weight:700;letter-spacing:0">'+fsEsc(s.company||hotel.name)+'</div></div><div class="ad">'+fsEsc([s.address, s.phone, s.email, s.web].filter(Boolean).join("\n"))+'</div></div>'
-    + html + '</div>';
+  return [s.company||hotel.name, String(s.address||"").replace(/\n+/g,", "), s.phone, s.email, s.web, s.uid && "UID "+s.uid, s.iban && "IBAN "+s.iban].filter(Boolean);
+}
+const LETTER_CSS = `
+  .fs.lt{font-size:13px;line-height:1.55}
+  .fs.lt .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid var(--fs-accent);padding-bottom:12px;margin-bottom:22px}
+  .fs.lt .lh img{max-height:54px;max-width:170px;object-fit:contain}
+  .fs.lt .lh .hn{font-family:Georgia,serif;font-size:19px;font-weight:600}
+  .fs.lt .lh .ad{font-size:10.5px;color:#6B7280;white-space:pre-wrap;text-align:end}
+  .fs.lt h1{font-family:Georgia,serif;font-size:25px;font-weight:600;margin:0 0 4px}
+  .fs.lt .sub{color:#6B7280;font-size:12px;margin:0 0 16px}
+  .fs.lt p{margin:0 0 12px;white-space:pre-wrap}
+  .fs.lt table.kv{width:100%;border-collapse:separate;border-spacing:0;background:#F8F6F1;border-inline-start:4px solid var(--fs-accent);border-radius:8px;margin:4px 0 16px}
+  .fs.lt table.kv td{padding:7px 12px;border-bottom:1px solid #ECE7DC;vertical-align:top}
+  .fs.lt table.kv tr:last-child td{border-bottom:0}
+  .fs.lt table.kv td.l{color:#6B7280;width:38%;font-size:12px}
+  .fs.lt table.kv td.v{font-weight:600}
+  .fs.lt .note{border:1px solid #E4DFD3;border-inline-start:4px solid var(--fs-accent);border-radius:8px;padding:10px 14px;margin:0 0 16px;white-space:pre-wrap;background:#fff}
+  .fs.lt .lf{margin-top:26px;border-top:1px solid #E4DFD3;padding-top:7px;font-size:9.5px;color:#9aa3af;display:flex;flex-wrap:wrap;gap:3px 12px;justify-content:center}
+`;
+function letterHtml(text, hotel, data){
+  const s = hotel.invoice_settings || {};
+  const blocks = fillLetter(parseLetter(text), data);
+  const body = blocks.map(b=> b.t==="title" ? '<h1>'+fsEsc(b.text)+'</h1>' : b.t==="sub" ? '<div class="sub">'+fsEsc(b.text)+'</div>'
+    : b.t==="facts" ? '<table class="kv">'+b.rows.map(([l,v])=>'<tr><td class="l">'+fsEsc(l)+'</td><td class="v">'+fsEsc(v)+'</td></tr>').join("")+'</table>'
+    : b.t==="note" ? '<div class="note">'+fsEsc(b.text)+'</div>' : '<p>'+fsEsc(b.lines.join("\n"))+'</p>').join("");
+  return '<div class="fs lt" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'"><style>'+LETTER_CSS+'</style>'
+    + '<div class="lh"><div>'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'<div class="hn">'+fsEsc(s.company||hotel.name)+'</div>')+'</div><div class="ad">'+fsEsc([hotel.logo_data ? (s.company||hotel.name) : null, s.address, s.phone, s.email, s.web].filter(Boolean).join("\n"))+'</div></div>'
+    + body + '<div class="lf">'+letterFooter(hotel).map(x=>'<span>'+fsEsc(x)+'</span>').join("")+'</div></div>';
+}
+// Logo für Word: als PNG mit Größe (SVG/WebP werden umgewandelt)
+async function logoPng(dataUrl){
+  if(!dataUrl) return null;
+  try {
+    const img = await new Promise((res, rej)=>{ const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    const h = 300, w = Math.max(1, Math.round(img.naturalWidth / img.naturalHeight * h)) || 300;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
+    return {bytes:dataUrlToBytes(c.toDataURL("image/png")), w, h};
+  } catch(e){ return null; }
+}
+// Word-Dokument im gleichen Stil; data = null lässt die Platzhalter stehen (Vorlage zum Gestalten in Word)
+async function docxFromText(text, {hotel, data, rtl} = {}){
+  const {PizZip} = await loadDocx();
+  const accent = String((hotel && hotel.brand_color) || "#A9834B").replace("#","");
+  const s = (hotel && hotel.invoice_settings) || {};
+  const R = (t, props) => '<w:r>'+(props||rtl ? '<w:rPr>'+(props||"")+(rtl?'<w:rtl/>':'')+'</w:rPr>' : '')+'<w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>';
+  const runs = (lines, props) => lines.map((l,i)=>(i?'<w:r><w:br/></w:r>':'')+R(l, props)).join("");
+  const P = (inner, ppr) => '<w:p><w:pPr>'+(ppr||"")+(rtl?'<w:bidi/>':'')+'</w:pPr>'+inner+'</w:p>';
+  const blocks = fillLetter(parseLetter(text), data);
+  let body = "";
+  const logo = hotel && hotel.logo_data ? await logoPng(hotel.logo_data) : null;
+  // Briefkopf: Logo bzw. Name links, Anschrift rechts, Linie in der Hotelfarbe
+  const head = [hotel && hotel.logo_data ? (s.company||hotel.name) : null, ...String(s.address||"").split("\n"), s.phone, s.email, s.web].filter(Boolean);
+  if(hotel){
+    const left = logo
+      ? '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="'+Math.round(logo.w/logo.h*540000)+'" cy="540000"/><wp:docPr id="1" name="Logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+Math.round(logo.w/logo.h*540000)+'" cy="540000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
+      : R(s.company||hotel.name, '<w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="30"/>');
+    const cell = (inner, w) => '<w:tc><w:tcPr><w:tcW w:w="'+w+'" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="18" w:color="'+accent+'"/></w:tcBorders></w:tcPr>'+inner+'</w:tc>';
+    body += '<w:tbl><w:tblPr><w:tblW w:w="9070" w:type="dxa"/><w:tblLayout w:type="fixed"/>'+(rtl?'<w:bidiVisual/>':'')+'</w:tblPr><w:tblGrid><w:gridCol w:w="4535"/><w:gridCol w:w="4535"/></w:tblGrid><w:tr>'
+      + cell(P(left, '<w:spacing w:after="120"/>'), 4535)
+      + cell(P(runs(head, '<w:sz w:val="17"/><w:color w:val="6B7280"/>'), '<w:jc w:val="'+(rtl?"left":"right")+'"/><w:spacing w:after="120"/>'), 4535)
+      + '</w:tr></w:tbl>' + P("", '<w:spacing w:after="240"/>');
+  }
+  for(const b of blocks){
+    if(b.t==="title") body += P(R(b.text), '<w:pStyle w:val="Title"/>');
+    else if(b.t==="sub") body += P(R(b.text, '<w:sz w:val="19"/><w:color w:val="6B7280"/>'), '<w:spacing w:after="240"/>');
+    else if(b.t==="facts"){
+      body += '<w:tbl><w:tblPr><w:tblW w:w="9070" w:type="dxa"/><w:tblLayout w:type="fixed"/>'+(rtl?'<w:bidiVisual/>':'')+'<w:tblBorders><w:left w:val="single" w:sz="24" w:color="'+accent+'"/><w:insideH w:val="single" w:sz="4" w:color="ECE7DC"/></w:tblBorders><w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="140" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="140" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="3400"/><w:gridCol w:w="5670"/></w:tblGrid>'
+        + b.rows.map(([l,v])=>'<w:tr>'
+          + '<w:tc><w:tcPr><w:tcW w:w="3400" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8F6F1"/></w:tcPr>'+P(R(l, '<w:color w:val="6B7280"/><w:sz w:val="20"/>'), '<w:spacing w:after="0"/>')+'</w:tc>'
+          + '<w:tc><w:tcPr><w:tcW w:w="5670" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8F6F1"/></w:tcPr>'+P(runs(String(v).split("\n"), '<w:b/>'), '<w:spacing w:after="0"/>')+'</w:tc></w:tr>').join("")
+        + '</w:tbl>' + P("", '<w:spacing w:after="120"/>');
+    }
+    else if(b.t==="note") body += P(runs(String(b.text).split("\n")), '<w:pBdr><w:left w:val="single" w:sz="24" w:space="8" w:color="'+accent+'"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="FBFAF7"/><w:ind w:left="200"/><w:spacing w:before="60" w:after="240"/>');
+    else body += P(runs(b.lines));
+  }
+  const foot = hotel ? letterFooter(hotel).join("  ·  ") : "";
+  const zip = new PizZip();
+  zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>');
+  zip.file("_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.file("word/_rels/document.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdFoot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>'+(logo?'<Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.png"/>':'')+'</Relationships>');
+  if(logo) zip.file("word/media/logo.png", logo.bytes);
+  zip.file("word/styles.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Arial"/><w:color w:val="1C2430"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="120" w:after="80"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style></w:styles>');
+  zip.file("word/footer1.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="4" w:space="6" w:color="E4DFD3"/></w:pBdr><w:jc w:val="center"/>'+(rtl?'<w:bidi/>':'')+'</w:pPr>'+(foot?R(foot, '<w:sz w:val="15"/><w:color w:val="9AA3AF"/>'):'')+'</w:p></w:ftr>');
+  zip.file("word/document.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'+body+'<w:sectPr><w:footerReference w:type="default" r:id="rIdFoot"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1418" w:bottom="1134" w:left="1418" w:header="708" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>');
+  return zip.generate({type:"blob", mimeType:DOCX_MIME});
 }
 
 function LettersView({hotel, api, role, me}){
@@ -7117,10 +7212,9 @@ function LettersView({hotel, api, role, me}){
   const title = tpl ? (tpl.name + (form.guest_name ? " – "+form.guest_name : "")) : "";
   const build = async (fmt) => {
     const data = docData(form, tpl.builtin ? lang : UI_LANG);
-    if(fmt==="pdf"){ const blob = await sheetPdf(letterHtml(fillText(tpl.body, data), hotel), safeFile(title)+".pdf", false, "portrait", true); return blob; }
+    if(fmt==="pdf"){ const blob = await sheetPdf(letterHtml(tpl.body, hotel, data), safeFile(title)+".pdf", false, "portrait", true); return blob; }
     if(tpl.has_file){ const f = await api("/api/doc-templates/"+tpl.id+"/file"); return fillDocx(f.file_data, data); }
-    const s = hotel.invoice_settings || {};
-    return docxFromText(fillText(tpl.body, data), {letterhead:[s.company||hotel.name, ...String(s.address||"").split("\n"), s.phone, s.email].filter(Boolean), rtl:(tpl.builtin?lang:UI_LANG)==="ar"});
+    return docxFromText(tpl.body, {hotel, data, rtl:(tpl.builtin?lang:UI_LANG)==="ar"});
   };
   const act = async (k, fn) => { setBusy(k); setMsg(null); try { await fn(); } catch(e){ setMsg({ok:false,text:e.message}); } setBusy(""); };
   const download = (fmt) => act(fmt, async()=>{ const blob = await build(fmt); downloadBlob(blob, safeFile(title)+(fmt==="pdf"?".pdf":".docx")); });
@@ -7191,12 +7285,37 @@ function LettersView({hotel, api, role, me}){
             {(events||[]).map(ev=><option key={ev.id} value={ev.id}>{fmtDate(ev.event_date)} · {ev.title}{ev.client?" · "+ev.client:""}</option>)}
           </select>}
           {fields.length===0 && unknown.length===0 && <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Diese Vorlage enthält keine Platzhalter.")}</div>}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:"0 10px"}}>
-            {[...fields, ...unknown.map(k=>[k,k])].map(([k,l,type])=>(
-              <Field key={k} label={tf(l)}>{type==="area"
-                ? <textarea className="input" rows={3} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} />
-                : <input className="input" type={type==="date"?"date":"text"} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} />}</Field>
-            ))}
+          <div style={{display:"grid",gridTemplateColumns:tpl.has_file ? "1fr" : "repeat(auto-fit, minmax(340px, 1fr))",gap:18,alignItems:"start"}}>
+            <div>
+              {DOC_GROUPS.map(([g, gl])=>{
+                const list = g==="other" ? unknown.map(k=>[k,k,null,"other"]) : fields.filter(f=>f[3]===g);
+                if(!list.length) return null;
+                const inputs = (
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:"0 10px"}}>
+                    {list.map(([k,l,type,,hint])=>{
+                      const auto = k==="nights" ? autoNights(form) : k==="total" ? autoTotal(form) : null;
+                      const ph = auto!=null && auto!=="" ? tf("automatisch: {0}", auto) : hint ? tf(hint) : "";
+                      return (
+                        <Field key={k} label={tf(l)}>{type==="area"
+                          ? <textarea className="input" rows={k==="notes"?5:3} placeholder={ph} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} style={{fontFamily:"inherit"}} />
+                          : type==="board" ? <React.Fragment><input className="input" list="doc-board" placeholder={tf("z. B. Übernachtung mit Frühstück")} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} /><datalist id="doc-board">{BOARD_OPTIONS.map(o=><option key={o} value={translateString(o)} />)}</datalist></React.Fragment>
+                          : <input className="input" type={type==="date"?"date":"text"} placeholder={ph} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} />}</Field>
+                      );
+                    })}
+                  </div>
+                );
+                return g==="hotel"
+                  ? <details key={g} style={{marginBottom:10}}><summary style={{cursor:"pointer",fontSize:12.5,color:INK_MUTED,marginBottom:6}}>{tf(gl)}</summary>{inputs}</details>
+                  : <div key={g} style={{marginBottom:6}}><div className="field-label" style={{color:BRASS,marginBottom:4}}>{tf(gl)}</div>{inputs}</div>;
+              })}
+            </div>
+            {!tpl.has_file && <div style={{position:"sticky",top:12}}>
+              <div className="field-label">{tf("Vorschau")}</div>
+              <div style={{background:"#E9E5DC",borderRadius:10,padding:12,overflow:"hidden"}}>
+                <div style={{background:"#fff",borderRadius:4,boxShadow:"0 4px 18px rgba(0,0,0,.12)",padding:"22px 24px",zoom:0.6,color:"#1C2430"}} dir={(tpl.builtin?lang:UI_LANG)==="ar"?"rtl":"ltr"}
+                  dangerouslySetInnerHTML={{__html:"<style>"+FS_CSS+"</style>"+letterHtml(tpl.body, hotel, docData(form, tpl.builtin ? lang : UI_LANG))}} />
+              </div>
+            </div>}
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}}>
             <button className="btn-primary" disabled={!!busy} onClick={()=>download("docx")}>{busy==="docx"?"…":"📘 Word"}</button>
@@ -7253,7 +7372,7 @@ function LettersView({hotel, api, role, me}){
                 <span>{t.has_file ? "📘" : t.builtin ? "📄" : "⭐"}</span>
                 <b style={{flex:1,minWidth:150}} data-no-i18n="">{t.name}</b>
                 <span style={{fontSize:12,color:INK_MUTED}}>{tf(DOC_KIND_LABELS[t.kind]||"Sonstiges")}</span>
-                {!t.has_file && <button style={smallBtn} title={tf("Als Word-Datei mit Platzhaltern herunterladen, in Word gestalten und wieder hochladen")} onClick={()=>act("dl"+t.id, async()=>downloadBlob(await docxFromText(t.body, {rtl:(t.builtin?lang:UI_LANG)==="ar"}), safeFile(t.name)+".docx"))}>{busy==="dl"+t.id?"…":"⬇ "+tf("Word-Vorlage")}</button>}
+                {!t.has_file && <button style={smallBtn} title={tf("Als Word-Datei mit Platzhaltern herunterladen, in Word gestalten und wieder hochladen")} onClick={()=>act("dl"+t.id, async()=>downloadBlob(await docxFromText(t.body, {hotel, rtl:(t.builtin?lang:UI_LANG)==="ar"}), safeFile(t.name)+".docx"))}>{busy==="dl"+t.id?"…":"⬇ "+tf("Word-Vorlage")}</button>}
                 {t.builtin && <button style={linkBtn} onClick={()=>setEdit({name:t.name, kind:t.kind, body:t.body})}>{tf("Kopieren und anpassen")}</button>}
                 {!t.builtin && <button style={linkBtn} onClick={()=>setEdit({...t})}>{tf("Bearbeiten")}</button>}
                 {!t.builtin && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Vorlage „{0}“ löschen?", t.name))) act("del", async()=>{ await api("/api/doc-templates/"+t.id,"DELETE"); await load(); }); }}>✕</button>}

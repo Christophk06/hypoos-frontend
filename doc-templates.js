@@ -14,9 +14,14 @@ vielen Dank für Ihre Reservierung. Gerne bestätigen wir Ihren Aufenthalt:
 Anreise: {arrival}
 Abreise: {departure} ({nights} Nächte)
 Zimmer: {room_type}
+Zimmernummer: {room_no}
 Personen: {persons}
+Verpflegung: {board}
 Preis pro Nacht: {rate}
 Gesamtpreis: {total}
+Zahlung: {payment}
+
+{notes}
 
 Check-in ist ab 15:00 Uhr möglich, Check-out bis 11:00 Uhr. Bei Fragen oder Wünschen sind wir jederzeit für Sie da.
 
@@ -34,6 +39,8 @@ hiermit bestätigen wir die Stornierung Ihrer Reservierung vom {arrival} bis {de
 
 Stornogebühr: {total}
 
+{notes}
+
 Wir bedauern, Sie diesmal nicht begrüßen zu dürfen, und würden uns freuen, Sie bald bei uns willkommen zu heißen.
 
 Mit freundlichen Grüßen
@@ -46,6 +53,8 @@ Schön, dass Sie da sind. Wir wünschen Ihnen einen erholsamen Aufenthalt im {ho
 Frühstück: täglich 7:00 – 10:30 Uhr
 WLAN: {wifi}
 Rezeption: rund um die Uhr erreichbar unter {hotel_phone}
+
+{notes}
 
 Haben Sie einen Wunsch? Sprechen Sie uns jederzeit an – wir helfen gerne.
 
@@ -63,6 +72,8 @@ Personen: {guests}
 {items}
 
 Gesamtsumme: {offer_total}
+
+{notes}
 
 Dieses Angebot ist gültig bis {valid_until}. Wir freuen uns auf Ihre Rückmeldung.
 
@@ -82,6 +93,8 @@ Personen: {guests}
 {items}
 
 Gesamtsumme: {offer_total}
+
+{notes}
 
 Bitte teilen Sie uns die endgültige Personenzahl spätestens 3 Tage vorher mit. Wir freuen uns darauf, Ihr Gastgeber zu sein.
 
@@ -111,9 +124,14 @@ Thank you for your booking. We are pleased to confirm your stay:
 Arrival: {arrival}
 Departure: {departure} ({nights} nights)
 Room: {room_type}
+Room number: {room_no}
 Guests: {persons}
+Board: {board}
 Rate per night: {rate}
 Total: {total}
+Payment: {payment}
+
+{notes}
 
 Check-in is from 3 pm, check-out until 11 am. If you have any questions or requests, we are always happy to help.
 
@@ -131,6 +149,8 @@ We hereby confirm the cancellation of your booking from {arrival} to {departure}
 
 Cancellation fee: {total}
 
+{notes}
+
 We are sorry not to welcome you this time and hope to see you soon.
 
 Kind regards
@@ -143,6 +163,8 @@ We are delighted to have you with us and wish you a relaxing stay at {hotel_name
 Breakfast: daily 7:00 – 10:30
 Wi-Fi: {wifi}
 Reception: available around the clock at {hotel_phone}
+
+{notes}
 
 Is there anything you need? Just let us know – we are happy to help.
 
@@ -160,6 +182,8 @@ Guests: {guests}
 {items}
 
 Total: {offer_total}
+
+{notes}
 
 This offer is valid until {valid_until}. We look forward to hearing from you.
 
@@ -179,6 +203,8 @@ Guests: {guests}
 {items}
 
 Total: {offer_total}
+
+{notes}
 
 Please let us know the final number of guests no later than 3 days in advance. We look forward to being your hosts.
 
@@ -208,9 +234,14 @@ Merci pour votre réservation. Nous avons le plaisir de vous confirmer votre sé
 Arrivée : {arrival}
 Départ : {departure} ({nights} nuits)
 Chambre : {room_type}
+Numéro de chambre: {room_no}
 Personnes : {persons}
+Formule: {board}
 Prix par nuit : {rate}
 Prix total : {total}
+Paiement: {payment}
+
+{notes}
 
 L’enregistrement est possible à partir de 15 h, le départ jusqu’à 11 h. Pour toute question ou demande, nous restons à votre disposition.
 
@@ -228,6 +259,8 @@ Nous confirmons l’annulation de votre réservation du {arrival} au {departure}
 
 Frais d’annulation : {total}
 
+{notes}
+
 Nous regrettons de ne pas vous accueillir cette fois et espérons vous recevoir bientôt.
 
 Cordialement
@@ -240,6 +273,8 @@ Nous sommes ravis de vous accueillir et vous souhaitons un agréable séjour au 
 Petit-déjeuner : tous les jours de 7 h à 10 h 30
 Wi-Fi : {wifi}
 Réception : joignable 24 h/24 au {hotel_phone}
+
+{notes}
 
 Un souhait ? N’hésitez pas à nous en faire part – nous vous aiderons avec plaisir.
 
@@ -257,6 +292,8 @@ Personnes : {guests}
 {items}
 
 Montant total : {offer_total}
+
+{notes}
 
 Cette offre est valable jusqu’au {valid_until}. Nous attendons votre retour avec plaisir.
 
@@ -276,6 +313,8 @@ Personnes : {guests}
 {items}
 
 Montant total : {offer_total}
+
+{notes}
 
 Merci de nous communiquer le nombre définitif de participants au plus tard 3 jours avant. Nous nous réjouissons de vous accueillir.
 
@@ -305,9 +344,14 @@ grazie per la sua prenotazione. Siamo lieti di confermarle il soggiorno:
 Arrivo: {arrival}
 Partenza: {departure} ({nights} notti)
 Camera: {room_type}
+Numero camera: {room_no}
 Persone: {persons}
+Trattamento: {board}
 Prezzo per notte: {rate}
 Prezzo totale: {total}
+Pagamento: {payment}
+
+{notes}
 
 Il check-in è possibile dalle 15:00, il check-out entro le 11:00. Per domande o richieste siamo sempre a sua disposizione.
 
@@ -325,6 +369,8 @@ con la presente confermiamo la cancellazione della sua prenotazione dal {arrival
 
 Penale di cancellazione: {total}
 
+{notes}
+
 Ci dispiace non poterla accogliere questa volta e speriamo di rivederla presto.
 
 Cordiali saluti
@@ -337,6 +383,8 @@ Siamo felici di averla con noi e le auguriamo un piacevole soggiorno al {hotel_n
 Colazione: ogni giorno 7:00 – 10:30
 Wi-Fi: {wifi}
 Ricevimento: sempre raggiungibile al {hotel_phone}
+
+{notes}
 
 Ha un desiderio? Ce lo dica in qualsiasi momento – saremo lieti di aiutarla.
 
@@ -354,6 +402,8 @@ Persone: {guests}
 {items}
 
 Totale: {offer_total}
+
+{notes}
 
 L’offerta è valida fino al {valid_until}. Restiamo in attesa di un suo riscontro.
 
@@ -373,6 +423,8 @@ Persone: {guests}
 {items}
 
 Totale: {offer_total}
+
+{notes}
 
 La preghiamo di comunicarci il numero definitivo di partecipanti entro 3 giorni prima. Saremo lieti di essere i vostri ospiti.
 
@@ -402,9 +454,14 @@ Gracias por su reserva. Nos complace confirmarle su estancia:
 Llegada: {arrival}
 Salida: {departure} ({nights} noches)
 Habitación: {room_type}
+Número de habitación: {room_no}
 Personas: {persons}
+Régimen: {board}
 Precio por noche: {rate}
 Precio total: {total}
+Pago: {payment}
+
+{notes}
 
 El check-in es a partir de las 15:00 y el check-out hasta las 11:00. Para cualquier pregunta o deseo, estamos a su disposición.
 
@@ -422,6 +479,8 @@ Por la presente confirmamos la cancelación de su reserva del {arrival} al {depa
 
 Gastos de cancelación: {total}
 
+{notes}
+
 Lamentamos no poder recibirle esta vez y esperamos darle pronto la bienvenida.
 
 Atentamente
@@ -434,6 +493,8 @@ Nos alegra tenerle con nosotros y le deseamos una estancia agradable en {hotel_n
 Desayuno: todos los días de 7:00 a 10:30
 Wi-Fi: {wifi}
 Recepción: disponible las 24 horas en el {hotel_phone}
+
+{notes}
 
 ¿Necesita algo? Díganoslo en cualquier momento; le ayudaremos con gusto.
 
@@ -451,6 +512,8 @@ Personas: {guests}
 {items}
 
 Importe total: {offer_total}
+
+{notes}
 
 Esta oferta es válida hasta el {valid_until}. Quedamos a la espera de su respuesta.
 
@@ -470,6 +533,8 @@ Personas: {guests}
 {items}
 
 Importe total: {offer_total}
+
+{notes}
 
 Le rogamos nos comunique el número definitivo de asistentes a más tardar 3 días antes. Será un placer ser sus anfitriones.
 
@@ -499,9 +564,14 @@ Obrigado pela sua reserva. Temos o prazer de confirmar a sua estadia:
 Chegada: {arrival}
 Partida: {departure} ({nights} noites)
 Quarto: {room_type}
+Número do quarto: {room_no}
 Pessoas: {persons}
+Regime: {board}
 Preço por noite: {rate}
 Preço total: {total}
+Pagamento: {payment}
+
+{notes}
 
 O check-in é possível a partir das 15:00 e o check-out até às 11:00. Para qualquer questão ou pedido, estamos ao seu dispor.
 
@@ -519,6 +589,8 @@ Confirmamos o cancelamento da sua reserva de {arrival} a {departure}.
 
 Taxa de cancelamento: {total}
 
+{notes}
+
 Lamentamos não o receber desta vez e esperamos dar-lhe as boas-vindas em breve.
 
 Com os melhores cumprimentos
@@ -531,6 +603,8 @@ willkommen: ["Carta de boas-vindas", `# Bem-vindo/a, {guest_name}!
 Pequeno-almoço: diariamente das 7:00 às 10:30
 Wi-Fi: {wifi}
 Receção: disponível 24 horas pelo {hotel_phone}
+
+{notes}
 
 Precisa de alguma coisa? Diga-nos a qualquer momento – teremos todo o gosto em ajudar.
 
@@ -548,6 +622,8 @@ Pessoas: {guests}
 {items}
 
 Total: {offer_total}
+
+{notes}
 
 Esta proposta é válida até {valid_until}. Aguardamos o seu contacto.
 
@@ -567,6 +643,8 @@ Pessoas: {guests}
 {items}
 
 Total: {offer_total}
+
+{notes}
 
 Por favor, indique-nos o número final de participantes até 3 dias antes. Será um prazer recebê-los.
 
@@ -596,9 +674,14 @@ Rezervasyonunuz için teşekkür ederiz. Konaklamanızı memnuniyetle onaylıyor
 Giriş: {arrival}
 Çıkış: {departure} ({nights} gece)
 Oda: {room_type}
+Oda numarası: {room_no}
 Kişi sayısı: {persons}
+Pansiyon: {board}
 Gecelik fiyat: {rate}
 Toplam fiyat: {total}
+Ödeme: {payment}
+
+{notes}
 
 Giriş saat 15:00'ten itibaren, çıkış saat 11:00'e kadardır. Her türlü soru ve isteğiniz için hizmetinizdeyiz.
 
@@ -616,6 +699,8 @@ Sayın {guest_name},
 
 İptal ücreti: {total}
 
+{notes}
+
 Bu sefer sizi ağırlayamadığımız için üzgünüz, en kısa zamanda görüşmek dileğiyle.
 
 Saygılarımızla
@@ -628,6 +713,8 @@ Sizi aramızda görmekten mutluluk duyuyor, {hotel_name} otelinde keyifli bir ko
 Kahvaltı: her gün 07:00 – 10:30
 Wi-Fi: {wifi}
 Resepsiyon: 7/24 {hotel_phone} numarasından ulaşılabilir
+
+{notes}
 
 Bir isteğiniz mi var? Bize her zaman söyleyebilirsiniz – memnuniyetle yardımcı oluruz.
 
@@ -645,6 +732,8 @@ Kişi sayısı: {guests}
 {items}
 
 Toplam tutar: {offer_total}
+
+{notes}
 
 Bu teklif {valid_until} tarihine kadar geçerlidir. Dönüşünüzü bekliyoruz.
 
@@ -664,6 +753,8 @@ Kişi sayısı: {guests}
 {items}
 
 Toplam tutar: {offer_total}
+
+{notes}
 
 Lütfen kesin katılımcı sayısını en geç 3 gün önceden bize bildirin. Ev sahibiniz olmaktan mutluluk duyacağız.
 
@@ -693,9 +784,14 @@ reservierung: ["ご予約確認書", `# ご予約確認書
 チェックイン日：{arrival}
 チェックアウト日：{departure}（{nights}泊）
 客室：{room_type}
+部屋番号：{room_no}
 人数：{persons}
+食事：{board}
 1泊料金：{rate}
 合計料金：{total}
+お支払い：{payment}
+
+{notes}
 
 チェックインは15時から、チェックアウトは11時までです。ご質問やご要望がございましたら、いつでもお申し付けください。
 
@@ -713,6 +809,8 @@ storno: ["キャンセル確認書", `# キャンセル確認書
 
 キャンセル料：{total}
 
+{notes}
+
 今回お迎えできず残念ですが、またのお越しを心よりお待ちしております。
 
 敬具
@@ -725,6 +823,8 @@ willkommen: ["ウェルカムレター", `# {guest_name} 様、ようこそ！
 朝食：毎日 7:00〜10:30
 Wi-Fi：{wifi}
 フロント：24時間対応 {hotel_phone}
+
+{notes}
 
 ご要望がございましたら、どうぞお気軽にお申し付けください。
 
@@ -742,6 +842,8 @@ angebot: ["イベントお見積り", `# お見積り：{event_title}
 {items}
 
 合計：{offer_total}
+
+{notes}
 
 本お見積りの有効期限は{valid_until}です。ご検討のほどよろしくお願いいたします。
 
@@ -761,6 +863,8 @@ veranstaltung: ["イベント確認書", `# ご確認：{event_title}
 {items}
 
 合計：{offer_total}
+
+{notes}
 
 最終的なご人数は3日前までにお知らせください。皆様のお越しを心よりお待ちしております。
 
@@ -790,9 +894,14 @@ reservierung: ["预订确认函", `# 预订确认函
 入住：{arrival}
 离店：{departure}（{nights} 晚）
 房型：{room_type}
+房间号：{room_no}
 人数：{persons}
+餐食：{board}
 每晚价格：{rate}
 总价：{total}
+付款：{payment}
+
+{notes}
 
 入住时间为 15:00 起，退房时间为 11:00 前。如有任何问题或需求，我们随时为您服务。
 
@@ -810,6 +919,8 @@ storno: ["取消确认函", `# 取消确认函
 
 取消费用：{total}
 
+{notes}
+
 很遗憾此次未能接待您，期待不久后再次欢迎您。
 
 此致
@@ -822,6 +933,8 @@ willkommen: ["欢迎信", `# 欢迎您，{guest_name}！
 早餐：每天 7:00 – 10:30
 Wi-Fi：{wifi}
 前台：全天候服务，电话 {hotel_phone}
+
+{notes}
 
 如有任何需要，请随时告诉我们，我们乐意为您效劳。
 
@@ -839,6 +952,8 @@ angebot: ["活动报价", `# 报价：{event_title}
 {items}
 
 总计：{offer_total}
+
+{notes}
 
 本报价有效期至 {valid_until}，期待您的回复。
 
@@ -858,6 +973,8 @@ veranstaltung: ["活动确认函", `# 确认：{event_title}
 {items}
 
 总计：{offer_total}
+
+{notes}
 
 请最晚于活动前 3 天告知最终人数。我们期待为您服务。
 
@@ -887,9 +1004,14 @@ reservierung: ["تأكيد الحجز", `# تأكيد الحجز
 الوصول: {arrival}
 المغادرة: {departure} ({nights} ليالٍ)
 الغرفة: {room_type}
+رقم الغرفة: {room_no}
 عدد الأشخاص: {persons}
+الوجبات: {board}
 السعر لليلة: {rate}
 السعر الإجمالي: {total}
+الدفع: {payment}
+
+{notes}
 
 تسجيل الوصول متاح من الساعة 15:00، والمغادرة حتى الساعة 11:00. نحن في خدمتكم لأي استفسار أو طلب.
 
@@ -907,6 +1029,8 @@ storno: ["تأكيد الإلغاء", `# تأكيد الإلغاء
 
 رسوم الإلغاء: {total}
 
+{notes}
+
 يؤسفنا عدم استقبالكم هذه المرة، ونأمل أن نرحب بكم قريبًا.
 
 مع أطيب التحيات
@@ -919,6 +1043,8 @@ willkommen: ["رسالة ترحيب", `# أهلًا وسهلًا، {guest_name}!
 الإفطار: يوميًا 7:00 – 10:30
 الواي فاي: {wifi}
 الاستقبال: متاح على مدار الساعة على الرقم {hotel_phone}
+
+{notes}
 
 هل لديكم أي طلب؟ أخبرونا في أي وقت – يسعدنا مساعدتكم.
 
@@ -936,6 +1062,8 @@ angebot: ["عرض فعالية", `# عرض: {event_title}
 {items}
 
 المبلغ الإجمالي: {offer_total}
+
+{notes}
 
 هذا العرض صالح حتى {valid_until}. نتطلع إلى ردكم.
 
@@ -955,6 +1083,8 @@ veranstaltung: ["تأكيد الفعالية", `# تأكيد: {event_title}
 {items}
 
 المبلغ الإجمالي: {offer_total}
+
+{notes}
 
 يرجى إبلاغنا بالعدد النهائي للحضور قبل 3 أيام على الأقل. يسعدنا أن نكون مضيفيكم.
 

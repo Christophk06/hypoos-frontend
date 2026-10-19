@@ -78,7 +78,7 @@ function App(){
   // Erneuerung fehlgeschlagen (z. B. lange nicht benutzt) -> zurück zur Anmeldung
   useEffect(()=>{ Session.onExpired = () => { setToken(null); setOrgId(null); }; return () => { Session.onExpired = null; }; },[]);
   const login = (data) => { Session.save(sessionFromAuth(data)); setToken(data.access_token); };
-  const logout = async () => { await unsubscribePushOnLogout(api); Session.save(null); setToken(null); setOrgId(null); setOrgs([]); setHotel(null); setHotels(null); };
+  const logout = async () => { await unsubscribePushOnLogout(api); try { await flushOfflineQueue(); } catch(e){} clearOfflineData(); Session.save(null); setToken(null); setOrgId(null); setOrgs([]); setHotel(null); setHotels(null); };
 
   const saveConfig = (cfg) => {
     setConfig(cfg);
@@ -279,7 +279,7 @@ function App(){
         <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:500,letterSpacing:0.3,padding:"0 8px 20px",borderBottom:"1px solid "+(hotel.brand_color||"rgba(201,166,107,0.3)"),marginBottom:16,display:"flex",alignItems:"center",gap:9}}><Logo size={22} color={hotel.brand_color||"#C9A66B"} />Ouverture</div>
         <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={switchOrg} dark />
         <SideNav nav={NAV} tab={tab} onOpen={(k)=>{ setTab(k); setHelpOpen(false); }} accent={hotel.brand_color||"#C9A66B"} />
-        <div className="nav-item" onClick={leaveHotel} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
+        <div className="nav-item" {...pressable(leaveHotel)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
         <div style={{marginTop:18}}><LanguageSwitcher dark withDefault api={api} me={me} onCurrency={()=>setFxTick(x=>x+1)} /></div>
         <div style={{marginTop:8}}><InstallAppButton dark /></div>
         <div className="logout" onClick={logout} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>

@@ -15,11 +15,11 @@
 <meta name="apple-mobile-web-app-title" content="Ouverture" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="i18n.js?v=6d8436559c"></script>
+<script src="i18n.js?v=e299eca72c"></script>
 <script src="payroll.js?v=2bf4fdbb12"></script>
 <script src="holidays.js?v=cb6e74aef2"></script>
 <script src="planning.js?v=1e94a23b2d"></script>
-<script src="labor.js?v=99d5d6f75a"></script>
+<script src="labor.js?v=d6ff7ebce1"></script>
 <script src="energy.js?v=7ed65ecfff"></script>
 <script src="event-templates.js?v=08eedd9825"></script>
 <script src="doc-templates.js?v=84970721d7"></script>
@@ -35,9 +35,12 @@
   window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); window.__installPrompt = e; window.dispatchEvent(new Event("ouverture-installable")); });
 </script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+  @import url('fonts/fonts.css');
   :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
   * { box-sizing: border-box; }
+  /* Sichtbarer Fokus für Tastatur und Schalterbedienung */
+  :focus-visible { outline: 2px solid #A9834B; outline-offset: 2px; }
+  .sidebar :focus-visible, .mobile-tabbar :focus-visible, .btn-primary:focus-visible { outline-color: #C9A66B; }
   html { scroll-padding-top: env(safe-area-inset-top, 0px); }
   html, body { height: 100%; }
   body { margin: 0; font-family: 'Inter', sans-serif; background: #F6F4EF; color: #1C2430; }
@@ -159,7 +162,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="0a8b766";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
-<script src="app.js?v=3d771dfabb"></script>
+<script>window.__APP_VERSION="1caefcc";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
+<script src="app.js?v=f429350e8e"></script>
 </body>
 </html>

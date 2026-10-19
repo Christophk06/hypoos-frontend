@@ -4,6 +4,9 @@ const INK="#1C2430", INK_SOFT="#2A3444", PAPER="#F6F4EF", CARD="#FFFFFF", BORDER
 const BRASS="#A9834B", BRASS_SOFT="#F1E8D8", GOOD="#3F7A5C", GOOD_SOFT="#E4EFE8";
 const WARN="#B9822E", WARN_SOFT="#F5E9D5", BAD="#A23B32", BAD_SOFT="#F5E1DE", INK_MUTED="#6B7280";
 
+// Klickbare Fläche auch mit Tastatur und Screenreader bedienbar (Enter/Leertaste)
+const pressable = (fn) => ({ role:"button", tabIndex:0, onClick:fn, onKeyDown:(e)=>{ if (e.target===e.currentTarget && (e.key==="Enter"||e.key===" ")) { e.preventDefault(); fn(e); } } });
+
 const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Technik","IT & Systeme","Personal","Einkauf","Sicherheit","Revenue Management","Finanzen & Controlling"];
 // Eigene Rolle und Abteilungen in der gewählten Organisation (setzt App bei jedem Anzeigen).
 // Die Datenbank erzwingt die Rechte; die Oberfläche blendet nur aus, was nicht geht.
@@ -136,6 +139,8 @@ function cachePut(path, data){
   try { const v = JSON.stringify(data); if(v.length < 300000) window.localStorage.setItem("hpoos_c:" + path, v); }
   catch(e){ try { Object.keys(window.localStorage).filter(k=>k.startsWith("hpoos_c:")).forEach(k=>window.localStorage.removeItem(k)); } catch(x){} }
 }
+// Beim Abmelden: zwischengespeicherte Daten und Warteschlange entfernen (gemeinsam genutzte Geräte, z. B. Rezeptions-PC)
+function clearOfflineData(){ try { Object.keys(window.localStorage).filter(k=>k.startsWith("hpoos_c:")||k===OFFLINE_QUEUE_KEY).forEach(k=>window.localStorage.removeItem(k)); } catch(e){} }
 function cacheGet(path){ try { const v = window.localStorage.getItem("hpoos_c:" + path); return v ? JSON.parse(v) : undefined; } catch(e){ return undefined; } }
 async function flushOfflineQueue(){
   if(!LAST_API || FLUSHING || navigator.onLine===false) return;
@@ -175,7 +180,7 @@ async function apiCall(backendUrl, token, path, method, body, noQueue){
   }
   let data = null;
   try { data = await res.json(); } catch(e) {}
-  if(!res.ok) throw new Error((data && data.error) || tf("Fehler {0}", res.status));
+  if(!res.ok){ const err = new Error((data && data.error) || tf("Fehler {0}", res.status)); err.status = res.status; err.code = data && data.code; throw err; }
   if(m === "GET" && OFFLINE_CACHE.test(path)) cachePut(path, data);
   return data;
 }

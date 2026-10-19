@@ -16273,4 +16273,14 @@ I18N.ja["z. B. Übernachtung mit Frühstück"] = "例：朝食付き";
 I18N.zh["z. B. Übernachtung mit Frühstück"] = "例如：含早餐";
 I18N.ar["z. B. Übernachtung mit Frühstück"] = "مثال: إقامة مع إفطار";
 
+I18N.en["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "Invoices are saved – delete permanently anyway?";
+I18N.fr["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "Les factures sont sauvegardées – supprimer définitivement quand même ?";
+I18N.it["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "Le fatture sono salvate – eliminare comunque definitivamente?";
+I18N.es["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "Las facturas están guardadas: ¿eliminar definitivamente de todos modos?";
+I18N.pt["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "As faturas estão guardadas – eliminar definitivamente mesmo assim?";
+I18N.tr["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "Faturalar kaydedildi – yine de kalıcı olarak silinsin mi?";
+I18N.ja["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "請求書は保存済みです。それでも完全に削除しますか?";
+I18N.zh["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "发票已保存——仍要永久删除吗?";
+I18N.ar["Rechnungen sind gesichert – trotzdem endgültig löschen?"] = "تم حفظ الفواتير – هل تريد الحذف نهائياً على أي حال؟";
+
 startI18n(initialUiLanguage());

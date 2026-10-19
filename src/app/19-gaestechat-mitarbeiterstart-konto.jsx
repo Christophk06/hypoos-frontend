@@ -234,7 +234,13 @@ function DeleteAccountCard({api, onDeleted}){
   const run = async () => {
     setBusy(true); setError("");
     try { await api("/api/me","DELETE",{confirm:true}); onDeleted(); }
-    catch(e){ setError(e.message); setBusy(false); }
+    catch(e){
+      // Rechnungen vorhanden (Aufbewahrungspflicht): ausdrücklich bestätigen lassen
+      if(e.code==="invoices" && window.confirm(e.message+"\n\n"+tf("Rechnungen sind gesichert – trotzdem endgültig löschen?"))){
+        try { await api("/api/me","DELETE",{confirm:true, invoices_ack:true}); onDeleted(); return; } catch(e2){ e = e2; }
+      }
+      setError(e.message); setBusy(false);
+    }
   };
   return (
     <Card style={{marginBottom:18,maxWidth:520,borderColor:BAD_SOFT}}>

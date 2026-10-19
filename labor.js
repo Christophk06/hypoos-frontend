@@ -1,12 +1,13 @@
 /* Dienstplan nach Arbeitsrecht prüfen – Hinweise, keine Rechtsberatung.
    Grundregeln je Land (Kollektivverträge können abweichen, z. B. Gastgewerbe AT: geteilte Dienste, 8 h Ruhezeit):
-   AT  (AZG/ARG): höchstens 10 h am Tag, 48 h pro Woche (im Schnitt), 11 h Ruhezeit, 30 Min. Pause ab 6 h, 36 h Wochenruhe
+   AT  (AZG/ARG): höchstens 12 h am Tag und 60 h pro Woche (§ 9 AZG seit 2018; 48 h nur im Schnitt über 17 Wochen),
+                  11 h Ruhezeit, 30 Min. Pause bei mehr als 6 h, 36 h Wochenruhe
    DE  (ArbZG):   höchstens 10 h am Tag, 48 h pro Woche, 11 h Ruhezeit, 30 Min. ab 6 h / 45 Min. ab 9 h, Sonn- und Feiertagsruhe
    CH  (ArG):     höchstens 50 h pro Woche, 11 h Ruhezeit, 15 Min. ab 5,5 h / 30 Min. ab 7 h / 60 Min. ab 9 h
    Eingabe: Schichten EINER Person (Arbeitsschichten mit Beginn/Ende), Pausen aus Zeitbuchungen optional. */
 (function (root) {
   var RULES = {
-    AT: { dayMax: 10, weekMax: 48, rest: 11, weeklyRest: 36, maxDaysInRow: 6, breaks: [[6, 30]] },
+    AT: { dayMax: 12, weekMax: 60, rest: 11, weeklyRest: 36, maxDaysInRow: 6, breaks: [[6, 30]] },
     DE: { dayMax: 10, weekMax: 48, rest: 11, weeklyRest: 35, maxDaysInRow: 6, breaks: [[6, 30], [9, 45]] },
     CH: { dayMax: 12.5, weekMax: 50, rest: 11, weeklyRest: 35, maxDaysInRow: 6, breaks: [[5.5, 15], [7, 30], [9, 60]] },
   };

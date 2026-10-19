@@ -81,7 +81,13 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
   const deleteOrg = async () => {
     setDeleting(true); setTeamMsg(null);
     try { await api("/api/organizations/"+orgId, "DELETE", {confirm:true}); onOrgGone(); }
-    catch(e){ setTeamMsg({ok:false, text:e.message}); setDeleting(false); }
+    catch(e){
+      // Rechnungen vorhanden (Aufbewahrungspflicht): ausdrücklich bestätigen lassen
+      if(e.code==="invoices" && window.confirm(e.message+"\n\n"+tf("Rechnungen sind gesichert – trotzdem endgültig löschen?"))){
+        try { await api("/api/organizations/"+orgId, "DELETE", {confirm:true, invoices_ack:true}); onOrgGone(); return; } catch(e2){ e = e2; }
+      }
+      setTeamMsg({ok:false, text:e.message}); setDeleting(false);
+    }
   };
   const setLanguage = async (lang) => {
     setTeamMsg(null);

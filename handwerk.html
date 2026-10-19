@@ -82,7 +82,7 @@ function render() {
   list.forEach(function (x) {
     h += '<div class="card' + (x.priority === "Dringend" && x.status !== "Erledigt" ? " urgent" : "") + '"><div class="row"><span class="pill s-' + x.status.replace(" ", "") + '">' + esc(t("st")[x.status] || x.status) + "</span>" + (x.priority === "Dringend" ? '<span class="pill" style="background:#F5E1DE;color:#A23B32">' + esc(t("urgent")) + "</span>" : "") + "<b>" + esc(x.location || "") + "</b></div>";
     h += '<div class="t">' + esc(x.title) + "</div>" + (x.description ? '<div class="d">' + esc(x.description) + "</div>" : "");
-    if (x.has_photo) h += '<button class="link" data-p="' + x.id + '">📷 ' + esc(t("photo")) + "</button>" + (state.photos[x.id] ? '<img class="ph" src="' + state.photos[x.id] + '" alt="" />' : "");
+    if (x.has_photo) h += '<button class="link" data-p="' + x.id + '">📷 ' + esc(t("photo")) + "</button>" + (state.photos[x.id] ? '<img class="ph" src="' + esc(state.photos[x.id]) + '" alt="" />' : "");
     if (x.status === "Offen" || x.status === "In Arbeit") h += '<textarea id="n' + x.id + '" placeholder="' + esc(t("note")) + '"></textarea><div class="row" style="margin-top:8px">' + (x.status === "Offen" ? '<button class="btn b2" data-s="In Arbeit" data-id="' + x.id + '">' + esc(t("start")) + "</button>" : "") + '<button class="btn b1" data-s="Prüfen" data-id="' + x.id + '">✓ ' + esc(t("fixed")) + "</button></div>";
     if (x.status === "Prüfen") h += '<div class="muted" style="margin-top:6px">' + esc(t("wait")) + "</div>";
     h += "</div>";
@@ -90,7 +90,7 @@ function render() {
   a.innerHTML = h;
   a.querySelectorAll("[data-f]").forEach(function (b) { b.onclick = function () { state.filter = b.getAttribute("data-f"); render(); }; });
   a.querySelectorAll("[data-p]").forEach(function (b) { b.onclick = function () { var id = b.getAttribute("data-p"); if (state.photos[id]) { delete state.photos[id]; render(); return; }
-    api("/api/public/contractor/" + encodeURIComponent(token) + "/tickets/" + id + "/photo").then(function (r) { state.photos[id] = r.photo_data; render(); }); }; });
+    api("/api/public/contractor/" + encodeURIComponent(token) + "/tickets/" + id + "/photo").then(function (r) { state.photos[id] = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(r.photo_data || "") ? r.photo_data : ""; render(); }); }; });
   a.querySelectorAll("[data-s]").forEach(function (b) { b.onclick = function () { var id = b.getAttribute("data-id"), n = $("n" + id); b.disabled = true;
     api("/api/public/contractor/" + encodeURIComponent(token) + "/tickets/" + id, { method: "POST", body: JSON.stringify({ status: b.getAttribute("data-s"), note: n ? n.value : "" }) })
       .then(load).catch(function (e) { alert(e.message); b.disabled = false; }); }; });

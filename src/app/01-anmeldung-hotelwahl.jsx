@@ -216,7 +216,7 @@ function HotelSetupView({hotels, orgId, api, onCreated, onSelect, orgs, onSwitch
           <React.Fragment>
             <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:14}}>Hotel auswählen</div>
             {hotels.map(h=>(
-              <div key={h.id} onClick={()=>onSelect(h)} style={{padding:"10px 12px",border:`1px solid ${BORDER}`,borderRadius:8,marginBottom:8,cursor:"pointer"}}>
+              <div key={h.id} {...pressable(()=>onSelect(h))} style={{padding:"10px 12px",border:`1px solid ${BORDER}`,borderRadius:8,marginBottom:8,cursor:"pointer"}}>
                 <div style={{fontWeight:600,display:"flex",alignItems:"center",gap:8}}>{h.name}{h.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispiel</Pill>}</div>
                 <div style={{fontSize:12.5,color:INK_MUTED}}>{h.city} · {tf("{0} Zimmer", h.rooms)}</div>
                 <HotelStats s={overview[h.id]} />

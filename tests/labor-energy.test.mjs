@@ -9,15 +9,17 @@ const S = (d, a, b) => ({ shift_date: d, start_time: a, end_time: b });
 const codes = (w) => w.map((x) => x.code).sort();
 
 test("Arbeitsrecht: Tageshöchstzeit, Ruhezeit, Wochenstunden (Österreich)", () => {
-  // 06:00–17:30 = 11,5 h, abzüglich 30 Min. Pause = 11 h > 10 h
-  assert.deepEqual(codes(laborWarnings([S("2026-11-03", "06:00", "17:30")], { region: "AT-9", fullWeek: false })), ["day"]);
+  // 06:00–17:30 = 11 h netto: nach § 9 AZG erlaubt (bis 12 h); 06:00–19:00 = 12,5 h netto > 12 h
+  assert.deepEqual(codes(laborWarnings([S("2026-11-03", "06:00", "17:30")], { region: "AT-9", fullWeek: false })), []);
+  assert.deepEqual(codes(laborWarnings([S("2026-11-03", "06:00", "19:00")], { region: "AT-9", fullWeek: false })), ["day"]);
   // Spät bis 22:30, nächster Tag Früh 06:00 = 7,5 h Ruhe
   const w = laborWarnings([S("2026-11-03", "14:00", "22:30"), S("2026-11-04", "06:00", "14:30")], { region: "AT", fullWeek: false });
   assert.deepEqual(w.map((x) => [x.code, x.value]), [["rest", 7.5]]);
-  // 6 x 9 h netto = 54 h > 48 h und keine 36 h Wochenruhe
+  // 6 x 9 h netto = 54 h: in Österreich erlaubt (bis 60 h); 6 x 11 h netto = 66 h > 60 h
   const week = ["03", "04", "05", "06", "07", "08"].map((d) => S("2026-11-" + d, "06:00", "15:30")).concat([S("2026-11-09", "06:00", "15:30")]);
-  const ww = laborWarnings(week.slice(0, 6), { region: "AT" });
-  assert.ok(ww.some((x) => x.code === "week" && x.value === 54));
+  assert.ok(!laborWarnings(week.slice(0, 6), { region: "AT" }).some((x) => x.code === "week"));
+  const long = ["03", "04", "05", "06", "07", "08"].map((d) => S("2026-11-" + d, "06:00", "17:30"));
+  assert.ok(laborWarnings(long, { region: "AT" }).some((x) => x.code === "week" && x.value === 66));
   assert.ok(laborWarnings(week, { region: "AT" }).some((x) => x.code === "daysInRow" && x.value === 7), "7 Tage in Folge");
   // Montag frei bis Sonntag: Wochenruhe vorhanden
   assert.ok(!laborWarnings([S("2026-11-03", "06:00", "14:30")], { region: "AT" }).some((x) => x.code === "weeklyRest"));

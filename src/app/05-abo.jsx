@@ -18,6 +18,7 @@ function BillingBanner({billing, onOpen}){
 const BILLING_NOTICES = {
   success: {ok:true, text:"Danke! Die Zahlung war erfolgreich. Das Abo wird in wenigen Sekunden aktiviert."},
   cancel: {ok:false, text:"Die Bezahlung wurde abgebrochen. Es wurde nichts berechnet."},
+  pack: {ok:true, text:"Danke! Das Vorlagen-Paket ist gekauft. Unten unter „Vorlagen-Pakete“ kannst du es in ein Hotel übernehmen."},
 };
 
 // Vorschlag für die Abo-Währung aus dem Land des Browsers (gleiche Regel wie billing.js)
@@ -29,12 +30,19 @@ function suggestBillingCurrency(){
   return REGION[r] || LANG[UI_LANG] || LANG[l] || "EUR";
 }
 function fmtPrice(n, cur){ return Number(n).toLocaleString(UI_LOCALE,{style:"currency",currency:cur,maximumFractionDigits:0}); }
+// Preis eines Tarifs in der gewählten Währung, monatlich oder jährlich (10 Monatspreise)
+function planPrice(p, cur, period){
+  const c = p.monthly && p.monthly[cur] ? cur : "EUR";
+  const monthly = (p.monthly && p.monthly[c]) || p.monthlyEur;
+  return fmtPrice(period==="year" ? ((p.yearly && p.yearly[c]) || monthly*10) : monthly, c);
+}
 
 function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
   const [cur,setCur] = useState(() => { try { return window.localStorage.getItem("hpoos_billing_currency") || (DISPLAY_CURRENCY && billing && (billing.currencies||[]).includes(DISPLAY_CURRENCY) ? DISPLAY_CURRENCY : suggestBillingCurrency()); } catch(e){ return suggestBillingCurrency(); } });
   const pickCur = (c) => { setCur(c); try { window.localStorage.setItem("hpoos_billing_currency", c); } catch(e){} };
   const [busy,setBusy] = useState(null);
   const [error,setError] = useState("");
+  const [period,setPeriod] = useState("month"); // Jahresabo: 2 Monate gratis
   if(!billing) return <div style={{color:INK_MUTED}}>Abo-Daten werden geladen…</div>;
 
   const paid = billing.active && billing.plan!=="trial" && billing.has_customer;
@@ -82,6 +90,12 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
           <span style={{fontSize:12,color:INK_MUTED}}>{tf("Abgebucht wird genau in dieser Währung.")}</span>
         </div>
       )}
+      <div role="radiogroup" aria-label={tf("Abrechnung")} style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:18}}>
+        {[["month", tf("Monatlich")], ["year", tf("Jährlich – 2 Monate gratis")]].map(([k,l])=>(
+          <button key={k} type="button" role="radio" aria-checked={period===k} onClick={()=>setPeriod(k)}
+            style={{border:`1px solid ${period===k?INK:BORDER}`,background:period===k?INK:"#fff",color:period===k?"#fff":INK,borderRadius:999,padding:"8px 16px",fontSize:13.5,fontWeight:600,cursor:"pointer",minHeight:40}}>{l}</button>
+        ))}
+      </div>
       <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,margin:"6px 0 2px"}}>{tf("Eröffnung")}</div>
       <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>{tf("Für Hotels vor und während der Eröffnung: Pre-Opening-Plan, KI-Lagebericht und alle Betriebsbereiche. Läuft das Haus, wechselst du in den günstigeren Betriebs-Tarif.")}</div>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:18}}>
@@ -93,13 +107,13 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
                 <div style={{fontWeight:700,fontSize:16}}>{p.name}</div>
                 {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
               </div>
-              <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,margin:"8px 0 2px"}}>{fmtPrice((p.monthly && p.monthly[cur]) || p.monthlyEur, p.monthly && p.monthly[cur] ? cur : "EUR")}</div>
-              <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>pro Monat zzgl. USt., monatlich kündbar</div>
+              <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,margin:"8px 0 2px"}}>{planPrice(p, cur, period)}</div>
+              <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>{period==="year" ? tf("pro Jahr zzgl. USt., 12 Monate Laufzeit") : "pro Monat zzgl. USt., monatlich kündbar"}</div>
               <ul style={{margin:"0 0 14px",paddingLeft:18,fontSize:13.5,lineHeight:1.6,flex:1}}>{p.features.map(f=><li key={f}>{f}</li>)}</ul>
               {isAdmin && billing.stripe_enabled && !current && (
                 paid
                   ? <button onClick={()=>go("portal", null, "portal")} disabled={!!busy} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer"}}>Über „Abo verwalten“ wechseln</button>
-                  : <button className="btn-primary" onClick={()=>go("checkout", {plan:p.key, currency:cur}, p.key)} disabled={!!busy || !p.available}>{busy===p.key ? "Öffnet Bezahlseite…" : p.available ? p.name+" wählen" : "Bald verfügbar"}</button>
+                  : <button className="btn-primary" onClick={()=>go("checkout", {plan:p.key, currency:cur, interval:period}, p.key)} disabled={!!busy || !p.available}>{busy===p.key ? "Öffnet Bezahlseite…" : p.available ? p.name+" wählen" : "Bald verfügbar"}</button>
               )}
             </Card>
           );
@@ -114,7 +128,8 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
           {CONTACT_EMAIL && <a href={"mailto:"+CONTACT_EMAIL+"?subject=Ouverture%20Enterprise"} style={{textAlign:"center",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,color:INK,textDecoration:"none"}}>Kontakt aufnehmen</a>}
         </Card>
       </div>
-      <OperationsPlans billing={billing} cur={cur} hotel={hotel} isAdmin={isAdmin} paid={paid} busy={busy} go={go} />
+      <OperationsPlans billing={billing} cur={cur} period={period} hotel={hotel} isAdmin={isAdmin} paid={paid} busy={busy} go={go} />
+      <BillingExtras billing={billing} orgId={orgId} api={api} isAdmin={isAdmin} hotel={hotel} cur={cur} onReload={onReload} />
       <div style={{fontSize:12,color:INK_MUTED,marginTop:14}}>
         Die Bezahlung läuft sicher über Stripe. Rechnungen kommen per E-Mail und sind unter „Abo verwalten“ abrufbar.
         <button style={{...linkBtn,marginLeft:6}} onClick={onReload}>Status aktualisieren</button>
@@ -124,14 +139,14 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
 }
 
 // Betriebs-Tarife (ohne Pre-Opening), Preis nach Zimmerzahl. Die Stufe legt der Server fest.
-function OperationsPlans({billing, cur, hotel, isAdmin, paid, busy, go}){
+function OperationsPlans({billing, cur, period, hotel, isAdmin, paid, busy, go}){
   const tiers = (billing.plans||[]).filter(p=>p.group==="operations");
   if(!tiers.length) return null;
   const rooms = Number(hotel && hotel.rooms) || 0;
   const mine = rooms ? tiers.find(t=>!t.maxRooms || rooms<=t.maxRooms) : null;
   const current = tiers.find(t=>t.key===billing.plan && billing.active);
   const range = (t, i) => i===0 ? tf("bis {0} Zimmer", t.maxRooms) : t.maxRooms ? tf("{0} bis {1} Zimmer", tiers[i-1].maxRooms+1, t.maxRooms) : tf("ab {0} Zimmern", tiers[i-1].maxRooms+1);
-  const price = (t) => fmtPrice((t.monthly && t.monthly[cur]) || t.monthlyEur, t.monthly && t.monthly[cur] ? cur : "EUR");
+  const price = (t) => planPrice(t, cur, period);
   return (
     <div style={{marginTop:28}}>
       <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,margin:"0 0 2px"}}>{tf("Betrieb")}</div>
@@ -152,15 +167,96 @@ function OperationsPlans({billing, cur, hotel, isAdmin, paid, busy, go}){
           <div>
             {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
             <div style={{fontSize:13.5,margin:"6px 0 12px"}}>
-              {mine ? tf("Für {0} Zimmer gilt {1}: {2} pro Monat zzgl. USt., monatlich kündbar.", rooms, mine.name, price(mine)) : tf("Trag unter „Hotel bearbeiten“ die Zimmerzahl ein – danach richtet sich der Preis.")}
+              {tiers.length>0 && <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Weitere Hotels: je 20 % günstiger als die Stufe des größten Hauses.")}</div>}
+              {mine ? (period==="year" ? tf("Für {0} Zimmer gilt {1}: {2} pro Jahr zzgl. USt. (2 Monate gratis).", rooms, mine.name, price(mine)) : tf("Für {0} Zimmer gilt {1}: {2} pro Monat zzgl. USt., monatlich kündbar.", rooms, mine.name, price(mine))) : tf("Trag unter „Hotel bearbeiten“ die Zimmerzahl ein – danach richtet sich der Preis.")}
             </div>
             {isAdmin && billing.stripe_enabled && !current && mine && (
               paid
                 ? <button onClick={()=>go("portal", null, "portal")} disabled={!!busy} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer"}}>Über „Abo verwalten“ wechseln</button>
-                : <button className="btn-primary" onClick={()=>go("checkout", {plan:"betrieb", currency:cur}, "betrieb")} disabled={!!busy || !mine.available}>{busy==="betrieb" ? "Öffnet Bezahlseite…" : mine.available ? tf("{0} wählen", mine.name) : "Bald verfügbar"}</button>
+                : <button className="btn-primary" onClick={()=>go("checkout", {plan:"betrieb", currency:cur, interval:period}, "betrieb")} disabled={!!busy || !mine.available}>{busy==="betrieb" ? "Öffnet Bezahlseite…" : mine.available ? tf("{0} wählen", mine.name) : "Bald verfügbar"}</button>
             )}
           </div>
         </div>
+      </Card>
+    </div>
+  );
+}
+
+// Zusatzpakete, weitere Hotels, Saisonpause und Vorlagen-Shop (Migration 030)
+const MONTHS_SHORT = (i) => new Date(2024, i, 1).toLocaleDateString(UI_LOCALE, {month:"short"});
+function BillingExtras({billing, orgId, api, isAdmin, hotel, cur, onReload}){
+  const [busy,setBusy] = useState(null); const [msg,setMsg] = useState(null);
+  const [months,setMonths] = useState(billing.season_months || []);
+  const [packs,setPacks] = useState(null);
+  useEffect(()=>{ api("/api/organizations/"+orgId+"/template-packs").then(setPacks).catch(()=>setPacks([])); },[orgId]);
+  if(billing.season_months===undefined) return null; // Server ohne Migration 030
+  const run = async (key, fn, after) => {
+    setBusy(key); setMsg(null);
+    try { const r = await fn(); if(r && r.url){ window.location.href = r.url; return; } setMsg({ok:true, text:after}); onReload && onReload(); }
+    catch(e){ setMsg({ok:false, text:e.message}); }
+    setBusy(null);
+  };
+  const live = billing.has_subscription && billing.active;
+  const opsPlan = (billing.plans||[]).some(p=>p.key===billing.plan && p.group==="operations");
+  const ki = (billing.addons ? billing.addons : []).includes("ki");
+  const kiOffer = (billing.addon_offers || []).find(a=>a.key==="ki") || null;
+  const priceOf = (a) => a ? fmtPrice((a.monthly && a.monthly[cur]) || a.monthlyEur, a.monthly && a.monthly[cur] ? cur : "EUR") : "";
+  const card = {marginTop:18};
+  return (
+    <div style={{marginTop:28}}>
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13.5,marginBottom:10}}>{msg.text}</div>}
+      <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,margin:"0 0 2px"}}>{tf("Zusätze")}</div>
+
+      {opsPlan && (
+        <Card style={card}>
+          <div style={{fontWeight:700,marginBottom:4}}>{tf("Weiteres Hotel hinzubuchen")}</div>
+          <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Im Betriebs-Tarif kostet jedes weitere Hotel 20 % weniger. Gebucht: {0} weitere Hotels.", billing.extra_hotels||0)}</div>
+          {isAdmin && live && <button className="btn-primary" disabled={!!busy} onClick={()=>run("extra", ()=>api("/api/organizations/"+orgId+"/billing/extra-hotel","POST",{}), tf("Ein weiteres Hotel ist gebucht. Du kannst es jetzt anlegen."))}>{busy==="extra" ? tf("Speichert…") : tf("Hotel hinzubuchen")}</button>}
+        </Card>
+      )}
+
+      <Card style={card}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",alignItems:"baseline"}}>
+          <div style={{fontWeight:700}}>{tf("KI-Paket")}</div>
+          {ki && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
+        </div>
+        <div style={{fontSize:13,color:INK_MUTED,margin:"4px 0 10px"}}>{tf("Fünfmal so viele KI-Lageberichte, Bewertungs-Auswertungen und Übersetzungen wie im Tarif enthalten. {0} pro Monat zzgl. USt., monatlich kündbar.", priceOf(kiOffer) || fmtPrice(49,"EUR"))}</div>
+        {isAdmin && live && (ki
+          ? <button style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 14px",fontSize:13.5,cursor:"pointer"}} disabled={!!busy} onClick={()=>run("ki", ()=>api("/api/organizations/"+orgId+"/billing/addon/ki","DELETE"), tf("Das KI-Paket ist gekündigt."))}>{tf("KI-Paket kündigen")}</button>
+          : <button className="btn-primary" disabled={!!busy} onClick={()=>run("ki", ()=>api("/api/organizations/"+orgId+"/billing/addon","POST",{addon:"ki"}), tf("Das KI-Paket ist gebucht."))}>{busy==="ki" ? tf("Speichert…") : tf("KI-Paket buchen")}</button>)}
+        {!live && <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Zusätze lassen sich zu einem laufenden Abo buchen.")}</div>}
+      </Card>
+
+      <Card style={card}>
+        <div style={{fontWeight:700,marginBottom:4}}>{tf("Saisonpause")}</div>
+        <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Für Saisonhotels: In den markierten Monaten wird nichts abgebucht. Alle Daten bleiben lesbar, Änderungen sind in dieser Zeit gesperrt. Gilt für Monatsabos.")}</div>
+        {billing.paused && <div style={{fontSize:13,color:WARN,marginBottom:8}}>{tf("Saisonpause aktiv – Ouverture ist im Nur-Lesen-Modus.")}</div>}
+        <div role="group" aria-label={tf("Schließmonate")} style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+          {Array.from({length:12},(_,i)=>i+1).map(m=>{ const on = months.includes(m); return (
+            <button key={m} type="button" aria-pressed={on} disabled={!isAdmin} onClick={()=>setMonths(on ? months.filter(x=>x!==m) : [...months, m].sort((a,b)=>a-b))}
+              style={{minWidth:52,minHeight:40,border:`1px solid ${on?INK:BORDER}`,background:on?INK:"#fff",color:on?"#fff":INK,borderRadius:8,fontSize:13,cursor:isAdmin?"pointer":"default"}} data-no-i18n="">{MONTHS_SHORT(m-1)}</button>
+          ); })}
+        </div>
+        {isAdmin && <button className="btn-primary" disabled={!!busy || months.length>11} onClick={()=>run("season", ()=>api("/api/organizations/"+orgId+"/billing/season","PUT",{months}), tf("Saisonpause gespeichert."))}>{busy==="season" ? tf("Speichert…") : tf("Schließmonate speichern")}</button>}
+      </Card>
+
+      <Card style={card}>
+        <div style={{fontWeight:700,marginBottom:4}}>{tf("Vorlagen-Pakete")}</div>
+        <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Fertige Aufgaben und Checklisten für besondere Vorhaben – einmal kaufen, in jedes Hotel der Organisation übernehmen.")}</div>
+        {packs===null ? <div style={{fontSize:13,color:INK_MUTED}}>…</div> : (
+          <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:12}}>
+            {packs.map(p=>(
+              <div key={p.key} style={{border:`1px solid ${BORDER}`,borderRadius:8,padding:14,display:"flex",flexDirection:"column"}}>
+                <div style={{fontWeight:700}} data-no-i18n="">{p.title}</div>
+                <div style={{fontSize:12.5,color:INK_MUTED,margin:"4px 0 8px",flex:1}} data-no-i18n="">{p.description}</div>
+                <div style={{fontSize:12.5,marginBottom:10}}>{tf("{0} Aufgaben, {1} Checklisten", p.tasks, p.checklists)}</div>
+                {p.purchased
+                  ? <button className="btn-primary" disabled={!!busy || !hotel} onClick={()=>run("apply-"+p.key, ()=>api("/api/hotels/"+hotel.id+"/template-packs/"+p.key+"/apply","POST",{}).then(r=>({applied:r})), tf("Übernommen. Die Aufgaben stehen unter „Aufgaben“, die Checklisten unter „Checklisten“."))}>{tf("In dieses Hotel übernehmen")}</button>
+                  : isAdmin && billing.stripe_enabled && <button style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 14px",fontSize:13.5,cursor:"pointer"}} disabled={!!busy} onClick={()=>run("buy-"+p.key, ()=>api("/api/organizations/"+orgId+"/template-packs/"+p.key+"/checkout","POST",{}), "")}>{tf("Kaufen für {0}", fmtPrice(p.priceEur,"EUR"))}</button>}
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

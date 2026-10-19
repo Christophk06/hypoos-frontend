@@ -164,8 +164,14 @@
     if (p === "/api/invites") return ok({ id: nid("i"), email: b.email, role: b.role, status: "ausstehend", token: "demo", email_sent: false });
     if (p === "/api/organizations/demo-org/billing") return ok({ plan: "trial", plan_name: "Testphase", status: "trialing", active: true, trial_days_left: 14, trial_ends_at: add(todayIso, 14),
       hotel_limit: 1, hotel_count: 1, can_add_hotel: false, has_customer: false, stripe_enabled: false, ai_enabled: true, currencies: ["EUR"],
+      has_subscription: false, billing_interval: "month", extra_hotels: 0, season_months: [], paused: false, addons: [],
+      addon_offers: [{ key: "ki", name: "KI-Paket", monthlyEur: 49, monthly: { EUR: 49 } }],
       plans: [{ key: "starter", name: "Starter", hotels: 1, monthlyEur: 299, monthly: { EUR: 299 }, available: false, features: ["1 Hotel-Eröffnung", "Unbegrenzt viele Teammitglieder"] },
               { key: "professional", name: "Professional", hotels: 5, monthlyEur: 790, monthly: { EUR: 790 }, available: false, features: ["Bis zu 5 Hotel-Eröffnungen gleichzeitig", "Alles aus Starter"] }] });
+    if (p === "/api/organizations/demo-org/template-packs") return ok([
+      { key: "saisonstart", title: "Saisonstart", description: "Wiedereröffnung nach der Zwischensaison: Personal, Technik, Housekeeping, Küche und Vertrieb.", priceEur: 99, tasks: 33, checklists: 2, purchased: true },
+      { key: "wellness", title: "Wellness & Spa eröffnen", description: "Abnahmen, Wasser- und Saunatechnik, Behandlungen, Personal und Hygieneplan.", priceEur: 99, tasks: 28, checklists: 2, purchased: false },
+      { key: "haccp", title: "HACCP-Grundausstattung", description: "Gefahrenanalyse, Reinigungsplan, Temperaturen, Allergene und Schulungen für die Küche.", priceEur: 99, tasks: 21, checklists: 3, purchased: false }]);
     if (p === "/api/organizations/demo-org/my-tasks") return ok(D.tasks.filter(function (t) { return t.assignee_id === ME; }).map(function (t) { return Object.assign({ hotel_name: D.hotel.name }, t); }));
     if (p === "/api/organizations/demo-org/my-shifts") return ok(visibleShifts().filter(function (s) { return s.user_id === ME && s.shift_date >= todayIso; })
       .sort(function (a, c) { return a.shift_date < c.shift_date ? -1 : 1; }).map(function (s) { return Object.assign({ hotel_name: D.hotel.name }, s); }));

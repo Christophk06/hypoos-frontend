@@ -21,7 +21,7 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ouverture","applicationCategory":"BusinessApplication","operatingSystem":"Web, iOS, Android",
  "description":"Hotel-Software für Pre-Opening, Dienstplan, Übergabebuch und Checklisten.",
  "areaServed":["AT","DE","CH"],"inLanguage":["de","en","fr","it","es","pt","tr","ja","zh","ar"],
- "offers":[{"@type":"Offer","name":"Starter","price":"299","priceCurrency":"EUR"},{"@type":"Offer","name":"Professional","price":"790","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb S","price":"149","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb M","price":"249","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb L","price":"399","priceCurrency":"EUR"}]}
+ "offers":[{"@type":"Offer","name":"Starter","price":"299","priceCurrency":"EUR"},{"@type":"Offer","name":"Professional","price":"790","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb S","price":"149","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb M","price":"249","priceCurrency":"EUR"},{"@type":"Offer","name":"Betrieb L","price":"399","priceCurrency":"EUR"},{"@type":"Offer","name":"Berater","price":"1290","priceCurrency":"EUR"}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
@@ -236,6 +236,11 @@
   .plan li::before { content: ''; position: absolute; left: 0; top: 15px; width: 10px; height: 1px; background: var(--brass-light); }
   .plan .btn { text-align: center; width: 100%; }
 
+  .period { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--card); }
+  .period button { border: none; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--text-2); padding: 8px 16px; border-radius: 999px; cursor: pointer; min-height: 40px; }
+  .period button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .setup { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 8px; }
+  .setup .plan h3 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px; }
   .pgroup { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin: 0 0 18px; }
   .pgroup .ghead { font-size: 26px; }
   .pgroup p { margin: 0; color: var(--text-2); font-size: 15px; max-width: 40em; }
@@ -319,7 +324,7 @@
     .flist { grid-template-columns: minmax(0, 1fr); }
     .flist .feat:nth-child(2) { border-top: 1px solid var(--line); padding-top: 18px; }
     .plans { gap: 28px; }
-    .tiers { grid-template-columns: minmax(0, 1fr); }
+    .tiers, .setup { grid-template-columns: minmax(0, 1fr); }
     .tier + .tier, [dir="rtl"] .tier + .tier { border-left: none; border-right: none; border-top: 1px solid var(--line); }
     table.cmp { font-size: 13px; } table.cmp th, table.cmp td { padding: 10px 6px; }
     .grid7 { grid-template-columns: 52px repeat(7, minmax(0, 1fr)); font-size: 10px; gap: 2px; }
@@ -360,6 +365,7 @@
       <a href="#funktionen">Funktionen</a>
       <a href="#betrieb">Betrieb</a>
       <a href="#preise">Preise</a>
+      <a href="#einrichtung">Einrichtung</a>
       <a href="#kontakt">Kontakt</a>
       <a class="m-only" href="index.html?demo=1">Live-Demo</a>
       <a class="m-only" href="index.html">Anmelden</a>
@@ -577,6 +583,7 @@
       <div class="cur-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-6px 0 22px">
         <span class="cur-label" style="font-size:14px;color:var(--muted)"></span>
         <select id="price-currency" aria-label="Währung" data-no-i18n style="font:inherit;font-size:14px;padding:7px 10px;border:1px solid #E4DFD3;border-radius:6px;background:#fff;color:#1C2430"></select>
+        <div class="period" role="group" aria-label="Abrechnung"><button type="button" data-period="month" aria-pressed="true">Monatlich</button><button type="button" data-period="year" aria-pressed="false">Jährlich – 2 Monate gratis</button></div>
       </div>
       <div class="pgroup"><h3 class="ghead">Für die Eröffnung</h3><p>Pre-Opening-Plan, KI-Lagebericht und alle Bereiche für den Betrieb – für die Zeit rund um die Eröffnung.</p></div>
       <div class="plans">
@@ -663,6 +670,72 @@
     </div>
   </section>
 
+  <section id="einrichtung" class="alt">
+    <div class="wrap">
+      <div class="eyebrow">Einrichtung</div>
+      <h2>Wir richten Ouverture für Sie ein</h2>
+      <p class="intro">Keine Zeit für die Einrichtung? Wir übernehmen Team, Vorlagen und Daten – und schulen Ihre Abteilungsleitungen per Video. Einmalig, zusätzlich zum Abo.</p>
+      <div class="setup">
+        <div class="plan">
+          <h3>Einrichtung Basis</h3>
+          <div class="price" data-no-i18n>490 €</div>
+          <div class="per">einmalig zzgl. USt.</div>
+          <ul>
+            <li>Team und Abteilungen anlegen</li>
+            <li>Vorlage an Ihr Haus anpassen</li>
+            <li>1 Stunde Schulung per Video</li>
+          </ul>
+          <a class="btn btn-ghost" href="#kontakt" data-topic="Einrichtung Basis">Einrichtung anfragen</a>
+        </div>
+        <div class="plan pop">
+          <span class="tag">Empfohlen</span>
+          <h3>Einrichtung Komplett</h3>
+          <div class="price" data-no-i18n>990 €</div>
+          <div class="per">einmalig zzgl. USt.</div>
+          <ul>
+            <li>Alles aus Basis</li>
+            <li>Bestehende Excel-Listen übernehmen</li>
+            <li>Dienstplan- und Checklisten-Vorlagen für Ihre Abteilungen</li>
+            <li>3 Stunden Schulung per Video</li>
+          </ul>
+          <a class="btn btn-primary" href="#kontakt" data-topic="Einrichtung Komplett">Einrichtung anfragen</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="partner">
+    <div class="wrap">
+      <div class="eyebrow">Berater und Partner</div>
+      <h2>Für Pre-Opening-Beratungen und Partner der Hotellerie</h2>
+      <p class="intro">Sie begleiten mehrere Eröffnungen gleichzeitig oder betreuen Hotels als Lohnbüro, Steuerberatung oder Systemanbieter? Sprechen Sie mit uns.</p>
+      <div class="setup">
+        <div class="plan">
+          <h3>Berater-Lizenz</h3>
+          <div class="price" data-plan="berater" data-no-i18n>1.290 €</div>
+          <div class="per">pro Monat zzgl. USt.</div>
+          <ul>
+            <li>Bis zu 10 Eröffnungen gleichzeitig</li>
+            <li>Alles aus Professional</li>
+            <li>Gruppenansicht über alle Häuser</li>
+            <li>Ihre Kundinnen und Kunden arbeiten direkt im Projekt mit</li>
+          </ul>
+          <a class="btn btn-primary" href="#kontakt" data-topic="Berater-Lizenz">Berater-Lizenz anfragen</a>
+        </div>
+        <div class="plan">
+          <h3>Partner werden</h3>
+          <div class="per" style="flex:0">Für Lohnbüros, Steuerberatungen, PMS- und Kassenanbieter</div>
+          <ul>
+            <li>Gemeinsame Kundinnen und Kunden schneller anbinden</li>
+            <li>Schnittstellen und Exporte gemeinsam testen</li>
+            <li>Konditionen für Empfehlungen nach Absprache</li>
+          </ul>
+          <a class="btn btn-ghost" href="#kontakt" data-topic="Partnerschaft">Partnerschaft anfragen</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="faq" class="alt">
     <div class="wrap faq">
       <div class="eyebrow">FAQ</div>
@@ -700,7 +773,11 @@
         <label>Anliegen
           <select name="topic">
             <option value="Demo-Termin">Demo-Termin</option>
+            <option value="Einrichtung Basis">Einrichtung Basis (490 €)</option>
+            <option value="Einrichtung Komplett">Einrichtung Komplett (990 €)</option>
             <option value="Enterprise">Enterprise / Hotelgruppe</option>
+            <option value="Berater-Lizenz">Berater-Lizenz</option>
+            <option value="Partnerschaft">Partnerschaft</option>
             <option value="Frage">Allgemeine Frage</option>
           </select>
         </label>
@@ -745,23 +822,34 @@
   var LANG = {ja:"JPY",zh:"CNY",ko:"KRW",tr:"TRY",ar:"AED",sv:"SEK",nb:"NOK",da:"DKK",pl:"PLN",cs:"CZK",hu:"HUF"};
   var parts = (navigator.language || "").toLowerCase().split(/[-_]/);
   var saved = null; try { saved = localStorage.getItem("hpoos_billing_currency"); } catch(e){}
-  var fallback = {plans:[{key:"starter",monthly:{EUR:299}},{key:"professional",monthly:{EUR:790}},{key:"betrieb_s",monthly:{EUR:149}},{key:"betrieb_m",monthly:{EUR:249}},{key:"betrieb_l",monthly:{EUR:399}}], currencies:["EUR"]};
+  var fallback = {plans:[{key:"starter",monthly:{EUR:299}},{key:"professional",monthly:{EUR:790}},{key:"betrieb_s",monthly:{EUR:149}},{key:"betrieb_m",monthly:{EUR:249}},{key:"betrieb_l",monthly:{EUR:399}},{key:"berater",monthly:{EUR:1290}}], currencies:["EUR"]};
   function name(c){ try { return new Intl.DisplayNames([UI_LOCALE], {type:"currency"}).of(c); } catch(e){ return c; } }
+  var PERIOD = "month"; // Jahresabo: 10 Monatspreise für 12 Monate
   function show(data){
     var cur = sel.value;
     data.plans.forEach(function(p){
       var el = document.querySelector('.price[data-plan="'+p.key+'"]'); if(!el) return;
       var c = p.monthly[cur] ? cur : "EUR";
-      el.textContent = Number(p.monthly[c]).toLocaleString(UI_LOCALE, {style:"currency", currency:c, maximumFractionDigits:0});
+      var amount = PERIOD === "year" ? ((p.yearly && p.yearly[c]) || p.monthly[c] * 10) : p.monthly[c];
+      el.textContent = Number(amount).toLocaleString(UI_LOCALE, {style:"currency", currency:c, maximumFractionDigits:0});
+      var per = el.nextElementSibling; if(per && per.classList.contains("per")) per.textContent = PERIOD === "year" ? "pro Jahr zzgl. USt." : "pro Monat zzgl. USt.";
     });
   }
+  var LAST = null;
+  document.querySelectorAll(".period button").forEach(function(b){
+    b.addEventListener("click", function(){
+      PERIOD = b.getAttribute("data-period");
+      document.querySelectorAll(".period button").forEach(function(x){ x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      if(LAST) show(LAST);
+    });
+  });
   function init(data){
     sel.innerHTML = "";
     data.currencies.forEach(function(c){ var o = document.createElement("option"); o.value = c; o.textContent = name(c) + " (" + c + ")"; sel.appendChild(o); });
     var pick = saved || REGION[parts[1]] || LANG[UI_LANG] || LANG[parts[0]] || "EUR";
     sel.value = data.currencies.indexOf(pick) >= 0 ? pick : "EUR";
     sel.onchange = function(){ try { localStorage.setItem("hpoos_billing_currency", sel.value); } catch(e){} show(data); };
-    show(data);
+    LAST = data; show(data);
   }
   init(fallback);
   fetch(API).then(function(r){ return r.json(); }).then(init).catch(function(){});
@@ -787,6 +875,7 @@
 // Kontaktformular -> Backend (Mail an das Ouverture-Team)
 (function(){
   var f = document.getElementById("contact-form"), msg = document.getElementById("contact-msg");
+  document.querySelectorAll("[data-topic]").forEach(function(a){ a.addEventListener("click", function(){ f.topic.value = a.getAttribute("data-topic"); }); });
   f.addEventListener("submit", function(e){
     e.preventDefault();
     var d = {}; new FormData(f).forEach(function(v, k){ d[k] = v; });

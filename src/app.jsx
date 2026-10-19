@@ -125,19 +125,58 @@ async function freshToken(token){
   return s.access_token;
 }
 
-async function apiCall(backendUrl, token, path, method, body){
+// Offline: zuletzt geladene Listen zeigen und bestimmte Einträge (Meldung, Messwert, Checkliste, Übergabe, Fundsache) später senden
+const OFFLINE_QUEUE_KEY = "hpoos_offline_queue";
+const OFFLINE_CACHE = /^\/api\/(hotels\/[^/]+\/(tickets|checklists|temp-points|temp-readings|logbook|rooms|lost-found|briefing|shifts|stock)|me|organizations\/[^/]+\/(my-shifts|my-tasks))(\?|$)/;
+const OFFLINE_SEND = [[/^\/api\/temp-points\/[^/]+\/readings$/, "POST"], [/^\/api\/checklists\/[^/]+\/run$/, "PUT"], [/^\/api\/hotels\/[^/]+\/tickets$/, "POST"], [/^\/api\/hotels\/[^/]+\/logbook$/, "POST"], [/^\/api\/hotels\/[^/]+\/lost-found$/, "POST"]];
+let LAST_API = null, FLUSHING = false;
+function offlineQueue(){ try { return JSON.parse(window.localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]"); } catch(e){ return []; } }
+function saveOfflineQueue(q){ try { window.localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); } catch(e){} window.dispatchEvent(new Event("hpoos-queue")); }
+function cachePut(path, data){
+  try { const v = JSON.stringify(data); if(v.length < 300000) window.localStorage.setItem("hpoos_c:" + path, v); }
+  catch(e){ try { Object.keys(window.localStorage).filter(k=>k.startsWith("hpoos_c:")).forEach(k=>window.localStorage.removeItem(k)); } catch(x){} }
+}
+function cacheGet(path){ try { const v = window.localStorage.getItem("hpoos_c:" + path); return v ? JSON.parse(v) : undefined; } catch(e){ return undefined; } }
+async function flushOfflineQueue(){
+  if(!LAST_API || FLUSHING || navigator.onLine===false) return;
+  const q = offlineQueue(); if(!q.length) return;
+  FLUSHING = true; const keep = [];
+  for(const it of q){
+    try { await apiCall(LAST_API.url, (Session.current && Session.current.access_token) || LAST_API.token, it.path, it.method, it.body, true); }
+    catch(e){ if(e.offline) keep.push(it); } // vom Server abgelehnt: verwerfen, sonst später erneut
+  }
+  saveOfflineQueue(keep.concat(offlineQueue().slice(q.length)));
+  FLUSHING = false;
+}
+if(typeof window!=="undefined"){ window.addEventListener("online", ()=>flushOfflineQueue()); setInterval(()=>{ if(offlineQueue().length) flushOfflineQueue(); }, 60000); }
+
+async function apiCall(backendUrl, token, path, method, body, noQueue){
+  LAST_API = {url:backendUrl, token};
   const send = (t) => fetch(backendUrl.replace(/\/$/,"") + path, {
     method: method || "GET",
     // Sprache der Oberfläche: Server antwortet mit Meldungen, Vorlage, Beispielhotel und KI-Bericht darin
     headers: { "Content-Type":"application/json", "Accept-Language": UI_LANG, ...(t ? {Authorization:`Bearer ${t}`} : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  let res = await send(await freshToken(token));
-  // Schlüssel trotzdem abgelehnt (z. B. Rechner war im Ruhezustand): einmal erneuern und wiederholen
-  if(res.status === 401 && token && Session.current) res = await send(await refreshSession());
+  const m = (method || "GET").toUpperCase();
+  let res;
+  try {
+    res = await send(await freshToken(token));
+    // Schlüssel trotzdem abgelehnt (z. B. Rechner war im Ruhezustand): einmal erneuern und wiederholen
+    if(res.status === 401 && token && Session.current) res = await send(await refreshSession());
+  } catch(e){
+    // Kein Netz: Lesen aus dem Zwischenspeicher, ausgewählte Einträge in die Warteschlange
+    if(m === "GET"){ const c = cacheGet(path); if(c !== undefined){ window.dispatchEvent(new Event("hpoos-queue")); return c; } }
+    if(!noQueue && OFFLINE_SEND.some(([re, mm]) => mm === m && re.test(path))){
+      saveOfflineQueue([...offlineQueue(), {path, method:m, body, at:new Date().toISOString()}]);
+      return {...(body||{}), id:"offline-"+Date.now(), queued:true, offline:true};
+    }
+    const err = new Error(tf("Keine Verbindung zum Server. Bitte Internet prüfen und erneut versuchen.")); err.offline = true; throw err;
+  }
   let data = null;
   try { data = await res.json(); } catch(e) {}
   if(!res.ok) throw new Error((data && data.error) || tf("Fehler {0}", res.status));
+  if(m === "GET" && OFFLINE_CACHE.test(path)) cachePut(path, data);
   return data;
 }
 async function supabaseLogin(supabaseUrl, anonKey, email, password){
@@ -1366,9 +1405,10 @@ function BudgetFields({value, onChange}){
         <select className="input" value={value.department} onChange={e=>onChange({...value,department:e.target.value})}>{deptOptions(value.department).map(d=><option key={d}>{d}</option>)}</select>
         <select className="input" value={value.category} onChange={e=>onChange({...value,category:e.target.value})}>{BUDGET_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
       </div>
-      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:10}}>
+      <div className="stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 2fr",gap:10}}>
         <label><div className="field-label">{"Plan ("+currencySymbol()+")"}</div><input type="number" min="0" className="input" value={value.planned} onChange={e=>onChange({...value,planned:e.target.value})} /></label>
         <label><div className="field-label">{"Ist ("+currencySymbol()+")"}</div><input type="number" min="0" className="input" value={value.actual} onChange={e=>onChange({...value,actual:e.target.value})} /></label>
+        <label title={tf("Bereits bestellt oder beauftragt, aber noch nicht bezahlt")}><div className="field-label">{tf("Beauftragt")+" ("+currencySymbol()+")"}</div><input type="number" min="0" className="input" value={value.committed??""} onChange={e=>onChange({...value,committed:e.target.value})} /></label>
         <label><div className="field-label">Notiz</div><input className="input" value={value.note||""} onChange={e=>onChange({...value,note:e.target.value})} /></label>
       </div>
     </React.Fragment>
@@ -1382,22 +1422,24 @@ function ConversionNote(){
   </div>;
 }
 
-function BudgetView({items, callHotel, callId, refresh}){
-  const empty = {title:"",department:(editableDepts()[0]||DEPARTMENTS[0]),category:BUDGET_CATEGORIES[0],planned:"",actual:"",note:""};
+function BudgetView({items, callHotel, callId, refresh, hotel}){
+  const empty = {title:"",department:(editableDepts()[0]||DEPARTMENTS[0]),category:BUDGET_CATEGORIES[0],planned:"",actual:"",committed:"",note:""};
   const [showForm,setShowForm]=useState(false);
   const [draft,setDraft]=useState(empty);
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
   const [error,setError]=useState("");
   const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
-  const toBody = (v) => ({...v, planned:Number(v.planned||0), actual:Number(v.actual||0)});
+  const toBody = (v) => ({...v, planned:Number(v.planned||0), actual:Number(v.actual||0), committed:Number(v.committed||0)});
   const add = () => { if(!draft.title) return; run(async()=>{ await callHotel("/budget","POST",toBody(draft)); setDraft({...empty,department:draft.department,category:draft.category}); setShowForm(false); }); };
-  const startEdit = (b) => { setEditId(b.id); setEdit({title:b.title,department:b.department,category:b.category,planned:b.planned,actual:b.actual,note:b.note||""}); };
+  const startEdit = (b) => { setEditId(b.id); setEdit({title:b.title,department:b.department,category:b.category,planned:b.planned,actual:b.actual,committed:b.committed||"",note:b.note||""}); };
   const saveEdit = () => { if(!edit.title) return; run(async()=>{ await callId("budget",editId,"PATCH",toBody(edit)); setEditId(null); }); };
   const remove = (b) => { if(confirmDelete(tf("Budgetposten „{0}“", b.title))) run(()=>callId("budget",b.id,"DELETE")); };
 
   const planned = items.reduce((s,i)=>s+Number(i.planned||0),0);
   const actual = items.reduce((s,i)=>s+Number(i.actual||0),0);
-  const diff = planned - actual;
+  const committed = items.reduce((s,i)=>s+Number(i.committed||0),0);
+  const diff = planned - actual - committed;
+  const over = items.filter(i=>Number(i.planned||0)>0 && Number(i.actual||0)+Number(i.committed||0)>Number(i.planned||0));
   const plannedByDept = sumBy(items,"department","planned");
   const actualByDept = sumBy(items,"department","actual");
   const depts = Object.keys(plannedByDept).sort();
@@ -1407,6 +1449,7 @@ function BudgetView({items, callHotel, callId, refresh}){
       <div className="stack" style={{display:"flex",gap:14,marginBottom:18}}>
         <StatTile label="PLAN" value={fmtEur(planned)} sub={tf("{0} Posten", items.length)} />
         <StatTile label="IST" value={fmtEur(actual)} sub={planned>0 ? tf("{0} % vom Plan", Math.round(actual/planned*100)) : "—"} />
+        <StatTile label={tf("Beauftragt")} value={fmtEur(committed)} sub={tf("Prognose {0}", fmtEur(actual+committed))} color={actual+committed>planned && planned>0 ? WARN : undefined} />
         <StatTile label={diff>=0 ? "NOCH VERFÜGBAR" : "ÜBERSCHRITTEN"} value={fmtEur(Math.abs(diff))} color={diff>=0?GOOD:BAD} />
       </div>
 
@@ -1426,7 +1469,10 @@ function BudgetView({items, callHotel, callId, refresh}){
         </Card>
       )}
 
-      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+      {over.length>0 && <Card style={{marginBottom:14,borderColor:BAD,background:BAD_SOFT,fontSize:13}}><b>⚠ {tf("Über dem Plan (Ist + beauftragt):")}</b> <span data-no-i18n="">{over.map(i=>i.title+" ("+fmtEur(Number(i.actual||0)+Number(i.committed||0)-Number(i.planned||0))+")").join(", ")}</span></Card>}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        {items.length>0 && hotel && <button style={smallBtn} onClick={()=>sheetPdf(budgetSheetHtml(hotel, items), safeFile(translateString("Budget")+" "+hotel.name+" "+todayIso())+".pdf").catch(e=>setError(e.message))}>📄 PDF</button>}
+        {items.length>0 && hotel && <button style={smallBtn} onClick={()=>budgetXlsx(hotel, items).catch(e=>setError(e.message))}>Excel</button>}
         <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Budgetposten</button>
       </div>
       {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
@@ -1456,7 +1502,7 @@ function BudgetView({items, callHotel, callId, refresh}){
             <tr key={b.id} style={{borderTop:`1px solid ${BORDER}`}}>
               <td style={{padding:12}}>{b.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{b.department} · {b.category}{b.note ? " · "+b.note : ""}</div></td>
               <td style={{padding:12,whiteSpace:"nowrap"}}><span style={{color:INK_MUTED,fontSize:12}}>Plan </span>{fmtEur(b.planned)}</td>
-              <td style={{padding:12,whiteSpace:"nowrap",color:Number(b.actual)>Number(b.planned)?BAD:INK}}><span style={{color:INK_MUTED,fontSize:12}}>Ist </span>{fmtEur(b.actual)}</td>
+              <td style={{padding:12,whiteSpace:"nowrap",color:Number(b.actual)+Number(b.committed||0)>Number(b.planned)?BAD:INK}}><span style={{color:INK_MUTED,fontSize:12}}>Ist </span>{fmtEur(b.actual)}{Number(b.committed||0)>0 && <div style={{fontSize:11.5,color:INK_MUTED}}>{tf("+ {0} beauftragt", fmtEur(b.committed))}</div>}</td>
               <td style={{padding:12,whiteSpace:"nowrap"}}>
                 <button style={linkBtn} onClick={()=>startEdit(b)}>Bearbeiten</button>
                 <button style={linkBtn} onClick={()=>remove(b)} title="Löschen">✕</button>
@@ -3854,7 +3900,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
   const submit = async () => {
     setBusy(true); setMsg(null);
     try {
-      await api(base+"/tickets","POST",{location:form.location, title:form.title, description:form.description, priority:form.priority, department:form.department, photo_data:form.photo||undefined, kind:form.kind, contractor_id:form.contractor_id||undefined});
+      await api(base+"/tickets","POST",{location:form.location, title:form.title, description:form.description, priority:form.priority, department:form.department, photo_data:form.photo||undefined, kind:form.kind, contractor_id:form.contractor_id||undefined, due_on:form.due_on||undefined});
       setForm(null); setMsg({ok:true,text:tf("Danke – die Meldung ist bei der zuständigen Abteilung.")}); await load();
     } catch(e){ setMsg({ok:false,text:e.message}); }
     setBusy(false);
@@ -3869,11 +3915,12 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
       {sections.map(([k,l])=><button key={k} onClick={()=>{ setSection(k); setForm(null); }} style={{border:`1px solid ${section===k?INK:BORDER}`,background:section===k?INK:"#fff",color:section===k?"#fff":INK,borderRadius:8,padding:"7px 14px",fontSize:13,cursor:"pointer",fontWeight:section===k?700:500}}>{tf(l)}</button>)}
     </div>
   );
-  if(section==="plans") return <div>{tabs}<MaintenancePlans hotel={hotel} api={api} role={role} myDepts={myDepts} /></div>;
+  if(section==="plans") return <div>{tabs}<MaintenancePlans hotel={hotel} api={api} role={role} myDepts={myDepts} members={members} me={me} /></div>;
   return (
     <div>
       {tabs}
       {section==="snags" && (role==="admin"||role==="manager") && <ContractorsCard hotel={hotel} api={api} />}
+      {section==="snags" && role!=="member" && <SnagReportButton hotel={hotel} api={api} contractors={contractors} members={members} me={me} />}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14,padding:"11px 18px"}} onClick={()=>setForm(emptyForm(""))}>{section==="wishes" ? "🛎 "+tf("Gästewunsch erfassen") : section==="snags" ? "🔨 "+tf("Baumangel erfassen") : "🔧 "+tf("Mangel melden")}</button>}
       {form && (
@@ -3888,6 +3935,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
             <div><div className="field-label">{tf("Dringlichkeit")}</div>
               <div style={{display:"flex",gap:6}}>{["Normal","Dringend"].map(p=><button key={p} onClick={()=>setForm({...form,priority:p})} style={{border:`1px solid ${form.priority===p?(p==="Dringend"?BAD:INK):BORDER}`,background:form.priority===p?(p==="Dringend"?BAD_SOFT:PAPER):"#fff",color:p==="Dringend"&&form.priority===p?BAD:INK,fontWeight:form.priority===p?700:400,borderRadius:999,padding:"7px 14px",fontSize:13,cursor:"pointer"}}>{p}</button>)}</div></div>
             <label style={{minWidth:170}}><div className="field-label">{tf("Zuständig")}</div><select className="input" value={form.department} onChange={e=>setForm({...form,department:e.target.value})}>{TICKET_DEPTS.map(d=><option key={d} value={d}>{d}</option>)}</select></label>
+            {form.kind==="Baumangel" && <label><div className="field-label">{tf("Frist")}</div><input className="input" type="date" value={form.due_on||""} onChange={e=>setForm({...form,due_on:e.target.value})} /></label>}
             {form.kind==="Baumangel" && contractors.length>0 && <label style={{minWidth:170}}><div className="field-label">{tf("Firma")}</div><select className="input" value={form.contractor_id} onChange={e=>setForm({...form,contractor_id:e.target.value})}><option value="">–</option>{contractors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
             <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 13px"}}>📷 {form.photo ? tf("Anderes Foto") : tf("Foto aufnehmen")}
               <input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>pickPhoto(e.target.files[0])} /></label>
@@ -3914,6 +3962,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
               {t.kind==="Wartung" && <Pill color={BRASS} bg={BRASS_SOFT}>Wartung</Pill>}
               {t.via_guest && <Pill color="#6B4BA1" bg="#EEE7F7">🛎 {tf("Gast")}</Pill>}
               <Pill color={st.color} bg={st.bg}>{t.status}</Pill>
+              {t.due_on && t.status!=="Erledigt" && <Pill color={t.due_on<todayIso()?BAD:INK_MUTED} bg={t.due_on<todayIso()?BAD_SOFT:PAPER}>{tf("Frist {0}", fmtDate(t.due_on))}</Pill>}
               {t.location && <b data-no-i18n="">{t.location}</b>}
               <span style={{fontSize:12,color:INK_MUTED}}>· <span>{t.department}</span></span>
               <span style={{flex:1}}></span>
@@ -3924,9 +3973,10 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
             {t.has_photo && <button style={{...linkBtn,paddingInlineStart:0,marginTop:4}} onClick={()=>showPhoto(t)}>📷 {photos[t.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
             {photos[t.id] && <img src={photos[t.id]} alt="" style={{display:"block",maxWidth:"100%",maxHeight:360,borderRadius:8,marginTop:6,border:`1px solid ${BORDER}`}} />}
             {t.status==="Erledigt" && t.done_by && <div style={{fontSize:12,color:GOOD,marginTop:4}}>{tf("Erledigt von {0}", memberLabel(members, me, t.done_by))} · <span data-no-i18n="">{fmtDateTime(t.done_at)}</span></div>}
+            {t.done_note && <div style={{fontSize:12.5,color:INK_SOFT,marginTop:2}}>{tf("Ergebnis")}: <span data-no-i18n="">{t.done_note}</span></div>}
             <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginTop:8}}>
               {canWork(t) && t.status==="Offen" && <button style={smallBtn} onClick={()=>run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"In Arbeit", ...(me && !t.assignee_id ? {assignee_id:me.id} : {})}))}>{tf("Übernehmen")}</button>}
-              {canWork(t) && t.status!=="Erledigt" && <button className="btn-primary" style={{padding:"6px 12px",fontSize:12.5,background:GOOD}} onClick={()=>run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"Erledigt"}))}>✓ {t.status==="Prüfen" ? tf("Abnehmen") : tf("Erledigt")}</button>}
+              {canWork(t) && t.status!=="Erledigt" && <button className="btn-primary" style={{padding:"6px 12px",fontSize:12.5,background:GOOD}} onClick={()=>{ let note; if(t.kind==="Wartung" || t.kind==="Baumangel"){ note = window.prompt(tf("Ergebnis oder Prüfbericht (optional)"), t.done_note||""); if(note===null) return; } run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"Erledigt", ...(note!==undefined ? {done_note:note} : {})})); }}>✓ {t.status==="Prüfen" ? tf("Abnehmen") : tf("Erledigt")}</button>}
               {canWork(t) && t.status==="Prüfen" && <button style={smallBtn} onClick={()=>run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"Offen"}))}>{tf("Zurück an die Firma")}</button>}
               {canWork(t) && t.status==="Erledigt" && <button style={smallBtn} onClick={()=>run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"Offen"}))}>{tf("Wieder öffnen")}</button>}
               {canWork(t) && t.status!=="Erledigt" && (
@@ -4363,7 +4413,7 @@ function ClockQrCard({hotel, api, onHotel}){
 
 // ------------------------------------------------------------ Wartungsplan
 const PLAN_UNITS = ["Tage","Wochen","Monate","Jahre"];
-function MaintenancePlans({hotel, api, role, myDepts}){
+function MaintenancePlans({hotel, api, role, myDepts, members, me}){
   const depts = visibleDeptsFor(role, myDepts).filter(canManageDept);
   const [plans,setPlans] = useState([]);
   const [form,setForm] = useState(null);
@@ -4393,6 +4443,10 @@ function MaintenancePlans({hotel, api, role, myDepts}){
             <label><div className="field-label">{tf("Zuständig")}</div><select className="input" value={form.department} onChange={e=>setForm({...form,department:e.target.value})}>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select></label>
           </div>
           <Field label={tf("Details (optional)")}><textarea className="input" rows={2} value={form.description||""} onChange={e=>setForm({...form,description:e.target.value})} style={{fontFamily:"inherit"}} /></Field>
+          {!form.id && <div style={{marginBottom:10}}>
+            <div className="field-label">{tf("Vorlagen für wiederkehrende Prüfungen (Richtwerte – bitte an Vorschriften und Herstellerangaben anpassen)")}</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{MAINT_PRESETS.filter(([,,,d])=>depts.includes(d)).map(([t,v,u,d])=><button key={t} type="button" onClick={()=>setForm({...form, title:translateString(t), interval_value:v, interval_unit:u, department:d})} style={{border:`1px solid ${BORDER}`,background:form.title===translateString(t)?BRASS_SOFT:CARD,borderRadius:999,padding:"4px 10px",fontSize:12,cursor:"pointer"}}>{tf(t)} · {tf("alle {0} {1}", v, translateString(u))}</button>)}</div>
+          </div>}
           <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={!form.title.trim()} onClick={save}>{tf("Speichern")}</button><button style={linkBtn} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>
         </Card>
       )}
@@ -4407,6 +4461,7 @@ function MaintenancePlans({hotel, api, role, myDepts}){
             <span style={{fontSize:12.5,fontWeight:600,color:p.next_due<=today?BAD:p.next_due<=addDaysIso(today,7)?WARN:INK_MUTED}}>{tf("fällig {0}", fmtDate(p.next_due))}</span>
             {canManageDept(p.department) && <button style={smallBtn} onClick={()=>run(()=>api("/api/maintenance-plans/"+p.id+"/run","POST",{}), tf("Meldung angelegt."))}>{tf("Jetzt anlegen")}</button>}
             {canManageDept(p.department) && <button style={linkBtn} onClick={()=>run(()=>api("/api/maintenance-plans/"+p.id,"PATCH",{active:!p.active}))}>{p.active ? tf("Pausieren") : tf("Fortsetzen")}</button>}
+            <MaintProofButton hotel={hotel} api={api} plan={p} members={members} me={me} />
             {canManageDept(p.department) && <button style={linkBtn} onClick={()=>setForm({...p})}>{tf("Bearbeiten")}</button>}
             {canManageDept(p.department) && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Wartungsplan löschen?"))) run(()=>api("/api/maintenance-plans/"+p.id,"DELETE")); }}>✕</button>}
           </div>
@@ -4573,8 +4628,9 @@ function trainingStatus(t, userId){
   return {state:"ok", at:mine.acked_at};
 }
 const appliesTo = (t, m) => m.role!=="viewer" && (!t.departments.length || (m.departments||[]).some(d=>t.departments.includes(d)) || m.role==="admin");
-function TrainingsView({orgId, api, me, members, role, myDepts}){
+function TrainingsView({orgId, api, me, members, role, myDepts, hotel}){
   const lead = role==="admin" || role==="manager";
+  const [sign,setSign] = useState(null); const [proofBusy,setProofBusy] = useState("");
   const [list,setList] = useState(null);
   const [open,setOpen] = useState(null);
   const [form,setForm] = useState(null);
@@ -4602,6 +4658,7 @@ function TrainingsView({orgId, api, me, members, role, myDepts}){
           <div style={{display:"flex",gap:8,marginTop:10}}><button className="btn-primary" disabled={!form.title.trim()} onClick={save}>{tf("Speichern")}</button><button style={linkBtn} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>
         </Card>
       )}
+      {sign && <SignAckDialog training={sign} me={me} api={api} onClose={()=>setSign(null)} onDone={()=>{ setSign(null); setMsg({ok:true,text:tf("Danke – bestätigt.")}); load(); }} />}
       {(lead ? list : mine).length===0 && !form && <Card><div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch keine Unterweisungen.")}</div></Card>}
       {(lead ? list : mine).map(t=>{
         const st = trainingStatus(t, me && me.id); const applies = appliesTo(t, meRow);
@@ -4620,13 +4677,14 @@ function TrainingsView({orgId, api, me, members, role, myDepts}){
                 <div style={{whiteSpace:"pre-wrap",fontSize:14,lineHeight:1.55,background:PAPER,borderRadius:6,padding:"10px 12px"}} data-no-i18n="">{t.body || "—"}</div>
                 {applies && role!=="viewer" && <div style={{marginTop:10,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                   {st.state==="ok" ? <span style={{color:GOOD,fontSize:13}}>✓ {tf("Bestätigt am {0}", fmtDate(st.at))}{st.until ? " · "+tf("gültig bis {0}", fmtDate(st.until)) : ""}</span>
-                    : <button className="btn-primary" onClick={()=>run(()=>api("/api/trainings/"+t.id+"/ack","POST",{}), tf("Danke – bestätigt."))}>{tf("Gelesen und verstanden")}</button>}
+                    : <button className="btn-primary" onClick={()=>setSign(t)}>✍ {tf("Gelesen und verstanden")}</button>}
                 </div>}
                 {lead && (
                   <div style={{marginTop:12}}>
                     <div className="field-label">{tf("Noch offen")}</div>
                     <div style={{fontSize:13}} data-no-i18n="">{target.filter(m=>trainingStatus(t, m.user_id).state!=="ok").map(m=>shortName(m.email)).join(", ") || "—"}</div>
-                    <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                      <button style={smallBtn} disabled={!!proofBusy} onClick={async()=>{ setProofBusy(t.id); try { const r = await api("/api/trainings/"+t.id+"/proof"); await sheetPdf(trainingProofHtml({hotel:hotel||{name:""}, training:r.training, acks:r.acks, target, nameOf:(id)=>memberLabel(members, me, id)}), safeFile(translateString("Unterweisungsnachweis")+" "+t.title)+".pdf"); } catch(e){ setMsg({ok:false,text:e.message}); } setProofBusy(""); }}>{proofBusy===t.id?"…":"📄 "+tf("Nachweis (PDF)")}</button>
                       <button style={linkBtn} onClick={()=>setForm({...t})}>{tf("Bearbeiten")}</button>
                       <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Unterweisung löschen? Alle Bestätigungen werden entfernt."))) run(()=>api("/api/trainings/"+t.id,"DELETE")); }}>{tf("Löschen")}</button>
                     </div>
@@ -4658,7 +4716,7 @@ function LostFoundView({hotel, api, me, members, role}){
   return (
     <div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm({description:"", location:"", storage:"", found_on:todayIso(), photo_data:null})}>{tf("+ Fundsache erfassen")}</button>}
+      {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm({description:"", location:"", storage:"", found_on:todayIso(), photo_data:null, guest_name:"", guest_contact:"", keep_until:addDaysIso(todayIso(),180)})}>{tf("+ Fundsache erfassen")}</button>}
       {form && (
         <Card style={{marginBottom:14,borderColor:BRASS}}>
           <Field label={tf("Was wurde gefunden?")}><input className="input" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder={tf("z. B. schwarze Lederjacke, Ladekabel, Brille")} /></Field>
@@ -4666,6 +4724,11 @@ function LostFoundView({hotel, api, me, members, role}){
             <label style={{flex:1,minWidth:140}}><div className="field-label">{tf("Wo?")}</div><input className="input" value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={tf("z. B. Zimmer 214, Restaurant")} /></label>
             <label style={{flex:1,minWidth:140}}><div className="field-label">{tf("Aufbewahrt in")}</div><input className="input" value={form.storage} onChange={e=>setForm({...form,storage:e.target.value})} placeholder={tf("z. B. Fundschrank Rezeption, Fach 3")} /></label>
             <label><div className="field-label">{tf("Gefunden am")}</div><input className="input" type="date" value={form.found_on} onChange={e=>setForm({...form,found_on:e.target.value})} /></label>
+          </div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:6}}>
+            <label style={{flex:1,minWidth:140}}><div className="field-label">{tf("Gast (falls bekannt)")}</div><input className="input" value={form.guest_name||""} onChange={e=>setForm({...form,guest_name:e.target.value})} placeholder={tf("Name, Zimmer")} /></label>
+            <label style={{flex:1,minWidth:160}}><div className="field-label">{tf("E-Mail oder Telefon des Gastes")}</div><input className="input" value={form.guest_contact||""} onChange={e=>setForm({...form,guest_contact:e.target.value})} /></label>
+            <label><div className="field-label">{tf("Aufbewahren bis")}</div><input className="input" type="date" value={form.keep_until||""} onChange={e=>setForm({...form,keep_until:e.target.value})} /></label>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",margin:"10px 0"}}>
             <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 13px"}}>📷 {form.photo_data ? tf("Anderes Foto") : tf("Foto aufnehmen")}<input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>pick(e.target.files[0])} /></label>
@@ -4676,6 +4739,8 @@ function LostFoundView({hotel, api, me, members, role}){
       )}
       <div style={{display:"flex",gap:6,marginBottom:10}}>
         {[["open","Aufbewahrt"],["all","Alle"]].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:"#fff",color:filter===k?"#fff":INK,borderRadius:999,padding:"6px 13px",fontSize:12.5,cursor:"pointer"}}>{l}</button>)}
+        <span style={{flex:1}} />
+        {list && list.length>0 && <button style={smallBtn} onClick={()=>sheetPdf(lostFoundSheetHtml(hotel, list, (id)=>memberLabel(members, me, id)), safeFile(translateString("Fundsachen")+" "+hotel.name+" "+todayIso())+".pdf").catch(e=>setMsg({ok:false,text:e.message}))}>📄 PDF</button>}
       </div>
       {list===null ? <div style={{color:INK_MUTED}}>…</div> : list.length===0 ? <Card><div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Keine Fundsachen.")}</div></Card> : list.map(x=>{ const st = LF_STYLE[x.status]; return (
         <Card key={x.id} style={{marginBottom:8,padding:"11px 14px"}}>
@@ -4684,8 +4749,10 @@ function LostFoundView({hotel, api, me, members, role}){
             <b data-no-i18n="">{x.description}</b>
             <span style={{fontSize:12,color:INK_MUTED}} data-no-i18n="">{[x.location, fmtDate(x.found_on), memberLabel(members, me, x.found_by)].filter(Boolean).join(" · ")}</span>
             <span style={{flex:1}}></span>
-            {x.status==="Aufbewahrt" && days(x.found_on)>=90 && <span style={{fontSize:12,color:WARN}}>{tf("seit {0} Tagen", days(x.found_on))}</span>}
+            {x.status==="Aufbewahrt" && x.keep_until && x.keep_until<todayIso() ? <span style={{fontSize:12,color:BAD}}>{tf("Frist abgelaufen ({0})", fmtDate(x.keep_until))}</span>
+              : x.status==="Aufbewahrt" && days(x.found_on)>=90 && <span style={{fontSize:12,color:WARN}}>{tf("seit {0} Tagen", days(x.found_on))}</span>}
           </div>
+          {(x.guest_name || x.guest_contact) && <div style={{fontSize:12.5,color:INK_SOFT,marginTop:2}}>{tf("Gast")}: <span data-no-i18n="">{[x.guest_name, x.guest_contact].filter(Boolean).join(" · ")}</span>{x.notified_at ? " · ✉ "+tf("benachrichtigt am {0}", fmtDate(x.notified_at)) : ""}</div>}
           {x.storage && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{tf("Aufbewahrt in")}: <span data-no-i18n="">{x.storage}</span></div>}
           {x.returned_to && <div style={{fontSize:12.5,color:GOOD,marginTop:2}}>{tf("Zurückgegeben an")}: <span data-no-i18n="">{x.returned_to}</span></div>}
           {x.has_photo && <button style={{...linkBtn,paddingInlineStart:0}} onClick={async()=>{ if(photos[x.id]) return setPhotos(p=>({...p,[x.id]:null})); const r = await api("/api/lost-found/"+x.id+"/photo"); setPhotos(p=>({...p,[x.id]:r.photo_data})); }}>📷 {photos[x.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
@@ -4693,6 +4760,7 @@ function LostFoundView({hotel, api, me, members, role}){
           {role!=="viewer" && x.status==="Aufbewahrt" && <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
             <button style={smallBtn} onClick={()=>{ const who = window.prompt(tf("An wen zurückgegeben? (Name, ggf. Zimmer)")); if(who!==null) run(()=>api("/api/lost-found/"+x.id,"PATCH",{status:"Zurückgegeben", returned_to:who})); }}>✓ {tf("Zurückgegeben")}</button>
             <button style={smallBtn} onClick={()=>{ if(window.confirm(tf("Als entsorgt markieren?"))) run(()=>api("/api/lost-found/"+x.id,"PATCH",{status:"Entsorgt"})); }}>{tf("Entsorgt")}</button>
+            <button style={smallBtn} onClick={()=>{ const m = String(x.guest_contact||"").match(/[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/); const email = window.prompt(tf("E-Mail-Adresse des Gastes"), m ? m[0] : ""); if(email) run(()=>api("/api/lost-found/"+x.id+"/notify","POST",{email, language:UI_LANG}), tf("Gast benachrichtigt.")); }}>✉ {tf("Gast benachrichtigen")}</button>
           </div>}
         </Card>
       ); })}
@@ -4772,25 +4840,33 @@ function StockView({hotel, api, me, role, myDepts}){
 
 // ------------------------------------------------------------ Kennzahlen
 function KpiView({hotel, api}){
-  const [range,setRange] = useState("month");
+  const [range,setRange] = useState("month"); const [rev,setRev] = useState(false); const [tick,setTick] = useState(0);
   const [k,setK] = useState(null);
   const [msg,setMsg] = useState(null);
   const today = todayIso();
   const m0 = today.slice(0,8)+"01";
   const ranges = {week:[addDaysIso(today,-6), today], month:[m0, today], last:[addDaysIso(m0,-1).slice(0,8)+"01", addDaysIso(m0,-1)]};
   const [from,to] = ranges[range];
-  useEffect(()=>{ setK(null); api("/api/hotels/"+hotel.id+"/kpis?from="+from+"&to="+to).then(setK).catch(e=>setMsg({ok:false,text:e.message})); },[range, hotel.id]);
+  useEffect(()=>{ setK(null); api("/api/hotels/"+hotel.id+"/kpis?from="+from+"&to="+to).then(setK).catch(e=>setMsg({ok:false,text:e.message})); },[range, hotel.id, tick]);
+  const lead = ACCESS.role==="admin" || ACCESS.role==="manager";
+  const money = (v) => v==null ? null : Number(v).toLocaleString(UI_LOCALE,{style:"currency",currency:hotel.currency||"EUR"});
   const T = ({label, value, sub, color}) => <StatTile label={label} value={value==null||value===""?"–":value} sub={sub} color={color} />;
   const n = (v, d) => v==null ? null : Number(v).toLocaleString(UI_LOCALE, {maximumFractionDigits:d==null?1:d});
   return (
     <div>
       <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
         {[["week","Letzte 7 Tage"],["month","Dieser Monat"],["last","Letzter Monat"]].map(([key,l])=><button key={key} onClick={()=>setRange(key)} style={{border:`1px solid ${range===key?INK:BORDER}`,background:range===key?INK:"#fff",color:range===key?"#fff":INK,borderRadius:999,padding:"6px 13px",fontSize:12.5,cursor:"pointer"}}>{tf(l)}</button>)}
+        <span style={{flex:1}} />
+        {lead && <button style={smallBtn} onClick={()=>setRev(!rev)}>{rev ? tf("Fertig") : "✎ "+tf("Belegung und Umsatz eintragen")}</button>}
       </div>
+      {rev && <RevenueEditor hotel={hotel} api={api} from={from} to={to} onSaved={()=>setTick(t=>t+1)} />}
       {msg && <div style={{color:BAD,fontSize:13}}>{msg.text}</div>}
       {!k ? <div style={{color:INK_MUTED}}>…</div> : (
         <React.Fragment>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:12,marginBottom:14}}>
+            <T label={tf("Auslastung")} value={k.occupancy_pct!=null ? n(k.occupancy_pct)+" %" : null} sub={k.rooms_available ? tf("{0} von {1} Zimmernächten", k.room_nights, k.rooms_available) : tf("Zimmeranzahl fehlt")} />
+            <T label={tf("Durchschnittspreis (ADR)")} value={money(k.adr)} sub={k.room_revenue!=null ? tf("Logis-Umsatz {0}", money(k.room_revenue)) : tf("kein Umsatz eingetragen")} />
+            <T label="RevPAR" value={money(k.revpar)} sub={tf("Umsatz je verfügbarem Zimmer")} />
             <T label={tf("Gearbeitete Stunden")} value={n(k.worked_hours)} sub={tf("geplant {0}", n(k.planned_hours))} />
             <T label={tf("Stunden je belegtem Zimmer")} value={n(k.hours_per_room_night,2)} sub={k.room_nights ? tf("{0} Zimmernächte", k.room_nights) : tf("keine Belegungsdaten")} />
             <T label={tf("Ø Reinigungszeit")} value={k.avg_cleaning_minutes!=null ? k.avg_cleaning_minutes+" min" : null} sub={tf("{0} Zimmer gereinigt", k.rooms_cleaned)} />
@@ -4840,7 +4916,7 @@ function HotelStats({s}){
 // ------------------------------------------------------------ Bereiche je Hotel und kurze Hilfe
 const MODULE_GROUPS = [
   ["Pre-Opening", [["tasks","Aufgaben"],["milestones","Meilensteine"],["timeline","Zeitstrahl"],["risks","Risiken"],["budget","Budget"],["staff","Personal"],["procurement","Bestellungen"]]],
-  ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["arrivals","Anreisen"],["guestchat","Gäste-Chat"],["events","Veranstaltungen"],["reviews","Bewertungen"],["energy","Energie"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"],["feedback","Gäste-Feedback"]]],
+  ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["arrivals","Anreisen"],["guestchat","Gäste-Chat"],["events","Veranstaltungen"],["invoices","Rechnungen"],["letters","Briefe & Vorlagen"],["reviews","Bewertungen"],["energy","Energie"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"],["feedback","Gäste-Feedback"]]],
   ["Allgemein", [["docs","Dokumente"],["permits","Genehmigungen"]]],
 ];
 const PRE_MODULES = MODULE_GROUPS[0][1].map(([k])=>k);
@@ -4878,6 +4954,9 @@ function ModulePicker({value, onChange}){
 
 // Kurz erklärt – erscheint beim ersten Besuch eines Bereichs, danach über „?“
 const HELP = {
+  group: "Alle Hotels Ihrer Gruppe im Vergleich: Zimmer, Personal im Dienst, Auslastung, Durchschnittspreis, RevPAR, offene Meldungen, überfällige Aufgaben, Budget und Bewertungen. Ein Klick auf den Namen öffnet das Hotel.",
+  invoices: "Rechnungen mit fortlaufender Nummer: Anzahlung und Schlussrechnung direkt aus der Veranstaltung, Steuer je Satz, PDF und Versand per E-Mail. Ausgestellte Rechnungen lassen sich nur stornieren, nicht ändern. Unter „Rechnungsdaten“ stehen Firma, UID und Bank.",
+  letters: "Fertige Vorlagen für Reservierungsbestätigung, Storno, Willkommensbrief, Angebot, Veranstaltung und Gutschein – als Word, PDF oder per E-Mail. Eigene Word-Dateien mit Platzhaltern wie {guest_name} hochladen; sie werden automatisch befüllt.",
   dashboard: "Hier siehst du auf einen Blick, wie weit die Eröffnung ist: Bereitschaft je Abteilung, überfällige Aufgaben, Risiken und den KI-Lagebericht.",
   home: "Deine Schicht heute, Kommen und Gehen, deine Aufgaben und offene Punkte – alles, was du für den Tag brauchst.",
   mine: "Alle Aufgaben, für die du zuständig bist – über alle Hotels hinweg. Erledigtes einfach abhaken.",
@@ -6542,7 +6621,7 @@ function printSheet(html, title){
   w.document.close();
 }
 // PDF erzeugen (html2pdf) und herunterladen bzw. am Handy teilen
-async function sheetPdf(html, fileName, share, orientation){
+async function sheetPdf(html, fileName, share, orientation, asBlob){
   await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js");
   const host = document.createElement("div");
   host.style.cssText = "position:fixed;left:-10000px;top:0;background:#fff";
@@ -6552,6 +6631,7 @@ async function sheetPdf(html, fileName, share, orientation){
   try {
     const opt = {margin:orientation==="landscape"?[10,12,10,12]:[12,14,12,14], filename:fileName, image:{type:"jpeg", quality:0.95}, html2canvas:{scale:2, useCORS:true, backgroundColor:"#ffffff"}, jsPDF:{unit:"mm", format:"a4", orientation:orientation||"portrait"}, pagebreak:{mode:["css","legacy"]}};
     const blob = await window.html2pdf().set(opt).from(host.querySelector(".fs")).outputPdf("blob");
+    if(asBlob) return blob;
     const file = new File([blob], fileName, {type:"application/pdf"});
     if(share && navigator.canShare && navigator.canShare({files:[file]})){ try { await navigator.share({files:[file], title:fileName}); return; } catch(e){ if(e && e.name==="AbortError") return; } }
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
@@ -6781,8 +6861,9 @@ function OfferButtons({ev, api, onChanged}){
 function EventsView({hotel, api, role}){
   const [list,setList] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [past,setPast] = useState(false);
   const [picker,setPicker] = useState(false); const [view,setView] = useState("list");
-  const [spaces,setSpaces] = useState([]); const [mine,setMine] = useState([]);
+  const [spaces,setSpaces] = useState([]); const [mine,setMine] = useState([]); const [invoices,setInvoices] = useState([]);
   const lead = canManageDept("Food & Beverage") || canManageDept("Rezeption & Empfang");
+  const seeInvoices = role==="admin" || role==="manager" || role==="viewer" || INVOICE_DEPTS_FE.some(d=>canManageDept(d));
   const emptyEvent = {title:"", event_date:addDaysIso(todayIso(),14), start_time:"", end_time:"", location:"", space_id:"", guests:"", status:"Anfrage", client:"", contact:"", menu:"", setup:"", tech:"", notes:"", offer_items:[], offer_note:"", offer_valid_until:""};
   // Vorlage (mitgeliefert oder eigene) bzw. bestehende Veranstaltung als Ausgangspunkt
   const startFrom = (t) => { setPicker(false); setView("list"); setForm({...emptyEvent, ...t, id:undefined, created_at:undefined, updated_at:undefined, created_by:undefined, hotel_id:undefined, organization_id:undefined,
@@ -6793,6 +6874,7 @@ function EventsView({hotel, api, role}){
     api(base+"/events"+(past?"?from="+addDaysIso(todayIso(),-120):"")).then(setList).catch(e=>{ setMsg({ok:false,text:e.message}); setList([]); }),
     api(base+"/event-spaces").then(setSpaces).catch(()=>setSpaces([])),
     api(base+"/event-templates").then(setMine).catch(()=>setMine([])),
+    seeInvoices ? api(base+"/invoices").then(setInvoices).catch(()=>setInvoices([])) : Promise.resolve(),
   ]),[api, base, past]);
   useEffect(()=>{ load(); },[load]);
   const spaceName = (id) => (spaces.find(s=>s.id===id)||{}).name;
@@ -6884,6 +6966,7 @@ function EventsView({hotel, api, role}){
                   {clash && <div style={{fontSize:12.5,color:BAD,marginTop:3}}>⚠ {tf("Doppelbuchung im selben Raum")}</div>}
                   {st && e.status!=="Storniert" && <div style={{fontSize:12,color:INK_MUTED,marginTop:3}}>👥 {tf("+{0} Service · +{1} Küche", st.service, st.kitchen)}</div>}
                   <OfferButtons ev={e} api={api} onChanged={load} />
+                  {seeInvoices && <EventInvoices ev={e} hotel={hotel} api={api} invoices={invoices} onChanged={load} />}
                   <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
                     <SheetButtons ev={e} hotel={hotel} />
                     {lead && <button style={linkBtn} onClick={()=>setForm({...emptyEvent, ...e, space_id:e.space_id||"", start_time:(e.start_time||"").slice(0,5), end_time:(e.end_time||"").slice(0,5), guests:e.guests??"", offer_valid_until:e.offer_valid_until||"", offer_note:e.offer_note||""})}>{tf("Bearbeiten")}</button>}
@@ -6893,6 +6976,743 @@ function EventsView({hotel, api, role}){
             </div>
           </div>
         )))}
+    </div>
+  );
+}
+
+// ============================================================ Migration 027: Word-Vorlagen, Rechnungen
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+function Overlay({onClose, children, width}){
+  return (
+    <div className="no-print" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(20,24,31,0.45)",zIndex:200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"6vh 12px 12px",overflowY:"auto"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:CARD,borderRadius:12,padding:"18px 18px 16px",width:"100%",maxWidth:width||720,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>{children}</div>
+    </div>
+  );
+}
+async function loadDocx(){ if(!window.Docxtemplater) await loadScriptOnce(window.__DOCX_SRC || "vendor/docx.js"); return {PizZip:window.PizZip, Docxtemplater:window.Docxtemplater}; }
+const blobToDataUrl = (blob) => new Promise((res, rej)=>{ const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+const dataUrlToBytes = (u) => { const b = atob(String(u).split(",")[1]||""); const a = new Uint8Array(b.length); for(let i=0;i<b.length;i++) a[i] = b.charCodeAt(i); return a; };
+function downloadBlob(blob, name){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 3000); }
+const safeFile = (s) => String(s||"Dokument").replace(/[\\/:*?"<>|]+/g,"").slice(0,90);
+
+// Einfaches Word-Dokument aus Text: "# " = Überschrift, Leerzeile = neuer Absatz
+const xmlEsc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function docxFromText(text, {letterhead, rtl} = {}){
+  const {PizZip} = await loadDocx();
+  const run = (t, props) => '<w:r>'+(props||rtl ? '<w:rPr>'+(props||"")+(rtl?'<w:rtl/>':'')+'</w:rPr>' : '')+'<w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>';
+  const para = (lines, style, props, align) => '<w:p><w:pPr>'+(style?'<w:pStyle w:val="'+style+'"/>':'')+(rtl?'<w:bidi/>':'')+(align?'<w:jc w:val="'+align+'"/>':'')+'</w:pPr>'+lines.map((l,i)=>(i?'<w:r><w:br/></w:r>':'')+run(l, props)).join("")+'</w:p>';
+  const blocks = String(text||"").replace(/\r\n/g,"\n").split(/\n\s*\n/);
+  let body = "";
+  if(letterhead && letterhead.length) body += para(letterhead, null, '<w:sz w:val="18"/><w:color w:val="6B7280"/>', rtl ? "left" : "right");
+  for(const b of blocks){
+    const lines = b.split("\n");
+    if(lines[0].startsWith("# ")){ body += para([lines[0].slice(2)], "Title"); if(lines.length>1) body += para(lines.slice(1)); }
+    else body += para(lines);
+  }
+  const zip = new PizZip();
+  zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>');
+  zip.file("_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.file("word/_rels/document.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+  zip.file("word/styles.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Arial"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="240" w:after="240"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style></w:styles>');
+  zip.file("word/document.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1134" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>');
+  return zip.generate({type:"blob", mimeType:DOCX_MIME});
+}
+// Platzhalter in einer hochgeladenen Word-Datei finden und befüllen
+async function docxTags(dataUrl){
+  const {PizZip} = await loadDocx();
+  const zip = new PizZip(dataUrlToBytes(dataUrl));
+  const xml = Object.keys(zip.files).filter(f=>/^word\/(document|header\d*|footer\d*)\.xml$/.test(f)).map(f=>zip.file(f).asText()).join(" ");
+  const text = xml.replace(/<[^>]+>/g, "");
+  return Array.from(new Set((text.match(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g)||[]).map(t=>t.slice(1,-1))));
+}
+async function fillDocx(dataUrl, data){
+  const {PizZip, Docxtemplater} = await loadDocx();
+  let doc;
+  try {
+    doc = new Docxtemplater(new PizZip(dataUrlToBytes(dataUrl)), {paragraphLoop:true, linebreaks:true, nullGetter:()=>""});
+    doc.render(data);
+  } catch(e){
+    const errs = (e.properties && e.properties.errors) || [e];
+    throw new Error(tf("Die Word-Vorlage enthält einen fehlerhaften Platzhalter: {0}", errs.map(x=>(x.properties && (x.properties.xtag || x.properties.explanation)) || x.message).slice(0,3).join(", ")));
+  }
+  return doc.getZip().generate({type:"blob", mimeType:DOCX_MIME});
+}
+const fillText = (text, data) => String(text||"").replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (m, k) => data[k]==null ? "" : String(data[k]));
+const textTags = (text) => Array.from(new Set((String(text||"").match(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g)||[]).map(t=>t.slice(1,-1))));
+
+// Platzhalter mit Beschriftung (Reihenfolge = Reihenfolge im Formular)
+const DOC_FIELDS = [
+  ["guest_name","Name Gast / Kunde"],["reservation_no","Reservierungsnummer"],["arrival","Anreise","date"],["departure","Abreise","date"],["nights","Nächte"],["room_type","Zimmer"],["persons","Personen"],["rate","Preis pro Nacht"],["total","Gesamtpreis"],
+  ["event_title","Veranstaltung"],["event_date","Datum","date"],["event_time","Zeit"],["event_room","Raum"],["guests","Personen (Veranstaltung)"],["items","Positionen","area"],["offer_total","Gesamtsumme"],["valid_until","Gültig bis","date"],
+  ["voucher_value","Gutscheinwert"],["voucher_code","Gutscheincode"],["wifi","WLAN-Zugang"],
+  ["hotel_name","Hotel"],["hotel_address","Adresse Hotel","area"],["hotel_phone","Telefon Hotel"],["hotel_email","E-Mail Hotel"],["today","Heutiges Datum"],["sender","Absender"],
+];
+const DOC_FIELD_KEYS = DOC_FIELDS.map(f=>f[0]);
+const DOC_KIND_LABELS = {reservierung:"Reservierung", storno:"Storno", willkommen:"Willkommen", angebot:"Angebot", veranstaltung:"Veranstaltung", gutschein:"Gutschein", rechnung:"Rechnung", sonstiges:"Sonstiges"};
+const docLongDate = (iso, lang) => { if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||""))) return iso||""; try { return new Date(iso+"T12:00:00").toLocaleDateString(LOCALES[lang]||UI_LOCALE,{day:"numeric",month:"long",year:"numeric"}); } catch(e){ return iso; } };
+const moneyIn = (n, cur) => (Number(n)||0).toLocaleString(UI_LOCALE,{style:"currency",currency:cur||HOTEL_CURRENCY||"EUR"});
+function hotelDocDefaults(hotel, me){
+  const s = hotel.invoice_settings || {};
+  return {hotel_name: s.company || hotel.name, hotel_address: s.address || [hotel.name, hotel.city].filter(Boolean).join(", "), hotel_phone: s.phone || "", hotel_email: s.email || "", today: todayIso(), sender: me && me.email ? shortName(me.email) : ""};
+}
+function docData(form, lang){
+  const out = {...form};
+  ["arrival","departure","event_date","valid_until","today"].forEach(k=>{ out[k] = docLongDate(form[k], lang); });
+  if(!out.nights && /^\d{4}-/.test(form.arrival||"") && /^\d{4}-/.test(form.departure||"")) out.nights = String(Math.max(0, Math.round((new Date(form.departure) - new Date(form.arrival))/86400000)));
+  return out;
+}
+function fromArrival(a){ return {guest_name:a.guest_name, arrival:a.arrival_date, departure:a.departure_date||"", room_type:a.room_type||"", reservation_no:a.reservation_ref||"", email:a.email||""}; }
+function fromEvent(e){
+  const sum = offerSum(e.offer_items, e.guests);
+  const items = sum.lines.filter(l=>l.label).map(l=>l.label+": "+l.qtyEff+" × "+moneyIn(l.unit_price)+" = "+moneyIn(l.total)).join("\n");
+  const m = String(e.contact||"").match(/[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/);
+  return {guest_name:e.client||"", event_title:e.title, event_date:e.event_date, event_time:[e.start_time&&e.start_time.slice(0,5), e.end_time&&e.end_time.slice(0,5)].filter(Boolean).join("–"), event_room:e.location||"",
+    guests:e.guests==null?"":String(e.guests), items, offer_total: sum.total ? moneyIn(sum.total) : "", valid_until:e.offer_valid_until||"", email: m ? m[0] : ""};
+}
+// Brief als PDF (gleiche Gestaltung wie die anderen Blätter)
+function letterHtml(text, hotel){
+  const s = hotel.invoice_settings || {};
+  const blocks = String(text||"").replace(/\r\n/g,"\n").split(/\n\s*\n/);
+  const html = blocks.map(b=>{ const l = b.split("\n"); return l[0].startsWith("# ") ? '<h1 style="margin:6px 0 12px">'+fsEsc(l[0].slice(2))+'</h1>'+(l.length>1?'<p>'+fsEsc(l.slice(1).join("\n"))+'</p>':'') : '<p>'+fsEsc(b)+'</p>'; }).join("");
+  return '<div class="fs lt" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'"><style>.fs.lt p{margin:0 0 11px;white-space:pre-wrap;font-size:13px;line-height:1.55}.fs.lt .ad{font-size:10.5px;color:#6B7280;white-space:pre-wrap;text-align:end}</style>'
+    + '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel" style="font-size:13px;color:#1C2430;font-weight:700;letter-spacing:0">'+fsEsc(s.company||hotel.name)+'</div></div><div class="ad">'+fsEsc([s.address, s.phone, s.email, s.web].filter(Boolean).join("\n"))+'</div></div>'
+    + html + '</div>';
+}
+
+function LettersView({hotel, api, role, me}){
+  const lead = role==="admin" || role==="manager" || canManageDept("Rezeption & Empfang") || canManageDept("Food & Beverage");
+  const [mode,setMode] = useState("create");
+  const [own,setOwn] = useState([]);
+  const [lang,setLang] = useState(UI_LANG);
+  const [tpl,setTpl] = useState(null);
+  const [tags,setTags] = useState([]);
+  const [form,setForm] = useState({});
+  const [source,setSource] = useState("");
+  const [arrivals,setArrivals] = useState(null); const [events,setEvents] = useState(null);
+  const [edit,setEdit] = useState(null);
+  const [busy,setBusy] = useState(""); const [msg,setMsg] = useState(null);
+  const [mail,setMail] = useState(null);
+  const base = "/api/hotels/"+hotel.id;
+  const load = useCallback(()=>api(base+"/doc-templates").then(setOwn).catch(e=>{ setMsg({ok:false,text:e.message}); setOwn([]); }),[api, base]);
+  useEffect(()=>{ load(); },[load]);
+  const builtins = (window.builtinDocTemplates ? window.builtinDocTemplates(lang) : []);
+  const all = [...own, ...builtins];
+  const choose = async (t) => {
+    setMsg(null); setTpl(t); setSource("");
+    let list = [];
+    try { list = t.has_file ? await docxTags((await api("/api/doc-templates/"+t.id+"/file")).file_data) : textTags(t.body); } catch(e){ setMsg({ok:false,text:e.message}); }
+    setTags(list);
+    setForm(f=>({...hotelDocDefaults(hotel, me), email:f.email||""}));
+  };
+  useEffect(()=>{ if(tpl && tpl.builtin){ const t = builtins.find(b=>b.kind===tpl.kind); if(t) setTpl(t); } },[lang]);
+  const pickSource = async (k) => {
+    setSource(k);
+    try {
+      if(k==="arrival" && arrivals===null) setArrivals(await api(base+"/arrivals?from="+addDaysIso(todayIso(),-30)+"&to="+addDaysIso(todayIso(),120)));
+      if(k==="event" && events===null) setEvents(await api(base+"/events"));
+    } catch(e){ setMsg({ok:false,text:e.message}); if(k==="arrival") setArrivals([]); else setEvents([]); }
+  };
+  const fields = DOC_FIELDS.filter(f=>tags.includes(f[0]));
+  const unknown = tags.filter(t=>!DOC_FIELD_KEYS.includes(t));
+  const title = tpl ? (tpl.name + (form.guest_name ? " – "+form.guest_name : "")) : "";
+  const build = async (fmt) => {
+    const data = docData(form, tpl.builtin ? lang : UI_LANG);
+    if(fmt==="pdf"){ const blob = await sheetPdf(letterHtml(fillText(tpl.body, data), hotel), safeFile(title)+".pdf", false, "portrait", true); return blob; }
+    if(tpl.has_file){ const f = await api("/api/doc-templates/"+tpl.id+"/file"); return fillDocx(f.file_data, data); }
+    const s = hotel.invoice_settings || {};
+    return docxFromText(fillText(tpl.body, data), {letterhead:[s.company||hotel.name, ...String(s.address||"").split("\n"), s.phone, s.email].filter(Boolean), rtl:(tpl.builtin?lang:UI_LANG)==="ar"});
+  };
+  const act = async (k, fn) => { setBusy(k); setMsg(null); try { await fn(); } catch(e){ setMsg({ok:false,text:e.message}); } setBusy(""); };
+  const download = (fmt) => act(fmt, async()=>{ const blob = await build(fmt); downloadBlob(blob, safeFile(title)+(fmt==="pdf"?".pdf":".docx")); });
+  const send = () => act("mail", async()=>{
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.email||"")) throw new Error(tf("Ungültige E-Mail-Adresse."));
+    const blob = await build(mail.format);
+    await api(base+"/send-document","POST",{email:mail.email, title, format:mail.format, file:await blobToDataUrl(blob), message:mail.message, language:tpl.builtin?lang:UI_LANG});
+    setMail(null); setMsg({ok:true,text:tf("Dokument per E-Mail verschickt.")});
+  });
+  const saveTpl = () => act("save", async()=>{
+    const {id, ...b} = edit;
+    if(id) await api("/api/doc-templates/"+id,"PATCH",b); else await api(base+"/doc-templates","POST",b);
+    setEdit(null); setMsg({ok:true,text:tf("Gespeichert.")}); await load();
+  });
+  const pickFile = async (file) => {
+    if(!file) return;
+    if(!/\.docx$/i.test(file.name)) return setMsg({ok:false,text:tf("Bitte eine Word-Datei (.docx) hochladen.")});
+    if(file.size > 2*1024*1024) return setMsg({ok:false,text:tf("Die Word-Datei ist zu groß (höchstens 2 MB).")});
+    const d = await blobToDataUrl(file);
+    const data = "data:"+DOCX_MIME+";base64,"+String(d).split(",")[1];
+    let found = []; try { found = await docxTags(data); } catch(e){ return setMsg({ok:false,text:tf("Die Datei konnte nicht gelesen werden.")}); }
+    setEdit(x=>({...x, file_data:data, file_name:file.name, body:null, name:x.name || file.name.replace(/\.docx$/i,""), _tags:found}));
+  };
+  const chip = (k) => <button key={k} type="button" onClick={()=>setEdit(x=>({...x, body:(x.body||"")+"{"+k+"}"}))} style={{border:`1px solid ${BORDER}`,background:PAPER,borderRadius:999,padding:"2px 8px",fontSize:11.5,cursor:"pointer",fontFamily:"monospace"}} title={tf((DOC_FIELDS.find(f=>f[0]===k)||[k,k])[1])}>{"{"+k+"}"}</button>;
+  const tabBtn = (k, l) => <button onClick={()=>{ setMode(k); setMsg(null); }} style={{border:`1px solid ${mode===k?INK:BORDER}`,background:mode===k?INK:CARD,color:mode===k?"#fff":INK,borderRadius:999,padding:"6px 13px",fontSize:12.5,cursor:"pointer"}}>{tf(l)}</button>;
+  return (
+    <div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:12}}>
+        {tabBtn("create","Dokument erstellen")}{lead && tabBtn("manage","Vorlagen verwalten")}
+        <span style={{flex:1}} />
+        <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:6,alignItems:"center"}}>{tf("Sprache der fertigen Vorlagen")}
+          <select className="input" style={{width:"auto",padding:"5px 8px"}} value={lang} onChange={e=>setLang(e.target.value)}>{LANGS.map(([c,n])=><option key={c} value={c}>{n}</option>)}</select></label>
+      </div>
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+
+      {mode==="create" && !tpl && (
+        <div>
+          <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Vorlage wählen, Daten aus einer Anreise oder Veranstaltung übernehmen und als Word, PDF oder per E-Mail ausgeben.")}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(190px, 1fr))",gap:8}}>
+            {all.map(t=>(
+              <button key={t.id} onClick={()=>choose(t)} style={{border:`1px solid ${BORDER}`,background:CARD,borderRadius:10,padding:"12px",cursor:"pointer",textAlign:"start"}}>
+                <div style={{fontSize:20}}>{t.has_file ? "📘" : t.builtin ? "📄" : "⭐"}</div>
+                <b data-no-i18n="">{t.name}</b>
+                <div style={{fontSize:11.5,color:INK_MUTED}}>{tf(DOC_KIND_LABELS[t.kind]||"Sonstiges")} · {t.has_file ? tf("eigene Word-Datei") : t.builtin ? tf("fertige Vorlage") : tf("eigene Vorlage")}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode==="create" && tpl && (
+        <Card>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:10}}>
+            <b style={{fontSize:15}} data-no-i18n="">{tpl.name}</b>
+            <span style={{flex:1}} />
+            <button style={linkBtn} onClick={()=>{ setTpl(null); setTags([]); }}>{tf("Andere Vorlage")}</button>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
+            <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("Daten übernehmen aus:")}</span>
+            {[["","Von Hand"],["arrival","Anreise"],["event","Veranstaltung"]].map(([k,l])=><button key={k} onClick={()=>pickSource(k)} style={{border:`1px solid ${source===k?INK:BORDER}`,background:source===k?INK:CARD,color:source===k?"#fff":INK,borderRadius:999,padding:"4px 11px",fontSize:12,cursor:"pointer"}}>{tf(l)}</button>)}
+          </div>
+          {source==="arrival" && <select className="input" style={{marginBottom:10}} defaultValue="" onChange={e=>{ const a = (arrivals||[]).find(x=>x.id===e.target.value); if(a) setForm(f=>({...f, ...fromArrival(a)})); }}>
+            <option value="">{arrivals===null ? "…" : arrivals.length ? tf("– Anreise wählen –") : tf("Keine Anreisen gefunden.")}</option>
+            {(arrivals||[]).map(a=><option key={a.id} value={a.id}>{fmtDate(a.arrival_date)} · {a.guest_name}{a.room_type?" · "+a.room_type:""}</option>)}
+          </select>}
+          {source==="event" && <select className="input" style={{marginBottom:10}} defaultValue="" onChange={e=>{ const ev = (events||[]).find(x=>x.id===e.target.value); if(ev) setForm(f=>({...f, ...fromEvent(ev)})); }}>
+            <option value="">{events===null ? "…" : events.length ? tf("– Veranstaltung wählen –") : tf("Keine Veranstaltungen.")}</option>
+            {(events||[]).map(ev=><option key={ev.id} value={ev.id}>{fmtDate(ev.event_date)} · {ev.title}{ev.client?" · "+ev.client:""}</option>)}
+          </select>}
+          {fields.length===0 && unknown.length===0 && <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Diese Vorlage enthält keine Platzhalter.")}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:"0 10px"}}>
+            {[...fields, ...unknown.map(k=>[k,k])].map(([k,l,type])=>(
+              <Field key={k} label={tf(l)}>{type==="area"
+                ? <textarea className="input" rows={3} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} />
+                : <input className="input" type={type==="date"?"date":"text"} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})} />}</Field>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}}>
+            <button className="btn-primary" disabled={!!busy} onClick={()=>download("docx")}>{busy==="docx"?"…":"📘 Word"}</button>
+            {!tpl.has_file && <button style={smallBtn} disabled={!!busy} onClick={()=>download("pdf")}>{busy==="pdf"?"…":"📄 PDF"}</button>}
+            {role!=="viewer" && <button style={smallBtn} disabled={!!busy} onClick={()=>setMail({email:form.email||"", format:tpl.has_file?"docx":"pdf", message:""})}>✉ {tf("Per E-Mail senden")}</button>}
+          </div>
+          {mail && (
+            <div style={{background:PAPER,borderRadius:8,padding:"10px 12px",marginTop:10}}>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+                <label style={{flex:1,minWidth:200}}><div className="field-label">{tf("E-Mail-Adresse")}</div><input className="input" type="email" value={mail.email} onChange={e=>setMail({...mail,email:e.target.value})} /></label>
+                <label><div className="field-label">{tf("Anhang")}</div><select className="input" value={mail.format} onChange={e=>setMail({...mail,format:e.target.value})}>{!tpl.has_file && <option value="pdf">PDF</option>}<option value="docx">Word</option></select></label>
+              </div>
+              <Field label={tf("Nachricht (optional)")}><textarea className="input" rows={2} value={mail.message} onChange={e=>setMail({...mail,message:e.target.value})} /></Field>
+              <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={!!busy} onClick={send}>{busy==="mail"?"…":tf("Senden")}</button><button style={linkBtn} onClick={()=>setMail(null)}>{tf("Abbrechen")}</button></div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {mode==="manage" && lead && (
+        <div>
+          {!edit && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+            <button className="btn-primary" onClick={()=>setEdit({name:"", kind:"sonstiges", body:""})}>{tf("+ Eigene Vorlage")}</button>
+            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6}}>📘 {tf("Word-Datei hochladen")}<input type="file" accept=".docx" style={{display:"none"}} onChange={e=>{ setEdit({name:"", kind:"sonstiges", body:null}); pickFile(e.target.files[0]); e.target.value=""; }} /></label>
+          </div>}
+          {!edit && <Card style={{marginBottom:12,fontSize:12.5,color:INK_SOFT,lineHeight:1.55}}>
+            <b>{tf("So nutzen Sie eigene Word-Vorlagen:")}</b><br/>
+            {tf("1. Eine fertige Vorlage als Word herunterladen oder eine eigene Datei nehmen. 2. In Word Logo, Schrift und Text anpassen – Platzhalter wie {guest_name} oder {arrival} an die gewünschte Stelle schreiben. 3. Die Datei hier hochladen. Beim Erstellen werden die Platzhalter automatisch befüllt.")}
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:8}}>{DOC_FIELDS.map(([k,l])=><span key={k} title={tf(l)} style={{fontFamily:"monospace",fontSize:11,background:PAPER,borderRadius:4,padding:"1px 6px"}}>{"{"+k+"}"} <span style={{fontFamily:"inherit",color:INK_MUTED}}>{tf(l)}</span></span>)}</div>
+          </Card>}
+          {edit && (
+            <Card style={{marginBottom:12,borderColor:BRASS}}>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <label style={{flex:2,minWidth:200}}><div className="field-label">{tf("Name")}</div><input className="input" value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})} /></label>
+                <label><div className="field-label">{tf("Art")}</div><select className="input" value={edit.kind} onChange={e=>setEdit({...edit,kind:e.target.value})}>{Object.entries(DOC_KIND_LABELS).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select></label>
+              </div>
+              {edit.file_data || edit.has_file ? (
+                <div style={{margin:"10px 0",fontSize:13}}>📘 <span data-no-i18n="">{edit.file_name}</span>
+                  {edit._tags && <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{edit._tags.length ? tf("Gefundene Platzhalter: {0}", edit._tags.map(t=>"{"+t+"}").join(" ")) : tf("Keine Platzhalter gefunden – die Datei wird unverändert ausgegeben.")}</div>}
+                  <label style={{...linkBtn,display:"inline-block",marginInlineStart:8,cursor:"pointer"}}>{tf("Andere Datei")}<input type="file" accept=".docx" style={{display:"none"}} onChange={e=>{ pickFile(e.target.files[0]); e.target.value=""; }} /></label>
+                </div>
+              ) : (
+                <React.Fragment>
+                  <Field label={tf("Text (erste Zeile mit # = Überschrift, Leerzeile = neuer Absatz)")}><textarea className="input" rows={14} style={{fontFamily:"inherit"}} value={edit.body||""} onChange={e=>setEdit({...edit,body:e.target.value})} /></Field>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>{DOC_FIELD_KEYS.map(chip)}</div>
+                </React.Fragment>
+              )}
+              <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={!!busy || !String(edit.name||"").trim()} onClick={saveTpl}>{tf("Speichern")}</button><button style={linkBtn} onClick={()=>setEdit(null)}>{tf("Abbrechen")}</button></div>
+            </Card>
+          )}
+          {!edit && all.map(t=>(
+            <Card key={t.id} style={{marginBottom:8,padding:"10px 14px"}}>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <span>{t.has_file ? "📘" : t.builtin ? "📄" : "⭐"}</span>
+                <b style={{flex:1,minWidth:150}} data-no-i18n="">{t.name}</b>
+                <span style={{fontSize:12,color:INK_MUTED}}>{tf(DOC_KIND_LABELS[t.kind]||"Sonstiges")}</span>
+                {!t.has_file && <button style={smallBtn} title={tf("Als Word-Datei mit Platzhaltern herunterladen, in Word gestalten und wieder hochladen")} onClick={()=>act("dl"+t.id, async()=>downloadBlob(await docxFromText(t.body, {rtl:(t.builtin?lang:UI_LANG)==="ar"}), safeFile(t.name)+".docx"))}>{busy==="dl"+t.id?"…":"⬇ "+tf("Word-Vorlage")}</button>}
+                {t.builtin && <button style={linkBtn} onClick={()=>setEdit({name:t.name, kind:t.kind, body:t.body})}>{tf("Kopieren und anpassen")}</button>}
+                {!t.builtin && <button style={linkBtn} onClick={()=>setEdit({...t})}>{tf("Bearbeiten")}</button>}
+                {!t.builtin && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Vorlage „{0}“ löschen?", t.name))) act("del", async()=>{ await api("/api/doc-templates/"+t.id,"DELETE"); await load(); }); }}>✕</button>}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Rechnungen
+const INV_KIND_TITLE = {Rechnung:"Rechnung", Anzahlung:"Anzahlungsrechnung", Schlussrechnung:"Schlussrechnung", Storno:"Stornorechnung"};
+const INV_STATUS = {offen:[WARN,WARN_SOFT,"offen"], bezahlt:[GOOD,GOOD_SOFT,"bezahlt"], storniert:[INK_MUTED,PAPER,"storniert"]};
+const r2 = (n) => Math.round((Number(n)||0)*100)/100;
+function invTotals(items, gross){
+  const by = {};
+  (items||[]).forEach(i=>{ const a = r2((Number(i.qty)||0)*(Number(i.unit_price)||0)); by[i.tax_rate] = r2((by[i.tax_rate]||0)+a); });
+  const rates = Object.keys(by).map(Number).sort((a,b)=>a-b).map(rate=>{ const amount = by[rate]; const tax = gross ? r2(amount*rate/(100+rate)) : r2(amount*rate/100); const net = gross ? r2(amount-tax) : amount; return {rate, net, tax, gross:r2(net+tax)}; });
+  const net = r2(rates.reduce((s,x)=>s+x.net,0)), tax = r2(rates.reduce((s,x)=>s+x.tax,0));
+  return {rates, net, tax, gross:r2(net+tax)};
+}
+const invDue = (inv) => r2(Number(inv.gross_total) - Number(inv.deducted||0));
+const invOverdue = (inv) => inv.status==="offen" && inv.kind!=="Storno" && inv.due_on && inv.due_on < todayIso();
+function invoiceSheetHtml(inv, hotel, cancelsNumber){
+  const s = inv.seller || {};
+  const cur = inv.currency || "EUR";
+  const m = (n) => (Number(n)||0).toLocaleString(UI_LOCALE,{style:"currency",currency:cur});
+  const t = invTotals(inv.items, inv.prices_gross);
+  const facts = [["Rechnungsnummer", inv.number], ["Rechnungsdatum", fmtDate(inv.issued_on)], ["Leistungszeitraum", inv.service_date||"–"], ...(inv.due_on && inv.kind!=="Storno" ? [["Zahlbar bis", fmtDate(inv.due_on)]] : [])]
+    .map(([l,v])=>'<div class="f"><div class="l">'+fsT(l)+'</div><div class="v">'+fsEsc(v)+'</div></div>').join("");
+  const rows = (inv.items||[]).map((i,n)=>'<tr><td>'+(n+1)+'</td><td>'+fsEsc(i.label)+'</td><td class="r">'+fsEsc(String(i.qty).replace(".",","))+(i.unit?' '+fsEsc(i.unit):'')+'</td><td class="r">'+m(i.unit_price)+'</td><td class="r">'+(s.small_business?'–':fsEsc(i.tax_rate)+' %')+'</td><td class="r">'+m(r2(i.qty*i.unit_price))+'</td></tr>').join("");
+  const sumRow = (l, v, strong) => '<tr'+(strong?' style="font-weight:700;font-size:13px"':'')+'><td colspan="5" class="r">'+l+'</td><td class="r">'+v+'</td></tr>';
+  const sums = (s.small_business ? sumRow(fsT("Gesamtbetrag"), m(t.gross), true)
+    : t.rates.map(x=>sumRow(fsT("Netto")+' '+x.rate+' %', m(x.net))+sumRow(fsT("USt")+' '+x.rate+' %', m(x.tax))).join("") + sumRow(fsT("Summe netto"), m(t.net)) + sumRow(fsT("Summe USt"), m(t.tax)) + sumRow(fsT("Gesamtbetrag"), m(t.gross), true))
+    + (Number(inv.deducted) ? sumRow(fsT("abzüglich Anzahlungen"), m(-inv.deducted)) + sumRow(fsT("Zu zahlen"), m(invDue(inv)), true) : "");
+  const bank = [s.bank, s.iban && "IBAN "+s.iban, s.bic && "BIC "+s.bic].filter(Boolean).join(" · ");
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
+    + '<div class="hd">'+(hotel.logo_data?'<img src="'+fsEsc(hotel.logo_data)+'" />':'')+'<div class="h"><div class="hotel">'+fsEsc(s.company||s.hotel||hotel.name)+'</div><h1>'+fsT(INV_KIND_TITLE[inv.kind]||"Rechnung")+'</h1></div>'
+    + '<div style="font-size:10.5px;color:#6B7280;white-space:pre-wrap;text-align:end">'+fsEsc([s.address, s.phone, s.email, s.web].filter(Boolean).join("\n"))+'</div></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px"><div class="box"><h3>'+fsT("Rechnungsempfänger")+'</h3><div class="b">'+fsEsc(inv.recipient)+'</div></div><div class="facts" style="grid-template-columns:1fr 1fr;margin:0">'+facts+'</div></div>'
+    + (inv.kind==="Storno" && cancelsNumber ? '<p style="margin:0 0 8px">'+fsEsc(tf("Storno zu Rechnung {0}", cancelsNumber))+'</p>' : '')
+    + '<table class="t"><thead><tr><th>#</th><th>'+fsT("Bezeichnung")+'</th><th class="r">'+fsT("Menge")+'</th><th class="r">'+fsT("Einzelpreis")+'</th><th class="r">'+fsT("USt")+'</th><th class="r">'+fsT("Betrag")+'</th></tr></thead><tbody>'+rows+sums+'</tbody></table>'
+    + (inv.prices_gross && !s.small_business ? '<p style="font-size:10.5px;color:#6B7280;margin:6px 0 0">'+fsT("Alle Preise inklusive Umsatzsteuer.")+'</p>' : '')
+    + (s.small_business ? '<p style="font-size:11px;margin:8px 0 0">'+fsT("Gemäß Kleinunternehmerregelung wird keine Umsatzsteuer berechnet.")+'</p>' : '')
+    + (inv.note ? '<div class="box" style="margin-top:12px"><div class="b">'+fsEsc(inv.note)+'</div></div>' : '')
+    + (inv.kind!=="Storno" && inv.due_on && bank ? '<p style="margin:12px 0 0">'+fsEsc(tf("Bitte überweisen Sie {0} bis {1} unter Angabe der Rechnungsnummer {2}.", m(invDue(inv)), fmtDate(inv.due_on), inv.number))+'</p>' : '')
+    + '<div style="margin-top:18px;border-top:1px solid #E4DFD3;padding-top:6px;font-size:9.5px;color:#6B7280;display:flex;flex-wrap:wrap;gap:4px 14px">'
+    + [s.company||s.hotel, s.uid && tf("UID")+": "+s.uid, s.tax_number && tf("Steuernummer")+": "+s.tax_number, s.register, bank, s.footer].filter(Boolean).map(x=>'<span>'+fsEsc(x)+'</span>').join("")
+    + '</div></div>';
+}
+const invoiceFile = (inv) => safeFile(translateString(INV_KIND_TITLE[inv.kind]||"Rechnung")+" "+inv.number)+".pdf";
+
+function InvoiceSettingsCard({hotel, api, onHotel, onClose}){
+  const isAdmin = ACCESS.role==="admin";
+  const [s,setS] = useState({payment_days:14, default_tax_rate:10, prices_gross:true, prefix:"RE-", ...(hotel.invoice_settings||{})});
+  const [msg,setMsg] = useState(null);
+  const F = (k, l, props={}) => <Field label={tf(l)}><input className="input" disabled={!isAdmin} value={s[k]??""} onChange={e=>setS({...s,[k]:e.target.value})} {...props} /></Field>;
+  const save = async () => { setMsg(null); try { const h = await api("/api/hotels/"+hotel.id,"PATCH",{invoice_settings:{...s, payment_days:Number(s.payment_days), default_tax_rate:Number(String(s.default_tax_rate).replace(",","."))}}); onHotel(h); setMsg({ok:true,text:tf("Gespeichert.")}); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  return (
+    <Card style={{marginBottom:14,borderColor:BRASS}}>
+      <div style={{display:"flex",alignItems:"center",marginBottom:6}}><b style={{flex:1}}>{tf("Rechnungsdaten des Hotels")}</b>{onClose && <button style={linkBtn} onClick={onClose}>✕</button>}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{isAdmin ? tf("Diese Angaben stehen auf jeder Rechnung. Bitte mit Ihrer Steuerberatung abstimmen (Pflichtangaben, Steuersätze).") : tf("Nur Admins können die Rechnungsdaten ändern.")}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))",gap:"0 10px"}}>
+        {F("company","Firma (wie im Firmenbuch)")}
+        <Field label={tf("Anschrift")}><textarea className="input" rows={3} disabled={!isAdmin} value={s.address||""} onChange={e=>setS({...s,address:e.target.value})} /></Field>
+        {F("uid","UID-Nummer")}{F("tax_number","Steuernummer")}{F("register","Firmenbuch / Handelsregister")}
+        {F("bank","Bank")}{F("iban","IBAN")}{F("bic","BIC")}
+        {F("phone","Telefon")}{F("email","E-Mail")}{F("web","Website")}
+        {F("prefix","Präfix der Rechnungsnummer")}{F("payment_days","Zahlungsziel (Tage)",{type:"number",min:0,max:120})}{F("default_tax_rate","Standard-Steuersatz (%)",{inputMode:"decimal"})}
+      </div>
+      <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,margin:"4px 0"}}><input type="checkbox" disabled={!isAdmin} checked={s.prices_gross!==false} onChange={e=>setS({...s,prices_gross:e.target.checked})} /> {tf("Preise sind Bruttopreise (inkl. USt)")}</label>
+      <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,margin:"4px 0 10px"}}><input type="checkbox" disabled={!isAdmin} checked={!!s.small_business} onChange={e=>setS({...s,small_business:e.target.checked})} /> {tf("Kleinunternehmer (keine Umsatzsteuer)")}</label>
+      <Field label={tf("Fußzeile (optional)")}><input className="input" disabled={!isAdmin} value={s.footer||""} onChange={e=>setS({...s,footer:e.target.value})} /></Field>
+      {isAdmin && <button className="btn-primary" onClick={save}>{tf("Speichern")}</button>}
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
+    </Card>
+  );
+}
+
+function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
+  const set0 = hotel.invoice_settings || {};
+  const rate0 = set0.default_tax_rate ?? 10;
+  const hasDeposit = ev && (invoices||[]).some(i=>i.event_id===ev.id && i.kind==="Anzahlung" && i.status!=="storniert");
+  const fromOffer = () => ev ? offerSum(ev.offer_items, ev.guests).lines.filter(l=>l.label).map(l=>({label:l.label, qty:l.qtyEff, unit:"", unit_price:Number(String(l.unit_price??0).replace(",","."))||0, tax_rate:rate0})) : [];
+  const [f,setF] = useState({kind: ev ? (hasDeposit ? "Schlussrechnung" : "Anzahlung") : "Rechnung", deposit_percent:30,
+    recipient:[ev && ev.client, ev && ev.contact].filter(Boolean).join("\n"), recipient_email:((ev && ev.contact)||"").match(/[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/)?.[0]||"",
+    service_date: ev ? fmtDate(ev.event_date) : "", note:"", items: fromOffer().length ? fromOffer() : [{label:"", qty:1, unit:"", unit_price:"", tax_rate:rate0}]});
+  const [busy,setBusy] = useState(false); const [msg,setMsg] = useState(null);
+  const items = f.items.map(i=>({...i, qty:Number(String(i.qty).replace(",","."))||0, unit_price:Number(String(i.unit_price).replace(",","."))||0, tax_rate:Number(String(i.tax_rate).replace(",","."))||0}));
+  const gross = set0.prices_gross!==false;
+  const t = invTotals(items, gross);
+  const deposits = ev ? (invoices||[]).filter(i=>i.event_id===ev.id && i.kind==="Anzahlung" && i.status!=="storniert") : [];
+  const depAmount = f.kind==="Anzahlung" ? r2(t.gross*(Number(f.deposit_percent)||0)/100) : null;
+  const setItem = (n, k, v) => setF({...f, items:f.items.map((x,j)=>j===n?{...x,[k]:v}:x)});
+  const submit = async () => {
+    setBusy(true); setMsg(null);
+    try { const inv = await api("/api/hotels/"+hotel.id+"/invoices","POST",{...f, items, event_id: ev ? ev.id : undefined}); onDone(inv); }
+    catch(e){ setMsg({ok:false,text:e.message}); }
+    setBusy(false);
+  };
+  const m = (n) => moneyIn(n);
+  return (
+    <div>
+      <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>🧾 {tf("Rechnung erstellen")}{ev ? <span style={{fontWeight:400,color:INK_MUTED}} data-no-i18n=""> · {ev.title}</span> : null}</div>
+      {!(hotel.invoice_settings && hotel.invoice_settings.company) && <div style={{fontSize:12.5,color:WARN,marginBottom:8}}>{tf("Tipp: Zuerst unter „Rechnungen“ die Rechnungsdaten des Hotels (Firma, UID, Bank) eintragen.")}</div>}
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+        {(ev ? ["Anzahlung","Schlussrechnung","Rechnung"] : ["Rechnung"]).map(k=><button key={k} onClick={()=>setF({...f,kind:k})} style={{border:`1px solid ${f.kind===k?INK:BORDER}`,background:f.kind===k?INK:CARD,color:f.kind===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{tf(INV_KIND_TITLE[k])}</button>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:"0 10px"}}>
+        <Field label={tf("Rechnungsempfänger (Name, Firma, Anschrift)")}><textarea className="input" rows={3} value={f.recipient} onChange={e=>setF({...f,recipient:e.target.value})} /></Field>
+        <div>
+          <Field label={tf("E-Mail des Empfängers")}><input className="input" type="email" value={f.recipient_email} onChange={e=>setF({...f,recipient_email:e.target.value})} /></Field>
+          <Field label={tf("Leistungsdatum / -zeitraum")}><input className="input" value={f.service_date} onChange={e=>setF({...f,service_date:e.target.value})} /></Field>
+        </div>
+      </div>
+      <div style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:560}}>
+          <thead><tr style={{color:INK_MUTED,fontSize:11.5}}><th style={{textAlign:"start"}}>{tf("Bezeichnung")}</th><th>{tf("Menge")}</th><th>{tf("Einzelpreis")}</th><th>{tf("USt %")}</th><th style={{textAlign:"end"}}>{tf("Betrag")}</th><th></th></tr></thead>
+          <tbody>{f.items.map((x,n)=>(
+            <tr key={n}>
+              <td style={{padding:"3px 4px"}}><input className="input" value={x.label} onChange={e=>setItem(n,"label",e.target.value)} /></td>
+              <td style={{padding:"3px 4px",width:70}}><input className="input" inputMode="decimal" value={x.qty} onChange={e=>setItem(n,"qty",e.target.value)} /></td>
+              <td style={{padding:"3px 4px",width:100}}><input className="input" inputMode="decimal" value={x.unit_price} onChange={e=>setItem(n,"unit_price",e.target.value)} /></td>
+              <td style={{padding:"3px 4px",width:70}}><input className="input" inputMode="decimal" disabled={!!set0.small_business} value={set0.small_business?0:x.tax_rate} onChange={e=>setItem(n,"tax_rate",e.target.value)} /></td>
+              <td style={{padding:"3px 4px",textAlign:"end",whiteSpace:"nowrap"}} data-no-i18n="">{m(r2(items[n].qty*items[n].unit_price))}</td>
+              <td><button style={linkBtn} onClick={()=>setF({...f,items:f.items.filter((_,j)=>j!==n)})}>✕</button></td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+      <button style={{...linkBtn,paddingInlineStart:0}} onClick={()=>setF({...f,items:[...f.items,{label:"", qty:1, unit:"", unit_price:"", tax_rate:rate0}]})}>{tf("+ Position")}</button>
+      <div style={{background:PAPER,borderRadius:8,padding:"8px 12px",margin:"8px 0",fontSize:13}}>
+        {!set0.small_business && t.rates.map(x=><div key={x.rate} style={{display:"flex",justifyContent:"space-between"}} data-no-i18n=""><span>{tf("USt")} {x.rate} %</span><span>{m(x.tax)}</span></div>)}
+        <div style={{display:"flex",justifyContent:"space-between",fontWeight:700}}><span>{tf("Gesamtbetrag")}</span><span data-no-i18n="">{m(t.gross)}</span></div>
+        {f.kind==="Anzahlung" && <div style={{display:"flex",gap:8,alignItems:"center",marginTop:6,flexWrap:"wrap"}}>{tf("Anzahlung")}
+          <input className="input" type="number" min="1" max="100" style={{width:70}} value={f.deposit_percent} onChange={e=>setF({...f,deposit_percent:e.target.value})} /> % = <b data-no-i18n="">{m(depAmount)}</b></div>}
+        {f.kind==="Schlussrechnung" && deposits.length>0 && <div style={{marginTop:4,color:INK_SOFT}}>{tf("Abzüglich Anzahlungen: {0}", deposits.map(d=>d.number+" ("+m(d.gross_total)+")").join(", "))} → <b data-no-i18n="">{m(r2(t.gross - deposits.reduce((s,d)=>s+Number(d.gross_total),0)))}</b></div>}
+      </div>
+      <Field label={tf("Hinweis auf der Rechnung (optional)")}><textarea className="input" rows={2} value={f.note} onChange={e=>setF({...f,note:e.target.value})} /></Field>
+      <div style={{fontSize:12,color:INK_MUTED,marginBottom:8}}>{tf("Nach dem Ausstellen erhält die Rechnung eine fortlaufende Nummer und kann nicht mehr geändert werden – nur storniert.")}</div>
+      <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={busy || !f.recipient.trim() || !t.gross} onClick={submit}>{busy?"…":tf("Rechnung ausstellen")}</button><button style={linkBtn} onClick={onCancel}>{tf("Abbrechen")}</button></div>
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
+    </div>
+  );
+}
+
+function InvoiceActions({inv, hotel, api, list, onChanged, onMsg}){
+  const [busy,setBusy] = useState("");
+  const cancelsNo = inv.cancels ? ((list||[]).find(x=>x.id===inv.cancels)||{}).number : null;
+  const canEdit = INVOICE_DEPTS_FE.some(d=>canManageDept(d));
+  const act = async (k, fn) => { setBusy(k); try { await fn(); } catch(e){ onMsg({ok:false,text:e.message}); } setBusy(""); };
+  return (
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+      <button style={smallBtn} disabled={!!busy} onClick={()=>act("pdf", ()=>sheetPdf(invoiceSheetHtml(inv, hotel, cancelsNo), invoiceFile(inv)))}>{busy==="pdf"?"…":"📄 PDF"}</button>
+      {canEdit && <button style={smallBtn} disabled={!!busy} onClick={()=>act("mail", async()=>{
+        const email = window.prompt(tf("An welche E-Mail-Adresse soll die Rechnung gehen?"), inv.recipient_email||""); if(!email) return;
+        const blob = await sheetPdf(invoiceSheetHtml(inv, hotel, cancelsNo), invoiceFile(inv), false, "portrait", true);
+        await api("/api/invoices/"+inv.id+"/send","POST",{email, pdf:await blobToDataUrl(blob), file_name:invoiceFile(inv).replace(/\.pdf$/,""), language:UI_LANG});
+        onMsg({ok:true,text:tf("Rechnung per E-Mail verschickt.")}); onChanged();
+      })}>{busy==="mail"?"…":"✉ "+tf("Senden")}</button>}
+      {canEdit && inv.kind!=="Storno" && inv.status!=="storniert" && <button style={smallBtn} disabled={!!busy} onClick={()=>act("paid", async()=>{ await api("/api/invoices/"+inv.id,"PATCH",{status:inv.status==="bezahlt"?"offen":"bezahlt"}); onChanged(); })}>{inv.status==="bezahlt" ? tf("Als offen markieren") : "✓ "+tf("Bezahlt")}</button>}
+      {canEdit && inv.kind!=="Storno" && inv.status!=="storniert" && <button style={{...linkBtn,color:BAD}} disabled={!!busy} onClick={()=>{ if(window.confirm(tf("Rechnung {0} stornieren? Es wird eine Stornorechnung mit neuer Nummer erstellt.", inv.number))) act("cancel", async()=>{ await api("/api/invoices/"+inv.id+"/cancel","POST",{}); onChanged(); }); }}>{tf("Stornieren")}</button>}
+    </div>
+  );
+}
+const INVOICE_DEPTS_FE = ["Food & Beverage","Rezeption & Empfang","Finanzen & Controlling"];
+
+function InvoicesView({hotel, api, role, onHotel}){
+  const [list,setList] = useState(null); const [filter,setFilter] = useState("all");
+  const [form,setForm] = useState(false); const [settings,setSettings] = useState(false);
+  const [msg,setMsg] = useState(null);
+  const canEdit = INVOICE_DEPTS_FE.some(d=>canManageDept(d));
+  const load = useCallback(()=>api("/api/hotels/"+hotel.id+"/invoices").then(setList).catch(e=>{ setMsg({ok:false,text:e.message}); setList([]); }),[api, hotel.id]);
+  useEffect(()=>{ load(); },[load]);
+  if(list===null) return <div style={{color:INK_MUTED}}>…</div>;
+  const shown = list.filter(i=>filter==="all" || (filter==="open" && i.status==="offen" && i.kind!=="Storno") || (filter==="overdue" && invOverdue(i)));
+  const openSum = r2(list.filter(i=>i.status==="offen" && i.kind!=="Storno").reduce((s,i)=>s+invDue(i),0));
+  const overdue = list.filter(invOverdue);
+  const m0 = todayIso().slice(0,7);
+  const paidMonth = r2(list.filter(i=>i.status==="bezahlt" && (i.paid_on||"").startsWith(m0)).reduce((s,i)=>s+invDue(i),0));
+  const exportXlsx = async () => {
+    try {
+      const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+      const rows = list.slice().reverse().map(i=>({[translateString("Rechnungsnummer")]:i.number, [translateString("Art")]:translateString(INV_KIND_TITLE[i.kind]), [translateString("Rechnungsdatum")]:i.issued_on, [translateString("Rechnungsempfänger")]:String(i.recipient).split("\n")[0],
+        [translateString("Summe netto")]:Number(i.net_total), [translateString("Summe USt")]:Number(i.tax_total), [translateString("Gesamtbetrag")]:Number(i.gross_total), [translateString("abzüglich Anzahlungen")]:Number(i.deducted||0), [translateString("Status")]:translateString(i.status), [translateString("Bezahlt am")]:i.paid_on||""}));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Rechnungen");
+      XLSX.writeFile(wb, safeFile(translateString("Rechnungsausgangsbuch")+" "+hotel.name)+".xlsx");
+    } catch(e){ setMsg({ok:false,text:e.message}); }
+  };
+  return (
+    <div>
+      <div className="stack" style={{display:"flex",gap:14,marginBottom:14}}>
+        <StatTile label={tf("Offen")} value={moneyIn(openSum)} sub={tf("{0} Rechnungen", list.filter(i=>i.status==="offen" && i.kind!=="Storno").length)} />
+        <StatTile label={tf("Überfällig")} value={moneyIn(r2(overdue.reduce((s,i)=>s+invDue(i),0)))} sub={tf("{0} Rechnungen", overdue.length)} color={overdue.length?BAD:undefined} />
+        <StatTile label={tf("Bezahlt diesen Monat")} value={moneyIn(paidMonth)} color={GOOD} />
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:12}}>
+        {canEdit && <button className="btn-primary" onClick={()=>setForm(true)}>{tf("+ Rechnung")}</button>}
+        <button style={smallBtn} onClick={()=>setSettings(!settings)}>⚙ {tf("Rechnungsdaten")}</button>
+        {list.length>0 && <button style={smallBtn} onClick={exportXlsx}>Excel</button>}
+        <span style={{flex:1}} />
+        {[["all","Alle"],["open","Offen"],["overdue","Überfällig"]].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:CARD,color:filter===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{tf(l)}</button>)}
+      </div>
+      {settings && <InvoiceSettingsCard hotel={hotel} api={api} onHotel={onHotel} onClose={()=>setSettings(false)} />}
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+      {form && <Overlay onClose={()=>setForm(false)}><InvoiceForm hotel={hotel} api={api} invoices={list} onCancel={()=>setForm(false)} onDone={(inv)=>{ setForm(false); setMsg({ok:true,text:tf("Rechnung {0} ausgestellt.", inv.number)}); load(); }} /></Overlay>}
+      {shown.length===0 ? <Card><div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch keine Rechnungen. Rechnungen entstehen hier oder direkt aus einer Veranstaltung mit Angebot.")}</div></Card> : shown.map(i=>{ const [c,bg,l] = INV_STATUS[i.status]; const od = invOverdue(i); return (
+        <Card key={i.id} style={{marginBottom:8,padding:"11px 14px",borderInlineStart:od?`4px solid ${BAD}`:undefined,opacity:i.status==="storniert"&&i.kind!=="Storno"?0.6:1}}>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
+            <b data-no-i18n="">{i.number}</b><span style={{fontSize:12.5,color:INK_MUTED}}>{tf(INV_KIND_TITLE[i.kind])}</span>
+            <Pill color={od?BAD:c} bg={od?BAD_SOFT:bg}>{od ? tf("überfällig") : tf(l)}</Pill>
+            <span style={{flex:1,minWidth:120,fontSize:13}} data-no-i18n="">{String(i.recipient).split("\n")[0]}</span>
+            <span style={{fontSize:12.5,color:INK_MUTED}}>{fmtDate(i.issued_on)}{i.due_on && i.kind!=="Storno" ? " · "+tf("fällig {0}", fmtDate(i.due_on)) : ""}</span>
+            <b data-no-i18n="">{moneyIn(invDue(i), i.currency)}</b>
+          </div>
+          <InvoiceActions inv={i} hotel={hotel} api={api} list={list} onChanged={load} onMsg={setMsg} />
+        </Card>); })}
+    </div>
+  );
+}
+// In der Veranstaltung: Rechnungen zu diesem Event und Knopf zum Erstellen
+function EventInvoices({ev, hotel, api, invoices, onChanged}){
+  const [open,setOpen] = useState(false); const [msg,setMsg] = useState(null);
+  const mine = (invoices||[]).filter(i=>i.event_id===ev.id);
+  const canEdit = INVOICE_DEPTS_FE.some(d=>canManageDept(d));
+  if(!canEdit && !mine.length) return null;
+  return (
+    <div style={{marginTop:6}}>
+      {mine.map(i=>{ const [c,bg,l] = INV_STATUS[i.status]; return <div key={i.id} style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",fontSize:12.5,marginBottom:3}}>
+        🧾 <b data-no-i18n="">{i.number}</b> <span style={{color:INK_MUTED}}>{tf(INV_KIND_TITLE[i.kind])}</span> <span data-no-i18n="">{moneyIn(invDue(i), i.currency)}</span> <Pill color={invOverdue(i)?BAD:c} bg={invOverdue(i)?BAD_SOFT:bg}>{invOverdue(i)?tf("überfällig"):tf(l)}</Pill>
+        <button style={{...linkBtn,padding:"0 4px"}} onClick={()=>sheetPdf(invoiceSheetHtml(i, hotel, i.cancels ? ((invoices||[]).find(x=>x.id===i.cancels)||{}).number : null), invoiceFile(i)).catch(e=>setMsg({ok:false,text:e.message}))}>PDF</button>
+      </div>; })}
+      {canEdit && <button style={smallBtn} onClick={()=>setOpen(true)}>🧾 {tf("Rechnung")}</button>}
+      {msg && <div style={{fontSize:12,color:msg.ok?GOOD:BAD}}>{msg.text}</div>}
+      {open && <Overlay onClose={()=>setOpen(false)}><InvoiceForm hotel={hotel} api={api} ev={ev} invoices={invoices} onCancel={()=>setOpen(false)} onDone={(inv)=>{ setOpen(false); setMsg({ok:true,text:tf("Rechnung {0} ausgestellt.", inv.number)}); onChanged(); }} /></Overlay>}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Baumängel: Abnahmeprotokoll als PDF
+function snagReportHtml({hotel, tickets, contractors, members, me, contractorId}){
+  const firm = (id) => (contractors.find(c=>c.id===id)||{}).name || "";
+  const list = tickets.filter(t=>t.kind==="Baumangel" && (!contractorId || t.contractor_id===contractorId));
+  const groups = {}; list.forEach(t=>{ const k = t.location || translateString("Ohne Ort"); (groups[k]=groups[k]||[]).push(t); });
+  const today = todayIso();
+  const open = list.filter(t=>t.status!=="Erledigt").length;
+  const rows = Object.keys(groups).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})).map(loc=>'<tr class="g"><td colspan="6">'+fsEsc(loc)+'</td></tr>'+groups[loc].map((t,i)=>
+    '<tr><td>'+(i+1)+'</td><td><b>'+fsEsc(t.title)+'</b>'+(t.description?'<div style="color:#6B7280">'+fsEsc(t.description)+'</div>':'')+(t.done_note?'<div style="color:#2F7D4F">'+fsEsc(t.done_note)+'</div>':'')+'</td><td>'+fsEsc(firm(t.contractor_id))+'</td>'
+    +'<td class="'+(t.due_on && t.due_on<today && t.status!=="Erledigt"?'bad':'')+'">'+fsEsc(t.due_on?fmtDate(t.due_on):"–")+'</td><td>'+fsT(t.status)+'</td><td>'+fsEsc(t.done_at?fmtDate(t.done_at):"")+'</td></tr>').join("")).join("");
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
+    + fsHead(hotel, translateString("Abnahmeprotokoll Baumängel"), contractorId ? firm(contractorId) : null)
+    + '<div class="facts" style="grid-template-columns:repeat(3,1fr)">'+[["Mängel gesamt", list.length], ["Offen", open], ["Erledigt", list.length-open]].map(([l,v])=>'<div class="f"><div class="l">'+fsT(l)+'</div><div class="v">'+v+'</div></div>').join("")+'</div>'
+    + '<table class="t"><thead><tr><th>#</th><th>'+fsT("Mangel")+'</th><th>'+fsT("Firma")+'</th><th>'+fsT("Frist")+'</th><th>'+fsT("Status")+'</th><th>'+fsT("Erledigt am")+'</th></tr></thead><tbody>'+(rows||'<tr><td colspan="6">'+fsT("Keine Baumängel.")+'</td></tr>')+'</tbody></table>'
+    + '<div class="sig"><div>'+fsT("Bauherr / Hotel")+' – '+fsT("Datum und Unterschrift")+'</div><div>'+fsT("Firma")+' – '+fsT("Datum und Unterschrift")+'</div></div>'
+    + fsFoot() + '</div>';
+}
+function SnagReportButton({hotel, api, contractors, members, me}){
+  const [busy,setBusy] = useState(false); const [firm,setFirm] = useState("");
+  const run = async () => { setBusy(true); try { const t = await api("/api/hotels/"+hotel.id+"/tickets?status=all&kind=Baumangel"); await sheetPdf(snagReportHtml({hotel, tickets:t, contractors, members, me, contractorId:firm}), safeFile(translateString("Abnahmeprotokoll")+" "+hotel.name+" "+todayIso())+".pdf"); } catch(e){ window.alert(tf("PDF konnte nicht erstellt werden: {0}", e.message)); } setBusy(false); };
+  return (
+    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
+      <button style={smallBtn} disabled={busy} onClick={run}>{busy?"…":"📄 "+tf("Abnahmeprotokoll (PDF)")}</button>
+      {contractors.length>0 && <select className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}} value={firm} onChange={e=>setFirm(e.target.value)}><option value="">{tf("Alle Firmen")}</option>{contractors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Wartung: Vorlagen für wiederkehrende Prüfungen, Prüfnachweis
+const MAINT_PRESETS = [
+  ["Feuerlöscher prüfen", 2, "Jahre", "Technik"], ["Brandmeldeanlage – Inspektion", 3, "Monate", "Technik"], ["Sicherheitsbeleuchtung testen", 1, "Monate", "Technik"],
+  ["Rauchmelder prüfen", 1, "Jahre", "Technik"], ["Aufzug – wiederkehrende Prüfung", 1, "Jahre", "Technik"], ["Legionellen-Prüfung Trinkwasser", 1, "Jahre", "Technik"],
+  ["Elektrische Anlagen prüfen", 1, "Jahre", "Technik"], ["Lüftungsfilter tauschen", 6, "Monate", "Technik"], ["Fettabscheider leeren", 1, "Monate", "Food & Beverage"],
+  ["Küchenabluft reinigen", 6, "Monate", "Food & Beverage"], ["Poolwasser – Laborprobe", 1, "Monate", "Technik"], ["Erste-Hilfe-Kästen kontrollieren", 6, "Monate", "Personal"],
+];
+function maintProofHtml({hotel, plan, tickets, nameOf}){
+  const done = tickets.filter(t=>t.status==="Erledigt").sort((a,b)=>String(b.done_at).localeCompare(String(a.done_at)));
+  const open = tickets.filter(t=>t.status!=="Erledigt");
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
+    + fsHead(hotel, plan.title, translateString("Prüfnachweis"))
+    + '<div class="facts">'+[["Ort", plan.location||"–"], ["Intervall", tf("alle {0} {1}", plan.interval_value, translateString(plan.interval_unit))], ["Zuständig", translateString(plan.department)], ["Nächster Termin", fmtDate(plan.next_due)]].map(([l,v])=>'<div class="f"><div class="l">'+fsT(l)+'</div><div class="v">'+fsEsc(v)+'</div></div>').join("")+'</div>'
+    + (plan.description ? '<div class="box" style="margin-bottom:10px"><div class="b">'+fsEsc(plan.description)+'</div></div>' : '')
+    + '<table class="t"><thead><tr><th>'+fsT("Fällig seit")+'</th><th>'+fsT("Erledigt am")+'</th><th>'+fsT("Erledigt von")+'</th><th>'+fsT("Ergebnis")+'</th></tr></thead><tbody>'
+    + (done.length ? done.map(t=>'<tr><td>'+fsEsc(fmtDate(t.created_at))+'</td><td>'+fsEsc(fmtDate(t.done_at))+'</td><td>'+fsEsc(nameOf(t.done_by))+'</td><td>'+fsEsc(t.done_note||"")+'</td></tr>').join("") : '<tr><td colspan="4">'+fsT("Noch keine erledigten Prüfungen.")+'</td></tr>')
+    + open.map(t=>'<tr><td>'+fsEsc(fmtDate(t.created_at))+'</td><td class="bad">'+fsT("offen")+'</td><td></td><td></td></tr>').join("")
+    + '</tbody></table>' + fsFoot() + '</div>';
+}
+function MaintProofButton({hotel, api, plan, members, me}){
+  const [busy,setBusy] = useState(false);
+  const run = async () => { setBusy(true); try { const t = await api("/api/hotels/"+hotel.id+"/tickets?status=all&plan_id="+plan.id); await sheetPdf(maintProofHtml({hotel, plan, tickets:t, nameOf:(id)=>id ? memberLabel(members||[], me, id) : ""}), safeFile(translateString("Prüfnachweis")+" "+plan.title)+".pdf"); } catch(e){ window.alert(tf("PDF konnte nicht erstellt werden: {0}", e.message)); } setBusy(false); };
+  return <button style={linkBtn} disabled={busy} onClick={run}>{busy?"…":"📄 "+tf("Nachweis")}</button>;
+}
+
+// ------------------------------------------------------------ Budget: PDF und Excel
+function budgetSheetHtml(hotel, items){
+  const m = (n) => fmtEur(n);
+  const by = {}; items.forEach(b=>{ const d = by[b.department] = by[b.department] || {planned:0, actual:0, committed:0, items:[]}; d.planned += Number(b.planned||0); d.actual += Number(b.actual||0); d.committed += Number(b.committed||0); d.items.push(b); });
+  const tot = Object.values(by).reduce((s,d)=>({planned:s.planned+d.planned, actual:s.actual+d.actual, committed:s.committed+d.committed}), {planned:0, actual:0, committed:0});
+  const line = (l, d, cls) => '<tr class="'+(cls||"")+'"><td>'+l+'</td><td class="r">'+m(d.planned)+'</td><td class="r">'+m(d.actual)+'</td><td class="r">'+m(d.committed)+'</td><td class="r '+(d.actual+d.committed>d.planned?'bad':'')+'">'+m(d.planned-d.actual-d.committed)+'</td></tr>';
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
+    + fsHead(hotel, translateString("Budget"), fmtDate(todayIso()))
+    + '<div class="facts">'+[["Plan", m(tot.planned)], ["Ist", m(tot.actual)], ["Beauftragt", m(tot.committed)], ["Noch verfügbar", m(tot.planned-tot.actual-tot.committed)]].map(([l,v])=>'<div class="f"><div class="l">'+fsT(l)+'</div><div class="v">'+v+'</div></div>').join("")+'</div>'
+    + '<table class="t"><thead><tr><th>'+fsT("Posten")+'</th><th class="r">'+fsT("Plan")+'</th><th class="r">'+fsT("Ist")+'</th><th class="r">'+fsT("Beauftragt")+'</th><th class="r">'+fsT("Noch verfügbar")+'</th></tr></thead><tbody>'
+    + Object.keys(by).sort().map(d=>line(fsT(d), by[d], "g")+by[d].items.map(b=>line(fsEsc(b.title)+'<span style="color:#6B7280"> · '+fsT(b.category)+'</span>', {planned:Number(b.planned||0), actual:Number(b.actual||0), committed:Number(b.committed||0)})).join("")).join("")
+    + line('<b>'+fsT("Summe")+'</b>', tot, "g") + '</tbody></table>' + fsFoot() + '</div>';
+}
+async function budgetXlsx(hotel, items){
+  const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+  const rows = items.map(b=>({[translateString("Abteilung")]:translateString(b.department), [translateString("Kategorie")]:translateString(b.category), [translateString("Posten")]:b.title,
+    [translateString("Plan")]:Number(b.planned||0), [translateString("Ist")]:Number(b.actual||0), [translateString("Beauftragt")]:Number(b.committed||0), [translateString("Noch verfügbar")]:Number(b.planned||0)-Number(b.actual||0)-Number(b.committed||0), [translateString("Notiz")]:b.note||""}));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Budget");
+  XLSX.writeFile(wb, safeFile(translateString("Budget")+" "+hotel.name)+".xlsx");
+}
+
+// ------------------------------------------------------------ Kennzahlen: Belegung und Logis-Umsatz je Tag eintragen
+function RevenueEditor({hotel, api, from, to, onSaved}){
+  const [rows,setRows] = useState(null); const [msg,setMsg] = useState(null);
+  const days = []; for(let d=from; d<=to; d=addDaysIso(d,1)) days.push(d);
+  useEffect(()=>{ api("/api/hotels/"+hotel.id+"/forecast?from="+from+"&to="+to).then(l=>setRows(Object.fromEntries(l.map(x=>[x.day,x])))).catch(e=>{ setMsg({ok:false,text:e.message}); setRows({}); }); },[from, to]);
+  if(rows===null) return <div style={{color:INK_MUTED}}>…</div>;
+  const save = async (d, k, v) => {
+    const cur = rows[d] || {day:d, occupied:0, arrivals:0, departures:0, revenue:null};
+    const next = {...cur, [k]: k==="revenue" ? (v===""?null:v) : Number(v)||0};
+    setRows({...rows, [d]:next});
+    try { await api("/api/hotels/"+hotel.id+"/forecast","PUT",{days:[{day:d, occupied:next.occupied, arrivals:next.arrivals, departures:next.departures, revenue:next.revenue}]}); onSaved && onSaved(); }
+    catch(e){ setMsg({ok:false,text:e.message}); }
+  };
+  return (
+    <Card style={{marginBottom:14}}>
+      <div style={{fontWeight:700,marginBottom:4}}>{tf("Belegung und Logis-Umsatz je Tag")}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Kommt aus dem PMS oder hier von Hand: belegte Zimmer und Logis-Umsatz (ohne Frühstück und Extras). Daraus entstehen Auslastung, Durchschnittspreis und RevPAR.")}</div>
+      <div style={{overflowX:"auto"}}>
+        <table style={{borderCollapse:"collapse",fontSize:12.5}}>
+          <thead><tr><th></th>{days.map(d=><th key={d} style={{padding:"3px 4px",color:INK_MUTED,fontWeight:600}} data-no-i18n="">{fmtDay(d,{day:"2-digit",month:"2-digit"})}</th>)}</tr></thead>
+          <tbody>{[["occupied","Belegt"],["revenue","Umsatz"]].map(([k,l])=>(
+            <tr key={k}><td style={{padding:"3px 6px",color:INK_MUTED,whiteSpace:"nowrap"}}>{tf(l)}</td>
+              {days.map(d=><td key={d} style={{padding:"2px"}}><input className="input" inputMode="decimal" style={{width:k==="revenue"?78:52,padding:"3px 4px",textAlign:"center"}} defaultValue={rows[d] ? (rows[d][k] ?? "") : ""} key={d+k+(rows[d]?rows[d][k]:"")} onBlur={e=>{ const v = e.target.value.replace(",","."); if(String(v)!==String(rows[d] ? (rows[d][k] ?? "") : "")) save(d,k,v); }} /></td>)}
+            </tr>))}</tbody>
+        </table>
+      </div>
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:6}}>{msg.text}</div>}
+    </Card>
+  );
+}
+
+// ------------------------------------------------------------ Unterweisungen: Unterschrift und Nachweis
+function SignaturePad({onChange}){
+  const ref = React.useRef(null); const drawing = React.useRef(false); const has = React.useRef(false);
+  useEffect(()=>{ const c = ref.current; const ctx = c.getContext("2d"); const r = window.devicePixelRatio||1; c.width = c.offsetWidth*r; c.height = 150*r; ctx.scale(r,r); ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.strokeStyle = "#1C2430"; },[]);
+  const pos = (e) => { const b = ref.current.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return [p.clientX-b.left, p.clientY-b.top]; };
+  const start = (e) => { e.preventDefault(); drawing.current = true; const ctx = ref.current.getContext("2d"); const [x,y] = pos(e); ctx.beginPath(); ctx.moveTo(x,y); };
+  const move = (e) => { if(!drawing.current) return; e.preventDefault(); const ctx = ref.current.getContext("2d"); const [x,y] = pos(e); ctx.lineTo(x,y); ctx.stroke(); has.current = true; };
+  const end = () => { if(!drawing.current) return; drawing.current = false; if(has.current) onChange(ref.current.toDataURL("image/png")); };
+  const clear = () => { const c = ref.current; c.getContext("2d").clearRect(0,0,c.width,c.height); has.current = false; onChange(null); };
+  return (
+    <div>
+      <canvas ref={ref} style={{width:"100%",height:150,border:`1px dashed ${BORDER}`,borderRadius:8,background:"#fff",touchAction:"none",cursor:"crosshair"}}
+        onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end} onTouchStart={start} onTouchMove={move} onTouchEnd={end} />
+      <button type="button" style={{...linkBtn,paddingInlineStart:0}} onClick={clear}>{tf("Unterschrift löschen")}</button>
+    </div>
+  );
+}
+function SignAckDialog({training, me, api, onDone, onClose}){
+  const [name,setName] = useState(me && me.email ? shortName(me.email) : ""); const [sig,setSig] = useState(null);
+  const [busy,setBusy] = useState(false); const [msg,setMsg] = useState(null);
+  const submit = async () => { setBusy(true); setMsg(null); try { await api("/api/trainings/"+training.id+"/ack","POST",{signature_data:sig, signer_name:name}); onDone(); } catch(e){ setMsg(e.message); } setBusy(false); };
+  return (
+    <Overlay onClose={onClose} width={520}>
+      <div style={{fontWeight:700,fontSize:16,marginBottom:4}} data-no-i18n="">{training.title}</div>
+      <div style={{fontSize:13,color:INK_SOFT,marginBottom:10}}>{tf("Ich bestätige, dass ich die Unterweisung gelesen und verstanden habe.")}</div>
+      <Field label={tf("Vor- und Nachname")}><input className="input" value={name} onChange={e=>setName(e.target.value)} /></Field>
+      <div className="field-label">{tf("Unterschrift (mit Finger oder Maus)")}</div>
+      <SignaturePad onChange={setSig} />
+      <div style={{display:"flex",gap:8,marginTop:8}}><button className="btn-primary" disabled={busy || !name.trim() || !sig} onClick={submit}>{busy?"…":tf("Bestätigen")}</button><button style={linkBtn} onClick={onClose}>{tf("Abbrechen")}</button></div>
+      {msg && <div style={{color:BAD,fontSize:13,marginTop:6}}>{msg}</div>}
+    </Overlay>
+  );
+}
+function trainingProofHtml({hotel, training, acks, target, nameOf}){
+  const latest = {}; acks.forEach(a=>{ if(!latest[a.user_id] || a.acked_at > latest[a.user_id].acked_at) latest[a.user_id] = a; });
+  const rows = Object.values(latest).sort((a,b)=>String(a.signer_name||nameOf(a.user_id)).localeCompare(String(b.signer_name||nameOf(b.user_id))));
+  const missing = target.filter(m=>!latest[m.user_id]);
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
+    + fsHead(hotel, training.title, translateString("Unterweisungsnachweis"))
+    + '<div class="box" style="margin-bottom:10px"><h3>'+fsT("Inhalt")+'</h3><div class="b">'+fsEsc(training.body||"–")+'</div></div>'
+    + '<table class="t"><thead><tr><th>'+fsT("Name")+'</th><th>'+fsT("Bestätigt am")+'</th><th>'+fsT("Unterschrift")+'</th></tr></thead><tbody>'
+    + (rows.length ? rows.map(a=>'<tr><td>'+fsEsc(a.signer_name||nameOf(a.user_id))+'<div style="color:#6B7280;font-size:10px">'+fsEsc(nameOf(a.user_id))+'</div></td><td>'+fsEsc(fmtDateTime(a.acked_at))+'</td><td>'+(a.signature_data?'<img src="'+fsEsc(a.signature_data)+'" style="height:34px;max-width:170px" />':'<span style="color:#6B7280">'+fsT("ohne Unterschrift")+'</span>')+'</td></tr>').join("") : '<tr><td colspan="3">'+fsT("Noch keine Bestätigungen.")+'</td></tr>')
+    + '</tbody></table>'
+    + (missing.length ? '<p style="margin-top:10px"><b>'+fsT("Noch offen")+':</b> '+fsEsc(missing.map(m=>nameOf(m.user_id)).join(", "))+'</p>' : '')
+    + '<div class="sig"><div>'+fsT("Unterwiesen durch")+' – '+fsT("Datum und Unterschrift")+'</div><div></div></div>'
+    + fsFoot() + '</div>';
+}
+
+// ------------------------------------------------------------ Fundsachen: Liste als PDF
+function lostFoundSheetHtml(hotel, list, nameOf){
+  return '<div class="fs" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+FS_TABLE
+    + fsHead(hotel, translateString("Fundsachen"), fmtDate(todayIso()))
+    + '<table class="t"><thead><tr><th>'+fsT("Gefunden am")+'</th><th>'+fsT("Gegenstand")+'</th><th>'+fsT("Wo?")+'</th><th>'+fsT("Aufbewahrt in")+'</th><th>'+fsT("Gast")+'</th><th>'+fsT("Status")+'</th></tr></thead><tbody>'
+    + list.map(x=>'<tr><td>'+fsEsc(fmtDate(x.found_on))+'<div style="color:#6B7280;font-size:10px">'+fsEsc(nameOf(x.found_by))+'</div></td><td>'+fsEsc(x.description)+'</td><td>'+fsEsc(x.location||"")+'</td><td>'+fsEsc(x.storage||"")+(x.keep_until?'<div style="color:#6B7280;font-size:10px">'+fsEsc(tf("bis {0}", fmtDate(x.keep_until)))+'</div>':'')+'</td><td>'+fsEsc([x.guest_name, x.guest_contact].filter(Boolean).join(" · "))+'</td><td>'+fsT(x.status)+(x.returned_to?'<div style="font-size:10px">'+fsEsc(x.returned_to)+'</div>':'')+'</td></tr>').join("")
+    + '</tbody></table>' + fsFoot() + '</div>';
+}
+
+// ------------------------------------------------------------ Hotelgruppe: alle Hotels im Vergleich
+function GroupView({orgId, api, hotels, onPick}){
+  const [rows,setRows] = useState(null); const [msg,setMsg] = useState(null);
+  useEffect(()=>{ api("/api/organizations/"+orgId+"/overview").then(setRows).catch(e=>{ setMsg(e.message); setRows([]); }); },[orgId]);
+  if(rows===null) return <div style={{color:INK_MUTED}}>…</div>;
+  const money = (n, cur) => n==null ? "–" : Number(n).toLocaleString(UI_LOCALE,{style:"currency",currency:cur||"EUR",maximumFractionDigits:0});
+  const sum = (k) => rows.reduce((s,r)=>s+(Number(r[k])||0),0);
+  const cols = [
+    ["Zimmer bereit", r=>r.rooms_total ? r.rooms_ready+"/"+r.rooms_total : "–"],
+    ["Im Dienst", r=>r.on_duty||0],
+    ["An-/Abreisen heute", r=>(r.arrivals||0)+" / "+(r.departures||0)],
+    ["Auslastung (Monat)", r=>r.month_occupancy!=null ? r.month_occupancy+" %" : "–"],
+    ["ADR", r=>money(r.month_adr, r.currency)],
+    ["RevPAR", r=>money(r.month_revpar, r.currency)],
+    ["Meldungen offen", r=><span style={{color:r.tickets_urgent?BAD:undefined}}>{r.tickets_open||0}{r.tickets_urgent?" ("+r.tickets_urgent+"!)":""}</span>],
+    ["Aufgaben überfällig", r=><span style={{color:r.tasks_overdue?BAD:undefined}}>{r.tasks_overdue||0}</span>],
+    ["Budget verbraucht", r=>r.budget_planned ? <span style={{color:r.budget_spent>r.budget_planned?BAD:undefined}}>{Math.round(r.budget_spent/r.budget_planned*100)} %</span> : "–"],
+    ["Bewertungen (90 Tage)", r=>r.review_avg!=null ? "★ "+r.review_avg : "–"],
+    ["Gäste-Feedback", r=>r.feedback_avg!=null ? "★ "+r.feedback_avg : "–"],
+  ];
+  return (
+    <div>
+      {msg && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{msg}</div>}
+      <div className="stack" style={{display:"flex",gap:14,marginBottom:14}}>
+        <StatTile label={tf("Hotels")} value={rows.length} />
+        <StatTile label={tf("Im Dienst")} value={sum("on_duty")} />
+        <StatTile label={tf("Meldungen offen")} value={sum("tickets_open")} color={sum("tickets_urgent")?BAD:undefined} sub={tf("{0} dringend", sum("tickets_urgent"))} />
+        <StatTile label={tf("Aufgaben überfällig")} value={sum("tasks_overdue")} color={sum("tasks_overdue")?BAD:undefined} />
+      </div>
+      <Card style={{padding:0,overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:900}}>
+          <thead><tr style={{background:PAPER}}><th style={{textAlign:"start",padding:"9px 12px"}}>{tf("Hotel")}</th>{cols.map(([l])=><th key={l} style={{padding:"9px 8px",fontSize:11.5,color:INK_MUTED,fontWeight:600,textAlign:"end"}}>{tf(l)}</th>)}</tr></thead>
+          <tbody>{rows.map(r=>(
+            <tr key={r.id} style={{borderTop:`1px solid ${BORDER}`}}>
+              <td style={{padding:"9px 12px"}}><button style={{...linkBtn,padding:0,fontWeight:700,color:INK}} onClick={()=>onPick(r.id)} data-no-i18n="">{r.name}</button><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{[r.city, r.opening_date && r.opening_date>todayIso() ? tf("Eröffnung {0}", fmtDate(r.opening_date)) : null].filter(Boolean).join(" · ")}</div></td>
+              {cols.map(([l,f])=><td key={l} style={{padding:"9px 8px",textAlign:"end",whiteSpace:"nowrap"}} data-no-i18n="">{f(r)}</td>)}
+            </tr>))}</tbody>
+        </table>
+      </Card>
+      {rows.length<2 && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>{tf("Mit mehreren Hotels sehen Sie hier alle Häuser im Vergleich.")}</div>}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Offline: Einträge ohne Netz merken und später senden
+function OfflineBadge(){
+  const [n,setN] = useState(offlineQueue().length); const [online,setOnline] = useState(navigator.onLine!==false);
+  useEffect(()=>{
+    const upd = () => { setN(offlineQueue().length); setOnline(navigator.onLine!==false); };
+    window.addEventListener("hpoos-queue", upd); window.addEventListener("online", upd); window.addEventListener("offline", upd);
+    return () => { window.removeEventListener("hpoos-queue", upd); window.removeEventListener("online", upd); window.removeEventListener("offline", upd); };
+  },[]);
+  if(online && !n) return null;
+  return (
+    <div className="no-print" style={{position:"fixed",bottom:76,insetInlineStart:"50%",transform:"translateX(-50%)",zIndex:150,background:online?BRASS:INK,color:"#fff",borderRadius:999,padding:"7px 14px",fontSize:12.5,boxShadow:"0 6px 18px rgba(0,0,0,.2)",display:"flex",gap:8,alignItems:"center"}}>
+      {online ? "⟳ "+tf("{0} Einträge werden gesendet …", n) : "⚡ "+(n ? tf("Offline – {0} Einträge warten und werden automatisch gesendet.", n) : tf("Offline – Sie sehen den zuletzt geladenen Stand."))}
+      {online && n>0 && <button style={{background:"transparent",border:"1px solid #fff",color:"#fff",borderRadius:999,padding:"2px 9px",fontSize:12,cursor:"pointer"}} onClick={()=>flushOfflineQueue()}>{tf("Jetzt senden")}</button>}
     </div>
   );
 }
@@ -7427,21 +8247,21 @@ function navFor(role, hasBilling, myDepts, disabled){
 }
 function navForAll(role, hasBilling, myDepts){
   const N = (key,label,section) => ({key,label,section});
-  if(role==="viewer") return [N("dashboard","Dashboard"), N("timeline","Zeitstrahl"), N("kpis","Kennzahlen"), N("procurement","Bestellungen"), N("feedback","Gäste-Feedback"), N("reviews","Bewertungen"), N("energy","Energie"), N("events","Veranstaltungen"), N("permits","Genehmigungen"), N("team","Team"), N("help","Hilfe"), N("account","Konto")];
+  if(role==="viewer") return [N("dashboard","Dashboard"), N("group","Hotelgruppe"), N("timeline","Zeitstrahl"), N("kpis","Kennzahlen"), N("invoices","Rechnungen"), N("procurement","Bestellungen"), N("feedback","Gäste-Feedback"), N("reviews","Bewertungen"), N("energy","Energie"), N("events","Veranstaltungen"), N("permits","Genehmigungen"), N("team","Team"), N("help","Hilfe"), N("account","Konto")];
   // Zimmerstatus sehen alle; im Menü nur für Housekeeping, Rezeption und die Leitung
   const rooms = role!=="member" || (myDepts||[]).some(d=>d==="Housekeeping" || d==="Rezeption & Empfang");
   const ops = [N("roster","Dienstplan","Betrieb"), N("time","Zeiterfassung","Betrieb"), ...(rooms ? [N("rooms","Zimmerstatus","Betrieb")] : []), N("tickets","Meldungen","Betrieb"),
     N("logbook","Übergabebuch","Betrieb"), N("checklists","Checklisten","Betrieb"), N("stock","Lager","Betrieb"), N("lostfound","Fundsachen","Betrieb"), N("trainings","Unterweisungen","Betrieb"), N("chat","Chat","Betrieb")];
   // Anreisen und Bewertungen für Rezeption, Energie für Technik (Mitarbeitende); die Leitung sieht alles
   const reception = (myDepts||[]).includes("Rezeption & Empfang"), technik = (myDepts||[]).includes("Technik");
-  const memberExtra = [...(reception ? [N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
+  const memberExtra = [...(reception ? [N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
   if(role==="member") return [N("dashboard","Start"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     ...ops, ...memberExtra, N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"), N("account","Konto","Allgemein")];
   return [
-    N("dashboard","Dashboard"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"),
+    N("dashboard","Dashboard"), N("group","Hotelgruppe"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"),
     N("tasks","Aufgaben","Projekt"), N("milestones","Meilensteine","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     N("risks","Risiken","Projekt"), N("budget","Budget","Projekt"), N("staff","Personal","Projekt"), N("procurement","Bestellungen","Projekt"),
-    ...ops, N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
+    ...ops, N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
     N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
     ...(role==="admin" && hasBilling ? [N("billing","Abo","Allgemein")] : []),
     N("account","Konto","Allgemein"),
@@ -7710,7 +8530,8 @@ function App(){
     readiness={readiness} tasks={tasks} milestones={milestones} risks={risks} budget={budget} staff={staff}
     aiReport={ai && ai.report} onClose={()=>setShowReport(false)} />;
 
-  const NAV = navFor(role, !!billing && !window.OUVERTURE_DEMO, myDepts, hotelDisabled(hotel));
+  const NAV = navFor(role, !!billing && !window.OUVERTURE_DEMO, myDepts, hotelDisabled(hotel)).filter(n=>n.key!=="group" || (hotels||[]).length>1)
+    .filter(n=>n.key!=="invoices" || role==="admin" || role==="manager" || role==="viewer" || INVOICE_DEPTS_FE.some(d=>(myDepts||[]).includes(d)));
 
   HOTEL_CURRENCY = hotel.currency || "EUR";
   const callHotel = (suffix, method, body) => api("/api/hotels/"+hotel.id+suffix, method, body);
@@ -7761,6 +8582,7 @@ function App(){
           <SearchPalette open={searchOpen} onClose={()=>setSearchOpen(false)} nav={NAV} tasks={tasks} milestones={milestones} risks={risks} members={members} hotel={hotel} api={api} onOpen={(k)=>{ setTab(k); setHelpOpen(false); }} />
           {role==="member" && <MobileTabBar nav={NAV} tab={tab} onOpen={(k)=>setTab(k)} />}
           <FeedbackButton api={api} orgId={orgId} tab={tab} />
+          <OfflineBadge />
           {window.OUVERTURE_DEMO && <DemoBar role={role} />}
           <HelpTip tab={tab} role={role} hotel={hotel} open={helpOpen} onClose={()=>setHelpOpen(false)} />
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
@@ -7782,14 +8604,14 @@ function App(){
           {tab==="milestones" && <MilestonesView milestones={milestones} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="risks" && <RisksView risks={risks} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
           {tab==="budget" && <ConversionNote />}
-          {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} />}
+          {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} hotel={hotel} />}
           {tab==="time" && <TimeView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="rooms" && <RoomsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onReport={(loc)=>{ setTicketPrefill(loc); setTab("tickets"); }} />}
           {tab==="tickets" && <TicketsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} prefill={ticketPrefill} onPrefillUsed={()=>setTicketPrefill(null)} />}
           {tab==="chat" && <ChatView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
           {tab==="logbook" && <LogbookView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
           {tab==="checklists" && <ChecklistsView hotel={hotel} api={api} me={me} role={role} myDepts={myDepts} members={members} />}
-          {tab==="trainings" && <TrainingsView orgId={orgId} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
+          {tab==="trainings" && <TrainingsView orgId={orgId} api={api} me={me} members={members} role={role} myDepts={myDepts} hotel={hotel} />}
           {tab==="lostfound" && <LostFoundView hotel={hotel} api={api} me={me} members={members} role={role} />}
           {tab==="stock" && <StockView hotel={hotel} api={api} me={me} role={role} myDepts={myDepts} />}
           {tab==="kpis" && <KpiView hotel={hotel} api={api} />}
@@ -7801,6 +8623,9 @@ function App(){
           {tab==="energy" && <EnergyView hotel={hotel} api={api} role={role} />}
           {tab==="help" && <HelpView onOpen={setTab} />}
           {tab==="events" && <EventsView hotel={hotel} api={api} role={role} />}
+          {tab==="invoices" && <InvoicesView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="letters" && <LettersView hotel={hotel} api={api} role={role} me={me} />}
+          {tab==="group" && <GroupView orgId={orgId} api={api} hotels={hotels} onPick={(id)=>{ const h = (hotels||[]).find(x=>x.id===id); if(h){ setHotel(h); setTab("dashboard"); } }} />}
           {tab==="guestchat" && <GuestChatView hotel={hotel} api={api} />}
           {tab==="roster" && <RosterView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} orgId={orgId} />}
           {tab==="docs" && <DocumentsPanel hotel={hotel} api={api} upload={docCtx.upload} me={docCtx.me} />}

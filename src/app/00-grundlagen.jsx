@@ -204,10 +204,49 @@ async function apiCall(backendUrl, token, path, method, body, noQueue){
   }
   let data = null;
   try { data = await res.json(); } catch(e) {}
-  if(!res.ok){ const err = new Error((data && data.error) || tf("Fehler {0}", res.status)); err.status = res.status; err.code = data && data.code; throw err; }
+  if(!res.ok){ const err = new Error((data && data.error) || tf("Fehler {0}", res.status)); err.status = res.status; err.code = data && data.code;
+    if(err.code === "mfa_required") window.dispatchEvent(new Event("hpoos-mfa-required"));
+    throw err; }
   if(m === "GET" && OFFLINE_CACHE.test(path)) cachePut(path, data);
   return data;
 }
+/* Zwei-Faktor-Anmeldung (Supabase MFA, Authenticator-App/TOTP).
+   Nach dem Passwort ist die Sitzung „aal1“; erst mit dem 6-stelligen Code wird sie „aal2“. */
+async function supabaseAuth(cfg, token, path, method, body){
+  const res = await fetch(cfg.supabaseUrl.replace(/\/$/,"") + "/auth/v1" + path, {
+    method: method || "GET", headers: {apikey: cfg.supabaseAnonKey, Authorization: "Bearer " + token, "Content-Type":"application/json"},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = null; try { data = await res.json(); } catch(e){}
+  if(!res.ok) throw new Error((data && (data.msg || data.error_description || data.message)) || tf("Fehler {0}", res.status));
+  return data;
+}
+const verifiedTotp = (user) => ((user && user.factors) || []).filter(f=>f.status==="verified" && f.factor_type==="totp");
+async function mfaVerify(cfg, token, factorId, code){
+  const ch = await supabaseAuth(cfg, token, "/factors/"+factorId+"/challenge", "POST", {});
+  return supabaseAuth(cfg, token, "/factors/"+factorId+"/verify", "POST", {challenge_id: ch.id, code: String(code).replace(/\s+/g,"")});
+}
+// Abfrage des Codes (nach dem Passwort oder wenn der Server ihn verlangt)
+function MfaPrompt({cfg, token, factorId, onDone, onCancel}){
+  const [code,setCode] = useState(""); const [error,setError] = useState(""); const [busy,setBusy] = useState(false);
+  const send = async () => { setBusy(true); setError("");
+    try { onDone(await mfaVerify(cfg, token, factorId, code)); } catch(e){ setError(tf("Der Code stimmt nicht oder ist abgelaufen. Bitte den aktuellen Code eingeben.")); setBusy(false); } };
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+      <Card style={{maxWidth:400,width:"100%"}}>
+        <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,marginBottom:6}}>{tf("Bestätigungscode")}</div>
+        <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:14}}>{tf("Bitte den 6-stelligen Code aus deiner Authenticator-App eingeben.")}</div>
+        <input className="input" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} aria-label={tf("Bestätigungscode")}
+          onChange={e=>setCode(e.target.value.replace(/[^0-9]/g,""))} onKeyDown={e=>{ if(e.key==="Enter" && code.length===6) send(); }}
+          style={{fontSize:24,letterSpacing:6,textAlign:"center",marginBottom:12}} />
+        {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+        <button className="btn-primary" style={{width:"100%"}} disabled={busy || code.length!==6} onClick={send}>{busy ? tf("Prüft…") : tf("Anmelden")}</button>
+        {onCancel && <button style={{...linkBtn,marginTop:10}} onClick={onCancel}>{tf("Abbrechen")}</button>}
+      </Card>
+    </div>
+  );
+}
+
 async function supabaseLogin(supabaseUrl, anonKey, email, password){
   const res = await fetch(supabaseUrl.replace(/\/$/,"") + "/auth/v1/token?grant_type=password", {
     method:"POST", headers:{apikey:anonKey,"Content-Type":"application/json"},

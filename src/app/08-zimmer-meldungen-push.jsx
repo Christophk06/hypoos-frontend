@@ -4,7 +4,7 @@ const ROOM_OCC = ["Unbelegt","Belegt","Abreise","Anreise"];
 const ROOM_STYLE = {"Schmutzig":{bg:BAD_SOFT,fg:BAD}, "In Reinigung":{bg:WARN_SOFT,fg:WARN}, "Sauber":{bg:"#E3ECF5",fg:"#2D5B87"}, "Kontrolliert":{bg:GOOD_SOFT,fg:GOOD}, "Außer Betrieb":{bg:"#E5E7EB",fg:"#4B5563"}};
 const roomLocation = (n) => tf("Zimmer {0}", n);
 
-function RoomsView({hotel, api, me, members, role, myDepts, onReport}){
+function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
   const visible = visibleDeptsFor(role, myDepts);
   const canEdit = role!=="viewer" && (visible.includes("Housekeeping") || visible.includes("Rezeption & Empfang"));
   const canSetup = canManageDept("Housekeeping") || canManageDept("Rezeption & Empfang");
@@ -55,6 +55,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport}){
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {role==="admin" && <PmsCard hotel={hotel} api={api} onSynced={load} />}
       {role==="admin" && <GuestQrCard hotel={hotel} api={api} />}
+      {role==="admin" && <GuestInfoCard hotel={hotel} api={api} onHotel={onHotel} />}
       {canSetup && (
         <Card style={{marginBottom:14,borderColor:rooms.length?BORDER:BRASS}}>
           <div style={{fontWeight:700,marginBottom:4}}>{rooms.length ? tf("Zimmer hinzufügen") : tf("Zimmer anlegen")}</div>

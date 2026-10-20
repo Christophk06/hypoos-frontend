@@ -68,6 +68,8 @@ function useStoredList(key){
 }
 function SideNav({nav, tab, onOpen, accent}){
   const [collapsed,setCollapsed] = useStoredList(LS_NAV_COLLAPSED);
+  // Noch nie auf- oder zugeklappt: alle Gruppen zu außer der mit dem geöffneten Bereich
+  const [auto,setAuto] = useState(()=>{ try { return window.localStorage.getItem(LS_NAV_COLLAPSED)===null; } catch(e){ return false; } });
   const [favs,setFavs] = useStoredList(LS_NAV_FAVS);
   const favItems = favs.map(k=>nav.find(n=>n.key===k)).filter(Boolean);
   const item = (n, fav) => (
@@ -87,10 +89,12 @@ function SideNav({nav, tab, onOpen, accent}){
         {favItems.map(n=>item(n, true))}
       </div>}
       {sections.map(g=>{
-        const closed = g.name && collapsed.includes(g.name);
+        const closed = !!g.name && (auto ? !g.items.some(n=>n.key===tab) : collapsed.includes(g.name));
         return (
           <div key={g.name||"_"} className="sidenav-group">
-            {g.name && <button className="nav-section" onClick={()=>setCollapsed(closed ? collapsed.filter(x=>x!==g.name) : [...collapsed, g.name])}
+            {g.name && <button className="nav-section" aria-expanded={!closed} onClick={()=>{
+                const now = auto ? sections.filter(x=>x.name && !x.items.some(n=>n.key===tab)).map(x=>x.name) : collapsed;
+                setAuto(false); setCollapsed(closed ? now.filter(x=>x!==g.name) : [...now, g.name]); }}
               style={{display:"flex",alignItems:"center",gap:6,width:"100%",background:"none",border:"none",cursor:"pointer",fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.45)",margin:"14px 0 4px",padding:"0 0 0 12px",textAlign:"start"}}>
               <span style={{flex:1}}>{g.name}</span><span style={{fontSize:10}}>{closed?"▸":"▾"}</span></button>}
             {g.items.filter(n=>!closed || n.key===tab).map(n=>item(n, false))}
@@ -292,6 +296,14 @@ function OrdersPanel({hotel, api, onStockChanged}){
               {o.status==="Entwurf" && <button style={linkBtn} onClick={()=>{ if(window.confirm(tf("Bestellung löschen?"))) run(()=>api("/api/purchase-orders/"+o.id,"DELETE")); }}>✕</button>}
             </div>
             <div style={{color:INK_MUTED,fontSize:12.5,marginTop:3}} data-no-i18n="">{(o.items||[]).map(i=>i.name+" "+i.quantity+" "+i.unit).join(" · ")}</div>
+            {o.supplier_status && o.status!=="Entwurf" && <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:4,fontSize:12.5}}>
+              {o.supplier_status==="offen"
+                ? <span style={{color:INK_MUTED}}>{tf("Lieferant hat noch nicht geantwortet.")}</span>
+                : <Pill color={o.supplier_status==="abgelehnt"?BAD:GOOD} bg={o.supplier_status==="abgelehnt"?BAD_SOFT:GOOD_SOFT}>{tf({"bestätigt":"Vom Lieferanten bestätigt","abgelehnt":"Vom Lieferanten abgelehnt","geliefert":"Laut Lieferant geliefert"}[o.supplier_status]||o.supplier_status)}</Pill>}
+              {o.supplier_delivery_date && <span>{tf("Liefertermin {0}", fmtDate(o.supplier_delivery_date))}</span>}
+              {o.supplier_note && <span style={{color:INK_MUTED}} data-no-i18n="">„{o.supplier_note}“</span>}
+              <button style={linkBtn} onClick={async()=>{ try { const r = await api("/api/purchase-orders/"+o.id+"/supplier-link","POST",{}); try { await navigator.clipboard.writeText(r.url); } catch(e){} window.prompt(tf("Link für den Lieferanten (kopiert):"), r.url); } catch(e){ alert(e.message); } }}>{tf("Link für den Lieferanten")}</button>
+            </div>}
           </div>); })}
         <div className="field-label" style={{marginTop:12}}>{tf("Lieferanten")}</div>
         {sup.map(s=><div key={s.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:13,padding:"4px 0",borderTop:`1px solid ${BORDER}`}}>

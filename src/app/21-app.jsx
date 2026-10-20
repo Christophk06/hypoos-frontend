@@ -94,6 +94,12 @@ function App(){
     window.addEventListener("hpoos-shared-device", arm); arm();
     return () => { clearInterval(timer); evs.forEach(e=>window.removeEventListener(e, bump)); window.removeEventListener("hpoos-shared-device", arm); };
   },[token]);
+  const [mfaNeeded,setMfaNeeded] = useState(null);
+  useEffect(()=>{
+    const on = async () => { try { const t = Session.current && Session.current.access_token; if(!t) return;
+      const u = await supabaseAuth(config, t, "/user"); const f = verifiedTotp(u)[0]; if(f) setMfaNeeded({token:t, factorId:f.id}); } catch(e){} };
+    window.addEventListener("hpoos-mfa-required", on); return () => window.removeEventListener("hpoos-mfa-required", on);
+  },[config]);
   const logoutRef = React.useRef(null);
   const [patrolToken,setPatrolToken] = useState(() => { try { return window.sessionStorage.getItem("hpoos_patrol"); } catch(e){ return null; } });
   const closePatrol = () => { try { window.sessionStorage.removeItem("hpoos_patrol"); } catch(e){} setPatrolToken(null); };
@@ -260,6 +266,7 @@ function App(){
     </div>
   );
   if(!token) return <LoginView config={config} onLogin={login} onReset={()=>saveConfig(null)} />;
+  if(mfaNeeded) return <MfaPrompt cfg={config} token={mfaNeeded.token} factorId={mfaNeeded.factorId} onDone={(d)=>{ setMfaNeeded(null); login(d); window.location.reload(); }} onCancel={()=>{ setMfaNeeded(null); logout(); }} />;
   // hotels === null heißt: noch nicht geladen. Erst danach entscheiden, ob Liste oder Formular.
   if(!hotel && hotels===null) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
@@ -357,7 +364,7 @@ function App(){
           {tab==="budget" && <ConversionNote />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} hotel={hotel} />}
           {tab==="time" && <TimeView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
-          {tab==="rooms" && <RoomsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onReport={(loc)=>{ setTicketPrefill(loc); setTab("tickets"); }} />}
+          {tab==="rooms" && <RoomsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onReport={(loc)=>{ setTicketPrefill(loc); setTab("tickets"); }} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="tickets" && <TicketsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} prefill={ticketPrefill} onPrefillUsed={()=>setTicketPrefill(null)} />}
           {tab==="chat" && <ChatView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
           {tab==="logbook" && <LogbookView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
@@ -371,6 +378,7 @@ function App(){
           {tab==="feedback" && <FeedbackView hotel={hotel} api={api} me={me} role={role} />}
           {patrolToken && token && <PatrolScanDialog api={api} token={patrolToken} onClose={closePatrol} />}
           {tab==="assets" && <AssetsView hotel={hotel} api={api} />}
+          {tab==="academy" && <AcademyView hotel={hotel} api={api} me={me} members={members} />}
           {tab==="patrols" && <PatrolsView hotel={hotel} api={api} />}
           {tab==="instructions" && <InstructionsView hotel={hotel} api={api} />}
           {tab==="sick" && <SickNotesView hotel={hotel} api={api} members={members} />}

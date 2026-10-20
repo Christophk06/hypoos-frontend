@@ -278,6 +278,44 @@ function PermitsView({hotel, api, role}){
 
 // ------------------------------------------------------------ Gäste-Feedback
 const FB_LABELS = {zimmer:"Zimmerqualität", sauberkeit:"Sauberkeit", service:"Service", fruehstueck:"Frühstück", checkin:"Check-in"};
+// Welche Abteilung ist für welche Bewertung zuständig
+const FB_DEPT = {zimmer:"Housekeeping", sauberkeit:"Housekeeping", service:"Food & Beverage", fruehstueck:"Food & Beverage", checkin:"Rezeption & Empfang"};
+// Lob und Kritik je Abteilung, Monat für Monat (letzte 6 Monate) – aus den Gäste-Bewertungen
+function FeedbackByDept({hotel, api}){
+  const [rows,setRows] = useState(null);
+  useEffect(()=>{ api("/api/hotels/"+hotel.id+"/feedback?from="+addDaysIso(todayIso(),-183)).then(d=>{
+    const months = []; const t = new Date(todayIso()+"T12:00:00Z"); t.setUTCDate(1);
+    for(let i=5;i>=0;i--){ const m = new Date(t); m.setUTCMonth(t.getUTCMonth()-i); months.push(m.toISOString().slice(0,7)); }
+    const depts = [...new Set(Object.values(FB_DEPT))];
+    const acc = {}; depts.forEach(dp=>{ acc[dp] = {months:Object.fromEntries(months.map(m=>[m,{sum:0,n:0}])), praise:0, critique:0}; });
+    (d.entries||[]).forEach(e=>{ const m = String(e.created_at).slice(0,7);
+      Object.entries(e.ratings||{}).forEach(([k,v])=>{ const dp = FB_DEPT[k]; if(!dp || v==null) return;
+        const a = acc[dp]; if(a.months[m]){ a.months[m].sum += Number(v); a.months[m].n++; }
+        if(v>=4) a.praise++; else if(v<=2) a.critique++; }); });
+    setRows({months, list: depts.map(dp=>({dept:dp, ...acc[dp]}))});
+  }).catch(()=>setRows({months:[], list:[]})); },[hotel.id]);
+  if(!rows || !rows.list.length) return null;
+  const avg = (c) => c.n ? (c.sum/c.n) : null;
+  const tone = (v) => v==null ? INK_MUTED : v>=4.2 ? GOOD : v>=3.5 ? INK : v>=2.8 ? WARN : BAD;
+  return (
+    <Card style={{marginBottom:14,overflowX:"auto"}}>
+      <div style={{fontWeight:700,marginBottom:4}}>{tf("Je Abteilung")}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Durchschnitt der Gäste-Bewertungen (1–5) je Monat. Lob = 4–5 Sterne, Kritik = 1–2 Sterne.")}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5,minWidth:560}}>
+        <thead><tr style={{color:INK_MUTED,fontSize:12}}><th style={{textAlign:"start",padding:6}}>{tf("Abteilung")}</th>
+          {rows.months.map(m=><th key={m} style={{padding:6}}>{new Date(m+"-01T12:00:00Z").toLocaleDateString(UI_LOCALE,{month:"short"})}</th>)}
+          <th style={{padding:6}}>{tf("Lob")}</th><th style={{padding:6}}>{tf("Kritik")}</th></tr></thead>
+        <tbody>{rows.list.map(r=>(
+          <tr key={r.dept} style={{borderTop:`1px solid ${BORDER}`}}>
+            <td style={{padding:6,fontWeight:600}}>{translateString(r.dept)}</td>
+            {rows.months.map(m=>{ const v = avg(r.months[m]); return <td key={m} style={{padding:6,textAlign:"center",fontWeight:600,color:tone(v)}} data-no-i18n="">{v==null ? "–" : v.toLocaleString(UI_LOCALE,{minimumFractionDigits:1,maximumFractionDigits:1})}</td>; })}
+            <td style={{padding:6,textAlign:"center",color:GOOD}} data-no-i18n="">{r.praise}</td>
+            <td style={{padding:6,textAlign:"center",color:r.critique?BAD:INK_MUTED}} data-no-i18n="">{r.critique}</td>
+          </tr>))}</tbody>
+      </table>
+    </Card>
+  );
+}
 function FeedbackView({hotel, api, me, role}){
   const [d,setD] = useState(null);
   const [link,setLink] = useState(null);
@@ -300,6 +338,7 @@ function FeedbackView({hotel, api, me, role}){
           {link && <a href={link} target="_blank" rel="noopener" style={{fontSize:12.5,wordBreak:"break-all"}} data-no-i18n="">{link}</a>}
         </div>
       </Card>
+      <FeedbackByDept hotel={hotel} api={api} />
       <div style={{display:"flex",gap:6,marginBottom:12}}>{[[7,"Letzte 7 Tage"],[30,"Letzte 30 Tage"],[90,"Letzte 90 Tage"]].map(([n,l])=><button key={n} onClick={()=>setDays(n)} style={{border:`1px solid ${days===n?INK:BORDER}`,background:days===n?INK:"#fff",color:days===n?"#fff":INK,borderRadius:999,padding:"6px 13px",fontSize:12.5,cursor:"pointer"}}>{tf(l)}</button>)}</div>
       {!d ? <div style={{color:INK_MUTED}}>…</div> : (
         <React.Fragment>

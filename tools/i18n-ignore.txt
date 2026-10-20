@@ -139,6 +139,7 @@ index.html?patrol=
 kWh
 mailto:
 maßnahme
+optionsText
 priorität
 rotate(45deg)
 sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx

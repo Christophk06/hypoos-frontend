@@ -39,13 +39,19 @@ function LoginView({config,onLogin,onReset}){
   const [mode,setMode]=useState("login"); // "login" | "register" | "forgot"
   const [email,setEmail]=useState(""); const [password,setPassword]=useState("");
   const [error,setError]=useState(""); const [info,setInfo]=useState(""); const [loading,setLoading]=useState(false);
+  const [mfa,setMfa] = useState(null);
 
   const submitLogin = async () => {
     setError(""); setInfo(""); setLoading(true);
-    try { onLogin(await supabaseLogin(config.supabaseUrl, config.supabaseAnonKey, email, password)); }
+    try {
+      const data = await supabaseLogin(config.supabaseUrl, config.supabaseAnonKey, email, password);
+      const f = verifiedTotp(data.user)[0];
+      if(f) setMfa({token:data.access_token, factorId:f.id}); else onLogin(data);
+    }
     catch(e){ setError(e.message); }
     setLoading(false);
   };
+  if(mfa) return <MfaPrompt cfg={config} token={mfa.token} factorId={mfa.factorId} onDone={onLogin} onCancel={()=>{ setMfa(null); setPassword(""); }} />;
 
   const submitRegister = async () => {
     setError(""); setInfo(""); setLoading(true);

@@ -303,7 +303,9 @@ function LettersView({hotel, api, role, me}){
             <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("Daten übernehmen aus:")}</span>
             {[["","Von Hand"],["arrival","Anreise"],["event","Veranstaltung"]].map(([k,l])=><button key={k} onClick={()=>pickSource(k)} style={{border:`1px solid ${source===k?INK:BORDER}`,background:source===k?INK:CARD,color:source===k?"#fff":INK,borderRadius:999,padding:"4px 11px",fontSize:12,cursor:"pointer"}}>{tf(l)}</button>)}
           </div>
-          {source==="arrival" && <select className="input" style={{marginBottom:10}} defaultValue="" onChange={e=>{ const a = (arrivals||[]).find(x=>x.id===e.target.value); if(a) setForm(f=>({...f, ...fromArrival(a)})); }}>
+          {source==="arrival" && <select className="input" style={{marginBottom:10}} defaultValue="" onChange={e=>{ const a = (arrivals||[]).find(x=>x.id===e.target.value); if(!a) return; setForm(f=>({...f, ...fromArrival(a)}));
+            // Brief automatisch in der Sprache des Gastes (fertige Vorlagen gibt es in 10 Sprachen)
+            const gl = String(a.language||"").slice(0,2).toLowerCase(); if(tpl && tpl.builtin && LANGS.some(([c])=>c===gl) && gl!==lang){ setLang(gl); setMsg({ok:true, text:tf("Sprache des Briefs auf die Sprache des Gastes gestellt: {0}", (LANGS.find(([c])=>c===gl)||[])[1])}); } }}>
             <option value="">{arrivals===null ? "…" : arrivals.length ? tf("– Anreise wählen –") : tf("Keine Anreisen gefunden.")}</option>
             {(arrivals||[]).map(a=><option key={a.id} value={a.id}>{fmtDate(a.arrival_date)} · {a.guest_name}{a.room_type?" · "+a.room_type:""}</option>)}
           </select>}

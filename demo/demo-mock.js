@@ -126,6 +126,25 @@
   D.rooms.forEach(function (r) { if (r.cleaning_credits === undefined) r.cleaning_credits = r.room_type === "Suite" ? 2.0 : 1.0; });
   D.hotel.tourism_tax = { rate_per_night: 2.6, label: "Ortstaxe", note: "" };
   var AH = D.hotel.id;
+  // Migration 032: Gäste-Infos, Lieferantenportal, Akademie
+  D.hotel.guest_info = D.hotel.guest_info || { wifi_name: "Alpenblick-Gast", wifi_password: "Bergluft2026", breakfast: "täglich 07:00–10:30 Uhr, Restaurant Erdgeschoss", checkout: "bis 11:00 Uhr", reception_phone: "Durchwahl 9", taxi: "Taxi Zillertal +43 5282 1234", notes: "",
+    menu: [{ name: "Tiroler Gröstl", note: "A, C, G", price: "16,50" }, { name: "Kaspressknödelsuppe", note: "A, C, G, L", price: "8,90" }, { name: "Wiener Schnitzel", note: "A, C, G", price: "21,00" }, { name: "Kaiserschmarrn", note: "A, C, G, H", price: "11,50" }],
+    spa: [{ name: "Klassische Massage", duration: "50 Min.", price: "75" }, { name: "Kräuterstempel-Massage", duration: "60 Min.", price: "89" }, { name: "Gesichtsbehandlung", duration: "45 Min.", price: "68" }] };
+  if (D.purchase_orders[0]) Object.assign(D.purchase_orders[0], { supplier_status: "bestätigt", supplier_delivery_date: add(todayIso, 3), supplier_note: "Lieferung vormittags, bitte Rampe freihalten.", supplier_answered_at: new Date(now.getTime() - 86400000).toISOString() });
+  D.purchase_orders.push({ id: "po-2", hotel_id: AH, supplier_id: "sp-2", status: "Bestellt", items: [{ name: "Kaffeebohnen", quantity: 12, unit: "kg" }], sent_at: new Date(now.getTime() - 3600000).toISOString(), created_at: new Date(now.getTime() - 3600000).toISOString(), supplier_status: "offen", supplier_delivery_date: null, supplier_note: null });
+  D.courses = [
+    { id: "co-1", hotel_id: AH, title: "Zimmerreinigung in 10 Schritten", description: "Der Standard für ein perfektes Gästezimmer.", department: "Housekeeping", pass_percent: 80, active: true,
+      lessons: [{ title: "Vorbereitung und Wagen", text: "Wagen vollständig bestücken, Handschuhe anziehen, Zimmer klopfen und melden." }, { title: "Bad zuerst", text: "Bad von oben nach unten reinigen, Armaturen polieren, Handtücher ersetzen." }, { title: "Bett und Kontrolle", text: "Bett nach Hausstandard beziehen, Staub wischen, Boden saugen, Schlusskontrolle." }],
+      quiz: [{ question: "Womit beginnt die Reinigung im Bad?", options: ["Boden", "Oben (Spiegel, Armaturen)", "WC-Schüssel"], correct: 1 }, { question: "Was geschieht vor dem Betreten des Zimmers?", options: ["Klopfen und melden", "Direkt eintreten", "Fenster öffnen"], correct: 0 }, { question: "Wann erfolgt die Schlusskontrolle?", options: ["Nie", "Nach dem Saugen", "Vor dem Bettenmachen"], correct: 1 }] },
+    { id: "co-2", hotel_id: AH, title: "HACCP-Grundlagen", description: "Lebensmittelhygiene und Kühlketten.", department: "F&B", pass_percent: 80, active: true,
+      lessons: [{ title: "Was ist HACCP?", text: "Ein System, um Gefahren bei Lebensmitteln zu erkennen und zu beherrschen." }, { title: "Kühlkette", text: "Kühlware bei höchstens 5 °C lagern, Temperaturen täglich dokumentieren." }],
+      quiz: [{ question: "Maximale Lagertemperatur für Kühlware?", options: ["5 °C", "12 °C", "20 °C"], correct: 0 }, { question: "Wie oft werden Temperaturen dokumentiert?", options: ["Jährlich", "Täglich", "Nie"], correct: 1 }, { question: "Wofür steht das erste H in HACCP?", options: ["Hygiene", "Hazard (Gefahren)", "Hotel"], correct: 1 }, { question: "Rohes Fleisch lagert man ...", options: ["über Salat", "unten im Kühlschrank", "bei Raumtemperatur"], correct: 1 }] },
+    { id: "co-3", hotel_id: AH, title: "Brandschutz im Hotel", description: "Verhalten im Brandfall für alle Abteilungen.", department: null, pass_percent: 80, active: true,
+      lessons: [{ title: "Alarmieren", text: "Ruhe bewahren, Feuerwehr 122 rufen, Rezeption informieren." }, { title: "Evakuieren", text: "Gäste über Fluchtwege nach draußen zum Sammelplatz führen, keine Aufzüge benutzen." }, { title: "Löschen", text: "Nur Entstehungsbrände und nur ohne Eigengefährdung löschen." }, { title: "Sammelplatz", text: "Anwesenheit prüfen und der Feuerwehr melden." }],
+      quiz: [{ question: "Welche Notrufnummer hat die Feuerwehr?", options: ["112", "122", "144"], correct: 1 }, { question: "Darf im Brandfall der Aufzug benutzt werden?", options: ["Ja", "Nein"], correct: 1 }, { question: "Wohin werden Gäste geführt?", options: ["Zum Sammelplatz", "Zurück aufs Zimmer", "Zur Bar"], correct: 0 }] }];
+  var cm0 = D.members.map(function (x) { return x.user_id; });
+  D.course_results = [["co-3", 0, 100, 5], ["co-3", 1, 100, 4], ["co-3", 2, 67, 2], ["co-1", 1, 100, 3], ["co-2", 2, 75, 1], ["co-2", 3, 100, 6]].filter(function (r) { return cm0[r[1]]; }).map(function (r, i) {
+    return { id: "cr-" + i, course_id: r[0], hotel_id: AH, user_id: cm0[r[1]], score: r[2], passed: r[2] >= 80, completed_at: new Date(now.getTime() - r[3] * 86400000).toISOString() }; });
   D.assets = [
     { id: "as-1", name: "Kühlzelle Küche", category: "Kälte", location: "Küche, Keller", manufacturer: "Liebherr", model: "LKS 4500", serial_no: "KZ-20871", department: "F&B", purchased_on: add(todayIso, -900), warranty_until: add(todayIso, 190), inspection_interval_months: 6, last_inspection: add(todayIso, -150), next_inspection: add(todayIso, 31), notes: "Temperaturlogger angeschlossen." },
     { id: "as-2", name: "Personenaufzug Hauptstiege", category: "Aufzug", location: "Treppenhaus A", manufacturer: "Schindler", model: "3300", serial_no: "SC-330-1187", department: "Technik", purchased_on: add(todayIso, -2400), warranty_until: add(todayIso, -1500), inspection_interval_months: 12, last_inspection: add(todayIso, -380), next_inspection: add(todayIso, -15), notes: "Wiederkehrende Prüfung durch TÜV Austria; Termin überfällig." },
@@ -670,6 +689,18 @@
     if (p === H + "/room-credits" && m === "PUT") { var rcn = 0, rct = b.room_type || null; D.rooms.forEach(function (r) { if ((r.room_type || null) === rct) { r.cleaning_credits = Math.round(Number(b.credits) * 10) / 10; rcn++; } }); return ok({ updated: rcn }); }
     if (p === "/api/me/export") return ok({ exported_at: new Date().toISOString(), user: { id: ME, email: meRow.email }, memberships: [{ organization_id: "demo-org", role: ROLE, departments: MYDEPTS }], time_entries: TIMES.filter(function (e) { return e.user_id === ME; }).length, shifts: D.shifts.filter(function (s) { return s.user_id === ME; }).length, sick_notes: D.sick_notes.filter(function (s) { return s.user_id === ME; }) });
     if (p === H + "/guest-qr/rotate" && m === "POST") return ok({ rotated: D.rooms.length });
+    if ((mm = p.match(/^\/api\/purchase-orders\/([^/]+)\/supplier-link$/)) && m === "POST") return ok({ url: "lieferant.html?t=demo" });
+    if (p === H + "/courses") { if (m === "POST") { var nc = Object.assign({ id: nid("co"), hotel_id: D.hotel.id, pass_percent: 80, active: true, lessons: [], quiz: [], created_at: new Date().toISOString() }, b); D.courses.push(nc); return ok(nc); }
+      return ok(D.courses.filter(function (c) { return lead || c.active; })); }
+    if (p === H + "/course-results") return ok(D.course_results.slice().sort(function (a, c) { return a.completed_at < c.completed_at ? 1 : -1; }));
+    if ((mm = p.match(/^\/api\/courses\/([^/]+)\/submit$/)) && m === "POST") {
+      var cu = byId(D.courses, mm[1]); if (!cu || !cu.active) return ok({ error: "Kurs nicht gefunden." }, 404);
+      var ans = (Array.isArray(b.answers) ? b.answers : []).map(function (a) { return Number.isInteger(a) ? a : -1; }), qz = cu.quiz || [];
+      var rt = qz.filter(function (qq, i) { return ans[i] === qq.correct; }).length, sc2 = qz.length ? Math.round(rt / qz.length * 100) : 100;
+      var cr = { id: nid("cr"), course_id: cu.id, hotel_id: D.hotel.id, user_id: ME, score: sc2, passed: sc2 >= (cu.pass_percent || 80), completed_at: new Date().toISOString() };
+      D.course_results.unshift(cr);
+      return ok({ id: cr.id, score: cr.score, passed: cr.passed, completed_at: cr.completed_at, right: rt, total: qz.length, wrong: qz.map(function (qq, i) { return ans[i] === qq.correct ? null : i; }).filter(function (x) { return x !== null; }) }); }
+    if ((mm = p.match(/^\/api\/courses\/([^/]+)$/))) { if (m === "DELETE") { remove(D.courses, mm[1]); return ok({ ok: true }); } var cu2 = byId(D.courses, mm[1]); if (cu2) Object.assign(cu2, b); return ok(cu2 || {}); }
     return ok({});
   };
 })();

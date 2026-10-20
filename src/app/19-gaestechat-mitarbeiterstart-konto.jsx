@@ -206,6 +206,60 @@ function LocaleDialog({onClose, withDefault, api, me, onCurrency}){
 }
 
 /* ---------------------------------- Konto ---------------------------------- */
+// Zwei-Faktor-Anmeldung mit Authenticator-App (empfohlen für Admins)
+function MfaCard({config, token}){
+  const [factors,setFactors] = useState(null); const [enroll,setEnroll] = useState(null); const [code,setCode] = useState("");
+  const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
+  const load = async () => { try { const u = await supabaseAuth(config, await freshToken(token), "/user"); setFactors(u.factors||[]); } catch(e){ setFactors([]); } };
+  useEffect(()=>{ if(!window.OUVERTURE_DEMO) load(); },[]);
+  if(window.OUVERTURE_DEMO) return null;
+  const active = (factors||[]).filter(f=>f.status==="verified" && f.factor_type==="totp");
+  const start = async () => { setBusy(true); setMsg(null);
+    try {
+      const t = await freshToken(token);
+      for(const f of (factors||[]).filter(f=>f.status!=="verified")) { try { await supabaseAuth(config, t, "/factors/"+f.id, "DELETE"); } catch(e){} } // abgebrochene Versuche aufräumen
+      setEnroll(await supabaseAuth(config, t, "/factors", "POST", {factor_type:"totp", friendly_name:"Ouverture "+new Date().toISOString().slice(0,16)}));
+    } catch(e){ setMsg({ok:false,text:e.message}); }
+    setBusy(false); };
+  const confirm = async () => { setBusy(true); setMsg(null);
+    try { const s = await mfaVerify(config, await freshToken(token), enroll.id, code);
+      Session.save(sessionFromAuth(s)); setEnroll(null); setCode(""); setMsg({ok:true,text:tf("Zwei-Faktor-Anmeldung ist eingeschaltet. Ab jetzt fragt Ouverture nach dem Passwort auch nach dem Code.")}); load(); }
+    catch(e){ setMsg({ok:false,text:tf("Der Code stimmt nicht oder ist abgelaufen. Bitte den aktuellen Code eingeben.")}); }
+    setBusy(false); };
+  const disable = async () => { if(!window.confirm(tf("Zwei-Faktor-Anmeldung wirklich ausschalten? Dein Konto ist dann nur noch durch das Passwort geschützt."))) return;
+    setBusy(true); setMsg(null);
+    try { for(const f of active) await supabaseAuth(config, await freshToken(token), "/factors/"+f.id, "DELETE"); setMsg({ok:true,text:tf("Zwei-Faktor-Anmeldung ist ausgeschaltet.")}); load(); }
+    catch(e){ setMsg({ok:false,text:e.message}); }
+    setBusy(false); };
+  return (
+    <Card style={{marginBottom:18,maxWidth:520}}>
+      <div style={{fontWeight:700,marginBottom:6}}>{tf("Zwei-Faktor-Anmeldung")}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Google Authenticator, Microsoft Authenticator). Für Admins dringend empfohlen.")}</div>
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+      {factors===null ? <div style={{color:INK_MUTED,fontSize:13}}>…</div> : active.length>0 && !enroll ? (
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          <Pill color={GOOD} bg={GOOD_SOFT}>{tf("Eingeschaltet")}</Pill>
+          <button style={{...linkBtn,color:BAD}} disabled={busy} onClick={disable}>{tf("Ausschalten")}</button>
+        </div>
+      ) : !enroll ? (
+        <button className="btn-primary" disabled={busy} onClick={start}>{busy ? tf("Speichert…") : tf("Einrichten")}</button>
+      ) : (
+        <div>
+          <div style={{fontSize:13.5,marginBottom:8}}>{tf("1. QR-Code mit der Authenticator-App scannen.")}</div>
+          {enroll.totp && enroll.totp.qr_code && <img src={enroll.totp.qr_code} alt={tf("QR-Code für die Authenticator-App")} style={{width:180,height:180,background:"#fff",padding:6,border:`1px solid ${BORDER}`,borderRadius:8}} />}
+          {enroll.totp && enroll.totp.secret && <div style={{fontSize:12,color:INK_MUTED,margin:"6px 0 12px",wordBreak:"break-all"}}>{tf("Oder diesen Schlüssel eingeben:")} <code data-no-i18n="">{enroll.totp.secret}</code></div>}
+          <div style={{fontSize:13.5,marginBottom:6}}>{tf("2. Den 6-stelligen Code aus der App eingeben.")}</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <input className="input" style={{width:150,fontSize:18,letterSpacing:4,textAlign:"center"}} inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/[^0-9]/g,""))} aria-label={tf("Bestätigungscode")} />
+            <button className="btn-primary" disabled={busy || code.length!==6} onClick={confirm}>{busy ? tf("Prüft…") : tf("Bestätigen")}</button>
+            <button style={linkBtn} onClick={()=>{ setEnroll(null); setCode(""); }}>{tf("Abbrechen")}</button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function PasswordCard({config, token}){
   const [pw,setPw] = useState(""); const [pw2,setPw2] = useState("");
   const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
@@ -318,6 +372,7 @@ function AccountView({config, token, me, api, onDeleted}){
       <PushCard api={api} />
       <SharedDeviceCard />
       <PasswordCard config={config} token={token} />
+      <MfaCard config={config} token={token} />
       <DataExportCard api={api} />
       <DeleteAccountCard api={api} onDeleted={onDeleted} />
     </div>

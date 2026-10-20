@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Bestellung</title>
+<link href="fonts/fonts.css" rel="stylesheet" />
+<style>
+  :root { --ink: #1C2430; --paper: #F6F4EF; --border: #E4DFD3; --brass: #A9834B; --muted: #5B6270; --good: #3F7A5C; --bad: #A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--paper); color: var(--ink); line-height: 1.55; }
+  .w { max-width: 640px; margin: 0 auto; padding: 22px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; }
+  .hotel { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; flex: 1; }
+  .lang { border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 6px; font: inherit; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 26px; margin: 0 0 4px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 10px; }
+  td { padding: 8px 4px; border-top: 1px solid var(--border); } td.r { text-align: right; white-space: nowrap; }
+  label { display: block; font-size: 13.5px; font-weight: 600; color: var(--muted); margin: 12px 0 6px; }
+  input, textarea { width: 100%; padding: 12px; border: 1px solid #D8D1C2; border-radius: 8px; font: inherit; font-size: 15px; background: #FDFCF9; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  button { min-height: 48px; padding: 0 18px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--ink); }
+  button.ok { background: var(--ink); color: #fff; border-color: var(--ink); flex: 1; }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { padding: 12px 14px; border-radius: 8px; margin-top: 12px; font-size: 14.5px; }
+  .msg.ok { background: #E4EFE8; color: var(--good); } .msg.err { background: #F5E1DE; color: var(--bad); }
+  .hp { position: absolute; left: -9999px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div>
+    <select class="lang" id="lang" aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></header>
+  <div id="app"></div>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var T = {
+  de: { title: "Bestellung {0}", from: "Bestellt am {0}", item: "Artikel", qty: "Menge", note: "Hinweis des Hotels", date: "Liefertermin", yourNote: "Ihre Nachricht an das Hotel (optional)",
+    confirm: "Bestellung bestätigen", reject: "Ablehnen", delivered: "Als geliefert melden", done: "Danke! Das Hotel ist informiert.", invalid: "Dieser Link ist nicht (mehr) gültig.",
+    failed: "Senden fehlgeschlagen. Bitte später erneut versuchen.", needDate: "Bitte einen Liefertermin angeben.", state: { "offen": "Noch nicht beantwortet", "bestätigt": "Bestätigt", "abgelehnt": "Abgelehnt", "geliefert": "Geliefert" }, current: "Status: {0}" },
+  en: { title: "Order {0}", from: "Ordered on {0}", item: "Item", qty: "Quantity", note: "Note from the hotel", date: "Delivery date", yourNote: "Your message to the hotel (optional)",
+    confirm: "Confirm order", reject: "Decline", delivered: "Report as delivered", done: "Thank you! The hotel has been informed.", invalid: "This link is no longer valid.",
+    failed: "Sending failed. Please try again later.", needDate: "Please enter a delivery date.", state: { "offen": "Not answered yet", "bestätigt": "Confirmed", "abgelehnt": "Declined", "geliefert": "Delivered" }, current: "Status: {0}" },
+};
+var token = new URLSearchParams(location.search).get("t") || "";
+var lang = (function () { try { var s = localStorage.getItem("ouv_sup_lang"); if (T[s]) return s; } catch (e) {} return (navigator.language || "de").slice(0, 2) === "de" ? "de" : "en"; })();
+var state = { o: null, error: null, busy: false, done: false };
+var $ = function (id) { return document.getElementById(id); };
+function t(k, a) { return String(T[lang][k]).replace("{0}", a == null ? "" : a); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function fmt(d) { try { return new Date(String(d).slice(0, 10) + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-AT" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return d; } }
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_sup_lang", lang); } catch (e) {} document.documentElement.lang = lang; render(); };
+var demo = token === "demo";
+function api(opt) {
+  if (demo) return Promise.resolve(opt ? { ok: true } : { order_no: "A1B2C3D4", hotel: { name: "Beispielhotel Alpenblick", city: "Innsbruck" }, supplier: "Bäckerei Moser",
+    items: [{ name: "Semmeln", quantity: 400, unit: "Stk" }, { name: "Vollkornbrot", quantity: 20, unit: "Stk" }, { name: "Croissants", quantity: 150, unit: "Stk" }],
+    note: "Lieferung bitte bis 6:30 Uhr an den Hintereingang.", sent_at: new Date().toISOString(), supplier_status: "offen" });
+  return fetch(API + "/api/public/supplier/" + encodeURIComponent(token), Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {}))
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ""); e.status = r.status; throw e; } return j; }); });
+}
+function render() {
+  var a = $("app");
+  if (state.error === "invalid") { a.innerHTML = '<div class="msg err">' + esc(t("invalid")) + "</div>"; return; }
+  if (!state.o) { a.innerHTML = '<div class="muted">…</div>'; return; }
+  var o = state.o;
+  var h = '<div class="card"><h1>' + esc(t("title", o.order_no)) + "</h1>" + (o.sent_at ? '<div class="muted">' + esc(t("from", fmt(o.sent_at))) + "</div>" : "")
+    + '<div class="muted">' + esc(t("current", T[lang].state[o.supplier_status] || o.supplier_status)) + (o.supplier_delivery_date ? " · " + esc(fmt(o.supplier_delivery_date)) : "") + "</div>"
+    + "<table><tbody>" + (o.items || []).map(function (i) { return "<tr><td>" + esc(i.name) + '</td><td class="r">' + esc(i.quantity) + " " + esc(i.unit || "") + "</td></tr>"; }).join("") + "</tbody></table>"
+    + (o.note ? '<p class="muted"><b>' + esc(t("note")) + ":</b> " + esc(o.note) + "</p>" : "") + "</div>";
+  if (state.done) h += '<div class="msg ok">✓ ' + esc(t("done")) + "</div>";
+  else {
+    h += '<div class="card"><label for="d">' + esc(t("date")) + '</label><input id="d" type="date" value="' + esc(o.supplier_delivery_date || "") + '" />'
+      + '<label for="n">' + esc(t("yourNote")) + '</label><textarea id="n" rows="3" maxlength="1000">' + esc(o.supplier_note || "") + "</textarea>"
+      + '<input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />'
+      + '<div class="btns"><button class="ok" data-s="bestätigt"' + (state.busy ? " disabled" : "") + ">" + esc(t("confirm")) + '</button><button data-s="abgelehnt"' + (state.busy ? " disabled" : "") + ">" + esc(t("reject")) + "</button>"
+      + (o.supplier_status === "bestätigt" ? '<button data-s="geliefert"' + (state.busy ? " disabled" : "") + ">" + esc(t("delivered")) + "</button>" : "") + "</div>"
+      + (state.error ? '<div class="msg err">' + esc(state.error) + "</div>" : "") + "</div>";
+  }
+  a.innerHTML = h;
+  a.querySelectorAll("[data-s]").forEach(function (b) { b.onclick = function () {
+    var s = b.getAttribute("data-s"), d = $("d").value;
+    if (s === "bestätigt" && !d) { state.error = t("needDate"); render(); return; }
+    state.busy = true; state.error = null; render();
+    api({ method: "POST", body: JSON.stringify({ status: s, delivery_date: d, note: $("n") ? $("n").value : "", website: $("website").value }) })
+      .then(function () { state.done = true; state.o.supplier_status = s; state.o.supplier_delivery_date = d || null; })
+      .catch(function (e) { state.error = e.status === 404 ? t("invalid") : (e.status === 400 || e.status === 429 ? e.message : t("failed")); })
+      .then(function () { state.busy = false; render(); });
+  }; });
+}
+document.documentElement.lang = lang;
+if (!demo && !/^[A-Za-z0-9_-]{32,128}$/.test(token)) { state.error = "invalid"; render(); }
+else api().then(function (o) {
+  state.o = o; $("hotel").textContent = o.hotel.name || ""; document.title = (o.hotel.name || "") + " – " + t("title", o.order_no);
+  if (o.hotel.logo_data) { $("logo").src = o.hotel.logo_data; $("logo").hidden = false; }
+}).catch(function () { state.error = "invalid"; $("hotel").textContent = ""; }).then(render);
+render();
+</script>
+</body>
+</html>

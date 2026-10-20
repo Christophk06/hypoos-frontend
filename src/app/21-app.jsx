@@ -382,6 +382,10 @@ function App(){
           {tab==="patrols" && <PatrolsView hotel={hotel} api={api} />}
           {tab==="instructions" && <InstructionsView hotel={hotel} api={api} />}
           {tab==="sick" && <SickNotesView hotel={hotel} api={api} members={members} />}
+          {tab==="cash" && <CashView hotel={hotel} api={api} me={me} members={members} myDepts={myDepts} />}
+          {tab==="keys" && <KeysView hotel={hotel} api={api} members={members} />}
+          {tab==="uniforms" && <UniformsView hotel={hotel} api={api} members={members} />}
+          {tab==="pulse" && <PulseView orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />}
           {tab==="tourismtax" && <TourismTaxView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="frontdesk" && <FrontDeskView hotel={hotel} api={api} onOpen={setTab} />}
           {tab==="arrivals" && <ArrivalsView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}

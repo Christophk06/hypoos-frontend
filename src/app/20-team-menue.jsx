@@ -248,9 +248,9 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 // Menü je Rolle. Der Betrieb ist in vier Gruppen geteilt, damit das Menü übersichtlich bleibt.
 const NAV_DAY = "Tagesgeschäft", NAV_TEAM = "Team & Dienstplan", NAV_HOUSE = "Haus & Technik", NAV_GUESTS = "Gäste & Verkauf";
 const NAV_SECTION_OF = {
-  logbook:NAV_DAY, checklists:NAV_DAY,
-  roster:NAV_TEAM, time:NAV_TEAM, trainings:NAV_TEAM, academy:NAV_TEAM, instructions:NAV_TEAM, sick:NAV_TEAM, chat:NAV_TEAM,
-  rooms:NAV_HOUSE, tickets:NAV_HOUSE, assets:NAV_HOUSE, patrols:NAV_HOUSE, stock:NAV_HOUSE, lostfound:NAV_HOUSE, energy:NAV_HOUSE,
+  logbook:NAV_DAY, checklists:NAV_DAY, cash:NAV_DAY,
+  roster:NAV_TEAM, time:NAV_TEAM, trainings:NAV_TEAM, academy:NAV_TEAM, instructions:NAV_TEAM, sick:NAV_TEAM, uniforms:NAV_TEAM, pulse:NAV_TEAM, chat:NAV_TEAM,
+  rooms:NAV_HOUSE, tickets:NAV_HOUSE, assets:NAV_HOUSE, patrols:NAV_HOUSE, keys:NAV_HOUSE, stock:NAV_HOUSE, lostfound:NAV_HOUSE, energy:NAV_HOUSE,
   frontdesk:NAV_GUESTS, arrivals:NAV_GUESTS, guestchat:NAV_GUESTS, reviews:NAV_GUESTS, feedback:NAV_GUESTS, events:NAV_GUESTS, letters:NAV_GUESTS, invoices:NAV_GUESTS, tourismtax:NAV_GUESTS,
 };
 const NAV_ORDER = ["", "Projekt", NAV_DAY, NAV_TEAM, NAV_HOUSE, NAV_GUESTS, "Betrieb", "Allgemein"];
@@ -269,15 +269,15 @@ function navForAll(role, hasBilling, myDepts){
   const ops = [N("roster","Dienstplan","Betrieb"), N("time","Zeiterfassung","Betrieb"), ...(rooms ? [N("rooms","Zimmerstatus","Betrieb")] : []), N("tickets","Meldungen","Betrieb"),
     N("logbook","Übergabebuch","Betrieb"), N("checklists","Checklisten","Betrieb"), N("stock","Lager","Betrieb"), N("lostfound","Fundsachen","Betrieb"), N("trainings","Unterweisungen","Betrieb"), N("chat","Chat","Betrieb")];
   // Anreisen und Bewertungen für Rezeption, Energie für Technik (Mitarbeitende); die Leitung sieht alles
-  const reception = (myDepts||[]).includes("Rezeption & Empfang"), technik = (myDepts||[]).includes("Technik");
-  const memberExtra = [N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), ...(technik ? [N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb")] : []), ...(reception ? [N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
+  const reception = (myDepts||[]).includes("Rezeption & Empfang"), technik = (myDepts||[]).includes("Technik"), fnb = (myDepts||[]).includes("Food & Beverage");
+  const memberExtra = [...(reception || fnb ? [N("cash","Kassenbuch","Betrieb")] : []), N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), ...(technik ? [N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb")] : []), ...(reception ? [N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
   if(role==="member") return [N("dashboard","Start"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     ...ops, ...memberExtra, N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"), N("account","Konto","Allgemein")];
   return [
     N("dashboard","Dashboard"), N("group","Hotelgruppe"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"),
     N("tasks","Aufgaben","Projekt"), N("milestones","Meilensteine","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     N("risks","Risiken","Projekt"), N("budget","Budget","Projekt"), N("staff","Personal","Projekt"), N("procurement","Bestellungen","Projekt"),
-    ...ops, N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb"), N("tourismtax","Ortstaxe","Betrieb"), N("sick","Krankmeldungen","Betrieb"), N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
+    ...ops, N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb"), N("tourismtax","Ortstaxe","Betrieb"), N("sick","Krankmeldungen","Betrieb"), N("cash","Kassenbuch","Betrieb"), N("keys","Schlüssel & Karten","Betrieb"), N("uniforms","Dienstkleidung","Betrieb"), N("pulse","Mitarbeiter-Umfrage","Betrieb"), N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
     N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
     ...(role==="admin" && hasBilling ? [N("billing","Abo","Allgemein")] : []),
     N("account","Konto","Allgemein"),

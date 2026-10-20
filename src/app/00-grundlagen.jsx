@@ -154,8 +154,10 @@ async function freshToken(token){
 
 // Offline: zuletzt geladene Listen zeigen und bestimmte Einträge (Meldung, Messwert, Checkliste, Übergabe, Fundsache) später senden
 const OFFLINE_QUEUE_KEY = "hpoos_offline_queue";
-const OFFLINE_CACHE = /^\/api\/(hotels\/[^/]+\/(tickets|checklists|temp-points|temp-readings|logbook|rooms|lost-found|briefing|shifts|stock)|me|organizations\/[^/]+\/(my-shifts|my-tasks))(\?|$)/;
-const OFFLINE_SEND = [[/^\/api\/temp-points\/[^/]+\/readings$/, "POST"], [/^\/api\/checklists\/[^/]+\/run$/, "PUT"], [/^\/api\/hotels\/[^/]+\/tickets$/, "POST"], [/^\/api\/hotels\/[^/]+\/logbook$/, "POST"], [/^\/api\/hotels\/[^/]+\/lost-found$/, "POST"]];
+// Offline lesbar: auch Arbeitsanweisungen, Kurse, Gerätebuch, Kontrollpunkte und Gäste-Infos (Keller, Skiraum, Funkloch)
+const OFFLINE_CACHE = /^\/api\/(hotels\/[^/]+\/(tickets|checklists|temp-points|temp-readings|logbook|rooms|lost-found|briefing|shifts|stock|work-instructions|courses|assets|patrol-points|calendar-notes|day-info)|patrol\/[^/]+|me|organizations\/[^/]+\/(my-shifts|my-tasks))(\?|$)/;
+const OFFLINE_SEND = [[/^\/api\/temp-points\/[^/]+\/readings$/, "POST"], [/^\/api\/checklists\/[^/]+\/run$/, "PUT"], [/^\/api\/hotels\/[^/]+\/tickets$/, "POST"], [/^\/api\/hotels\/[^/]+\/logbook$/, "POST"], [/^\/api\/hotels\/[^/]+\/lost-found$/, "POST"],
+  [/^\/api\/patrol\/[^/]+\/scan$/, "POST"], [/^\/api\/hotels\/[^/]+\/sick-notes$/, "POST"], [/^\/api\/hotels\/[^/]+\/cash$/, "POST"]];
 let LAST_API = null, FLUSHING = false;
 function offlineQueue(){ try { return JSON.parse(window.localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]"); } catch(e){ return []; } }
 function saveOfflineQueue(q){ try { window.localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); } catch(e){} window.dispatchEvent(new Event("hpoos-queue")); }

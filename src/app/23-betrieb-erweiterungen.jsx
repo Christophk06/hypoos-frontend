@@ -110,7 +110,7 @@ function PatrolScanDialog({api, token, onClose}){
   const [point,setPoint] = useState(null); const [error,setError] = useState("");
   const [f,setF] = useState({ok:true, temperature:"", note:""}); const [done,setDone] = useState(false); const [busy,setBusy] = useState(false);
   useEffect(()=>{ api("/api/patrol/"+encodeURIComponent(token)).then(setPoint).catch(e=>setError(e.message)); },[token]);
-  const send = async () => { setBusy(true); setError(""); try { await api("/api/patrol/"+encodeURIComponent(token)+"/scan","POST",f); setDone(true); } catch(e){ setError(e.message); } setBusy(false); };
+  const send = async () => { setBusy(true); setError(""); try { await api("/api/patrol/"+encodeURIComponent(token)+"/scan","POST",{...f, scanned_at:new Date().toISOString()}); setDone(true); } catch(e){ setError(e.message); } setBusy(false); };
   return (
     <Overlay onClose={onClose} width={460} label={tf("Kontrollgang bestätigen")}>
       <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,marginBottom:6}}>{tf("Kontrollgang bestätigen")}</div>
@@ -350,5 +350,56 @@ function RoomCreditsCard({hotel, api, rooms, onDone}){
         </div>)}
       </Card>}
     </span>
+  );
+}
+
+// ------------------------------------------------------------ Wetter und Ereignisse im Dienstplan
+const WEATHER_ICON = {sonnig:"☀", wolkig:"⛅", bedeckt:"☁", regen:"🌧", schnee:"❄", gewitter:"⛈", nebel:"🌫"};
+const WEATHER_LABEL = {sonnig:"Sonnig", wolkig:"Teils bewölkt", bedeckt:"Bedeckt", regen:"Regen", schnee:"Schnee", gewitter:"Gewitter", nebel:"Nebel"};
+function useDayInfo(api, hotel, days){
+  const [info,setInfo] = useState(null);
+  const load = useCallback(()=>{ if(!days.length) return; api("/api/hotels/"+hotel.id+"/day-info?from="+days[0]+"&to="+days[days.length-1]).then(setInfo).catch(()=>setInfo(null)); },[api, hotel.id, days[0]]);
+  useEffect(()=>{ load(); },[load]);
+  return [info, load];
+}
+function DayInfoCell({info, date}){
+  if(!info) return null;
+  const w = (info.weather||[]).find(x=>x.date===date);
+  const notes = (info.notes||[]).filter(n=>n.date_from<=date && n.date_to>=date);
+  const ev = (info.events||[]).filter(e=>e.event_date===date);
+  if(!w && !notes.length && !ev.length) return null;
+  return (
+    <div style={{fontSize:10.5,fontWeight:500,lineHeight:1.35,marginTop:2}}>
+      {w && <div title={tf(WEATHER_LABEL[w.group]||"")+(w.rain ? " · "+w.rain+" mm" : "")} style={{color:INK_MUTED}}><span aria-hidden="true">{WEATHER_ICON[w.group]||""}</span> {w.tmin}–{w.tmax}°{w.rain>=1 ? " · "+Math.round(w.rain)+" mm" : ""}</div>}
+      {notes.map(n=><div key={n.id} style={{color:BRASS}} title={n.note||""}>◆ {n.title}</div>)}
+      {ev.map(e=><div key={e.id} style={{color:INK}} title={e.guests ? tf("{0} Personen", e.guests) : ""}>♦ {e.title}{e.guests ? " ("+e.guests+")" : ""}</div>)}
+    </div>
+  );
+}
+function CalendarNotesCard({hotel, api, info, onChanged}){
+  const [open,setOpen] = useState(false); const [f,setF] = useState({title:"", kind:"Messe", date_from:todayIso(), date_to:todayIso()}); const [msg,setMsg] = useState(null);
+  if(!info || info.notes===undefined) return null;
+  const add = async () => { setMsg(null); try { await api("/api/hotels/"+hotel.id+"/calendar-notes","POST",f); setF({...f,title:""}); onChanged(); } catch(e){ setMsg(e.message); } };
+  const del = async (n) => { try { await api("/api/calendar-notes/"+n.id,"DELETE"); onChanged(); } catch(e){ setMsg(e.message); } };
+  return (
+    <Card style={{marginTop:14}}>
+      <div {...pressable(()=>setOpen(!open))} aria-expanded={open} style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}}>
+        <div style={{flex:1}}><b>{tf("Hinweise für die Planung")}</b><div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Messen, Schulferien oder Großveranstaltungen in der Stadt – erscheinen im Dienstplan beim jeweiligen Tag.")}{info.weather_source ? " "+tf("Wetterdaten: {0}", info.weather_source)+"." : ""}</div></div>
+        <span style={{color:INK_MUTED}}>{open ? "▴" : "▾"}</span>
+      </div>
+      {open && <div style={{marginTop:10}}>
+        {msg && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{msg}</div>}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+          <Field label={tf("Titel")}><input className="input" value={f.title} onChange={e=>setF({...f,title:e.target.value})} placeholder={tf("z. B. Interalpin Messe")} /></Field>
+          <Field label={tf("Art")}><select className="input" value={f.kind} onChange={e=>setF({...f,kind:e.target.value})}>{["Messe","Veranstaltung","Feiertag","Schulferien","Sonstiges"].map(k=><option key={k} value={k}>{tf(k)}</option>)}</select></Field>
+          <Field label={tf("Von")}><input className="input" type="date" value={f.date_from} onChange={e=>setF({...f,date_from:e.target.value, date_to: f.date_to<e.target.value ? e.target.value : f.date_to})} /></Field>
+          <Field label={tf("Bis")}><input className="input" type="date" value={f.date_to} min={f.date_from} onChange={e=>setF({...f,date_to:e.target.value})} /></Field>
+          <button className="btn-primary" style={{marginBottom:14}} disabled={!f.title.trim()} onClick={add}>{tf("Hinzufügen")}</button>
+        </div>
+        {(info.notes||[]).map(n=><div key={n.id} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
+          <span style={{flex:1}}><b data-no-i18n="">{n.title}</b> · {tf(n.kind)}</span><span>{fmtDate(n.date_from)}{n.date_to!==n.date_from ? " – "+fmtDate(n.date_to) : ""}</span>
+          <button style={{...linkBtn,color:BAD}} aria-label={tf("Löschen")} onClick={()=>del(n)}>✕</button></div>)}
+      </div>}
+    </Card>
   );
 }

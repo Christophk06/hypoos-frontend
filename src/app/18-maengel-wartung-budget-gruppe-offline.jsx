@@ -174,6 +174,9 @@ function GroupView({orgId, api, hotels, onPick}){
     ["Auslastung (Monat)", r=>r.month_occupancy!=null ? r.month_occupancy+" %" : "–"],
     ["ADR", r=>money(r.month_adr, r.currency)],
     ["RevPAR", r=>money(r.month_revpar, r.currency)],
+    ["Std. je belegtem Zimmer", r=>r.hours_per_room_night!=null ? r.hours_per_room_night.toLocaleString(UI_LOCALE,{maximumFractionDigits:2}) : "–"],
+    ["Personalkosten je belegtem Zimmer", r=>r.staff_cost_per_room_night!=null ? Number(r.staff_cost_per_room_night).toLocaleString(UI_LOCALE,{style:"currency",currency:r.currency||"EUR"}) : "–"],
+    ["Personalkosten-Quote", r=>r.staff_cost_share!=null ? r.staff_cost_share.toLocaleString(UI_LOCALE)+" %" : "–"],
     ["Meldungen offen", r=><span style={{color:r.tickets_urgent?BAD:undefined}}>{r.tickets_open||0}{r.tickets_urgent?" ("+r.tickets_urgent+"!)":""}</span>],
     ["Aufgaben überfällig", r=><span style={{color:r.tasks_overdue?BAD:undefined}}>{r.tasks_overdue||0}</span>],
     ["Budget verbraucht", r=>r.budget_planned ? <span style={{color:r.budget_spent>r.budget_planned?BAD:undefined}}>{Math.round(r.budget_spent/r.budget_planned*100)} %</span> : "–"],
@@ -200,6 +203,7 @@ function GroupView({orgId, api, hotels, onPick}){
         </table>
       </Card>
       {rows.length<2 && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>{tf("Mit mehreren Hotels sehen Sie hier alle Häuser im Vergleich.")}</div>}
+      <div style={{fontSize:12,color:INK_MUTED,marginTop:8}}>{tf("Personalkennzahlen: gestempelte Stunden im laufenden Monat; Personalkosten aus dem Stundensatz unter „Zeiterfassung → Lohnexport“. Belegte Zimmer und Umsatz aus „Belegung und Umsatz“.")}</div>
     </div>
   );
 }

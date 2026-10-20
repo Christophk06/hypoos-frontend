@@ -124,6 +124,7 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
           {deptSoon.slice(0,8).map(t=><TaskLine key={t.id} t={t} />)}
         </Card>
       )}
+      <PulseCard orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />
       {sickCard}
     </div>
   );

@@ -236,6 +236,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
   const setView = (v) => { setViewState(v); try { window.localStorage.setItem("hpoos_roster_view", v); } catch(e){} };
   const days = Array.from({length:7}, (_,i)=>addDaysIso(week,i));
   const weekHolidays = holidayMap(hotel.holiday_region, days[0], days[6]);
+  const [dayInfo, reloadDayInfo] = useDayInfo(api, hotel, days);
   const base = "/api/hotels/"+hotel.id;
   const today = todayIso();
   const shownDepts = dept ? [dept] : visibleDepts;
@@ -624,7 +625,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
               const who = (s) => s.user_id ? ((members.find(m=>m.user_id===s.user_id)||{}).email ? shortName(members.find(m=>m.user_id===s.user_id).email) : tf("Teammitglied")) : s.employee_name;
               return (
                 <div key={d} style={{border:`1px solid ${d===today?BRASS:BORDER}`,borderRadius:8,padding:"10px 12px",marginBottom:10,background:d===today?"#FBF8F2":"#fff"}}>
-                  <div style={{fontWeight:700,marginBottom:6}} data-no-i18n="">{fmtDay(d,{weekday:"long",day:"2-digit",month:"2-digit"})}{weekHolidays[d] && <span style={{color:BAD,fontWeight:600,fontSize:12.5}}> · ★ {weekHolidays[d]}</span>}</div>
+                  <div style={{fontWeight:700,marginBottom:6}} data-no-i18n="">{fmtDay(d,{weekday:"long",day:"2-digit",month:"2-digit"})}{weekHolidays[d] && <span style={{color:BAD,fontWeight:600,fontSize:12.5}}> · ★ {weekHolidays[d]}</span>}<DayInfoCell info={dayInfo} date={d} /></div>
                   {dayShifts.length===0 && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Keine Schichten eingetragen.")}</div>}
                   {shownDepts.filter(dep=>dayShifts.some(s=>s.department===dep)).map(dep=>(
                     <div key={dep} style={{marginBottom:6}}>
@@ -674,7 +675,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                 <th style={{textAlign:"start",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`,minWidth:150}}>Name</th>
                 {days.map(d=>(
                   <th key={d} style={{textAlign:"start",padding:"8px 6px",fontSize:12,fontWeight:600,borderTop:`1px solid ${BORDER}`,
-                    color:d===today?BRASS:INK_MUTED,background:d===today?BRASS_SOFT:"transparent"}} data-no-i18n="">{fmtDay(d)}{weekHolidays[d] && <div style={{fontSize:10.5,color:BAD,fontWeight:600}} title={weekHolidays[d]}>★ {weekHolidays[d]}</div>}</th>
+                    color:d===today?BRASS:INK_MUTED,background:d===today?BRASS_SOFT:"transparent"}} data-no-i18n="">{fmtDay(d)}{weekHolidays[d] && <div style={{fontSize:10.5,color:BAD,fontWeight:600}} title={weekHolidays[d]}>★ {weekHolidays[d]}</div>}<DayInfoCell info={dayInfo} date={d} /></th>
                 ))}
                 <th style={{textAlign:"end",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`}} title={tf("Arbeitsstunden in dieser Woche")}>{tf("Std.")}</th>
               </tr>
@@ -807,6 +808,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
       {canManage && dept && <RosterDemand hotel={hotel} api={api} dept={dept} week={week} days={days} shifts={shifts} onApplied={load} />}
       {canManage && dept && <LaborAverageCard hotel={hotel} api={api} dept={dept} members={members} />}
       <LeaveCard orgId={orgId} api={api} members={members} me={me} canManage={canManage} />
+      {canManage && <CalendarNotesCard hotel={hotel} api={api} info={dayInfo} onChanged={reloadDayInfo} />}
       {canManage && dept && (
         <Card className="no-print" style={{marginBottom:18}}>
           <div style={{fontWeight:700,marginBottom:6}}>{tf("Schichtzeiten und Mindestbesetzung")} · <span>{dept}</span></div>

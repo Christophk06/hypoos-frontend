@@ -148,6 +148,7 @@ serviceWorker
 splitRest
 status: dirty, clean, inspected, out of order · occupancy: vacant, occupied, departure, arrival
 text/calendar;charset=utf-8
+text/csv
 text/csv;charset=utf-8
 text/plain
 text/plain;charset=utf-8

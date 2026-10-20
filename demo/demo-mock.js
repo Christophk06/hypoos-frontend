@@ -198,6 +198,34 @@
   function byId(list, id) { return list.find(function (x) { return x.id === id; }); }
   function remove(list, id) { var i = list.findIndex(function (x) { return x.id === id; }); if (i >= 0) list.splice(i, 1); }
 
+  /* Kasse, Schlüssel, Dienstkleidung, Umfrage, Tagesinfo */
+  var MON = todayIso.slice(0, 7), nowIso = function (h) { return new Date(now.getTime() - h * 3600000).toISOString(); };
+  var RCPT = "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='200' height='260'><rect width='200' height='260' fill='#fff' stroke='#999'/><text x='20' y='40' font-size='16' font-family='sans-serif'>Beleg (Demo)</text><text x='20' y='80' font-size='13' font-family='sans-serif'>Blumen Lobby</text><text x='20' y='110' font-size='13' font-family='sans-serif'>Summe 24,90</text></svg>");
+  D.cash = [
+    { id: "cash-1", entry_date: MON + "-02", direction: "ein", category: "Trinkgeld", amount: 86.5, note: "Trinkgeld-Kasse Rezeption", department: "Rezeption", created_by: "u-admin", created_at: nowIso(300), has_receipt: false },
+    { id: "cash-2", entry_date: MON + "-05", direction: "aus", category: "Einkauf", amount: 24.9, note: "Blumen Lobby", department: "Rezeption", created_by: "u-admin", created_at: nowIso(240), has_receipt: true },
+    { id: "cash-3", entry_date: MON + "-08", direction: "ein", category: "Wechselgeld", amount: 200, note: "Wechselgeld von der Bank", department: "Rezeption", created_by: "u-admin", created_at: nowIso(170), has_receipt: false },
+    { id: "cash-4", entry_date: MON + "-12", direction: "aus", category: "Sonstiges", amount: 12.4, note: "Briefmarken", department: "Büro", created_by: "u-admin", created_at: nowIso(100), has_receipt: true }
+  ];
+  D.keys = [
+    { id: "key-1", name: "Generalschlüssel Haus", kind: "Generalschlüssel", code: "GS-01", note: "Nur Direktion und Hausdame", active: true },
+    { id: "key-2", name: "Technikraum", kind: "Schlüssel", code: "T-12", note: null, active: true },
+    { id: "key-3", name: "Zimmerkarte Master Etage 2", kind: "Karte", code: "M-02", note: null, active: true },
+    { id: "key-4", name: "Dachzugang", kind: "Transponder", code: "D-07", note: "Wartungsfirmen", active: true },
+    { id: "key-5", name: "Lager Keller", kind: "Schlüssel", code: "K-03", note: null, active: true }];
+  D.key_loans = [
+    { id: "kl-1", key_id: "key-4", user_id: null, holder_name: "Elektro Huber", issued_at: nowIso(5), due_back: add(todayIso, 1), returned_at: null, note: "Prüfung Elektroanlage" },
+    { id: "kl-2", key_id: "key-2", user_id: "u-hkm", holder_name: null, issued_at: nowIso(24 * 5), due_back: add(todayIso, -2), returned_at: null, note: null },
+    { id: "kl-3", key_id: "key-5", user_id: "u-ewa", holder_name: null, issued_at: nowIso(24 * 3), due_back: add(todayIso, -2), returned_at: nowIso(24 * 2), note: null }];
+  D.uniforms = [
+    { id: "un-1", user_id: "u-fb", holder_name: null, item: "Kochjacke", size: "L", quantity: 3, issued_at: add(todayIso, -60), returned_at: null, note: null },
+    { id: "un-2", user_id: "u-fb", holder_name: null, item: "Schürze", size: "Einheitsgröße", quantity: 2, issued_at: add(todayIso, -60), returned_at: null, note: null },
+    { id: "un-3", user_id: "u-ewa", holder_name: null, item: "Bluse", size: "38", quantity: 3, issued_at: add(todayIso, -90), returned_at: null, note: null },
+    { id: "un-4", user_id: null, holder_name: "Anna K. (Aushilfe)", item: "Bluse", size: "36", quantity: 2, issued_at: add(todayIso, -50), returned_at: add(todayIso, -6), note: "Aushilfe beendet" }];
+  D.pulse_done = false;
+  D.pulse_comments = ["Der Dienstplan kommt jetzt früh genug, das hilft sehr.", "Im Frühdienst fehlt oft eine Person, dann wird es hektisch.", "Gute Stimmung im Team, danke für die neue Kaffeemaschine."];
+  D.cal_notes = [{ id: "cn-1", date_from: add(todayIso, 3), date_to: add(todayIso, 3), title: "Betriebsversammlung", kind: "Hinweis", note: "14:00 Uhr im Salon" }];
+
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, opt) {
     var url = new URL(typeof input === "string" ? input : input.url, location.href);
@@ -507,6 +535,7 @@
         rooms_ready: D.rooms.filter(function (r) { return r.status === "Sauber" || r.status === "Kontrolliert"; }).length,
         rooms_dirty: D.rooms.filter(function (r) { return r.status === "Schmutzig"; }).length, arrivals: Math.round(fcT * 0.27), departures: Math.round(fcT * 0.24),
         month_occupancy: 79.1, month_adr: 141, month_revpar: 111.5, tasks_overdue: D.tasks.filter(function (t) { return t.status !== "Erledigt" && t.due_date && t.due_date < todayIso; }).length, review_avg: 4.5, feedback_avg: 4.6,
+        month_hours: 3120, hours_per_room_night: 0.42, staff_cost_per_room_night: 14.8, staff_cost_share: 31.5,
         budget_planned: D.budget.reduce(function (s4, x) { return s4 + Number(x.planned || 0); }, 0), budget_spent: D.budget.reduce(function (s4, x) { return s4 + Number(x.actual || 0) + Number(x.committed || 0); }, 0) })]);
     }
     // Krankmeldung und offene Schichten
@@ -701,6 +730,52 @@
       D.course_results.unshift(cr);
       return ok({ id: cr.id, score: cr.score, passed: cr.passed, completed_at: cr.completed_at, right: rt, total: qz.length, wrong: qz.map(function (qq, i) { return ans[i] === qq.correct ? null : i; }).filter(function (x) { return x !== null; }) }); }
     if ((mm = p.match(/^\/api\/courses\/([^/]+)$/))) { if (m === "DELETE") { remove(D.courses, mm[1]); return ok({ ok: true }); } var cu2 = byId(D.courses, mm[1]); if (cu2) Object.assign(cu2, b); return ok(cu2 || {}); }
+    // Kasse
+    if (p === H + "/cash") {
+      if (m === "POST") { if (!(Number(b.amount) > 0)) return ok({ error: "Bitte einen Betrag angeben." }, 400);
+        var ce = { id: nid("cash"), entry_date: b.entry_date || todayIso, direction: b.direction === "aus" ? "aus" : "ein", category: b.category || "Sonstiges", amount: Number(b.amount), note: b.note || null, department: b.department || null, created_by: ME, created_at: new Date().toISOString(), has_receipt: !!b.receipt_data };
+        D.cash.push(ce); return ok(ce); }
+      var cmo = q.get("month") || MON, ces = D.cash.filter(function (x) { return x.entry_date.slice(0, 7) === cmo; }).sort(function (a, c) { return a.entry_date < c.entry_date ? 1 : -1; });
+      var tin = 0, tout = 0; ces.forEach(function (x) { if (x.direction === "ein") tin += x.amount; else tout += x.amount; });
+      return ok({ month: cmo, entries: ces, total_in: Math.round(tin * 100) / 100, total_out: Math.round(tout * 100) / 100 }); }
+    if ((mm = p.match(/^\/api\/cash\/([^/]+)\/receipt$/))) return ok({ receipt_data: RCPT });
+    if ((mm = p.match(/^\/api\/cash\/([^/]+)$/)) && m === "DELETE") { remove(D.cash, mm[1]); return ok({ ok: true }); }
+    // Schlüssel
+    if (p === H + "/keys") { if (m === "POST") { if (!b.name) return ok({ error: "Bitte einen Namen angeben." }, 400);
+        var nk = { id: nid("key"), name: b.name, kind: b.kind || "Schlüssel", code: b.code || null, note: b.note || null, active: true }; D.keys.push(nk); return ok(nk); }
+      return ok(D.keys); }
+    if (p === H + "/key-loans") return ok(D.key_loans.slice().sort(function (a, c) { return a.issued_at < c.issued_at ? 1 : -1; }));
+    if ((mm = p.match(/^\/api\/keys\/([^/]+)\/loan$/)) && m === "POST") {
+      if (!b.user_id && !b.holder_name) return ok({ error: "Bitte angeben, wer den Schlüssel bekommt." }, 400);
+      if (D.key_loans.some(function (l) { return l.key_id === mm[1] && !l.returned_at; })) return ok({ error: "Dieser Schlüssel ist bereits ausgegeben." }, 400);
+      var nl = { id: nid("kl"), key_id: mm[1], user_id: b.user_id || null, holder_name: b.user_id ? null : b.holder_name, issued_at: new Date().toISOString(), due_back: b.due_back || null, returned_at: null, note: b.note || null };
+      D.key_loans.push(nl); return ok(nl); }
+    if ((mm = p.match(/^\/api\/key-loans\/([^/]+)\/return$/)) && m === "POST") { var kl = byId(D.key_loans, mm[1]); if (kl) kl.returned_at = new Date().toISOString(); return ok(kl || {}); }
+    if ((mm = p.match(/^\/api\/keys\/([^/]+)$/))) { if (m === "DELETE") { remove(D.keys, mm[1]); D.key_loans = D.key_loans.filter(function (l) { return l.key_id !== mm[1]; }); return ok({ ok: true }); } var ky = byId(D.keys, mm[1]); if (ky) Object.assign(ky, b); return ok(ky || {}); }
+    // Dienstkleidung
+    if (p === H + "/uniforms") { if (m === "POST") { if (!b.item) return ok({ error: "Bitte ein Kleidungsstück angeben." }, 400);
+        var nu = { id: nid("un"), user_id: b.user_id || null, holder_name: b.user_id ? null : (b.holder_name || null), item: b.item, size: b.size || null, quantity: Number(b.quantity) || 1, issued_at: b.issued_at || todayIso, returned_at: null, note: b.note || null }; D.uniforms.push(nu); return ok(nu); }
+      return ok(D.uniforms); }
+    if ((mm = p.match(/^\/api\/uniforms\/([^/]+)$/))) { if (m === "DELETE") { remove(D.uniforms, mm[1]); return ok({ ok: true }); } var un = byId(D.uniforms, mm[1]); if (un) Object.assign(un, b); return ok(un || {}); }
+    // Stimmungsumfrage
+    if (p === "/api/organizations/demo-org/pulse/status") return ok({ month: MON + "-01", done: D.pulse_done });
+    if (p === "/api/organizations/demo-org/pulse" && m === "POST") { if (!(Number(b.score) >= 1 && Number(b.score) <= 5)) return ok({ error: "Bitte eine Bewertung von 1 bis 5 wählen." }, 400); D.pulse_done = true; if (b.comment) D.pulse_comments.unshift(String(b.comment)); return ok({ ok: true }); }
+    if (p === "/api/organizations/demo-org/pulse/summary") {
+      var prow = [], py = Number(todayIso.slice(0, 4)), pmo = Number(todayIso.slice(5, 7));
+      for (var pi = 5; pi >= 0; pi--) { var pk = 5 - pi, cur = pi === 0, hid = pi === 3;
+        prow.push({ month: iso(new Date(Date.UTC(py, pmo - 1 - pi, 1))), department: null, responses: cur ? 0 : (hid ? null : [18, 21, 0, 24, 26][pk]), avg_score: cur || hid ? null : [4.1, 3.9, 0, 4.2, 4.4][pk], hidden: hid }); }
+      var pdm = iso(new Date(Date.UTC(py, pmo - 2, 1)));
+      prow.push({ month: pdm, department: "Housekeeping", responses: 7, avg_score: 3.7, hidden: false }, { month: pdm, department: "Küche", responses: 5, avg_score: 4.5, hidden: false });
+      return ok(prow); }
+    if (p === "/api/organizations/demo-org/pulse/comments") return ok(D.pulse_comments);
+    // Kalender mit Wetter
+    if (p === H + "/day-info") {
+      var wf = q.get("from") || todayIso, wt = q.get("to") || add(wf, 8), grp = ["sonnig", "wolkig", "wolkig", "regen", "bedeckt", "gewitter", "sonnig", "nebel", "schnee"], wx = [];
+      for (var wi = 0; wi < 9; wi++) { var wd = add(todayIso, wi); if (wd < wf || wd > wt) continue; wx.push({ date: wd, tmax: [17, 15, 14, 11, 12, 16, 18, 9, 2][wi], tmin: [7, 8, 6, 6, 5, 9, 8, 4, -2][wi], rain: [0, 0.2, 0, 6.5, 1.1, 9.8, 0, 0.4, 3.2][wi], group: grp[wi] }); }
+      return ok({ weather: wx, weather_source: "MET Norway", notes: D.cal_notes.filter(function (n) { return n.date_to >= wf && n.date_from <= wt; }), events: [] }); }
+    if (p === H + "/calendar-notes" && m === "POST") { if (!b.title) return ok({ error: "Bitte einen Titel angeben." }, 400);
+      var cn = { id: nid("cn"), date_from: b.date_from || todayIso, date_to: b.date_to || b.date_from || todayIso, title: b.title, kind: b.kind || "Hinweis", note: b.note || null }; D.cal_notes.push(cn); return ok(cn); }
+    if ((mm = p.match(/^\/api\/calendar-notes\/([^/]+)$/)) && m === "DELETE") { remove(D.cal_notes, mm[1]); return ok({ ok: true }); }
     return ok({});
   };
 })();

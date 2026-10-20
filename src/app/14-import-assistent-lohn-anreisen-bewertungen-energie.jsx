@@ -227,6 +227,7 @@ function PayrollExportCard({hotel, api, rows, month, onHotel, onClose}){
         <Field label={tf("Format")}><select className="input" value={s.format} onChange={e=>set("format",e.target.value)}><option value="csv">{tf("CSV (BMD, Sage, Lexware, Excel)")}</option><option value="datev">DATEV LODAS</option></select></Field>
         {s.format==="datev" && <Field label={tf("Beraternummer")}><input className="input" style={{width:130}} value={s.berater} onChange={e=>set("berater",e.target.value)} /></Field>}
         {s.format==="datev" && <Field label={tf("Mandantennummer")}><input className="input" style={{width:130}} value={s.mandant} onChange={e=>set("mandant",e.target.value)} /></Field>}
+        <Field label={tf("Personalkosten je Stunde (inkl. Lohnnebenkosten, für Kennzahlen)")}><input className="input" style={{width:150}} inputMode="decimal" value={s.hourly_cost??""} onChange={e=>set("hourly_cost",e.target.value.replace(",","."))} /></Field>
       </div>
       <div className="field-label">{tf("Lohnart-Nummern")}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"0 10px",marginBottom:6}}>

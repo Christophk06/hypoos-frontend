@@ -15,11 +15,11 @@
 <meta name="apple-mobile-web-app-title" content="Ouverture" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="i18n.js?v=f3f025dbca"></script>
+<script src="i18n.js?v=c40fa52608"></script>
 <script src="payroll.js?v=2bf4fdbb12"></script>
 <script src="holidays.js?v=cb6e74aef2"></script>
 <script src="planning.js?v=1e94a23b2d"></script>
-<script src="labor.js?v=d6ff7ebce1"></script>
+<script src="labor.js?v=91afc37276"></script>
 <script src="energy.js?v=7ed65ecfff"></script>
 <script src="event-templates.js?v=08eedd9825"></script>
 <script src="doc-templates.js?v=84970721d7"></script>
@@ -27,7 +27,7 @@
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
     document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=95ca8bac72"><\/script>');
-    document.write('<script src="demo/demo-mock.js?v=660ce88c97"><\/script>');
+    document.write('<script src="demo/demo-mock.js?v=499f2c49f9"><\/script>');
   }
   // Als App installierbar: Service Worker (nicht in der Demo)
   if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
@@ -38,6 +38,12 @@
   @import url('fonts/fonts.css');
   :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
   * { box-sizing: border-box; }
+  /* Fingerbedienung (Handy, Tablet): Knöpfe und Felder mindestens 44 px hoch */
+  @media (pointer: coarse) {
+    button, select, .input, input[type="date"], input[type="time"], [role="button"] { min-height: 44px; }
+    button { min-width: 44px; }
+    input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
+  }
   /* Sichtbarer Fokus für Tastatur und Schalterbedienung */
   :focus-visible { outline: 2px solid #A9834B; outline-offset: 2px; }
   .sidebar :focus-visible, .mobile-tabbar :focus-visible, .btn-primary:focus-visible { outline-color: #C9A66B; }
@@ -162,7 +168,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="fccec35";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
-<script src="app.js?v=cb7c6520b3"></script>
+<script>window.__APP_VERSION="b450774";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
+<script src="app.js?v=ea5928eca3"></script>
 </body>
 </html>

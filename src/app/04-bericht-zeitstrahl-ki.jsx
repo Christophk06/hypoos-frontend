@@ -433,7 +433,7 @@ function TimelineView({hotel, tasks, milestones}){
               {g.key==="late" ? tf("Überfällig") : tf("KW {0}", isoWeekNumber(g.key)) + " · " + fmtDay(g.key,{day:"2-digit",month:"2-digit"}) + " – " + fmtDay(addD(g.key,6),{day:"2-digit",month:"2-digit"})}
             </div>
             {g.items.map(a=>(
-              <div key={a.kind+a.item.id} onClick={()=>setPicked({kind:a.kind, item:a.item})}
+              <div key={a.kind+a.item.id} {...pressable(()=>setPicked({kind:a.kind, item:a.item}))}
                 style={{display:"flex",gap:10,alignItems:"center",padding:"7px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
                 <span style={{width:84,flexShrink:0,color:a.date<today?BAD:INK_MUTED,fontSize:12.5}} data-no-i18n="">{fmtDay(a.date)}</span>
                 {a.kind==="ms"

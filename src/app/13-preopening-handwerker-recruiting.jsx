@@ -10,7 +10,7 @@ function CriticalPathCard({hotel, tasks}){
   const impact = whatIf.id ? delayImpact(tasks, whatIf.id, Number(whatIf.days)||0, hotel.opening_date) : null;
   return (
     <Card className="no-print" style={{marginBottom:14,borderColor:p.conflicts.length?BAD:crit.length?WARN:BORDER}}>
-      <div style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <div style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
         <div style={{fontWeight:700,flex:1}}>🧩 {tf("Kritischer Pfad")}</div>
         {p.conflicts.length>0 && <Pill color={BAD} bg={BAD_SOFT}>{tf("{0} Konflikte", p.conflicts.length)}</Pill>}
         <Pill color={WARN} bg={WARN_SOFT}>{tf("{0} kritisch", crit.length)}</Pill>

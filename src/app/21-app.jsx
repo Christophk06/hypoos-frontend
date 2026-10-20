@@ -66,6 +66,11 @@ function App(){
         try { window.localStorage.setItem(LS_INVITE_KEY, search.get("invite")); } catch(e){}
         window.history.replaceState(null,"",window.location.pathname);
       }
+      // Kontrollgang: QR-Code am Kontrollpunkt führt auf ?patrol=<token> (nach der Anmeldung bestätigen)
+      if(search.get("patrol")){
+        try { window.sessionStorage.setItem("hpoos_patrol", search.get("patrol")); } catch(e){}
+        window.history.replaceState(null,"",window.location.pathname);
+      }
       // Rückkehr von der Stripe-Bezahlseite oder der Abo-Verwaltung: ?billing=success|cancel|portal
       if(search.get("billing")){
         setBillingNotice(search.get("billing"));
@@ -78,7 +83,22 @@ function App(){
   // Erneuerung fehlgeschlagen (z. B. lange nicht benutzt) -> zurück zur Anmeldung
   useEffect(()=>{ Session.onExpired = () => { setToken(null); setOrgId(null); }; return () => { Session.onExpired = null; }; },[]);
   const login = (data) => { Session.save(sessionFromAuth(data)); setToken(data.access_token); };
+  useEffect(()=>{
+    if(!token) return;
+    let timer = null, last = Date.now();
+    const arm = () => { clearInterval(timer); if(!isSharedDevice()) return;
+      timer = setInterval(()=>{ if(Date.now() - last > 15*60*1000) logoutRef.current && logoutRef.current(); }, 30000); };
+    const bump = () => { last = Date.now(); };
+    const evs = ["pointerdown","keydown","scroll","touchstart"];
+    evs.forEach(e=>window.addEventListener(e, bump, {passive:true}));
+    window.addEventListener("hpoos-shared-device", arm); arm();
+    return () => { clearInterval(timer); evs.forEach(e=>window.removeEventListener(e, bump)); window.removeEventListener("hpoos-shared-device", arm); };
+  },[token]);
+  const logoutRef = React.useRef(null);
+  const [patrolToken,setPatrolToken] = useState(() => { try { return window.sessionStorage.getItem("hpoos_patrol"); } catch(e){ return null; } });
+  const closePatrol = () => { try { window.sessionStorage.removeItem("hpoos_patrol"); } catch(e){} setPatrolToken(null); };
   const logout = async () => { await unsubscribePushOnLogout(api); try { await flushOfflineQueue(); } catch(e){} clearOfflineData(); Session.save(null); setToken(null); setOrgId(null); setOrgs([]); setHotel(null); setHotels(null); };
+  logoutRef.current = logout;
 
   const saveConfig = (cfg) => {
     setConfig(cfg);
@@ -282,7 +302,7 @@ function App(){
         <div className="nav-item" {...pressable(leaveHotel)} style={{padding:"9px 10px",borderRadius:7,cursor:"pointer",marginTop:14,fontSize:13,color:"rgba(255,255,255,0.65)"}}>Hotel wechseln</div>
         <div style={{marginTop:18}}><LanguageSwitcher dark withDefault api={api} me={me} onCurrency={()=>setFxTick(x=>x+1)} /></div>
         <div style={{marginTop:8}}><InstallAppButton dark /></div>
-        <div className="logout" onClick={logout} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
+        <div className="logout" {...pressable(logout)} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
@@ -349,6 +369,13 @@ function App(){
           {tab==="procurement" && <ProcurementView hotel={hotel} api={api} role={role} myDepts={myDepts} />}
           {tab==="permits" && <PermitsView hotel={hotel} api={api} role={role} />}
           {tab==="feedback" && <FeedbackView hotel={hotel} api={api} me={me} role={role} />}
+          {patrolToken && token && <PatrolScanDialog api={api} token={patrolToken} onClose={closePatrol} />}
+          {tab==="assets" && <AssetsView hotel={hotel} api={api} />}
+          {tab==="patrols" && <PatrolsView hotel={hotel} api={api} />}
+          {tab==="instructions" && <InstructionsView hotel={hotel} api={api} />}
+          {tab==="sick" && <SickNotesView hotel={hotel} api={api} members={members} />}
+          {tab==="tourismtax" && <TourismTaxView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="frontdesk" && <FrontDeskView hotel={hotel} api={api} onOpen={setTab} />}
           {tab==="arrivals" && <ArrivalsView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="reviews" && <ReviewsView hotel={hotel} api={api} role={role} />}
           {tab==="energy" && <EnergyView hotel={hotel} api={api} role={role} />}

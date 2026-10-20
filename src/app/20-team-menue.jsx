@@ -199,7 +199,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
           <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
             {invites.filter(i=>i.status==="ausstehend").map(i=>(
               <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
-                <td style={{padding:12}}><span data-no-i18n="">{i.email}</span><div style={{fontSize:11.5,color:INK_MUTED}}>{ROLE_LABELS[i.role] || i.role}</div>
+                <td style={{padding:12}}><span data-no-i18n="">{i.email}</span><div style={{fontSize:11.5,color:INK_MUTED}}>{ROLE_LABELS[i.role] || i.role}{i.expires_at ? " · " : ""}{i.expires_at ? (new Date(i.expires_at) < new Date() ? <span style={{color:BAD}}>{tf("abgelaufen – bitte neu einladen")}</span> : tf("gültig bis {0}", fmtDate(String(i.expires_at).slice(0,10)))) : null}</div>
                   {shownLinkId===i.id && (
                     <input readOnly className="input" value={linkFor(i)} onFocus={e=>e.target.select()} autoFocus
                       style={{marginTop:8,fontSize:12}} />
@@ -259,14 +259,14 @@ function navForAll(role, hasBilling, myDepts){
     N("logbook","Übergabebuch","Betrieb"), N("checklists","Checklisten","Betrieb"), N("stock","Lager","Betrieb"), N("lostfound","Fundsachen","Betrieb"), N("trainings","Unterweisungen","Betrieb"), N("chat","Chat","Betrieb")];
   // Anreisen und Bewertungen für Rezeption, Energie für Technik (Mitarbeitende); die Leitung sieht alles
   const reception = (myDepts||[]).includes("Rezeption & Empfang"), technik = (myDepts||[]).includes("Technik");
-  const memberExtra = [...(reception ? [N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
+  const memberExtra = [N("instructions","Arbeitsanweisungen","Betrieb"), ...(technik ? [N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb")] : []), ...(reception ? [N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
   if(role==="member") return [N("dashboard","Start"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     ...ops, ...memberExtra, N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"), N("account","Konto","Allgemein")];
   return [
     N("dashboard","Dashboard"), N("group","Hotelgruppe"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"),
     N("tasks","Aufgaben","Projekt"), N("milestones","Meilensteine","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     N("risks","Risiken","Projekt"), N("budget","Budget","Projekt"), N("staff","Personal","Projekt"), N("procurement","Bestellungen","Projekt"),
-    ...ops, N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
+    ...ops, N("instructions","Arbeitsanweisungen","Betrieb"), N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb"), N("tourismtax","Ortstaxe","Betrieb"), N("sick","Krankmeldungen","Betrieb"), N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
     N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
     ...(role==="admin" && hasBilling ? [N("billing","Abo","Allgemein")] : []),
     N("account","Konto","Allgemein"),

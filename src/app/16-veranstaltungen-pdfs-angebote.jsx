@@ -38,6 +38,36 @@ const FS_CSS = `
 const fsEsc = (s) => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fsT = (s) => fsEsc(translateString(s));
 // Hinweise: Zeile "Ablauf: 14:00 Trauung · 15:00 Empfang …" wird zur Zeitleiste, "Küche: …" zu Aufgaben je Abteilung
+// Allergene: österreichische Kürzel A–R (14 Hauptallergene) in Klammern hinter dem Gericht, z. B. „Rindssuppe (A, C, L)“
+const ALLERGENS = [["A","Gluten"],["B","Krebstiere"],["C","Eier"],["D","Fisch"],["E","Erdnüsse"],["F","Soja"],["G","Milch und Laktose"],["H","Schalenfrüchte"],["L","Sellerie"],["M","Senf"],["N","Sesam"],["O","Sulfite"],["P","Lupinen"],["R","Weichtiere"]];
+const allergenCodes = (text) => { const set = new Set(); String(text||"").replace(/\(([A-R](?:\s*,\s*[A-R])*)\)/g, (m, g) => { g.split(",").forEach(x=>set.add(x.trim())); return m; }); return ALLERGENS.filter(([c])=>set.has(c)); };
+// Kürzel an die letzte Zeile anhängen: „(A)“ → „(A, C)“
+function addAllergen(menu, code){
+  const lines = String(menu||"").split("\n"); let last = lines.pop() || "";
+  const m = last.match(/\(([A-R](?:\s*,\s*[A-R])*)\)\s*$/);
+  if(m){ const codes = m[1].split(",").map(x=>x.trim()); if(!codes.includes(code)) codes.push(code); codes.sort(); last = last.slice(0, m.index).replace(/\s+$/,"") + " (" + codes.join(", ") + ")"; }
+  else last = last.replace(/\s+$/,"") + " (" + code + ")";
+  return [...lines, last].join("\n").replace(/^\s+/, "");
+}
+function allergenLegendHtml(menu){
+  const list = allergenCodes(menu); if(!list.length) return "";
+  return '<div class="box"><h3>'+fsT("Allergene")+'</h3><div class="b">'+list.map(([c,n])=>'<b>'+c+'</b> '+fsEsc(tf(n))).join(" · ")+'</div></div>';
+}
+function AllergenHelp({onPick, menu}){
+  const [open,setOpen] = useState(false);
+  const used = allergenCodes(menu).map(([c])=>c);
+  return (
+    <div style={{marginTop:-6,marginBottom:10}}>
+      <button type="button" style={{...linkBtn,fontSize:12.5}} aria-expanded={open} onClick={()=>setOpen(!open)}>{tf("Allergene (A–R) einfügen")}</button>
+      {open && <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+        {ALLERGENS.map(([c,n])=><button key={c} type="button" title={tf(n)} onClick={()=>onPick(c)}
+          style={{border:`1px solid ${used.includes(c)?INK:BORDER}`,background:used.includes(c)?INK:"#fff",color:used.includes(c)?"#fff":INK,borderRadius:999,padding:"4px 10px",fontSize:12.5,cursor:"pointer"}}><b data-no-i18n="">{c}</b> {tf(n)}</button>)}
+        <div style={{fontSize:12,color:INK_MUTED,width:"100%"}}>{tf("Kürzel werden an die letzte Zeile angehängt. Das Function Sheet druckt die Legende automatisch.")}</div>
+      </div>}
+    </div>
+  );
+}
+
 function fsNotes(notes){
   const lines = String(notes||"").split(/\n+/).map(l=>l.trim()).filter(Boolean);
   let timeline = null; const rows = [], rest = [];
@@ -61,7 +91,7 @@ function functionSheetHtml(ev, hotel){
     + '<div class="facts">'+facts+'</div>'
     + (contact ? '<div class="box" style="margin-bottom:10px"><h3>'+fsT("Kunde")+'</h3><div class="b">'+fsEsc(contact)+'</div></div>' : "")
     + (n.timeline ? '<div class="box" style="margin-bottom:10px"><h3>'+fsT("Ablauf")+'</h3><div class="tl">'+n.timeline.map(t=>{ const m = t.match(/^(\S+\s?(am|pm)?)\s+(.+)$/i); return '<span>'+(m?'<b>'+fsEsc(m[1])+'</b>'+fsEsc(m[3]):fsEsc(t))+'</span>'; }).join("")+'</div></div>' : "")
-    + '<div class="grid">'+box("Menü und Getränke", ev.menu)+box("Aufbau und Bestuhlung", ev.setup)+box("Technik", ev.tech)
+    + '<div class="grid">'+box("Menü und Getränke", ev.menu)+allergenLegendHtml(ev.menu)+box("Aufbau und Bestuhlung", ev.setup)+box("Technik", ev.tech)
     + (n.rows.length ? '<div class="box'+(ev.tech?'':' ')+'"><h3>'+fsT("Aufgaben je Abteilung")+'</h3><table class="dp">'+n.rows.map(([k,v])=>'<tr><td class="c"><i></i></td><td class="k">'+fsEsc(k)+'</td><td>'+fsEsc(v)+'</td></tr>').join("")+'</table></div>' : "")
     + (n.rest.length ? '<div class="box full"><h3>'+fsT("Hinweise")+'</h3><div class="b">'+fsEsc(n.rest.join("\n"))+'</div></div>' : "")
     + '</div>'
@@ -243,7 +273,7 @@ function RoomCalendar({events, spaces, onOpen}){
             <td style={{padding:"8px 10px",fontWeight:700,verticalAlign:"top",whiteSpace:"nowrap"}} data-no-i18n="">{sp.name}</td>
             {days.map(d=><td key={d} style={{padding:4,verticalAlign:"top",minWidth:96}}>
               {inCell(sp,d).map(e=>{ const clash = events.some(o=>evOverlap(e,o)); const [c,bg] = EVENT_STATUS[e.status]||EVENT_STATUS.Anfrage; return (
-                <div key={e.id} onClick={()=>onOpen(e)} title={clash?tf("Doppelbuchung"):""} style={{cursor:"pointer",background:clash?BAD_SOFT:bg,borderInlineStart:`3px solid ${clash?BAD:c}`,borderRadius:4,padding:"3px 5px",marginBottom:3}}>
+                <div key={e.id} {...pressable(()=>onOpen(e))} title={clash?tf("Doppelbuchung"):""} style={{cursor:"pointer",background:clash?BAD_SOFT:bg,borderInlineStart:`3px solid ${clash?BAD:c}`,borderRadius:4,padding:"3px 5px",marginBottom:3}}>
                   <div style={{fontSize:11,color:INK_MUTED}} data-no-i18n="">{(e.start_time||"").slice(0,5)}{e.end_time?"–"+e.end_time.slice(0,5):""}{clash?" ⚠":""}</div>
                   <div style={{fontWeight:600,fontSize:12}} data-no-i18n="">{e.title}</div>
                 </div>); })}
@@ -403,7 +433,8 @@ function EventsView({hotel, api, role}){
           {F("client","Kunde")}{F("contact","Kontakt (Name, Telefon, E-Mail)")}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",gap:"0 10px"}}>
-          {T("menu","Menü und Getränke")}{T("setup","Aufbau und Bestuhlung")}{T("tech","Technik")}{T("notes","Hinweise")}
+          <div>{T("menu","Menü und Getränke")}<AllergenHelp onPick={(c)=>setForm(f=>({...f, menu: addAllergen(f.menu, c)}))} menu={form.menu} /></div>
+          {T("setup","Aufbau und Bestuhlung")}{T("tech","Technik")}{T("notes","Hinweise")}
         </div>
         <OfferEditor form={form} setForm={setForm} />
         {(()=>{ const s = eventStaff(form); return s ? <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>👥 {tf("Personalbedarf (Richtwert): {0} Service, {1} Küche", s.service, s.kitchen)}</div> : null; })()}

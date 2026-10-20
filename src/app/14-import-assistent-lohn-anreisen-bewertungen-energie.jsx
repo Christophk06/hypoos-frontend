@@ -247,10 +247,47 @@ function PayrollExportCard({hotel, api, rows, month, onHotel, onClose}){
   );
 }
 
+// ------------------------------------------------------------ Arbeitszeit im Durchschnitt (AT: höchstens 48 h über 17 Wochen)
+function LaborAverageCard({hotel, api, dept, members}){
+  const [open,setOpen] = useState(false); const [rows,setRows] = useState(null); const [error,setError] = useState("");
+  const rules = laborRulesFor(hotel.holiday_region);
+  useEffect(()=>{ if(!open || !rules.avgWeeks) return; setRows(null); setError("");
+    const to = todayIso(), from = (()=>{ const d = new Date(to+"T12:00:00Z"); d.setUTCDate(d.getUTCDate() - rules.avgWeeks*7); return d.toISOString().slice(0,10); })();
+    api("/api/hotels/"+hotel.id+"/shifts?from="+from+"&to="+to+"&department="+encodeURIComponent(dept)).then(sh=>{
+      const work = sh.filter(s=>WORK_KINDS.includes(s.kind) && s.start_time && s.end_time);
+      const by = {};
+      work.forEach(s=>{ const k = s.user_id || ("n:"+(s.employee_name||"").toLowerCase()); (by[k] = by[k] || {name: s.user_id ? ((members.find(m=>m.user_id===s.user_id)||{}).email || "–") : s.employee_name, list: []}).list.push(s); });
+      setRows(Object.values(by).map(p=>({name:p.name, ...laborAverage(p.list, {region: hotel.holiday_region, endDate: to})})).sort((a,b)=>b.average-a.average));
+    }).catch(e=>setError(e.message)); },[open, dept]);
+  if(!rules.avgWeeks) return null;
+  return (
+    <Card style={{marginTop:14}}>
+      <div {...pressable(()=>setOpen(!open))} aria-expanded={open} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+        <div style={{fontWeight:700,flex:1}}>{tf("Arbeitszeit im Durchschnitt ({0} Wochen)", rules.avgWeeks)}</div>
+        <span style={{color:INK_MUTED}}>{open ? "▴" : "▾"}</span>
+      </div>
+      {open && <div style={{marginTop:10}}>
+        <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Nach § 9 AZG dürfen es im Schnitt höchstens {0} Stunden pro Woche sein. Gerechnet werden geplante Schichten abzüglich Pausen. Hinweis, keine Rechtsberatung.", rules.avgMax)}</div>
+        {error && <div style={{color:BAD,fontSize:13}}>{error}</div>}
+        {!rows && !error && <div style={{fontSize:13,color:INK_MUTED}}>…</div>}
+        {rows && !rows.length && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Keine Schichten im Zeitraum.")}</div>}
+        {rows && rows.length>0 && <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
+          {rows.map(r=><tr key={r.name} style={{borderTop:`1px solid ${BORDER}`}}>
+            <td style={{padding:"7px 4px"}} data-no-i18n="">{r.name}</td>
+            <td style={{padding:"7px 4px",textAlign:"end",fontWeight:600,color:r.over?BAD:INK}}>{tf("{0} h pro Woche", fmtHours(r.average))}</td>
+            <td style={{padding:"7px 4px",textAlign:"end"}}>{r.over ? <Pill color={BAD} bg={BAD_SOFT}>{tf("über {0} h", r.max)}</Pill> : <Pill color={GOOD} bg={GOOD_SOFT}>{tf("im Rahmen")}</Pill>}</td>
+          </tr>)}
+        </tbody></table>}
+      </div>}
+    </Card>
+  );
+}
+
 // ------------------------------------------------------------ Arbeitsrecht: Hinweise als Text
 function laborText(w){
   if(w.code==="day") return tf("{0}: {1} h Arbeitszeit – mehr als erlaubt", fmtDay(w.date), fmtHours(w.value));
   if(w.code==="rest") return tf("{0}: nur {1} h Ruhezeit", fmtDay(w.date), fmtHours(w.value));
+  if(w.code==="splitRest") return tf("{0}: {1} h Ruhezeit nach geteiltem Dienst – im Gastgewerbe zulässig, Ausgleich beachten", fmtDay(w.date), fmtHours(w.value));
   if(w.code==="week") return tf("{0} h in der Woche – mehr als erlaubt", fmtHours(w.value));
   if(w.code==="weeklyRest") return tf("Keine ausreichende Wochenruhe (längste Pause {0} h)", fmtHours(w.value));
   if(w.code==="daysInRow") return tf("{0} Tage in Folge ohne freien Tag", w.value);
@@ -270,7 +307,7 @@ function GuestMailSettings({hotel, api, onHotel}){
   const setX = (i, k, v) => setS({...s, extras:s.extras.map((x,j)=>j===i?{...x,[k]:v}:x)});
   return (
     <Card style={{marginBottom:14}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
         <div style={{fontWeight:700,flex:1}}>{tf("Mail vor der Anreise")} <span style={{fontWeight:400,fontSize:13,color:s.enabled?GOOD:INK_MUTED}}>· {s.enabled ? tf("Eingeschaltet") : tf("Aus")}</span></div>
         <span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
       </div>

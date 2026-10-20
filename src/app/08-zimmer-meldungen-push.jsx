@@ -75,6 +75,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport}){
             <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:5,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={mine} onChange={e=>setMine(e.target.checked)} /> {tf("Nur meine Zimmer")}</label>
             <span style={{flex:1}}></span>
             {canManageDept("Housekeeping") && <RoomAssignCard hotel={hotel} api={api} members={members} onDone={load} />}
+            <RoomCreditsCard hotel={hotel} api={api} rooms={rooms} onDone={load} />
             {canEdit && <RoomImportButton hotel={hotel} api={api} onDone={load} onMsg={setMsg} />}
             {canEdit && <button style={smallBtn} onClick={()=>{ const ids = rooms.filter(r=>r.occupancy==="Abreise" && r.status!=="Schmutzig" && r.status!=="Außer Betrieb").map(r=>r.id); if(!ids.length){ setMsg({ok:true,text:tf("Keine Abreisen offen.")}); return; } bulk(ids,{status:"Schmutzig"}); }}>{tf("Abreisen → Schmutzig")}</button>}
             {canEdit && <button style={smallBtn} onClick={()=>{ const ids = rooms.filter(r=>r.occupancy==="Belegt" && (r.status==="Sauber"||r.status==="Kontrolliert")).map(r=>r.id); if(!ids.length) return; if(window.confirm(tf("Neuer Tag: alle belegten Zimmer auf „Schmutzig“ setzen?"))) bulk(ids,{status:"Schmutzig"}); }}>{tf("Neuer Tag")}</button>}
@@ -182,6 +183,16 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
       {section==="snags" && (role==="admin"||role==="manager") && <ContractorsCard hotel={hotel} api={api} />}
       {section==="snags" && role!=="member" && <SnagReportButton hotel={hotel} api={api} contractors={contractors} members={members} me={me} />}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+      {role!=="member" && list && list.length>0 && <button style={{...smallBtn,marginBottom:14,marginInlineEnd:8}} onClick={async()=>{
+        try {
+          const XLSX = await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+          const rows = list.map(t=>({[tf("Erfasst")]: fmtDateTime(t.created_at), [tf("Art")]: translateString(t.kind||""), [tf("Wo?")]: t.location||"", [tf("Titel")]: t.title,
+            [tf("Details")]: t.description||"", [tf("Abteilung")]: translateString(t.department||""), [tf("Dringlichkeit")]: translateString(t.priority||""), [tf("Status")]: translateString(t.status||""),
+            [tf("Frist")]: t.due_on ? fmtDate(t.due_on) : "", [tf("Erledigt")]: t.done_at ? fmtDateTime(t.done_at) : ""}));
+          const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), tf("Meldungen").slice(0,31));
+          XLSX.writeFile(wb, (tf("Meldungen")+" "+hotel.name+" "+todayIso()).replace(/[\/:*?"<>|]+/g,"")+".xlsx");
+        } catch(e){ setMsg({ok:false, text:tf("Export fehlgeschlagen: {0}", e.message)}); }
+      }}>Excel</button>}
       {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14,padding:"11px 18px"}} onClick={()=>setForm(emptyForm(""))}>{section==="wishes" ? "🛎 "+tf("Gästewunsch erfassen") : section==="snags" ? "🔨 "+tf("Baumangel erfassen") : "🔧 "+tf("Mangel melden")}</button>}
       {form && (
         <Card style={{marginBottom:16,borderColor:BRASS}}>

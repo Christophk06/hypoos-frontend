@@ -1,9 +1,10 @@
 // ============================================================ Migration 027: Word-Vorlagen, Rechnungen
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-function Overlay({onClose, children, width}){
+function Overlay({onClose, children, width, label}){
+  const ref = useDialog(onClose);
   return (
     <div className="no-print" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(20,24,31,0.45)",zIndex:200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"6vh 12px 12px",overflowY:"auto"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:CARD,borderRadius:12,padding:"18px 18px 16px",width:"100%",maxWidth:width||720,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>{children}</div>
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} onClick={e=>e.stopPropagation()} style={{outline:"none",background:CARD,borderRadius:12,padding:"18px 18px 16px",width:"100%",maxWidth:width||720,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>{children}</div>
     </div>
   );
 }
@@ -423,6 +424,51 @@ function invTotals(items, gross){
   return {rates, net, tax, gross:r2(net+tax)};
 }
 const invDue = (inv) => r2(Number(inv.gross_total) - Number(inv.deducted||0));
+// E-Rechnung im österreichischen Format ebInterface 6.1 (für öffentliche Auftraggeber über e-rechnung.gv.at / USP).
+// Hinweis: nicht gegen das offizielle Schema geprüft – vor der ersten Übermittlung im Prüfwerkzeug von ebinterface.at testen.
+const xmlE = (s) => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const ebAmount = (n) => (Math.round((Number(n)||0)*100)/100).toFixed(2);
+// Anschrift aus Freitext: 1. Zeile Name, Zeile mit PLZ + Ort, Rest Straße
+function ebAddress(text, fallbackName){
+  const lines = String(text||"").split(/\n|,/).map(x=>x.trim()).filter(Boolean);
+  const name = lines[0] || fallbackName || "–";
+  const zipLine = [...lines].reverse().find(l=>/^(A-|AT-|D-|DE-|CH-)?\d{4,5}\s+\S/.test(l)) || "";
+  const m = zipLine.match(/^(?:[A-Z]{1,2}-)?(\d{4,5})\s+(.+)$/) || [];
+  const street = lines.slice(1).find(l=>l!==zipLine) || "–";
+  return '<Name>'+xmlE(name)+'</Name><Street>'+xmlE(street)+'</Street><Town>'+xmlE(m[2]||"–")+'</Town><ZIP>'+xmlE(m[1]||"0000")+'</ZIP><Country CountryCode="AT">Österreich</Country>';
+}
+function ebInterfaceXml(inv, hotel, orderRef){
+  const s = inv.seller || {}, cur = inv.currency || "EUR", small = !!s.small_business;
+  const credit = inv.kind==="Storno";
+  const items = (inv.items||[]).map(i=>{
+    const qty = Number(i.qty)||0, rate = small ? 0 : Number(i.tax_rate)||0;
+    const unitNet = inv.prices_gross && !small ? (Number(i.unit_price)||0) / (1 + rate/100) : Number(i.unit_price)||0;
+    const net = Math.round(unitNet*qty*100)/100;
+    return {label:i.label, unit:i.unit, qty, unitNet, net, rate};
+  });
+  const t = invTotals(inv.items, inv.prices_gross);
+  const cat = (rate) => small || rate===0 ? "E" : "S";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(inv.service_date||"") ? inv.service_date : inv.issued_on;
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<Invoice xmlns="http://www.ebinterface.at/schema/6p1/" GeneratingSystem="Ouverture" DocumentType="'+(credit?"CreditMemo":"Invoice")+'" InvoiceCurrency="'+xmlE(cur)+'" Language="ger">'
+    + '<InvoiceNumber>'+xmlE(inv.number)+'</InvoiceNumber><InvoiceDate>'+xmlE(inv.issued_on)+'</InvoiceDate>'
+    + '<Delivery><Date>'+xmlE(date)+'</Date></Delivery>'
+    + '<Biller><VATIdentificationNumber>'+xmlE(s.uid||"00000000")+'</VATIdentificationNumber><Address>'+ebAddress((s.company||hotel.name)+"\n"+(s.address||""), hotel.name)+(s.email?'<Email>'+xmlE(s.email)+'</Email>':'')+'</Address></Biller>'
+    + '<InvoiceRecipient><VATIdentificationNumber>'+xmlE(inv.recipient_uid||"00000000")+'</VATIdentificationNumber>'
+    + (orderRef ? '<OrderReference><OrderID>'+xmlE(orderRef)+'</OrderID></OrderReference>' : '')
+    + '<Address>'+ebAddress(inv.recipient)+(inv.recipient_email?'<Email>'+xmlE(inv.recipient_email)+'</Email>':'')+'</Address></InvoiceRecipient>'
+    + '<Details><ItemList>' + items.map(i=>'<ListLineItem><Description>'+xmlE(i.label)+'</Description><Quantity Unit="'+xmlE(i.unit||"STK")+'">'+(i.qty).toFixed(4)+'</Quantity>'
+      + '<UnitPrice>'+(Math.round(i.unitNet*10000)/10000).toFixed(4)+'</UnitPrice><TaxItem><TaxableAmount>'+ebAmount(i.net)+'</TaxableAmount><TaxPercent TaxCategoryCode="'+cat(i.rate)+'">'+i.rate+'</TaxPercent><TaxAmount>'+ebAmount(i.net*i.rate/100)+'</TaxAmount></TaxItem>'
+      + '<LineItemAmount>'+ebAmount(i.net)+'</LineItemAmount></ListLineItem>').join("") + '</ItemList></Details>'
+    + '<Tax>' + (small ? '<TaxItem><TaxableAmount>'+ebAmount(t.gross)+'</TaxableAmount><TaxPercent TaxCategoryCode="E">0</TaxPercent><TaxAmount>0.00</TaxAmount><Comment>'+xmlE(tf("Gemäß Kleinunternehmerregelung wird keine Umsatzsteuer berechnet."))+'</Comment></TaxItem>'
+      : t.rates.map(x=>'<TaxItem><TaxableAmount>'+ebAmount(x.net)+'</TaxableAmount><TaxPercent TaxCategoryCode="'+cat(x.rate)+'">'+x.rate+'</TaxPercent><TaxAmount>'+ebAmount(x.tax)+'</TaxAmount></TaxItem>').join("")) + '</Tax>'
+    + '<TotalGrossAmount>'+ebAmount(t.gross)+'</TotalGrossAmount>'
+    + (Number(inv.deducted) ? '<PrepaidAmount>'+ebAmount(inv.deducted)+'</PrepaidAmount>' : '')
+    + '<PayableAmount>'+ebAmount(invDue(inv))+'</PayableAmount>'
+    + (s.iban ? '<PaymentMethod><UniversalBankTransaction><BeneficiaryAccount>'+(s.bic?'<BIC>'+xmlE(s.bic)+'</BIC>':'')+'<IBAN>'+xmlE(String(s.iban).replace(/\s+/g,""))+'</IBAN><BankAccountOwner>'+xmlE(s.company||hotel.name)+'</BankAccountOwner></BeneficiaryAccount></UniversalBankTransaction></PaymentMethod>' : '')
+    + (inv.due_on && !credit ? '<PaymentConditions><DueDate>'+xmlE(inv.due_on)+'</DueDate></PaymentConditions>' : '')
+    + '</Invoice>\n';
+}
 const invOverdue = (inv) => inv.status==="offen" && inv.kind!=="Storno" && inv.due_on && inv.due_on < todayIso();
 function invoiceSheetHtml(inv, hotel, cancelsNumber){
   const s = inv.seller || {};
@@ -556,6 +602,10 @@ function InvoiceActions({inv, hotel, api, list, onChanged, onMsg}){
   return (
     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
       <button style={smallBtn} disabled={!!busy} onClick={()=>act("pdf", ()=>sheetPdf(invoiceSheetHtml(inv, hotel, cancelsNo), invoiceFile(inv)))}>{busy==="pdf"?"…":"📄 PDF"}</button>
+      <button style={smallBtn} disabled={!!busy} title={tf("E-Rechnung für öffentliche Auftraggeber (ebInterface)")} onClick={()=>act("ebi", async()=>{
+        const ref = window.prompt(tf("Auftragsreferenz des Auftraggebers (bei Bundesdienststellen Pflicht, sonst leer lassen):"), ""); if(ref===null) return;
+        downloadBlob(new Blob([ebInterfaceXml(inv, hotel, ref.trim())], {type:"application/xml"}), invoiceFile(inv).replace(/\.pdf$/i,"")+".xml");
+      })}>{busy==="ebi"?"…":"E-Rechnung"}</button>
       {canEdit && <button style={smallBtn} disabled={!!busy} onClick={()=>act("mail", async()=>{
         const email = window.prompt(tf("An welche E-Mail-Adresse soll die Rechnung gehen?"), inv.recipient_email||""); if(!email) return;
         const blob = await sheetPdf(invoiceSheetHtml(inv, hotel, cancelsNo), invoiceFile(inv), false, "portrait", true);

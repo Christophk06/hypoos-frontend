@@ -342,7 +342,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
   const warningsFor = (row) => {
     const own = shifts.filter(s=>s.department===row.dept && WORK_KINDS.includes(s.kind) && s.start_time && s.end_time &&
       (row.user_id ? s.user_id===row.user_id : (!s.user_id && (s.employee_name||"").toLowerCase()===row.name.toLowerCase())));
-    return laborWarnings(own, {region: hotel.holiday_region, holidays: weekHolidays}).filter(w=>!LABOR_INFO.includes(w.code)).map(laborText);
+    return laborWarnings(own, {region: hotel.holiday_region, holidays: weekHolidays, gastro: row.dept==="Food & Beverage"}).filter(w=>!LABOR_INFO.includes(w.code)).map(laborText);
   };
   // Verfügbarkeit (nur Personen mit Login)
   const availOf = (row, date) => row.user_id ? avail.find(a=>a.user_id===row.user_id && a.avail_date===date) : null;
@@ -805,6 +805,8 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
       )}
 
       {canManage && dept && <RosterDemand hotel={hotel} api={api} dept={dept} week={week} days={days} shifts={shifts} onApplied={load} />}
+      {canManage && dept && <LaborAverageCard hotel={hotel} api={api} dept={dept} members={members} />}
+      <LeaveCard orgId={orgId} api={api} members={members} me={me} canManage={canManage} />
       {canManage && dept && (
         <Card className="no-print" style={{marginBottom:18}}>
           <div style={{fontWeight:700,marginBottom:6}}>{tf("Schichtzeiten und Mindestbesetzung")} · <span>{dept}</span></div>

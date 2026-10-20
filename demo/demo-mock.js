@@ -121,6 +121,44 @@
   D.chat = (D.chat || []).map(function (c) { return Object.assign({}, c, { created_at: new Date(now.getTime() - c.minutesAgo * 60000).toISOString() }); });
 
   var nextId = 1;
+  /* Migration 031: Gerätebuch, Kontrollgänge, Arbeitsanweisungen, Krankmeldungen, Urlaub, Ortstaxe */
+  function tok(n) { var s = "", c = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"; for (var i = 0; i < 64; i++) s += c[(n * 7 + i * 13 + (i * i) % 11) % c.length]; return s; }
+  D.rooms.forEach(function (r) { if (r.cleaning_credits === undefined) r.cleaning_credits = r.room_type === "Suite" ? 2.0 : 1.0; });
+  D.hotel.tourism_tax = { rate_per_night: 2.6, label: "Ortstaxe", note: "" };
+  var AH = D.hotel.id;
+  D.assets = [
+    { id: "as-1", name: "Kühlzelle Küche", category: "Kälte", location: "Küche, Keller", manufacturer: "Liebherr", model: "LKS 4500", serial_no: "KZ-20871", department: "F&B", purchased_on: add(todayIso, -900), warranty_until: add(todayIso, 190), inspection_interval_months: 6, last_inspection: add(todayIso, -150), next_inspection: add(todayIso, 31), notes: "Temperaturlogger angeschlossen." },
+    { id: "as-2", name: "Personenaufzug Hauptstiege", category: "Aufzug", location: "Treppenhaus A", manufacturer: "Schindler", model: "3300", serial_no: "SC-330-1187", department: "Technik", purchased_on: add(todayIso, -2400), warranty_until: add(todayIso, -1500), inspection_interval_months: 12, last_inspection: add(todayIso, -380), next_inspection: add(todayIso, -15), notes: "Wiederkehrende Prüfung durch TÜV Austria; Termin überfällig." },
+    { id: "as-3", name: "Brandmeldeanlage", category: "Brandschutz", location: "Technikraum EG", manufacturer: "Siemens", model: "Sinteso FS20", serial_no: "BMA-4410", department: "Technik", purchased_on: add(todayIso, -1500), warranty_until: add(todayIso, -700), inspection_interval_months: 12, last_inspection: add(todayIso, -340), next_inspection: add(todayIso, 25), notes: "Jahreswartung laut TRVB 123 S." },
+    { id: "as-4", name: "Heizkessel", category: "Heizung", location: "Heizraum UG", manufacturer: "Viessmann", model: "Vitoplex 200", serial_no: "VP-2009-552", department: "Technik", purchased_on: add(todayIso, -3000), warranty_until: add(todayIso, -2200), inspection_interval_months: 12, last_inspection: add(todayIso, -200), next_inspection: add(todayIso, 165), notes: "Rauchfangkehrer jährlich." },
+    { id: "as-5", name: "Gewerbespülmaschine", category: "Küche", location: "Spülküche", manufacturer: "Winterhalter", model: "UC-L", serial_no: "WH-884210", department: "F&B", purchased_on: add(todayIso, -400), warranty_until: add(todayIso, 330), inspection_interval_months: 6, last_inspection: add(todayIso, -60), next_inspection: add(todayIso, 121), notes: "" },
+    { id: "as-6", name: "Kaffeemaschine Frühstücksbuffet", category: "Küche", location: "Frühstücksraum", manufacturer: "WMF", model: "1500 S+", serial_no: "WMF-77231", department: "F&B", purchased_on: add(todayIso, -250), warranty_until: add(todayIso, 115), inspection_interval_months: 3, last_inspection: add(todayIso, -80), next_inspection: add(todayIso, 10), notes: "Entkalkung alle 3 Monate." },
+    { id: "as-7", name: "Notstromaggregat", category: "Elektro", location: "Garage Nord", manufacturer: "Kohler", model: "KD45", serial_no: "KO-45-0912", department: "Technik", purchased_on: add(todayIso, -1800), warranty_until: add(todayIso, -1000), inspection_interval_months: 6, last_inspection: add(todayIso, -120), next_inspection: add(todayIso, 62), notes: "Probelauf monatlich." },
+    { id: "as-8", name: "Lüftungsanlage Wellness", category: "Lüftung", location: "Dach, Wellnessbereich", manufacturer: "Menerga", model: "Adconair", serial_no: "ME-2231-04", department: "Technik", purchased_on: add(todayIso, -700), warranty_until: add(todayIso, 30), inspection_interval_months: 12, last_inspection: add(todayIso, -300), next_inspection: add(todayIso, 65), notes: "Filterwechsel im Frühjahr." }
+  ].map(function (a) { return Object.assign({ hotel_id: AH, created_at: now.toISOString() }, a); });
+  var PTS = [["Feuerlöscher Gang 1. OG", "brandschutz", "Technik"], ["Notausgang Treppenhaus A", "brandschutz", "Technik"], ["Warmwasser Zimmer 214 (Legionellen)", "legionellen", "Technik"], ["Warmwasserspeicher Keller", "legionellen", "Technik"], ["Nachtrunde Rezeption/Lobby", "nachtrunde", "Rezeption"]];
+  D.patrol_points = PTS.map(function (x, i) { return { id: "pp-" + (i + 1), hotel_id: AH, name: x[0], kind: x[1], department: x[2], token: tok(i + 1), active: true, created_at: now.toISOString() }; });
+  D.patrol_scans = [];
+  for (var psi = 0; psi < 15; psi++) {
+    var ppt = D.patrol_points[psi % 5], bad = psi === 4 || psi === 11, leg = ppt.kind === "legionellen";
+    D.patrol_scans.push({ id: "ps-" + (psi + 1), hotel_id: AH, point_id: ppt.id, user_id: psi % 2 ? "u-ewa" : "u-hkm", ok: !bad,
+      temperature: leg ? (psi === 11 ? 49.5 : [55.5, 58, 61.5, 56.5][psi % 4]) : null,
+      note: psi === 4 ? "Feuerlöscher-Plombe fehlt, Meldung an Technik." : psi === 11 ? "Temperatur zu niedrig, Speicher prüfen." : null,
+      scanned_at: new Date(now.getTime() - (psi * 0.9 + 0.2) * 86400000).toISOString() });
+  }
+  D.work_instructions = [
+    { id: "wi-1", title: "Bett richtig beziehen", department: "Housekeeping", steps: [{ text: "Alte Wäsche abziehen und im Wäschesack sammeln." }, { text: "Matratzenschoner auf Sauberkeit prüfen." }, { text: "Spannleintuch faltenfrei über die Matratze ziehen." }, { text: "Duvet in den Bezug einziehen, Ecken ausrichten." }, { text: "Kopfpolster aufschütteln und mittig platzieren." }, { text: "Tagesdecke glatt streichen, Zierpolster anordnen." }] },
+    { id: "wi-2", title: "Kaffeemaschine reinigen", department: "F&B", steps: [{ text: "Maschine ausschalten und Reinigungsprogramm starten." }, { text: "Reinigungstablette in den Schacht legen." }, { text: "Milchsystem mit Reiniger spülen." }, { text: "Auffangschale und Abtropfgitter ausspülen." }, { text: "Gehäuse feucht abwischen, Protokoll abzeichnen." }] },
+    { id: "wi-3", title: "Check-in Ablauf", department: "Rezeption", steps: [{ text: "Gast freundlich begrüßen, Namen bestätigen." }, { text: "Meldezettel prüfen und Ausweis kontrollieren." }, { text: "Zimmerkarten codieren und Frühstückszeiten nennen." }, { text: "Auf Ortstaxe und Zusatzleistungen hinweisen." }] }
+  ].map(function (w) { return Object.assign({ hotel_id: AH, created_at: now.toISOString() }, w); });
+  D.sick_notes = [{ id: "sn-1", hotel_id: AH, user_id: "u-ewa", from_date: add(todayIso, -6), to_date: add(todayIso, -3), note: "Grippaler Infekt", has_photo: false, created_at: new Date(now.getTime() - 6 * 86400000).toISOString() },
+    { id: "sn-2", hotel_id: AH, user_id: "u-member", from_date: add(todayIso, -25), to_date: add(todayIso, -22), note: null, has_photo: false, created_at: new Date(now.getTime() - 25 * 86400000).toISOString() }];
+  D.leave_bal = {};
+  D.members.forEach(function (x, i) { D.leave_bal[x.user_id] = { entitlement_days: 25, carried_over_days: i % 3 === 0 ? 3 : 0 }; });
+  var yr0 = Number(todayIso.slice(0, 4)), curM = Number(todayIso.slice(5, 7));
+  D.tax_months = [];
+  for (var tm = 1; tm <= curM; tm++) { var ns = [1650, 1500, 1980, 2300, 2650, 3100, 3500, 3380, 2900, 2450, 1900, 2800][tm - 1];
+    D.tax_months.push({ id: "tt-" + tm, hotel_id: AH, month: yr0 + "-" + String(tm).padStart(2, "0") + "-01", overnight_stays: ns, exempt_stays: Math.round(ns * 0.05), note: null }); }
   function nid(p) { return "demo-" + p + "-" + (nextId++); }
   function canSee(dept) { return ROLE === "admin" || MYDEPTS.indexOf(dept) >= 0; }
   function published(dept, date) {
@@ -594,6 +632,44 @@
       if (b.status) { tk.done_by = b.status === "Erledigt" ? ME : null; tk.done_at = b.status === "Erledigt" ? new Date().toISOString() : null; }
       return ok(tk);
     }
+    // Migration 031
+    if (p === H + "/assets") { if (m === "POST") { var na = Object.assign({ id: nid("as"), hotel_id: D.hotel.id, department: "Technik", created_at: new Date().toISOString() }, b);
+        if (na.last_inspection && na.inspection_interval_months && !na.next_inspection) { var nd = new Date(na.last_inspection + "T12:00:00Z"); nd.setUTCMonth(nd.getUTCMonth() + Number(na.inspection_interval_months)); na.next_inspection = nd.toISOString().slice(0, 10); }
+        D.assets.push(na); return ok(na); }
+      return ok(D.assets.slice().sort(function (a, c) { return a.name < c.name ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/assets\/([^/]+)$/))) { if (m === "DELETE") { remove(D.assets, mm[1]); return ok({ ok: true }); } return ok(Object.assign(byId(D.assets, mm[1]), b)); }
+    if (p === H + "/patrol-points") { if (m === "POST") { var npp = Object.assign({ id: nid("pp"), hotel_id: D.hotel.id, kind: "sonstiges", department: "Technik", active: true, created_at: new Date().toISOString() }, b, { token: tok(nextId + 40) }); D.patrol_points.push(npp); return ok(npp); }
+      return ok(D.patrol_points.slice().sort(function (a, c) { return a.name < c.name ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/patrol-points\/([^/]+)$/))) { if (m === "DELETE") { remove(D.patrol_points, mm[1]); return ok({ ok: true }); } return ok(Object.assign(byId(D.patrol_points, mm[1]), b)); }
+    if (p === H + "/patrol-scans") { var pf = q.get("from") || add(todayIso, -30); return ok(D.patrol_scans.filter(function (s) { return s.scanned_at.slice(0, 10) >= pf; }).sort(function (a, c) { return a.scanned_at < c.scanned_at ? 1 : -1; })); }
+    if ((mm = p.match(/^\/api\/patrol\/([^/]+)\/scan$/))) { var sp = D.patrol_points.find(function (x) { return x.token === mm[1] && x.active; }); if (!sp) return ok({ error: "Dieser Kontrollpunkt ist nicht (mehr) gültig." }, 404);
+      var sc = { id: nid("ps"), hotel_id: D.hotel.id, point_id: sp.id, user_id: ME, ok: b.ok !== false, note: b.note || null, temperature: b.temperature === undefined || b.temperature === null || b.temperature === "" ? null : Number(b.temperature), scanned_at: new Date().toISOString() };
+      D.patrol_scans.unshift(sc); return ok(Object.assign({}, sc, { point: { id: sp.id, name: sp.name, kind: sp.kind, active: true, hotel_id: sp.hotel_id } })); }
+    if ((mm = p.match(/^\/api\/patrol\/([^/]+)$/))) { var gp = D.patrol_points.find(function (x) { return x.token === mm[1] && x.active; }); if (!gp) return ok({ error: "Dieser Kontrollpunkt ist nicht (mehr) gültig." }, 404);
+      return ok({ id: gp.id, name: gp.name, kind: gp.kind, department: gp.department, active: true, hotel_id: gp.hotel_id, hotels: { name: D.hotel.name } }); }
+    if (p === H + "/work-instructions") { if (m === "POST") { var nw = Object.assign({ id: nid("wi"), hotel_id: D.hotel.id, created_at: new Date().toISOString() }, b); D.work_instructions.push(nw); return ok(nw); }
+      return ok(D.work_instructions.slice().sort(function (a, c) { return a.title < c.title ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/work-instructions\/([^/]+)$/))) { if (m === "DELETE") { remove(D.work_instructions, mm[1]); return ok({ ok: true }); } return ok(Object.assign(byId(D.work_instructions, mm[1]), b)); }
+    if (p === H + "/sick-notes") { if (m === "POST") { var nsn = { id: nid("sn"), hotel_id: D.hotel.id, user_id: ME, from_date: b.from_date, to_date: b.to_date, note: b.note || null, has_photo: !!b.photo_data, created_at: new Date().toISOString() };
+        D.sick_notes.unshift(nsn); return ok({ id: nsn.id, from_date: nsn.from_date, to_date: nsn.to_date, created_at: nsn.created_at }); }
+      return ok(D.sick_notes.filter(function (s) { return ROLE !== "member" || s.user_id === ME; }).sort(function (a, c) { return a.from_date < c.from_date ? 1 : -1; })); }
+    if ((mm = p.match(/^\/api\/sick-notes\/([^/]+)\/photo$/))) return ok({ error: "Nicht gefunden." }, 404);
+    if ((mm = p.match(/^\/api\/sick-notes\/([^/]+)$/))) { remove(D.sick_notes, mm[1]); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/organizations\/([^/]+)\/leave$/))) {
+      if (m === "PUT") { D.leave_bal[b.user_id] = { entitlement_days: Number(b.entitlement_days), carried_over_days: Number(b.carried_over_days || 0) }; return ok({ organization_id: mm[1], user_id: b.user_id, year: Number(b.year), entitlement_days: Number(b.entitlement_days), carried_over_days: Number(b.carried_over_days || 0) }); }
+      var lyr = Number(q.get("year")) || yr0, used = {}, seen = {};
+      D.shifts.forEach(function (s) { if (s.kind === "Urlaub" && s.user_id && String(s.shift_date).slice(0, 4) === String(lyr) && !seen[s.user_id + s.shift_date]) { seen[s.user_id + s.shift_date] = 1; used[s.user_id] = (used[s.user_id] || 0) + 1; } });
+      var fixed = { "u-hkm": 12, "u-ewa": 7, "u-member": 3, "u-fb": 15, "u-admin": 9 };
+      D.members.forEach(function (x) { if (!used[x.user_id] && lyr === yr0) used[x.user_id] = fixed[x.user_id] !== undefined ? fixed[x.user_id] : 5; });
+      return ok({ year: lyr, balances: D.members.filter(function (x) { return D.leave_bal[x.user_id]; }).map(function (x) { var lb = D.leave_bal[x.user_id]; return { organization_id: mm[1], user_id: x.user_id, year: lyr, entitlement_days: lb.entitlement_days, carried_over_days: lb.carried_over_days }; }), used: used }); }
+    if (p === H + "/tourism-tax") {
+      if (m === "PUT") { var tmo = /^\d{4}-\d{2}$/.test(b.month || "") ? b.month + "-01" : null; if (!tmo) return ok({ error: "Bitte gültige Werte angeben (befreite Nächtigungen höchstens so viele wie alle)." }, 400);
+        var tr = D.tax_months.find(function (x) { return x.month === tmo; }); if (!tr) { tr = { id: nid("tt"), hotel_id: D.hotel.id, month: tmo }; D.tax_months.push(tr); }
+        tr.overnight_stays = Number(b.overnight_stays); tr.exempt_stays = Number(b.exempt_stays || 0); tr.note = b.note || null; return ok(tr); }
+      var tyr = Number(q.get("year")) || yr0; return ok({ year: tyr, months: D.tax_months.filter(function (x) { return x.month.slice(0, 4) === String(tyr); }).sort(function (a, c) { return a.month < c.month ? -1 : 1; }) }); }
+    if (p === H + "/room-credits" && m === "PUT") { var rcn = 0, rct = b.room_type || null; D.rooms.forEach(function (r) { if ((r.room_type || null) === rct) { r.cleaning_credits = Math.round(Number(b.credits) * 10) / 10; rcn++; } }); return ok({ updated: rcn }); }
+    if (p === "/api/me/export") return ok({ exported_at: new Date().toISOString(), user: { id: ME, email: meRow.email }, memberships: [{ organization_id: "demo-org", role: ROLE, departments: MYDEPTS }], time_entries: TIMES.filter(function (e) { return e.user_id === ME; }).length, shifts: D.shifts.filter(function (s) { return s.user_id === ME; }).length, sick_notes: D.sick_notes.filter(function (s) { return s.user_id === ME; }) });
+    if (p === H + "/guest-qr/rotate" && m === "POST") return ok({ rotated: D.rooms.length });
     return ok({});
   };
 })();

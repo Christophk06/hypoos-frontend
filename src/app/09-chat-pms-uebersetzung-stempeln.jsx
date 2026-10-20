@@ -136,7 +136,7 @@ function PmsCard({hotel, api, onSynced}){
   const chk = (k, label) => <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,margin:"6px 0",cursor:"pointer"}}><input type="checkbox" checked={!!form[k]} onChange={e=>setForm({...form,[k]:e.target.checked})} /> {label}</label>;
   return (
     <Card style={{marginBottom:14}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
         <div style={{fontWeight:700,flex:1}}>{tf("PMS-Anbindung")} <span style={{fontWeight:400,color:conn?GOOD:INK_MUTED,fontSize:13}}>· {status}</span></div>
         {conn && conn.last_sync_at && <span style={{fontSize:12,color:INK_MUTED}}>{tf("Letzter Abgleich: {0}", fmtDateTime(conn.last_sync_at))}</span>}
         <span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>

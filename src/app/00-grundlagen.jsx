@@ -4,6 +4,30 @@ const INK="#1C2430", INK_SOFT="#2A3444", PAPER="#F6F4EF", CARD="#FFFFFF", BORDER
 const BRASS="#A9834B", BRASS_SOFT="#F1E8D8", GOOD="#3F7A5C", GOOD_SOFT="#E4EFE8";
 const WARN="#B9822E", WARN_SOFT="#F5E9D5", BAD="#A23B32", BAD_SOFT="#F5E1DE", INK_MUTED="#6B7280";
 
+// Dialoge: Fokus bleibt im Dialog (Tab/Umschalt+Tab), Esc schließt, danach Fokus zurück zum Auslöser
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+function useDialog(onClose, active = true){
+  const ref = React.useRef(null);
+  const close = React.useRef(onClose); close.current = onClose;
+  useEffect(()=>{
+    const el = ref.current; if(!el || !active) return;
+    const prev = document.activeElement;
+    const items = () => [...el.querySelectorAll(FOCUSABLE)].filter(x=>x.offsetParent!==null || x===document.activeElement);
+    if(!el.contains(document.activeElement)) (items()[0] || el).focus();
+    const onKey = (e) => {
+      if(e.key==="Escape"){ e.stopPropagation(); if(close.current) close.current(); return; }
+      if(e.key!=="Tab") return;
+      const f = items(); if(!f.length){ e.preventDefault(); return; }
+      const first = f[0], last = f[f.length-1];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+    };
+    el.addEventListener("keydown", onKey);
+    return () => { el.removeEventListener("keydown", onKey); if(prev && prev.focus && document.contains(prev)) prev.focus(); };
+  },[active]);
+  return ref;
+}
+
 // Klickbare Fläche auch mit Tastatur und Screenreader bedienbar (Enter/Leertaste)
 const pressable = (fn) => ({ role:"button", tabIndex:0, onClick:fn, onKeyDown:(e)=>{ if (e.target===e.currentTarget && (e.key==="Enter"||e.key===" ")) { e.preventDefault(); fn(e); } } });
 

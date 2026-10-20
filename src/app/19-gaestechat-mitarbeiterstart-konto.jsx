@@ -13,7 +13,7 @@ function GuestChatView({hotel, api}){
       <Card style={{padding:0,alignSelf:"start"}}>
         {threads===null ? <div style={{padding:14,fontSize:13,color:INK_MUTED}}>{tf("Lädt…")}</div> : threads.length===0 ? <div style={{padding:14,fontSize:13,color:INK_MUTED}}>{tf("Noch keine Nachrichten. Gäste schreiben über den QR-Code im Zimmer.")}</div> :
           threads.map(t=>(
-            <div key={t.thread} onClick={()=>setCur(t.thread)} style={{padding:"10px 14px",borderTop:`1px solid ${BORDER}`,cursor:"pointer",background:cur===t.thread?BRASS_SOFT:"transparent"}}>
+            <div key={t.thread} {...pressable(()=>setCur(t.thread))} style={{padding:"10px 14px",borderTop:`1px solid ${BORDER}`,cursor:"pointer",background:cur===t.thread?BRASS_SOFT:"transparent"}}>
               <div style={{display:"flex",gap:6,alignItems:"center"}}><b style={{flex:1}}>{tf("Zimmer {0}", t.room_number||"?")}</b>{t.unread>0 && <Pill color="#fff" bg={BAD}>{t.unread}</Pill>}</div>
               <div style={{fontSize:12.5,color:INK_MUTED,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} data-no-i18n="">{t.messages[t.messages.length-1].body}</div>
               <div style={{fontSize:11,color:INK_MUTED}}>{fmtDateTime(t.last_at)}</div>
@@ -45,6 +45,7 @@ function GuestChatView({hotel, api}){
 
 // Startseite für Mitarbeitende: nur das, was sie heute brauchen
 function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
+  const sickCard = <SickNoteCard hotel={hotel} api={api} />;
   const [shifts,setShifts] = useState([]);
   const [duties,setDuties] = useState([]);
   const [openLog,setOpenLog] = useState([]);
@@ -101,7 +102,7 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
           <div style={{fontWeight:700,marginBottom:8}}>{tf("Checklisten heute")}</div>
           {listsMine.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Keine Checklisten.")}</div> : listsMine.map(l=>{
             const n = (l.items||[]).length, d = (l.items||[]).filter(i=>l.run && l.run.checked && l.run.checked[i.id]).length;
-            return <div key={l.id} onClick={()=>onOpen("checklists")} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
+            return <div key={l.id} {...pressable(()=>onOpen("checklists"))} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
               <span data-no-i18n="">{l.title}</span><b style={{color:d===n&&n?GOOD:INK_MUTED}} data-no-i18n="">{d}/{n}</b></div>;
           })}
         </Card>
@@ -109,7 +110,7 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
       {openLog.length>0 && (
         <Card style={{marginBottom:14,borderColor:WARN}}>
           <div style={{fontWeight:700,marginBottom:6}}>{tf("Offene Punkte im Übergabebuch")}</div>
-          {openLog.slice(0,6).map(e=><div key={e.id} onClick={()=>onOpen("logbook")} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
+          {openLog.slice(0,6).map(e=><div key={e.id} {...pressable(()=>onOpen("logbook"))} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
             <span style={{color:INK_MUTED,fontSize:12}} data-no-i18n="">{fmtDay(e.entry_date)} · </span><span data-no-i18n="">{e.body}</span></div>)}
         </Card>
       )}
@@ -123,6 +124,7 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
           {deptSoon.slice(0,8).map(t=><TaskLine key={t.id} t={t} />)}
         </Card>
       )}
+      {sickCard}
     </div>
   );
 }
@@ -147,6 +149,7 @@ function LanguageSwitcher({dark, withDefault, api, me, onCurrency}){
 
 // Fenster: Sprache als Kacheln, eigene Zeile für die Anzeigewährung
 function LocaleDialog({onClose, withDefault, api, me, onCurrency}){
+  const dialogRef = useDialog(onClose);
   const chosen = chosenUiLanguage();
   const [busy,setBusy] = useState(false);
   const [cur,setCur] = useState(DISPLAY_CURRENCY || "");
@@ -165,8 +168,8 @@ function LocaleDialog({onClose, withDefault, api, me, onCurrency}){
     cursor:"pointer",textAlign:"start",fontSize:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8});
   return (
     <div className="no-print" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(28,36,48,0.45)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true"
-        style={{background:"#fff",color:INK,borderRadius:10,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",padding:22,boxShadow:"0 20px 50px rgba(0,0,0,0.25)"}}>
+      <div ref={dialogRef} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" aria-label={tf("Sprache und Währung")} tabIndex={-1}
+        style={{outline:"none",background:"#fff",color:INK,borderRadius:10,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",padding:22,boxShadow:"0 20px 50px rgba(0,0,0,0.25)"}}>
         <div style={{display:"flex",alignItems:"center",marginBottom:14}}>
           <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,flex:1}}>{tf("Sprache und Währung")}</div>
           <button onClick={onClose} aria-label={tf("Schließen")} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:INK_MUTED}}>✕</button>
@@ -259,6 +262,39 @@ function DeleteAccountCard({api, onDeleted}){
   );
 }
 
+// Gemeinsam genutztes Gerät (z. B. Rezeptions-PC): nach 15 Minuten ohne Nutzung automatisch abmelden
+const SHARED_DEVICE_KEY = "hpoos_shared_device";
+const isSharedDevice = () => { try { return window.localStorage.getItem(SHARED_DEVICE_KEY)==="1"; } catch(e){ return false; } };
+function SharedDeviceCard(){
+  const [on,setOn] = useState(isSharedDevice());
+  const toggle = (v) => { try { v ? window.localStorage.setItem(SHARED_DEVICE_KEY,"1") : window.localStorage.removeItem(SHARED_DEVICE_KEY); } catch(e){} setOn(v); window.dispatchEvent(new Event("hpoos-shared-device")); };
+  return (
+    <Card style={{marginBottom:18,maxWidth:520}}>
+      <div style={{fontWeight:700,marginBottom:6}}>{tf("Gemeinsam genutztes Gerät")}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Für Rezeptions-PC oder Stationstablet: Ouverture meldet sich auf diesem Gerät nach 15 Minuten ohne Nutzung automatisch ab und löscht zwischengespeicherte Daten.")}</div>
+      <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,cursor:"pointer"}}><input type="checkbox" checked={on} onChange={e=>toggle(e.target.checked)} /> {tf("Auf diesem Gerät automatisch abmelden")}</label>
+    </Card>
+  );
+}
+// DSGVO: eigene Daten als Datei herunterladen
+function DataExportCard({api}){
+  const [busy,setBusy] = useState(false); const [error,setError] = useState("");
+  const run = async () => {
+    setBusy(true); setError("");
+    try { const data = await api("/api/me/export"); downloadBlob(new Blob([JSON.stringify(data, null, 2)], {type:"application/json"}), "ouverture-meine-daten-"+todayIso()+".json"); }
+    catch(e){ setError(e.message); }
+    setBusy(false);
+  };
+  return (
+    <Card style={{marginBottom:18,maxWidth:520}}>
+      <div style={{fontWeight:700,marginBottom:6}}>{tf("Meine Daten herunterladen")}</div>
+      <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Alle Daten, die Ouverture zu deiner Person gespeichert hat – Schichten, Zeiten, Aufgaben, Einträge und Einstellungen – als Datei (DSGVO Art. 15 und 20).")}</div>
+      {error && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{error}</div>}
+      <button style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 14px",fontSize:13.5,cursor:"pointer"}} disabled={busy || !!window.OUVERTURE_DEMO} onClick={run}>{busy ? tf("Wird vorbereitet…") : tf("Datei herunterladen")}</button>
+    </Card>
+  );
+}
+
 function AccountView({config, token, me, api, onDeleted}){
   return (
     <div>
@@ -280,7 +316,9 @@ function AccountView({config, token, me, api, onDeleted}){
         {!isStandalone() && !/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.__installPrompt && <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.")}</div>}
       </Card>
       <PushCard api={api} />
+      <SharedDeviceCard />
       <PasswordCard config={config} token={token} />
+      <DataExportCard api={api} />
       <DeleteAccountCard api={api} onDeleted={onDeleted} />
     </div>
   );

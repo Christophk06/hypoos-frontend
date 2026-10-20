@@ -41,7 +41,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
         </Card>
       </div>
       {lead && <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18,marginBottom:18}}>
-        <div onClick={()=>onOpen("budget")} style={{cursor:"pointer"}}>
+        <div {...pressable(()=>onOpen("budget"))} style={{cursor:"pointer"}}>
           <Card>
             <div style={{fontWeight:700,marginBottom:8}}>Budget</div>
             {budget.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Posten – hier anlegen →</div> : (
@@ -56,7 +56,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
             )}
           </Card>
         </div>
-        <div onClick={()=>onOpen("staff")} style={{cursor:"pointer"}}>
+        <div {...pressable(()=>onOpen("staff"))} style={{cursor:"pointer"}}>
           <Card>
             <div style={{fontWeight:700,marginBottom:8}}>Personal</div>
             {staff.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Stellen – hier anlegen →</div> : (

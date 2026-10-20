@@ -3,6 +3,7 @@
 
 // ------------------------------------------------------------ Suche über alles (Strg+K)
 function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, hotel, api, onOpen}){
+  const dialogRef = useDialog(onClose, open);
   const [q,setQ] = useState(""); const [sel,setSel] = useState(0);
   const [extra,setExtra] = useState({rooms:null, docs:null, events:null});
   const inputRef = React.useRef(null);
@@ -36,7 +37,7 @@ function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, h
   let idx = -1;
   return (
     <div className="no-print" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(20,24,31,0.45)",zIndex:200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"10vh 14px 14px"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:CARD,width:"100%",maxWidth:560,borderRadius:12,boxShadow:"0 20px 60px rgba(0,0,0,0.25)",overflow:"hidden",border:`1px solid ${BORDER}`}}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={tf("Suchen")} tabIndex={-1} onClick={e=>e.stopPropagation()} style={{outline:"none",background:CARD,width:"100%",maxWidth:560,borderRadius:12,boxShadow:"0 20px 60px rgba(0,0,0,0.25)",overflow:"hidden",border:`1px solid ${BORDER}`}}>
         <input ref={inputRef} className="input" style={{border:"none",borderBottom:`1px solid ${BORDER}`,borderRadius:0,fontSize:16,padding:"14px 16px",background:CARD}} placeholder={tf("Suchen: Aufgabe, Zimmer, Person, Dokument, Bereich …")} value={q} onChange={e=>{ setQ(e.target.value); setSel(0); }} onKeyDown={onKey} />
         <div style={{maxHeight:"60vh",overflowY:"auto",padding:"6px 0"}}>
           {flat.length===0 && <div style={{padding:"14px 16px",fontSize:13,color:INK_MUTED}}>{tf("Nichts gefunden.")}</div>}
@@ -70,7 +71,7 @@ function SideNav({nav, tab, onOpen, accent}){
   const [favs,setFavs] = useStoredList(LS_NAV_FAVS);
   const favItems = favs.map(k=>nav.find(n=>n.key===k)).filter(Boolean);
   const item = (n, fav) => (
-    <div key={(fav?"f-":"")+n.key} className="nav-item nav-row" onClick={()=>onOpen(n.key)} style={{padding:"8px 10px 8px 12px",cursor:"pointer",marginBottom:2,fontSize:13.5,display:"flex",alignItems:"center",gap:6,
+    <div key={(fav?"f-":"")+n.key} className="nav-item nav-row" {...pressable(()=>onOpen(n.key))} style={{padding:"8px 10px 8px 12px",cursor:"pointer",marginBottom:2,fontSize:13.5,display:"flex",alignItems:"center",gap:6,
       borderInlineStart:"2px solid "+(tab===n.key?accent:"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.72)"}}>
       <span style={{flex:1}}>{n.label}</span>
       <button className="nav-star" title={favs.includes(n.key)?tf("Aus Favoriten entfernen"):tf("Zu Favoriten")} aria-label={tf("Favorit")}
@@ -125,7 +126,7 @@ function NotificationBell({api, onOpen}){
         <div style={{maxHeight:380,overflowY:"auto"}}>
           {data.items.length===0 && <div style={{padding:"16px 14px",fontSize:13,color:INK_MUTED}}>{tf("Keine Benachrichtigungen.")}</div>}
           {data.items.map(n=>(
-            <div key={n.id} onClick={()=>openItem(n)} style={{padding:"9px 14px",borderTop:`1px solid ${BORDER}`,cursor:"pointer",background:n.read_at?"transparent":BRASS_SOFT}}>
+            <div key={n.id} {...pressable(()=>openItem(n))} style={{padding:"9px 14px",borderTop:`1px solid ${BORDER}`,cursor:"pointer",background:n.read_at?"transparent":BRASS_SOFT}}>
               <div style={{fontSize:13.5,fontWeight:n.read_at?500:700}} data-no-i18n="">{n.title}</div>
               {n.body && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}} data-no-i18n="">{n.body}</div>}
               <div style={{fontSize:11,color:INK_MUTED,marginTop:3}}>{fmtDateTime(n.created_at)}</div>
@@ -259,7 +260,7 @@ function OrdersPanel({hotel, api, onStockChanged}){
   if(!lead) return null;
   return (
     <Card style={{marginBottom:14}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
         <div style={{fontWeight:700,flex:1}}>🚚 {tf("Lieferanten und Bestellungen")}</div><span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
       </div>
       {open && <div style={{marginTop:12}}>

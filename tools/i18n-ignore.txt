@@ -18,6 +18,7 @@
 0.18em
 0.85em
 1 1 auto
+1.2fr 1fr
 100vh
 1fr
 1fr 1fr
@@ -40,6 +41,7 @@
 ?subject=Ouverture%20Enterprise
 ?task_id=
 @ouverture
+ATU12345678
 AbortError
 Anfrage fehlgeschlagen.
 Apaleo
@@ -53,6 +55,7 @@ Booking.com
 CALSCALE:GREGORIAN
 Client-ID
 Client-Secret
+CreditMemo
 DATEV LODAS
 DESCRIPTION:
 DTEND;VALUE=DATE:
@@ -72,6 +75,7 @@ Georgia
 Google
 HolidayCheck
 Inter, sans-serif
+Invoice
 Ist (
 Mews
 Notification
@@ -92,6 +96,7 @@ Strg K
 Supabase Project URL
 Supabase anon / publishable Key
 TRANSP:TRANSPARENT
+Tab
 Termin:
 Titel: „
 Title
@@ -104,12 +109,15 @@ Wunsch oder Problem? Scannen. · Need anything? Scan me. · Besoin de quelque ch
 X-WR-CALNAME:
 Zur Bestätigung „
 Zuständig:
+a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])
+abgelaufen – bitte neu einladen
 abreisen+bleiber
 anna@hotel.at ben@hotel.at
 application/json
 application/octet-stream
 application/pdf
 application/vnd.openxmlformats-officedocument.wordprocessingml.document
+application/xml
 calc(
 copyMove
 daysInRow
@@ -127,6 +135,7 @@ image/
 image/jpeg
 image/png
 image/svg+xml
+index.html?patrol=
 kWh
 mailto:
 maßnahme
@@ -135,6 +144,7 @@ rotate(45deg)
 sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx
 script[src="
 serviceWorker
+splitRest
 status: dirty, clean, inspected, out of order · occupancy: vacant, occupied, departure, arrival
 text/calendar;charset=utf-8
 text/csv;charset=utf-8
@@ -157,5 +167,3 @@ zuständig
 “ eingeben
 📄 PDF
 📘 Word
-1.2fr 1fr
-ATU12345678

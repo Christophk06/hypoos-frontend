@@ -7,7 +7,9 @@
    Eingabe: Schichten EINER Person (Arbeitsschichten mit Beginn/Ende), Pausen aus Zeitbuchungen optional. */
 (function (root) {
   var RULES = {
-    AT: { dayMax: 12, weekMax: 60, rest: 11, weeklyRest: 36, maxDaysInRow: 6, breaks: [[6, 30]] },
+    // splitRest: Gastgewerbe AT (§ 12 Abs. 2a AZG) – Küche und Service mit geteiltem Dienst (≥ 3 h Unterbrechung): 8 h Ruhezeit
+    // avgWeeks/avgMax: höchstens 48 h im Schnitt über 17 Wochen (§ 9 Abs. 4 AZG)
+    AT: { dayMax: 12, weekMax: 60, rest: 11, splitRest: 8, splitGap: 3, weeklyRest: 36, maxDaysInRow: 6, breaks: [[6, 30]], avgWeeks: 17, avgMax: 48 },
     DE: { dayMax: 10, weekMax: 48, rest: 11, weeklyRest: 35, maxDaysInRow: 6, breaks: [[6, 30], [9, 45]] },
     CH: { dayMax: 12.5, weekMax: 50, rest: 11, weeklyRest: 35, maxDaysInRow: 6, breaks: [[5.5, 15], [7, 30], [9, 60]] },
   };
@@ -40,9 +42,19 @@
       if (opts.holidays && opts.holidays[s.shift_date]) out.push({ code: "holiday", date: s.shift_date, value: opts.holidays[s.shift_date] });
       else if (new Date(s.shift_date + "T12:00:00Z").getUTCDay() === 0) out.push({ code: "sunday", date: s.shift_date });
     });
+    // Geteilter Dienst: an einem Tag zwei Schichten mit mindestens splitGap Stunden Unterbrechung
+    var splitDays = {};
+    if (rules.splitRest && opts.gastro) {
+      for (var k = 1; k < own.length; k++) {
+        if (own[k].shift_date === own[k - 1].shift_date && (span(own[k])[0] - span(own[k - 1])[1]) / 60 >= rules.splitGap) splitDays[own[k].shift_date] = true;
+      }
+    }
     for (var i = 1; i < own.length; i++) {
+      if (own[i].shift_date === own[i - 1].shift_date) continue; // Unterbrechung innerhalb eines Tages ist keine Ruhezeit
       var rest = (span(own[i])[0] - span(own[i - 1])[1]) / 60;
-      if (rest < rules.rest) out.push({ code: "rest", date: own[i].shift_date, value: Math.round(rest * 10) / 10 });
+      var min = splitDays[own[i - 1].shift_date] ? rules.splitRest : rules.rest;
+      if (rest < min) out.push({ code: "rest", date: own[i].shift_date, value: Math.round(rest * 10) / 10 });
+      else if (rest < rules.rest) out.push({ code: "splitRest", date: own[i].shift_date, value: Math.round(rest * 10) / 10 });
     }
     // Wochenstunden (Montag–Sonntag) und Wochenruhe innerhalb der betrachteten Woche
     var weeks = {};
@@ -80,7 +92,29 @@
     return out;
   }
 
+  // Durchschnittliche Wochenstunden über die letzten n Wochen (Montag–Sonntag) bis einschließlich endDate
+  function laborAverage(shifts, opts) {
+    opts = opts || {};
+    var rules = rulesFor(opts.region);
+    var weeks = opts.weeks || rules.avgWeeks || 17;
+    var end = Date.parse((opts.endDate || new Date().toISOString().slice(0, 10)) + "T00:00:00Z");
+    var wd = (new Date(end).getUTCDay() + 6) % 7;
+    var weekEnd = end + (7 - wd) * 86400000;             // Montag nach der laufenden Woche
+    var start = weekEnd - weeks * 7 * 86400000;
+    var total = 0;
+    (shifts || []).forEach(function (s) {
+      if (!s.start_time || !s.end_time) return;
+      var d = Date.parse(s.shift_date + "T00:00:00Z");
+      if (d < start || d >= weekEnd) return;
+      var x = span(s), h = (x[1] - x[0]) / 60;
+      total += h - breakNeeded(h, rules) / 60;
+    });
+    var avg = Math.round(total / weeks * 10) / 10;
+    return { weeks: weeks, total: Math.round(total * 10) / 10, average: avg, max: rules.avgMax || null, over: !!rules.avgMax && avg > rules.avgMax };
+  }
+
   root.laborWarnings = laborWarnings;
+  root.laborAverage = laborAverage;
   root.laborRulesFor = rulesFor;
   root.laborCountry = countryOf;
   root.laborBreakNeeded = breakNeeded;

@@ -37,6 +37,12 @@
   @import url('fonts/fonts.css');
   :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
   * { box-sizing: border-box; }
+  /* Fingerbedienung (Handy, Tablet): Knöpfe und Felder mindestens 44 px hoch */
+  @media (pointer: coarse) {
+    button, select, .input, input[type="date"], input[type="time"], [role="button"] { min-height: 44px; }
+    button { min-width: 44px; }
+    input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
+  }
   /* Sichtbarer Fokus für Tastatur und Schalterbedienung */
   :focus-visible { outline: 2px solid #A9834B; outline-offset: 2px; }
   .sidebar :focus-visible, .mobile-tabbar :focus-visible, .btn-primary:focus-visible { outline-color: #C9A66B; }

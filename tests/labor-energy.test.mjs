@@ -8,6 +8,23 @@ import "../payroll.js";
 const S = (d, a, b) => ({ shift_date: d, start_time: a, end_time: b });
 const codes = (w) => w.map((x) => x.code).sort();
 
+test("Gastgewerbe AT: geteilter Dienst erlaubt 8 h Ruhezeit, 17-Wochen-Schnitt", () => {
+  // Tag 1: 10–14 und 18–23 (4 h Unterbrechung) = geteilter Dienst; Tag 2 ab 07:00 → 8 h Ruhe
+  const split = [S("2026-11-03", "10:00", "14:00"), S("2026-11-03", "18:00", "23:00"), S("2026-11-04", "07:00", "15:00")];
+  assert.deepEqual(codes(laborWarnings(split, { region: "AT", fullWeek: false, gastro: true })), ["splitRest"], "Hinweis, kein Verstoß");
+  assert.deepEqual(codes(laborWarnings(split, { region: "AT", fullWeek: false })), ["rest"], "ohne Gastgewerbe: 11 h nötig");
+  const tooShort = [S("2026-11-03", "10:00", "14:00"), S("2026-11-03", "18:00", "23:30"), S("2026-11-04", "06:00", "14:00")];
+  assert.ok(laborWarnings(tooShort, { region: "AT", fullWeek: false, gastro: true }).some((x) => x.code === "rest" && x.value === 6.5));
+  // 17 Wochen: 5 × 10,5 h netto = 52,5 h je Woche → über 48 h im Schnitt
+  const many = [];
+  for (let w = 0; w < 17; w++) for (let d = 0; d < 5; d++) { const t = new Date(Date.UTC(2026, 6, 6 + w * 7 + d)); many.push(S(t.toISOString().slice(0, 10), "07:00", "18:00")); }
+  const avg = laborAverage(many, { region: "AT", endDate: "2026-10-30" });
+  assert.equal(avg.weeks, 17);
+  assert.equal(avg.average, 52.5);
+  assert.equal(avg.over, true);
+  assert.equal(laborAverage(many.slice(0, 40), { region: "AT", endDate: "2026-10-30" }).over, false, "weniger Schichten: unter 48 h");
+});
+
 test("Arbeitsrecht: Tageshöchstzeit, Ruhezeit, Wochenstunden (Österreich)", () => {
   // 06:00–17:30 = 11 h netto: nach § 9 AZG erlaubt (bis 12 h); 06:00–19:00 = 12,5 h netto > 12 h
   assert.deepEqual(codes(laborWarnings([S("2026-11-03", "06:00", "17:30")], { region: "AT-9", fullWeek: false })), []);

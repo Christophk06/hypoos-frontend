@@ -2,7 +2,7 @@
 const MODULE_GROUPS = [
   ["Pre-Opening", [["tasks","Aufgaben"],["milestones","Meilensteine"],["timeline","Zeitstrahl"],["risks","Risiken"],["budget","Budget"],["staff","Personal"],["procurement","Bestellungen"]]],
   ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["arrivals","Anreisen"],["guestchat","Gäste-Chat"],["events","Veranstaltungen"],["invoices","Rechnungen"],["letters","Briefe & Vorlagen"],["reviews","Bewertungen"],["energy","Energie"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"],["feedback","Gäste-Feedback"]]],
-  ["Allgemein", [["docs","Dokumente"],["permits","Genehmigungen"]]],
+  ["Allgemein", [["docs","Dokumente"],["permits","Genehmigungen"],["instructions","Arbeitsanweisungen"],["assets","Gerätebuch"],["patrols","Kontrollgänge"],["tourismtax","Ortstaxe"],["sick","Krankmeldungen"],["frontdesk","Rezeption heute"]]],
 ];
 const PRE_MODULES = MODULE_GROUPS[0][1].map(([k])=>k);
 const OPS_MODULES = MODULE_GROUPS[1][1].map(([k])=>k);
@@ -171,8 +171,9 @@ function GuestQrCard({hotel, api}){
         <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,cursor:"pointer"}}><input type="checkbox" checked={info.enabled} onChange={e=>toggle(e.target.checked)} /> {tf("Eingeschaltet")}</label>
         {info.enabled && info.rooms.length>0 && <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} onClick={()=>printQrCards(info.rooms.map(r=>({label:roomLocation(r.number), url:r.url, text:GUEST_CARD_TEXT})), tf("Gäste-QR im Zimmer"))}>{tf("{0} Karten drucken", info.rooms.length)}</button>}
         {info.enabled && info.rooms[0] && <a href={info.rooms[0].url} target="_blank" rel="noopener" style={{fontSize:12.5}}>{tf("Gästeseite ansehen")}</a>}
+        {info.enabled && info.rooms.length>0 && <button style={{...linkBtn,fontSize:12.5}} onClick={async()=>{ if(!window.confirm(tf("Alle Zimmer bekommen neue Codes. Die alten Karten in den Zimmern funktionieren danach nicht mehr und müssen neu gedruckt werden. Fortfahren?"))) return; setMsg(null); try { const r = await api("/api/hotels/"+hotel.id+"/guest-qr/rotate","POST",{}); setMsg({ok:true,text:tf("{0} Codes neu erzeugt. Bitte die Karten neu drucken.", r.rotated)}); await load(); } catch(e){ setMsg({ok:false,text:e.message}); } }}>{tf("Codes neu erzeugen")}</button>}
       </div>
-      {msg && <div style={{color:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
+      {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
     </Card>
   );
 }

@@ -411,7 +411,7 @@ function ReviewsView({hotel, api, role}){
   const summarize = async () => { setBusy("ai"); setMsg(null); try { await api(base+"/summary","POST",{}); await load(); } catch(e){ setMsg({ok:false,text:e.message}); } setBusy(""); };
   if(!data) return <div style={{fontSize:13,color:INK_MUTED}}>{tf("Lädt…")}</div>;
   const st = data.stats, sum = data.summary && data.summary.summary;
-  const shown = data.reviews.filter(r=>!filter || r.source===filter);
+  const shown = data.reviews.filter(r=>!filter || (filter==="__open" ? (r.reply_status||"offen")==="offen" || r.reply_status==="entwurf" : r.source===filter));
   const maxM = Math.max(1, ...st.months.map(m=>m.count));
   return (
     <div>
@@ -462,7 +462,7 @@ function ReviewsView({hotel, api, role}){
       </div>}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {data.reviews.length>0 && <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-        {[["",tf("Alle")], ...st.sources.map(s=>[s.source, tf(REVIEW_SOURCE_LABELS[s.source]||s.source)])].map(([k,l])=><button key={k||"all"} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:"#fff",color:filter===k?"#fff":INK,borderRadius:999,padding:"4px 11px",fontSize:12.5,cursor:"pointer"}}>{l}</button>)}
+        {[["",tf("Alle")], ...(lead ? [["__open",tf("Unbeantwortet")]] : []), ...st.sources.map(s=>[s.source, tf(REVIEW_SOURCE_LABELS[s.source]||s.source)])].map(([k,l])=><button key={k||"all"} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:"#fff",color:filter===k?"#fff":INK,borderRadius:999,padding:"4px 11px",fontSize:12.5,cursor:"pointer"}}>{l}</button>)}
       </div>}
       {data.reviews.length===0 ? <Card><div style={{fontSize:13,color:INK_MUTED}}>{tf("Noch keine Bewertungen. Exportiere sie aus Google, Booking.com & Co. und importiere die Datei hier.")}</div></Card> :
         <Card style={{padding:0}}>{shown.slice(0,100).map(r=>(
@@ -473,8 +473,43 @@ function ReviewsView({hotel, api, role}){
             </div>
             {r.title && <div style={{fontWeight:600,fontSize:13.5,marginTop:3}} data-no-i18n="">{r.title}</div>}
             {r.body && <div style={{fontSize:13.5,marginTop:2,whiteSpace:"pre-line"}} data-no-i18n="">{r.body}</div>}
+            {lead && <ReviewReply r={r} api={api} ai={data.ai} onSaved={(x)=>setData(d=>({...d, reviews:d.reviews.map(y=>y.id===x.id?{...y,...x}:y)}))} />}
           </div>
         ))}</Card>}
+    </div>
+  );
+}
+
+// Antwort auf eine Bewertung: KI-Entwurf, bearbeiten, kopieren, als beantwortet markieren
+const REPLY_STATUS = {offen:["Unbeantwortet",WARN,WARN_SOFT], entwurf:["Entwurf",BRASS,BRASS_SOFT], beantwortet:["Beantwortet",GOOD,GOOD_SOFT], ignoriert:["Keine Antwort nötig",INK_MUTED,"#EEF0F2"]};
+function ReviewReply({r, api, ai, onSaved}){
+  const [open,setOpen] = useState(false); const [text,setText] = useState(r.reply_draft||""); const [busy,setBusy] = useState(""); const [msg,setMsg] = useState(null);
+  useEffect(()=>{ setText(r.reply_draft||""); },[r.reply_draft]);
+  if(r.reply_status===undefined) return null; // Migration 035 noch nicht eingespielt
+  const st = REPLY_STATUS[r.reply_status||"offen"] || REPLY_STATUS.offen;
+  const run = async (key, fn) => { setBusy(key); setMsg(null); try { const x = await fn(); if(x) onSaved(x); } catch(e){ setMsg({ok:false,text:e.message}); } setBusy(""); };
+  const draft = () => run("ai", async()=>{ const x = await api("/api/reviews/"+r.id+"/reply-draft","POST",{}); setOpen(true); return x; });
+  const save = (status) => run(status||"save", ()=>api("/api/reviews/"+r.id,"PATCH",{reply_draft:text, ...(status?{reply_status:status}:{})}));
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setMsg({ok:true,text:tf("Kopiert – jetzt im Portal einfügen.")}); } catch(e){ setMsg({ok:false,text:tf("Kopieren nicht möglich – bitte den Text markieren.")}); } };
+  return (
+    <div style={{marginTop:8}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <Pill color={st[1]} bg={st[2]}>{tf(st[0])}</Pill>
+        {!open && <button style={{...linkBtn,fontSize:12.5}} onClick={()=>setOpen(true)}>{r.reply_draft ? tf("Antwort ansehen") : tf("Antwort schreiben")}</button>}
+        {ai && !r.reply_draft && <button style={{...linkBtn,fontSize:12.5,color:BRASS}} disabled={!!busy} onClick={draft}><Icon n="sparkle" /> {busy==="ai" ? tf("Wird geschrieben…") : tf("Antwort mit KI entwerfen")}</button>}
+      </div>
+      {open && <div style={{marginTop:8}}>
+        <textarea className="input" rows={5} maxLength={3000} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Antwort an den Gast …")} />
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+          <button style={smallBtn} disabled={!text.trim()} onClick={copy}>{tf("Kopieren")}</button>
+          <button style={smallBtn} disabled={!!busy || !text.trim()} onClick={()=>save("beantwortet")}>{tf("Als beantwortet markieren")}</button>
+          <button style={smallBtn} disabled={!!busy} onClick={()=>save(text.trim() ? "entwurf" : "offen")}>{tf("Entwurf speichern")}</button>
+          {ai && <button style={smallBtn} disabled={!!busy} onClick={draft}><Icon n="sparkle" /> {busy==="ai" ? tf("Wird geschrieben…") : tf("Neu entwerfen")}</button>}
+          <button style={{...linkBtn,fontSize:12.5}} disabled={!!busy} onClick={()=>save("ignoriert")}>{tf("Keine Antwort nötig")}</button>
+        </div>
+        <div style={{fontSize:11.5,color:INK_MUTED,marginTop:4}}>{tf("Bitte vor dem Veröffentlichen lesen – die Antwort erscheint öffentlich im Portal.")}</div>
+      </div>}
+      {msg && <div style={{fontSize:12.5,color:msg.ok?GOOD:BAD,marginTop:4}}>{msg.text}</div>}
     </div>
   );
 }

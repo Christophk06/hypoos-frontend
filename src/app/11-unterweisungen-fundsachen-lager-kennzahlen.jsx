@@ -154,7 +154,7 @@ function StockView({hotel, api, me, role, myDepts}){
   const [amount,setAmount] = useState({});
   const [form,setForm] = useState(null);
   const [hist,setHist] = useState({});
-  const [msg,setMsg] = useState(null);
+  const [msg,setMsg] = useState(null); const [inv,setInv] = useState(false);
   const base = "/api/hotels/"+hotel.id;
   const load = useCallback(()=>api(base+"/stock").then(setItems).catch(e=>{ setMsg({ok:false,text:e.message}); setItems([]); }),[api, base]);
   useEffect(()=>{ load(); },[load]);
@@ -178,6 +178,8 @@ function StockView({hotel, api, me, role, myDepts}){
       <DeptTabs depts={depts} value={dept} onChange={setDept} />
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {low.length>0 && <Card style={{marginBottom:12,borderColor:BAD,background:BAD_SOFT,fontSize:13}}><b>{tf("Unter Mindestbestand:")}</b> <span data-no-i18n="">{low.map(i=>i.name).join(", ")}</span></Card>}
+      {inv && <InventoryPanel hotel={hotel} api={api} dept={dept} items={items} onDone={load} onClose={()=>setInv(false)} />}
+      {role!=="viewer" && !inv && mine.length>0 && items.some(i=>"barcode" in i) && <button style={{...smallBtn,marginBottom:12}} onClick={()=>setInv(true)}><Icon n="clipboard" /> {tf("Inventur")}</button>}
       {canManageDept(dept) && !form && <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
         <button className="btn-primary" onClick={()=>setForm({name:"", unit:"Stück", quantity:"0", min_quantity:"0", department:dept})}>{tf("+ Artikel")}</button>
         <StockImportButton hotel={hotel} api={api} dept={dept} onDone={load} onMsg={setMsg} />

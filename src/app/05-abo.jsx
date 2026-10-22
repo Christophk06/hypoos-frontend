@@ -37,6 +37,31 @@ function planPrice(p, cur, period){
   return fmtPrice(period==="year" ? ((p.yearly && p.yearly[c]) || monthly*10) : monthly, c);
 }
 
+// Empfehlungsprogramm (Migration 035): eigener Link, Liste der geworbenen Hotels
+function ReferralCard({orgId, api}){
+  const [d,setD] = useState(null); const [msg,setMsg] = useState("");
+  useEffect(()=>{ api("/api/organizations/"+orgId+"/referral").then(setD).catch(()=>setD(false)); },[orgId]);
+  if(!d) return null;
+  const copy = async () => { try { await navigator.clipboard.writeText(d.link); setMsg(tf("Link kopiert.")); } catch(e){ setMsg(tf("Kopieren nicht möglich – bitte den Link markieren.")); } };
+  const share = async () => { try { await navigator.share({title:"Ouverture", text:tf("Ich nutze Ouverture für unser Hotel – mit diesem Link testest du 30 statt 14 Tage kostenlos."), url:d.link}); } catch(e){} };
+  return (
+    <Card style={{marginBottom:18,borderColor:BRASS}}>
+      <b><Icon n="users" /> {tf("Empfehlen und einen Monat gratis bekommen")}</b>
+      <div style={{fontSize:13,color:INK_MUTED,margin:"4px 0 10px"}}>{tf("Wer über Ihren Link startet, testet 30 statt 14 Tage. Sobald das empfohlene Hotel zum ersten Mal bezahlt, schreiben wir Ihnen einen Monat gut.")}</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <input className="input" readOnly value={d.link} style={{flex:1,minWidth:220}} onFocus={e=>e.target.select()} aria-label={tf("Ihr Empfehlungslink")} />
+        <button style={smallBtn} onClick={copy}>{tf("Kopieren")}</button>
+        {navigator.share && <button style={smallBtn} onClick={share}>{tf("Teilen")}</button>}
+      </div>
+      {msg && <div style={{fontSize:12.5,color:GOOD,marginTop:6}}>{msg}</div>}
+      {d.referrals.length>0 && <div style={{marginTop:10,fontSize:13}}>
+        {d.referrals.map((r,i)=><div key={i} style={{display:"flex",gap:10,padding:"5px 0",borderTop:`1px solid ${BORDER}`}}>
+          <span style={{flex:1}}>{tf("Empfehlung vom {0}", fmtDate(r.created_at.slice(0,10)))}</span>
+          <span style={{color:r.rewarded_at?GOOD:INK_MUTED}}>{r.rewarded_at ? tf("Gutgeschrieben") : tf("Testet noch")}</span></div>)}
+      </div>}
+    </Card>
+  );
+}
 function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
   const [cur,setCur] = useState(() => { try { return window.localStorage.getItem("hpoos_billing_currency") || (DISPLAY_CURRENCY && billing && (billing.currencies||[]).includes(DISPLAY_CURRENCY) ? DISPLAY_CURRENCY : suggestBillingCurrency()); } catch(e){ return suggestBillingCurrency(); } });
   const pickCur = (c) => { setCur(c); try { window.localStorage.setItem("hpoos_billing_currency", c); } catch(e){} };
@@ -62,6 +87,7 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
   return (
     <div>
       {n && <div style={{color:n.ok?GOOD:WARN,fontSize:13.5,marginBottom:14}}>{n.text}</div>}
+      {isAdmin && <ReferralCard orgId={orgId} api={api} />}
       <Card style={{marginBottom:18}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"center"}}>
           <div>

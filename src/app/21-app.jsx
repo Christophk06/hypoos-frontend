@@ -130,8 +130,10 @@ function App(){
           try { window.localStorage.removeItem(LS_INVITE_KEY); } catch(e){}
         }
         if(!organizationId){
-          const boot = await apiCall(config.backendUrl, token, "/api/bootstrap-organization", "POST", {name:"Meine Organisation"});
+          let ref = null; try { ref = window.localStorage.getItem(LS_REF_KEY); } catch(e){}
+          const boot = await apiCall(config.backendUrl, token, "/api/bootstrap-organization", "POST", {name:"Meine Organisation", ref});
           organizationId = boot.organization_id;
+          try { window.localStorage.removeItem(LS_REF_KEY); } catch(e){}
         }
         const list = await apiCall(config.backendUrl, token, "/api/organizations");
         // Zuletzt benutzte Organisation wiederherstellen – außer man kommt gerade über eine Einladung.

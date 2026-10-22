@@ -74,6 +74,9 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
   return (
     <div>
       <PushPrompt api={api} />
+      <TodayStrip hotel={hotel} api={api} me={me} todayShift={todayShift} onOpen={onOpen}
+        counts={[["checklists","clipboard",listsMine.filter(l=>{ const n=(l.items||[]).length; return n && (l.items||[]).filter(i=>l.run&&l.run.checked&&l.run.checked[i.id]).length<n; }).length,"Checklisten offen"],
+          ["mine","filetext",myTasks.length,"Aufgaben"],["logbook","clock",openLog.length,"Übergabe offen"]]} />
       <ClockCard hotel={hotel} api={api} role="member" myDepts={myDepts} compact />
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
         <button style={smallBtn} onClick={()=>onOpen("tickets")}><Icon n="wrench" /> {tf("Mangel melden")}</button>
@@ -127,6 +130,32 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
       <PulseCard orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />
       {sickCard}
     </div>
+  );
+}
+
+// „Heute“-Leiste oben auf der Startseite: Begrüßung, Schicht, Wetter und offene Punkte auf einen Blick
+function TodayStrip({hotel, api, me, todayShift, counts, onOpen}){
+  const today = todayIso();
+  const [info] = useDayInfo(api, hotel, [today]);
+  const w = info && (info.weather||[]).find(x=>x.date===today);
+  const hour = new Date().getHours();
+  const hello = hour<11 ? tf("Guten Morgen") : hour<17 ? tf("Hallo") : tf("Guten Abend");
+  const name = me && me.email ? shortName(me.email) : "";
+  const s = todayShift[0];
+  return (
+    <Card style={{marginBottom:14,background:INK,color:"#fff",borderColor:INK}}>
+      <div style={{display:"flex",gap:10,alignItems:"baseline",flexWrap:"wrap"}}>
+        <div style={{fontFamily:"Fraunces, serif",fontSize:20,flex:1}}>{hello}{name ? <span data-no-i18n="">, {name}</span> : ""}</div>
+        {w && <div style={{fontSize:13,opacity:.85}} title={tf(WEATHER_LABEL[w.group]||"")}><Icon n={WEATHER_ICON[w.group]} /> {w.tmin}–{w.tmax}°</div>}
+      </div>
+      <div style={{fontSize:13.5,opacity:.85,margin:"2px 0 10px"}}>
+        {new Date().toLocaleDateString(UI_LOCALE,{weekday:"long",day:"numeric",month:"long"})} · {s ? <span>{tf("Deine Schicht")}: <b data-no-i18n="">{tf(s.kind)}{s.start_time ? " "+s.start_time.slice(0,5)+(s.end_time?"–"+s.end_time.slice(0,5):"") : ""}</b></span> : tf("Heute hast du keine Schicht.")}
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {counts.map(([tab,icon,n,label])=><button key={tab} onClick={()=>onOpen(tab)} style={{background:n?"rgba(255,255,255,.14)":"transparent",border:"1px solid rgba(255,255,255,.25)",color:"#fff",borderRadius:999,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>
+          <Icon n={icon} /> <b>{n}</b> {tf(label)}</button>)}
+      </div>
+    </Card>
   );
 }
 

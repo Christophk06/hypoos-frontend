@@ -2,7 +2,7 @@
 
 // ------------------------------------------------------------ Gäste-Infos bearbeiten (Admin, unter „Gäste-QR“)
 function GuestInfoCard({hotel, api, onHotel}){
-  const init = () => { const g = hotel.guest_info || {}; return {wifi_name:g.wifi_name||"", wifi_password:g.wifi_password||"", breakfast:g.breakfast||"", checkout:g.checkout||"", reception_phone:g.reception_phone||"", taxi:g.taxi||"", notes:g.notes||"", menu:g.menu||[], spa:g.spa||[]}; };
+  const init = () => { const g = hotel.guest_info || {}; return {wifi_name:g.wifi_name||"", wifi_password:g.wifi_password||"", breakfast:g.breakfast||"", checkout:g.checkout||"", reception_phone:g.reception_phone||"", taxi:g.taxi||"", notes:g.notes||"", menu:g.menu||[], spa:g.spa||[], ai:g.ai===true}; };
   const [open,setOpen] = useState(false); const [f,setF] = useState(init); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
   if(hotel.guest_info===undefined || ACCESS.role!=="admin") return null;
   const save = async () => { setBusy(true); setMsg(null);
@@ -30,7 +30,11 @@ function GuestInfoCard({hotel, api, onHotel}){
           {F("wifi_name","WLAN-Name")}{F("wifi_password","WLAN-Passwort")}{F("breakfast","Frühstück","07:00 – 10:30")}
           {F("checkout","Check-out","bis 11:00")}{F("reception_phone","Rezeption (Telefon/Durchwahl)")}{F("taxi","Taxi")}
         </div>
-        <Field label={tf("Weitere Hinweise (optional)")}><textarea className="input" rows={2} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} /></Field>
+        <Field label={tf("Weitere Hinweise (optional)")}><textarea className="input" rows={2} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder={tf("z. B. Parkplatz, Hunde, Sauna-Zeiten, Restaurant, Ausflugstipps – der digitale Concierge antwortet daraus")} /></Field>
+        <label style={{display:"flex",gap:10,alignItems:"flex-start",background:BRASS_SOFT,borderRadius:10,padding:"10px 12px",margin:"4px 0 14px",fontSize:13.5,cursor:"pointer"}}>
+          <input type="checkbox" checked={f.ai} onChange={e=>setF({...f,ai:e.target.checked})} style={{marginTop:3}} />
+          <span><b><Icon n="sparkle" /> {tf("Digitaler Concierge (KI) – rund um die Uhr")}</b><br/>{tf("Gäste stellen auf der Gästeseite Fragen in ihrer Sprache. Die KI antwortet nur aus den Infos auf dieser Karte, bietet passende Wünsche zum Anfordern an und leitet alles andere an den Rezeptions-Chat weiter.")}</span>
+        </label>
         <div className="field-label">{tf("Speisekarte")}</div>
         {listEditor("menu", [["name","Gericht",3],["note","Hinweis, z. B. Allergene",2],["price","Preis",1]])}
         <div className="field-label" style={{marginTop:12}}>{tf("Spa-Angebote")}</div>

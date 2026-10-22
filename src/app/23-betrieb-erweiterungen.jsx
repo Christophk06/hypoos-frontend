@@ -403,3 +403,32 @@ function CalendarNotesCard({hotel, api, info, onChanged}){
     </Card>
   );
 }
+
+// ------------------------------------------------------------ KI-Einschätzung Personalbedarf (Leitung, im Dienstplan)
+function StaffingAdviceCard({hotel, api, from}){
+  const [res,setRes] = useState(null); const [busy,setBusy] = useState(false); const [msg,setMsg] = useState("");
+  useEffect(()=>{ setRes(null); setMsg(""); },[from, hotel.id]);
+  const run = async () => { setBusy(true); setMsg(""); try { setRes(await api("/api/hotels/"+hotel.id+"/staffing-advice","POST",{from, lang:UI_LANG})); } catch(e){ setMsg(e.message); } setBusy(false); };
+  const a = res && res.advice;
+  return (
+    <Card style={{marginTop:14,borderColor:a?BRASS:BORDER}}>
+      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:220}}><b><Icon n="sparkle" /> {tf("KI-Einschätzung Personalbedarf")}</b>
+          <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Prüft die Woche gegen Belegung, An- und Abreisen, Veranstaltungen, Wetter, Hinweise und Besetzungsregeln – und schlägt Anpassungen je Abteilung vor.")}</div></div>
+        <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={busy} onClick={run}>{busy ? tf("Wird eingeschätzt…") : a ? tf("Neu einschätzen") : tf("Woche einschätzen")}</button>
+      </div>
+      {msg && <div style={{color:BAD,fontSize:13,marginTop:8}}>{msg}</div>}
+      {a && <div style={{marginTop:10}}>
+        <div style={{fontSize:13.5,lineHeight:1.5,marginBottom:8}} data-no-i18n="">{a.zusammenfassung}</div>
+        {a.tage.map(d=>(
+          <div key={d.datum} style={{borderTop:`1px solid ${BORDER}`,padding:"7px 0",fontSize:13}}>
+            <div><b>{fmtDay ? fmtDay(d.datum,{weekday:"short",day:"2-digit",month:"2-digit"}) : d.datum}</b> <span style={{color:INK_MUTED}} data-no-i18n="">· {d.hinweis}</span></div>
+            {d.anpassungen.map((x,i)=><div key={i} style={{display:"flex",gap:8,marginTop:3,paddingInlineStart:10}}>
+              <span style={{fontWeight:700,color:x.aenderung>0?BAD:GOOD,minWidth:28}}>{x.aenderung>0?"+":""}{x.aenderung}</span>
+              <span>{translateString(x.abteilung)}</span><span style={{color:INK_MUTED}} data-no-i18n="">– {x.grund}</span></div>)}
+          </div>))}
+        <div style={{fontSize:11.5,color:INK_MUTED,marginTop:6}}>{tf("Vorschlag der KI – die Entscheidung trifft die Leitung. Personen und Namen werden nicht an die KI übermittelt.")}</div>
+      </div>}
+    </Card>
+  );
+}

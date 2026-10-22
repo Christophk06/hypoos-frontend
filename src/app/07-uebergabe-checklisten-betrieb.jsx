@@ -308,7 +308,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
   const depts = visibleDeptsFor(role, myDepts).filter(canManageDept);
   const [laOpen,setLaOpen] = useState(false);
   const [dept,setDept] = useState("");
-  const [month,setMonth] = useState(currentMonth());
+  const [month,setMonth] = useState(currentMonth()); const [closeBusy,setCloseBusy] = useState(false);
   const [entries,setEntries] = useState([]);
   const [shifts,setShifts] = useState([]);
   const [targets,setTargets] = useState([]);
@@ -385,6 +385,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
           <button style={smallBtn} onClick={()=>setAdd({user:"", dept:dept||depts[0], in:"", out:"", brk:"30", note:""})}>{tf("+ Zeit nachtragen")}</button>
           <button style={smallBtn} onClick={exportCsv}>CSV</button>
           <button style={smallBtn} onClick={()=>setLaOpen(!laOpen)}>{tf("Lohnarten-Export")}</button>
+          {(role==="admin" || role==="manager") && <button style={smallBtn} disabled={closeBusy} onClick={async()=>{ setCloseBusy(true); try { await monthClosePdf({api, hotel, month, members}); } catch(e){ alert(e.message); } setCloseBusy(false); }}><Icon n="filetext" /> {closeBusy ? tf("Wird erstellt…") : tf("Monatsabschluss (PDF)")}</button>}
           <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} onClick={exportXlsx}>{tf("Lohn-Export (Excel)")}</button>
         </div>
         <div style={{fontSize:12,color:INK_MUTED,padding:"0 16px 8px"}}>{tf("Ist = gestempelte Zeit abzüglich Pausen, in der Ortszeit dieses Geräts.")}{" "}

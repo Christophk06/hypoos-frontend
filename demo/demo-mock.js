@@ -226,6 +226,18 @@
   D.pulse_comments = ["Der Dienstplan kommt jetzt früh genug, das hilft sehr.", "Im Frühdienst fehlt oft eine Person, dann wird es hektisch.", "Gute Stimmung im Team, danke für die neue Kaffeemaschine."];
   D.cal_notes = [{ id: "cn-1", date_from: add(todayIso, 3), date_to: add(todayIso, 3), title: "Betriebsversammlung", kind: "Hinweis", note: "14:00 Uhr im Salon" }];
 
+  /* Antworten auf Bewertungen, Inventur, Empfehlung */
+  D.reviews.forEach(function (r, i) {
+    r.reply_status = i === 1 ? "beantwortet" : i === 3 ? "entwurf" : "offen";
+    r.reply_draft = i === 1 ? "Vielen Dank für Ihre Bewertung und die netten Worte! Wir freuen uns sehr, dass Ihnen der Aufenthalt gefallen hat, und hoffen, Sie bald wieder bei uns zu begrüßen. Ihr Team des Beispielhotel Alpenblick"
+      : i === 3 ? "Herzlichen Dank für Ihr Feedback! Es freut uns, dass Sie sich bei uns wohlgefühlt haben. Ihr Team des Beispielhotel Alpenblick" : null;
+    r.replied_at = i === 1 ? nowIso(48) : null;
+  });
+  (D.stock || []).forEach(function (s, i) { s.barcode = ["9001234567890", null, "9004567890123", null, "4001234500017"][i % 5] || null; });
+  D.inventories = [{ id: "inv-1", hotel_id: D.hotel.id, department: "Housekeeping", started_at: nowIso(24 * 20), finished_at: nowIso(24 * 20 - 1), note: null, lines: [] }];
+  (D.stock || []).filter(function (s) { return s.department === "Housekeeping"; }).forEach(function (s) { D.inventories[0].lines.push({ item_id: s.id, counted: s.quantity, counted_at: nowIso(24 * 20) }); });
+  function invOut(c) { return Object.assign({}, c, { lines: c.lines.slice() }); }
+
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, opt) {
     var url = new URL(typeof input === "string" ? input : input.url, location.href);
@@ -350,7 +362,66 @@
     }
     if (p === H + "/reviews/summary") { D.review_summary.created_at = new Date().toISOString(); return ok(D.review_summary); }
     if (p === H + "/reviews/import") return ok({ error: "In der Live-Demo nicht verfügbar." }, 400);
-    if ((mm = p.match(/^\/api\/reviews\/([^/]+)$/))) { remove(D.reviews, mm[1]); return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/reviews\/([^/]+)\/reply-draft$/)) && m === "POST") {
+      var rv = byId(D.reviews, mm[1]); if (!rv) return ok({ error: "Nicht gefunden." }, 404);
+      var low = rv.rating != null && rv.rating / (rv.scale || 5) * 5 < 3.5, ttl = rv.title ? " zu „" + rv.title + "“" : "";
+      rv.reply_draft = low ? "Vielen Dank für Ihr ehrliches Feedback" + ttl + ". Es tut uns sehr leid, dass Ihr Aufenthalt nicht Ihren Erwartungen entsprochen hat. Wir haben Ihre Rückmeldung an das Team weitergegeben und möchten es gern besser machen – wir laden Sie herzlich ein, uns noch einmal die Chance zu geben. Ihr Team des Beispielhotel Alpenblick"
+        : "Herzlichen Dank für Ihre tolle Bewertung" + ttl + "! Es freut uns sehr, dass Sie sich bei uns wohlgefühlt haben, und wir geben Ihr Lob gern an das Team weiter. Wir würden uns freuen, Sie bald wieder bei uns zu begrüßen. Ihr Team des Beispielhotel Alpenblick";
+      rv.reply_status = "entwurf";
+      return new Promise(function (res) { setTimeout(function () { ok(rv).then(res); }, 700); });
+    }
+    if ((mm = p.match(/^\/api\/reviews\/([^/]+)$/))) {
+      if (m === "PATCH") { var rv2 = byId(D.reviews, mm[1]); if (!rv2) return ok({ error: "Nicht gefunden." }, 404);
+        if (b.reply_draft !== undefined) rv2.reply_draft = b.reply_draft; if (b.reply_status !== undefined) rv2.reply_status = b.reply_status;
+        if (rv2.reply_status === "beantwortet") rv2.replied_at = new Date().toISOString(); return ok(rv2); }
+      remove(D.reviews, mm[1]); return ok({ ok: true });
+    }
+    // Personalbedarf (KI), Monatsabschluss, Inventur, Empfehlung
+    if (p === H + "/staffing-advice" && m === "POST") {
+      var f0 = b.from || todayIso, days = [];
+      for (var di = 0; di < 7; di++) {
+        var dt = add(f0, di), wd = new Date(dt + "T00:00:00Z").getUTCDay(), adj = [], hint = "Normaler Betrieb, Besetzung laut Regeln.";
+        if (wd === 5) { hint = "Messe in der Stadt, Veranstaltung im Haus (Seminar mit 40 Personen)."; adj.push({ abteilung: "Food & Beverage", aenderung: 2, grund: "Veranstaltung und volles Haus beim Abendessen" }); }
+        else if (wd === 0) { hint = "Abreisetag, viele Zimmer zu reinigen."; adj.push({ abteilung: "Housekeeping", aenderung: 1, grund: "Viele Abreisen am Vormittag" }); }
+        else if (wd === 2) { hint = "Ruhiger Tag, niedrige Belegung."; adj.push({ abteilung: "Rezeption", aenderung: -1, grund: "Wenige An- und Abreisen" }); }
+        days.push({ datum: dt, hinweis: hint, anpassungen: adj });
+      }
+      var advice = { zusammenfassung: "Die Woche startet mit normaler Auslastung. Zum Freitag ist wegen Messe und Veranstaltung mehr Personal im Service nötig, am Sonntag braucht das Housekeeping Unterstützung. Der ruhige Dienstag lässt eine Reduzierung an der Rezeption zu.", tage: days };
+      return new Promise(function (res) { setTimeout(function () { ok({ from: f0, advice: advice }).then(res); }, 700); });
+    }
+    if (p === H + "/month-close") {
+      var mo = q.get("month") || MON, cin = 0, cout = 0, byc = {}, cnt = 0;
+      D.cash.forEach(function (c) { if (String(c.entry_date).slice(0, 7) !== mo) return; var a = Number(c.amount); if (c.direction === "ein") cin += a; else cout += a; var k = c.direction + "|" + c.category; byc[k] = Math.round(((byc[k] || 0) + a) * 100) / 100; cnt++; });
+      if (!cnt) { cin = 286.5; cout = 37.3; byc = { "ein|Trinkgeld": 86.5, "ein|Wechselgeld": 200, "aus|Einkauf": 24.9, "aus|Sonstiges": 12.4 }; cnt = 4; }
+      return ok({ month: mo, hotel: { name: D.hotel.name, currency: "EUR" }, people: [
+        { user_id: "u-hkm", departments: ["Housekeeping"], hours: 168.5, shifts: 21, sick_days: 0, leave_days: 2 },
+        { user_id: "u-ewa", departments: ["Housekeeping"], hours: 142, shifts: 18, sick_days: 3, leave_days: 0 },
+        { user_id: "u-fb", departments: ["Food & Beverage"], hours: 174, shifts: 22, sick_days: 0, leave_days: 1 },
+        { user_id: "u-member", departments: ["Housekeeping", "Rezeption"], hours: 120.5, shifts: 16, sick_days: 0, leave_days: 4 },
+        { user_id: "u-admin", departments: ["Rezeption"], hours: 160, shifts: 20, sick_days: 0, leave_days: 0 }],
+        cash: { total_in: Math.round(cin * 100) / 100, total_out: Math.round(cout * 100) / 100, by_category: byc, count: cnt },
+        tourism_tax: { stays: 412, exempt: 38, rate: 2.5, amount: 935 }, room_nights: 1286 });
+    }
+    if (p === H + "/inventory") {
+      if (m === "POST") { var inv = { id: nid("inv"), hotel_id: D.hotel.id, department: b.department, started_at: new Date().toISOString(), finished_at: null, note: null, lines: [] }; D.inventories.unshift(inv); return ok(invOut(inv)); }
+      return ok(D.inventories.map(function (c) { return Object.assign({}, c, { lines: c.lines.length }); }));
+    }
+    if ((mm = p.match(/^\/api\/inventory\/([^/]+)\/lines$/)) && m === "PUT") {
+      var ic = byId(D.inventories, mm[1]); if (!ic) return ok({ error: "Nicht gefunden." }, 404);
+      var ln = ic.lines.find(function (x) { return x.item_id === b.item_id; });
+      if (!ln) { ln = { item_id: b.item_id }; ic.lines.push(ln); } ln.counted = Number(b.counted); ln.counted_at = new Date().toISOString(); return ok(ln);
+    }
+    if ((mm = p.match(/^\/api\/inventory\/([^/]+)\/finish$/)) && m === "POST") {
+      var ic2 = byId(D.inventories, mm[1]); if (!ic2) return ok({ error: "Nicht gefunden." }, 404); var chg = 0;
+      ic2.lines.forEach(function (l) { var s2 = byId(D.stock, l.item_id); if (s2 && Number(s2.quantity) !== l.counted) { s2.quantity = l.counted; chg++; } if (s2 && s2.quantity >= s2.min_quantity) s2.reorder_ticket = null; });
+      ic2.finished_at = new Date().toISOString(); return ok({ changed: chg });
+    }
+    if ((mm = p.match(/^\/api\/inventory\/([^/]+)$/))) {
+      if (m === "DELETE") { remove(D.inventories, mm[1]); return ok({ ok: true }); }
+      var ic3 = byId(D.inventories, mm[1]); return ic3 ? ok(invOut(ic3)) : ok({ error: "Nicht gefunden." }, 404);
+    }
+    if (/^\/api\/organizations\/[^/]+\/referral$/.test(p)) return ok({ code: "ALPN7K2Q", link: "https://hypoos-frontend.onrender.com/index.html?ref=ALPN7K2Q", referrals: [
+      { created_at: nowIso(24 * 9), rewarded_at: null, reward_note: null }, { created_at: nowIso(24 * 60), rewarded_at: nowIso(24 * 40), reward_note: "Gutschrift 249.00 EUR" }] });
     // Energie
     if (p === H + "/meters") { if (m === "POST") { var mt2 = Object.assign({ id: nid("mt"), hotel_id: D.hotel.id }, b); D.meters.push(mt2); return ok(mt2); } return ok({ meters: D.meters, readings: D.meter_readings }); }
     if ((mm = p.match(/^\/api\/meters\/([^/]+)\/readings$/))) { if (D.meter_readings.some(function (r) { return r.meter_id === mm[1] && r.read_on === b.read_on; })) return ok({ error: "Für diesen Tag gibt es schon einen Zählerstand." }, 400);

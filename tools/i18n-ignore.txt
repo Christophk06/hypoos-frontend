@@ -52,6 +52,7 @@ ArrowUp
 BEGIN:VCALENDAR
 BEGIN:VEVENT
 Backend-URL
+BarcodeDetector
 Bearer
 Booking.com
 CALSCALE:GREGORIAN
@@ -121,11 +122,15 @@ application/pdf
 application/vnd.openxmlformats-officedocument.wordprocessingml.document
 application/xml
 calc(
+code_128
+code_39
 copyMove
 currentColor
 daysInRow
 de-DE
 doc-templates.js
+ean_13
+ean_8
 event-templates.js
 feedback.html?demo=1
 fälligkeit
@@ -145,6 +150,7 @@ kWh
 mailto:
 maßnahme
 optionsText
+ouv_ref_v1
 priorität
 rotate(45deg)
 sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx

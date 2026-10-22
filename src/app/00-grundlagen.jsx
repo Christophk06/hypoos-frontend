@@ -51,6 +51,9 @@ const TASK_STATUSES = ["Nicht begonnen","In Arbeit","Blockiert","In Prüfung","A
 const MILESTONE_STATUSES = ["Geplant","In Arbeit","Gefährdet","Abgeschlossen"];
 const LS_KEY = "hpoos_connection_config_v1";
 const LS_INVITE_KEY = "hpoos_pending_invite_v1";
+// Empfehlungslink (?ref=CODE) merken, bis die eigene Organisation angelegt wird
+const LS_REF_KEY = "ouv_ref_v1";
+try { const r = new URLSearchParams(window.location.search).get("ref"); if(r && /^[A-Za-z0-9]{8}$/.test(r)) window.localStorage.setItem(LS_REF_KEY, r.toUpperCase()); } catch(e){}
 const LS_ORG_KEY = "hpoos_last_org_v1";
 const LS_HOTEL_KEY = "hpoos_last_hotel_v1";
 // Öffentliche Verbindungsdaten. Der publishable Key darf im Frontend stehen –

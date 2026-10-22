@@ -114,7 +114,7 @@ function HelpTip({tab, role, hotel, open, onClose}){
   const close = () => { try { window.localStorage.setItem("hpoos_help_"+key,"1"); } catch(e){} setSeen(true); if(onClose) onClose(); };
   return (
     <div className="no-print" style={{display:"flex",gap:10,alignItems:"flex-start",background:"#F4F7FB",border:"1px solid #D6E2F0",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13.5,lineHeight:1.5}}>
-      <span style={{fontSize:16}}>💡</span>
+      <span style={{fontSize:16}}><Icon n="bulb" /></span>
       <div style={{flex:1}}>{tf(text)}</div>
       <button onClick={close} style={{...linkBtn,fontWeight:600,color:INK,whiteSpace:"nowrap"}}>{tf("Verstanden")}</button>
     </div>
@@ -136,7 +136,7 @@ function MicButton({onText, style}){
     setOn(true); r.start();
   };
   return <button type="button" onClick={toggle} title={on ? tf("Diktat beenden") : tf("Diktieren")} aria-label={tf("Diktieren")}
-    style={{background:on?BAD:"#fff",color:on?"#fff":INK,border:`1px solid ${on?BAD:BORDER}`,borderRadius:8,padding:"0 11px",cursor:"pointer",fontSize:16,minHeight:38,...(style||{})}}>{on ? "■" : "🎤"}</button>;
+    style={{background:on?BAD:"#fff",color:on?"#fff":INK,border:`1px solid ${on?BAD:BORDER}`,borderRadius:8,padding:"0 11px",cursor:"pointer",fontSize:16,minHeight:38,...(style||{})}}>{on ? "■" : <Icon n="mic" />}</button>;
 }
 const appendText = (prev, add) => (prev && !/\s$/.test(prev) ? prev + " " : (prev||"")) + add;
 
@@ -157,7 +157,7 @@ function GuestQrCard({hotel, api}){
   const load = useCallback(()=>api("/api/hotels/"+hotel.id+"/guest-qr").then(setInfo).catch(e=>setMsg({ok:false,text:e.message})),[api, hotel.id]);
   useEffect(()=>{ if(!window.OUVERTURE_DEMO) load(); },[load]);
   if(window.OUVERTURE_DEMO) return (
-    <Card style={{marginBottom:14}}><div style={{fontWeight:700,marginBottom:4}}>🛎 {tf("Gäste-QR im Zimmer")}</div>
+    <Card style={{marginBottom:14}}><div style={{fontWeight:700,marginBottom:4}}><Icon n="concierge" /> {tf("Gäste-QR im Zimmer")}</div>
       <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Gäste scannen den Code im Zimmer und melden Wünsche oder Mängel – ohne App und ohne Anmeldung. So sieht es für Gäste aus:")} <a href="gast.html?demo=1" target="_blank" rel="noopener">{tf("Gästeseite ansehen")}</a></div></Card>);
   if(!info) return msg ? null : null;
   const toggle = async (v) => { setMsg(null); try { await api("/api/hotels/"+hotel.id+"/guest-qr","PUT",{enabled:v}); await load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
@@ -165,7 +165,7 @@ function GuestQrCard({hotel, api}){
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
         <div style={{flex:1,minWidth:220}}>
-          <div style={{fontWeight:700}}>🛎 {tf("Gäste-QR im Zimmer")}</div>
+          <div style={{fontWeight:700}}><Icon n="concierge" /> {tf("Gäste-QR im Zimmer")}</div>
           <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Gäste scannen den Code im Zimmer und melden Wünsche oder Mängel – ohne App und ohne Anmeldung. Die Meldung landet sofort bei Housekeeping oder Technik.")}</div>
         </div>
         <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,cursor:"pointer"}}><input type="checkbox" checked={info.enabled} onChange={e=>toggle(e.target.checked)} /> {tf("Eingeschaltet")}</label>
@@ -194,7 +194,7 @@ function RoomAssignCard({hotel, api, members, onDone}){
   const apply = async () => { setMsg(null); try { const r = await api("/api/hotels/"+hotel.id+"/rooms/assign","POST",{user_ids:sel, apply:true}); setMsg({ok:true,text:tf("{0} Zimmer verteilt.", r.assign.length)}); setOpen(false); onDone(); } catch(e){ setMsg({ok:false,text:e.message}); } };
   return (
     <span>
-      <button style={smallBtn} onClick={()=>setOpen(!open)}>👥 {tf("Zimmer verteilen")}</button>
+      <button style={smallBtn} onClick={()=>setOpen(!open)}><Icon n="users" /> {tf("Zimmer verteilen")}</button>
       {msg && !open && <span style={{fontSize:12.5,color:msg.ok?GOOD:BAD,marginInlineStart:8}}>{msg.text}</span>}
       {open && (
         <Card style={{marginTop:10,borderColor:BRASS}}>
@@ -224,7 +224,7 @@ function SickButton({hotel, api, onDone}){
   const send = async () => { setMsg(null); try { const r = await api("/api/hotels/"+hotel.id+"/sick","POST",{from, to, note}); setMsg({ok:true,text:tf("Gute Besserung! {0} Schichten wurden zur Übernahme ausgeschrieben, die Leitung ist informiert.", r.shifts)}); setOpen(false); if(onDone) onDone(); } catch(e){ setMsg({ok:false,text:e.message}); } };
   return (
     <span>
-      <button style={smallBtn} onClick={()=>setOpen(!open)}>🤒 {tf("Krank melden")}</button>
+      <button style={smallBtn} onClick={()=>setOpen(!open)}><Icon n="thermo" /> {tf("Krank melden")}</button>
       {msg && <div style={{fontSize:13,color:msg.ok?GOOD:BAD,marginTop:6}}>{msg.text}</div>}
       {open && (
         <Card style={{marginTop:8,borderColor:WARN}}>
@@ -256,7 +256,7 @@ function OpenShiftsCard({hotel, api, me, role, myDepts, onChanged, compact, memb
   return (
     <Card style={{marginBottom:14,borderColor:open.length?WARN:BORDER}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-        <div style={{fontWeight:700,flex:1}}>🔔 {tf("Offene Schichten")} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({open.length})</span></div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="bell" /> {tf("Offene Schichten")} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({open.length})</span></div>
         {lead && !form && <button style={smallBtn} onClick={()=>setForm({department:depts.find(canManageDept), shift_date:addDaysIso(todayIso(),1), kind:"Früh", note:""})}>{tf("+ Schicht ausschreiben")}</button>}
       </div>
       {form && (
@@ -299,7 +299,7 @@ function BriefingCard({hotel, api, me, role, myDepts}){
   return (
     <Card style={{marginBottom:14,borderColor:b.read_by_me?BORDER:BRASS}}>
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-        <div style={{fontWeight:700,flex:1}}>📋 {tf("Schichtbriefing")} · <span data-no-i18n="">{fmtDay(b.day,{weekday:"long",day:"2-digit",month:"2-digit"})}</span></div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="clipboard" /> {tf("Schichtbriefing")} · <span data-no-i18n="">{fmtDay(b.day,{weekday:"long",day:"2-digit",month:"2-digit"})}</span></div>
         {depts.length>1 && <select className="input" style={{width:"auto",padding:"4px 8px"}} value={dept} onChange={e=>setDept(e.target.value)}>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>}
       </div>
       {sec(tf("Heute im Dienst"), b.staff.length ? <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{b.staff.map((s,i)=><span key={i} style={{fontSize:12.5,background:PAPER,borderRadius:999,padding:"2px 9px"}}><b data-no-i18n="">{s.name}</b> · <span>{s.kind}</span></span>)}</div> : <span style={{fontSize:13,color:INK_MUTED}}>{tf("Niemand eingeplant.")}</span>)}
@@ -342,7 +342,7 @@ function OnboardingCard({orgId, api, me, myDepts, members}){
     </div>); };
   return (
     <Card style={{marginBottom:14,borderColor:BRASS}}>
-      <div style={{fontWeight:700,marginBottom:8}}>🧭 {tf("Einarbeitung")}</div>
+      <div style={{fontWeight:700,marginBottom:8}}><Icon n="compass" /> {tf("Einarbeitung")}</div>
       {mine && <Block o={mine} title={tf("Deine ersten Tage")+(mine.buddy_id ? " · "+tf("Ansprechperson: {0}", memberLabel(members||[], me, mine.buddy_id)) : "")} />}
       {buddyOf.map(o=><Block key={o.user_id} o={o} title={tf("Du begleitest {0}", memberLabel(members||[], me, o.user_id))} />)}
     </Card>
@@ -359,7 +359,7 @@ function OnboardingAdmin({orgId, api, me, members}){
   const staff = members.filter(m=>m.role!=="viewer");
   return (
     <Card style={{marginBottom:18}}>
-      <div style={{fontWeight:700,marginBottom:4}}>🧭 {tf("Einarbeitung neuer Mitarbeitender")}</div>
+      <div style={{fontWeight:700,marginBottom:4}}><Icon n="compass" /> {tf("Einarbeitung neuer Mitarbeitender")}</div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Lege die Punkte für die ersten Tage fest. Wer neu ins Team kommt, bekommt die Liste automatisch auf die Startseite – zusammen mit einer Ansprechperson.")}</div>
       {d.items.map(i=>(
         <div key={i.id} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>

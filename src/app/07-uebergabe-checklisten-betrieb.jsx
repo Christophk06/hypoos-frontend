@@ -266,14 +266,14 @@ function ClockCard({hotel, api, role, myDepts, compact, onChanged}){
             <input className="input" type="number" min="0" max="600" step="5" value={brk} onChange={e=>setBrk(e.target.value)} style={{width:74}} /> {tf("Min.")}
           </label>
         )}
-        {data && needQr && <div style={{fontSize:13,color:WARN,maxWidth:260}}>📷 {tf("Zum Stempeln den QR-Code am Mitarbeitereingang mit der Handykamera scannen.")}</div>}
+        {data && needQr && <div style={{fontSize:13,color:WARN,maxWidth:260}}><Icon n="camera" /> {tf("Zum Stempeln den QR-Code am Mitarbeitereingang mit der Handykamera scannen.")}</div>}
         {data && !needQr && (open
           ? <button className="btn-primary" disabled={busy} style={{background:BAD,minWidth:110,padding:"11px 18px"}} onClick={()=>doClock("out")}>{tf("Gehen")}</button>
           : <button className="btn-primary" disabled={busy || !dept} style={{background:GOOD,minWidth:110,padding:"11px 18px"}} onClick={()=>doClock("in")}>{tf("Kommen")}</button>)}
       </div>
       {open && Number(brk)===0 && entryHours({...open, break_minutes:0})>6 && <div style={{fontSize:12.5,color:WARN,marginTop:8}}>{tf("Ab 6 Stunden Arbeit sind mindestens 30 Minuten Pause vorgeschrieben.")}</div>}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
-      {queued>0 && <div style={{fontSize:12.5,color:WARN,marginTop:6}}>⏳ {tf("{0} Buchungen warten auf Netz.", queued)}</div>}
+      {queued>0 && <div style={{fontSize:12.5,color:WARN,marginTop:6}}><Icon n="clock" /> {tf("{0} Buchungen warten auf Netz.", queued)}</div>}
       {!compact && monthEntries.length>0 && (
         <div style={{marginTop:12}}>
           <div style={{fontSize:12,fontWeight:700,color:INK_MUTED,textTransform:"uppercase",marginBottom:4}}>{tf("Meine Zeiten")}</div>
@@ -419,7 +419,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
                     <td style={td}>{r.night?H(r.night):"–"}</td><td style={td}>{r.sunday?H(r.sunday):"–"}</td><td style={td}>{r.holiday?H(r.holiday):"–"}</td><td style={td}>{r.vacation||"–"}</td><td style={td}>{r.sick||"–"}</td>
                   </tr>
                   {openKey===r.key && <tr style={{background:"#FBFAF7"}}><td colSpan={10} style={{padding:"7px 12px"}}>
-                    <button style={smallBtn} onClick={async()=>{ try { await sheetPdf(timesheetHtml({hotel, name:r.name, month, entries:entries.filter(e=>e.user_id===r.user_id), row:r}), (tf("Arbeitszeit-Nachweis")+" "+r.name+" "+month).replace(/[\\/:*?"<>|]+/g,"")+".pdf"); } catch(e){ setMsg({ok:false,text:tf("PDF konnte nicht erstellt werden: {0}", e.message)}); } }}>📄 {tf("Arbeitszeit-Nachweis (PDF)")}</button>
+                    <button style={smallBtn} onClick={async()=>{ try { await sheetPdf(timesheetHtml({hotel, name:r.name, month, entries:entries.filter(e=>e.user_id===r.user_id), row:r}), (tf("Arbeitszeit-Nachweis")+" "+r.name+" "+month).replace(/[\\/:*?"<>|]+/g,"")+".pdf"); } catch(e){ setMsg({ok:false,text:tf("PDF konnte nicht erstellt werden: {0}", e.message)}); } }}><Icon n="filetext" /> {tf("Arbeitszeit-Nachweis (PDF)")}</button>
                   </td></tr>}
                   {openKey===r.key && entries.filter(e=>e.user_id===r.user_id).map(e=>(
                     <tr key={e.id} style={{background:"#FBFAF7",borderTop:`1px dashed ${BORDER}`}}>

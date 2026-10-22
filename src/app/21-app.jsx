@@ -318,7 +318,7 @@ function App(){
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {tf("{0} Zimmer · Eröffnung {1}", hotel.rooms, fmtDate(hotel.opening_date))}</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-            <button className="no-print" onClick={()=>setSearchOpen(true)} title={tf("Suchen (Strg+K)")} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 11px",fontSize:12.5,cursor:"pointer",color:INK_MUTED,display:"flex",gap:8,alignItems:"center"}}>🔍 <span>{tf("Suchen")}</span><kbd className="kbd-hint" style={{fontSize:10.5,border:`1px solid ${BORDER}`,borderRadius:4,padding:"0 4px"}}>Strg K</kbd></button>
+            <button className="no-print" onClick={()=>setSearchOpen(true)} title={tf("Suchen (Strg+K)")} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 11px",fontSize:12.5,cursor:"pointer",color:INK_MUTED,display:"flex",gap:8,alignItems:"center"}}><Icon n="search" /> <span>{tf("Suchen")}</span><kbd className="kbd-hint" style={{fontSize:10.5,border:`1px solid ${BORDER}`,borderRadius:4,padding:"0 4px"}}>Strg K</kbd></button>
             {!window.OUVERTURE_DEMO && <NotificationBell api={api} onOpen={(k)=>setTab(k)} />}
             {HELP[helpKey(tab, role, hotel)] && <button onClick={()=>setHelpOpen(x=>!x)} title={tf("Kurz erklärt")} aria-label={tf("Kurz erklärt")}
               style={{background:helpOpen?"#F4F7FB":"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 11px",fontSize:12.5,cursor:"pointer",fontWeight:700}}>?</button>}

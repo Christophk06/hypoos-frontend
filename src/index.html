@@ -8,6 +8,10 @@
 <script>try{var m=localStorage.getItem("hpoos_theme")||"auto";document.documentElement.setAttribute("data-theme",m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light")}catch(e){}</script>
 
 <link rel="manifest" href="manifest.webmanifest" />
+<!-- Häufigste Schriften sofort laden (sonst erst nach dem CSS entdeckt) -->
+<link rel="preload" href="fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/fraunces-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
 <meta name="theme-color" content="#1C2430" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -20,8 +24,6 @@
 <script src="planning.js"></script>
 <script src="labor.js"></script>
 <script src="energy.js"></script>
-<script src="event-templates.js"></script>
-<script src="doc-templates.js"></script>
 <script>
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {

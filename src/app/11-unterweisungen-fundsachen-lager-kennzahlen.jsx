@@ -55,14 +55,14 @@ function TrainingsView({orgId, api, me, members, role, myDepts, hotel}){
                 <div style={{whiteSpace:"pre-wrap",fontSize:14,lineHeight:1.55,background:PAPER,borderRadius:6,padding:"10px 12px"}} data-no-i18n="">{t.body || "—"}</div>
                 {applies && role!=="viewer" && <div style={{marginTop:10,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                   {st.state==="ok" ? <span style={{color:GOOD,fontSize:13}}>✓ {tf("Bestätigt am {0}", fmtDate(st.at))}{st.until ? " · "+tf("gültig bis {0}", fmtDate(st.until)) : ""}</span>
-                    : <button className="btn-primary" onClick={()=>setSign(t)}>✍ {tf("Gelesen und verstanden")}</button>}
+                    : <button className="btn-primary" onClick={()=>setSign(t)}><Icon n="pen" /> {tf("Gelesen und verstanden")}</button>}
                 </div>}
                 {lead && (
                   <div style={{marginTop:12}}>
                     <div className="field-label">{tf("Noch offen")}</div>
                     <div style={{fontSize:13}} data-no-i18n="">{target.filter(m=>trainingStatus(t, m.user_id).state!=="ok").map(m=>shortName(m.email)).join(", ") || "—"}</div>
                     <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
-                      <button style={smallBtn} disabled={!!proofBusy} onClick={async()=>{ setProofBusy(t.id); try { const r = await api("/api/trainings/"+t.id+"/proof"); await sheetPdf(trainingProofHtml({hotel:hotel||{name:""}, training:r.training, acks:r.acks, target, nameOf:(id)=>memberLabel(members, me, id)}), safeFile(translateString("Unterweisungsnachweis")+" "+t.title)+".pdf"); } catch(e){ setMsg({ok:false,text:e.message}); } setProofBusy(""); }}>{proofBusy===t.id?"…":"📄 "+tf("Nachweis (PDF)")}</button>
+                      <button style={smallBtn} disabled={!!proofBusy} onClick={async()=>{ setProofBusy(t.id); try { const r = await api("/api/trainings/"+t.id+"/proof"); await sheetPdf(trainingProofHtml({hotel:hotel||{name:""}, training:r.training, acks:r.acks, target, nameOf:(id)=>memberLabel(members, me, id)}), safeFile(translateString("Unterweisungsnachweis")+" "+t.title)+".pdf"); } catch(e){ setMsg({ok:false,text:e.message}); } setProofBusy(""); }}>{proofBusy===t.id?"…":<React.Fragment><Icon n="filetext" /> {tf("Nachweis (PDF)")}</React.Fragment>}</button>
                       <button style={linkBtn} onClick={()=>setForm({...t})}>{tf("Bearbeiten")}</button>
                       <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Unterweisung löschen? Alle Bestätigungen werden entfernt."))) run(()=>api("/api/trainings/"+t.id,"DELETE")); }}>{tf("Löschen")}</button>
                     </div>
@@ -109,7 +109,7 @@ function LostFoundView({hotel, api, me, members, role}){
             <label><div className="field-label">{tf("Aufbewahren bis")}</div><input className="input" type="date" value={form.keep_until||""} onChange={e=>setForm({...form,keep_until:e.target.value})} /></label>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",margin:"10px 0"}}>
-            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 13px"}}>📷 {form.photo_data ? tf("Anderes Foto") : tf("Foto aufnehmen")}<input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>pick(e.target.files[0])} /></label>
+            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 13px"}}><Icon n="camera" /> {form.photo_data ? tf("Anderes Foto") : tf("Foto aufnehmen")}<input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>pick(e.target.files[0])} /></label>
             {form.photo_data && <img src={form.photo_data} alt="" style={{height:56,borderRadius:6}} />}
           </div>
           <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={!form.description.trim()} onClick={()=>run(async()=>{ await api(base+"/lost-found","POST",form); setForm(null); }, tf("Gespeichert."))}>{tf("Speichern")}</button><button style={linkBtn} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>
@@ -118,7 +118,7 @@ function LostFoundView({hotel, api, me, members, role}){
       <div style={{display:"flex",gap:6,marginBottom:10}}>
         {[["open","Aufbewahrt"],["all","Alle"]].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:"#fff",color:filter===k?"#fff":INK,borderRadius:999,padding:"6px 13px",fontSize:12.5,cursor:"pointer"}}>{l}</button>)}
         <span style={{flex:1}} />
-        {list && list.length>0 && <button style={smallBtn} onClick={()=>sheetPdf(lostFoundSheetHtml(hotel, list, (id)=>memberLabel(members, me, id)), safeFile(translateString("Fundsachen")+" "+hotel.name+" "+todayIso())+".pdf").catch(e=>setMsg({ok:false,text:e.message}))}>📄 PDF</button>}
+        {list && list.length>0 && <button style={smallBtn} onClick={()=>sheetPdf(lostFoundSheetHtml(hotel, list, (id)=>memberLabel(members, me, id)), safeFile(translateString("Fundsachen")+" "+hotel.name+" "+todayIso())+".pdf").catch(e=>setMsg({ok:false,text:e.message}))}><Icon n="filetext" /> PDF</button>}
       </div>
       {list===null ? <div style={{color:INK_MUTED}}>…</div> : list.length===0 ? <Card><div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Keine Fundsachen.")}</div></Card> : list.map(x=>{ const st = LF_STYLE[x.status]; return (
         <Card key={x.id} style={{marginBottom:8,padding:"11px 14px"}}>
@@ -133,7 +133,7 @@ function LostFoundView({hotel, api, me, members, role}){
           {(x.guest_name || x.guest_contact) && <div style={{fontSize:12.5,color:INK_SOFT,marginTop:2}}>{tf("Gast")}: <span data-no-i18n="">{[x.guest_name, x.guest_contact].filter(Boolean).join(" · ")}</span>{x.notified_at ? " · ✉ "+tf("benachrichtigt am {0}", fmtDate(x.notified_at)) : ""}</div>}
           {x.storage && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{tf("Aufbewahrt in")}: <span data-no-i18n="">{x.storage}</span></div>}
           {x.returned_to && <div style={{fontSize:12.5,color:GOOD,marginTop:2}}>{tf("Zurückgegeben an")}: <span data-no-i18n="">{x.returned_to}</span></div>}
-          {x.has_photo && <button style={{...linkBtn,paddingInlineStart:0}} onClick={async()=>{ if(photos[x.id]) return setPhotos(p=>({...p,[x.id]:null})); const r = await api("/api/lost-found/"+x.id+"/photo"); setPhotos(p=>({...p,[x.id]:r.photo_data})); }}>📷 {photos[x.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
+          {x.has_photo && <button style={{...linkBtn,paddingInlineStart:0}} onClick={async()=>{ if(photos[x.id]) return setPhotos(p=>({...p,[x.id]:null})); const r = await api("/api/lost-found/"+x.id+"/photo"); setPhotos(p=>({...p,[x.id]:r.photo_data})); }}><Icon n="camera" /> {photos[x.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
           {photos[x.id] && <img src={photos[x.id]} alt="" style={{display:"block",maxWidth:"100%",maxHeight:300,borderRadius:8,marginTop:6}} />}
           {role!=="viewer" && x.status==="Aufbewahrt" && <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
             <button style={smallBtn} onClick={()=>{ const who = window.prompt(tf("An wen zurückgegeben? (Name, ggf. Zimmer)")); if(who!==null) run(()=>api("/api/lost-found/"+x.id,"PATCH",{status:"Zurückgegeben", returned_to:who})); }}>✓ {tf("Zurückgegeben")}</button>
@@ -284,9 +284,9 @@ function HotelStats({s}){
   return (
     <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
       {s.on_duty>0 && chip("● "+tf("{0} im Dienst", s.on_duty), GOOD)}
-      {s.rooms_total>0 && chip("🛏 "+tf("{0}/{1} bereit", s.rooms_ready, s.rooms_total))}
+      {s.rooms_total>0 && chip(<React.Fragment><Icon n="bed" /> {tf("{0}/{1} bereit", s.rooms_ready, s.rooms_total)}</React.Fragment>)}
       {(s.arrivals>0 || s.departures>0) && chip("↘ "+s.arrivals+" · ↗ "+s.departures)}
-      {s.tickets_open>0 && chip("🔧 "+tf("{0} offen", s.tickets_open), s.tickets_urgent ? BAD : undefined)}
+      {s.tickets_open>0 && chip(<React.Fragment><Icon n="wrench" /> {tf("{0} offen", s.tickets_open)}</React.Fragment>, s.tickets_urgent ? BAD : undefined)}
     </div>
   );
 }

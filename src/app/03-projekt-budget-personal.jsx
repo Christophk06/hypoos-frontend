@@ -329,9 +329,9 @@ function BudgetView({items, callHotel, callId, refresh, hotel}){
         </Card>
       )}
 
-      {over.length>0 && <Card style={{marginBottom:14,borderColor:BAD,background:BAD_SOFT,fontSize:13}}><b>⚠ {tf("Über dem Plan (Ist + beauftragt):")}</b> <span data-no-i18n="">{over.map(i=>i.title+" ("+fmtEur(Number(i.actual||0)+Number(i.committed||0)-Number(i.planned||0))+")").join(", ")}</span></Card>}
+      {over.length>0 && <Card style={{marginBottom:14,borderColor:BAD,background:BAD_SOFT,fontSize:13}}><b><Icon n="alert" /> {tf("Über dem Plan (Ist + beauftragt):")}</b> <span data-no-i18n="">{over.map(i=>i.title+" ("+fmtEur(Number(i.actual||0)+Number(i.committed||0)-Number(i.planned||0))+")").join(", ")}</span></Card>}
       <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-        {items.length>0 && hotel && <button style={smallBtn} onClick={()=>sheetPdf(budgetSheetHtml(hotel, items), safeFile(translateString("Budget")+" "+hotel.name+" "+todayIso())+".pdf").catch(e=>setError(e.message))}>📄 PDF</button>}
+        {items.length>0 && hotel && <button style={smallBtn} onClick={()=>sheetPdf(budgetSheetHtml(hotel, items), safeFile(translateString("Budget")+" "+hotel.name+" "+todayIso())+".pdf").catch(e=>setError(e.message))}><Icon n="filetext" /> PDF</button>}
         {items.length>0 && hotel && <button style={smallBtn} onClick={()=>budgetXlsx(hotel, items).catch(e=>setError(e.message))}>Excel</button>}
         <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Budgetposten</button>
       </div>

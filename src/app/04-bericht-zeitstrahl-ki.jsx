@@ -214,7 +214,7 @@ function buildIcs({hotel, tasks, milestones}){
   const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Ouverture//Pre-Opening//DE","CALSCALE:GREGORIAN",
     "X-WR-CALNAME:"+icsEscape("Ouverture – "+hotel.name)];
   const T = translateString;
-  if(hotel.opening_date) lines.push(...ev("opening-"+hotel.id, hotel.opening_date, "🎉 "+tf("Eröffnung {0}", hotel.name), tf("Eröffnungstermin")));
+  if(hotel.opening_date) lines.push(...ev("opening-"+hotel.id, hotel.opening_date, tf("Eröffnung {0}", hotel.name), tf("Eröffnungstermin")));
   milestones.filter(m=>m.date && m.status!=="Abgeschlossen").forEach(m=>lines.push(...ev("m-"+m.id, m.date, "◆ "+m.title, T("Meilenstein")+" · "+T(m.criticality)+" · "+T(m.status))));
   tasks.filter(t=>t.due_date && t.status!=="Abgeschlossen").forEach(t=>lines.push(...ev("t-"+t.id, t.due_date, t.title, T(t.department)+" · "+tf("Priorität {0}", T(t.priority))+" · "+T(t.status)+(t.owner?" · "+t.owner:""))));
   lines.push("END:VCALENDAR");

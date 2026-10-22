@@ -14,10 +14,12 @@
 (Admin)
 (display-mode: standalone)
 (prefers-color-scheme: dark)
+-0.16em
 0 KB
 0.18em
 0.85em
 1 1 auto
+1.05em
 1.2fr 1fr
 100vh
 1fr
@@ -120,8 +122,11 @@ application/vnd.openxmlformats-officedocument.wordprocessingml.document
 application/xml
 calc(
 copyMove
+currentColor
 daysInRow
 de-DE
+doc-templates.js
+event-templates.js
 feedback.html?demo=1
 fälligkeit
 hpoos_c:

@@ -354,7 +354,7 @@ function RoomCreditsCard({hotel, api, rooms, onDone}){
 }
 
 // ------------------------------------------------------------ Wetter und Ereignisse im Dienstplan
-const WEATHER_ICON = {sonnig:"☀", wolkig:"⛅", bedeckt:"☁", regen:"🌧", schnee:"❄", gewitter:"⛈", nebel:"🌫"};
+const WEATHER_ICON = {sonnig:"sun", wolkig:"cloudsun", bedeckt:"cloud", regen:"rain", schnee:"snow", gewitter:"storm", nebel:"fog"};
 const WEATHER_LABEL = {sonnig:"Sonnig", wolkig:"Teils bewölkt", bedeckt:"Bedeckt", regen:"Regen", schnee:"Schnee", gewitter:"Gewitter", nebel:"Nebel"};
 function useDayInfo(api, hotel, days){
   const [info,setInfo] = useState(null);
@@ -370,7 +370,7 @@ function DayInfoCell({info, date}){
   if(!w && !notes.length && !ev.length) return null;
   return (
     <div style={{fontSize:10.5,fontWeight:500,lineHeight:1.35,marginTop:2}}>
-      {w && <div title={tf(WEATHER_LABEL[w.group]||"")+(w.rain ? " · "+w.rain+" mm" : "")} style={{color:INK_MUTED}}><span aria-hidden="true">{WEATHER_ICON[w.group]||""}</span> {w.tmin}–{w.tmax}°{w.rain>=1 ? " · "+Math.round(w.rain)+" mm" : ""}</div>}
+      {w && <div title={tf(WEATHER_LABEL[w.group]||"")+(w.rain ? " · "+w.rain+" mm" : "")} style={{color:INK_MUTED}}><Icon n={WEATHER_ICON[w.group]||""} /> {w.tmin}–{w.tmax}°{w.rain>=1 ? " · "+Math.round(w.rain)+" mm" : ""}</div>}
       {notes.map(n=><div key={n.id} style={{color:BRASS}} title={n.note||""}>◆ {n.title}</div>)}
       {ev.map(e=><div key={e.id} style={{color:INK}} title={e.guests ? tf("{0} Personen", e.guests) : ""}>♦ {e.title}{e.guests ? " ("+e.guests+")" : ""}</div>)}
     </div>

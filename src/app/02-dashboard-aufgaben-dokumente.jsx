@@ -381,11 +381,11 @@ function fmtBytes(n){
 }
 function fileIcon(mime, name){
   const ext = (name.split(".").pop()||"").toLowerCase();
-  if((mime||"").startsWith("image/")) return "🖼️";
-  if(ext==="pdf") return "📕";
-  if(["xls","xlsx","csv"].includes(ext)) return "📊";
-  if(["doc","docx","odt","txt"].includes(ext)) return "📝";
-  return "📄";
+  if((mime||"").startsWith("image/")) return "image";
+  if(ext==="pdf") return "file";
+  if(["xls","xlsx","csv"].includes(ext)) return "table";
+  if(["doc","docx","odt","txt"].includes(ext)) return "filetext";
+  return "filetext";
 }
 // Dateiname für den Speicherpfad: nur unproblematische Zeichen (der Originalname bleibt im Eintrag)
 function storageSafeName(name){
@@ -454,7 +454,7 @@ function DocumentsPanel({hotel, api, upload, me, taskId, compact, onChanged}){
             {docs.map(d=>(
               <tr key={d.id} style={{borderTop:`1px solid ${BORDER}`}}>
                 <td style={{padding:"8px 12px"}}>
-                  <button onClick={()=>download(d)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:INK,fontWeight:600,fontSize:13.5,textAlign:"left",wordBreak:"break-word"}}>{fileIcon(d.mime_type,d.name)} {d.name}</button>
+                  <button onClick={()=>download(d)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:INK,fontWeight:600,fontSize:13.5,textAlign:"left",wordBreak:"break-word"}}><Icon n={fileIcon(d.mime_type,d.name)} /> {d.name}</button>
                   <div style={{fontSize:11.5,color:INK_MUTED}}>
                     {fmtBytes(d.size_bytes)} · {d.uploaded_by && me && d.uploaded_by===me.id ? tf("von dir") : (d.uploaded_by_email ? tf("von {0}", d.uploaded_by_email) : "")} · {fmtDateTime(d.created_at)}
                     {!taskId && d.task_title ? <span> · {tf("Aufgabe: {0}", d.task_title)}</span> : null}
@@ -645,8 +645,8 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
             <React.Fragment key={t.id}>
             <tr style={{borderTop:`1px solid ${BORDER}`}}>
               <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.assignee_id ? <span style={{color:t.assignee_id===(me&&me.id)?BRASS:INK_MUTED,fontWeight:t.assignee_id===(me&&me.id)?600:400}}> · {t.assignee_id===(me&&me.id) ? "Du" : (memberEmail(members,t.assignee_id)||"Teammitglied")}</span> : ""}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div>
-                {conflictOf(t.id).map((c,i)=><div key={i} style={{fontSize:11.5,color:BAD,fontWeight:600}}>⚠ {tf("beginnt {0} Tage vor dem Ende von „{1}“", c.days, (tasks.find(x=>x.id===c.pred)||{}).title)}</div>)}
-                {plan.critical[t.id] && !conflictOf(t.id).length && <div style={{fontSize:11.5,color:WARN,fontWeight:600}}>🧩 {tf("kritisch – kein Puffer")}</div>}</td>
+                {conflictOf(t.id).map((c,i)=><div key={i} style={{fontSize:11.5,color:BAD,fontWeight:600}}><Icon n="alert" /> {tf("beginnt {0} Tage vor dem Ende von „{1}“", c.days, (tasks.find(x=>x.id===c.pred)||{}).title)}</div>)}
+                {plan.critical[t.id] && !conflictOf(t.id).length && <div style={{fontSize:11.5,color:WARN,fontWeight:600}}><Icon n="route" /> {tf("kritisch – kein Puffer")}</div>}</td>
               <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
               <td style={{padding:12}}>
                 <select value={t.status} onChange={e=>updateStatus(t.id,e.target.value)} className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
@@ -654,7 +654,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
               <td style={{padding:12,color:INK_MUTED}}>{fmtDate(t.due_date)}</td>
               <td style={{padding:12,whiteSpace:"nowrap"}}>
                 <button style={{...linkBtn,color:openActivity===t.id?INK:INK_MUTED,fontWeight:openActivity===t.id?600:400}} onClick={()=>setOpenActivity(openActivity===t.id?null:t.id)} title="Kommentare und Verlauf">
-                  💬 {t.comment_count||0}{t.document_count ? "  📎 "+t.document_count : ""}
+                  <Icon n="chat" /> {t.comment_count||0}{t.document_count ? <React.Fragment>{"  "}<Icon n="clip" /> {t.document_count}</React.Fragment> : ""}
                 </button>
                 <button style={linkBtn} onClick={()=>startEdit(t)}>Bearbeiten</button>
                 {canManageDept(t.department) && <button style={linkBtn} onClick={()=>remove(t)} title="Löschen">✕</button>}

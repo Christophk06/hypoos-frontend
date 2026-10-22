@@ -82,7 +82,7 @@ const appVersion = hash(app + core).slice(0, 7);
 let html = read("src/index.html");
 if (!html.includes("<!--APP-->")) throw new Error("<!--APP--> fehlt in src/index.html");
 html = html
-  .replace("<!--APP-->", `<script>window.__APP_VERSION=${JSON.stringify(appVersion)};window.__DOCX_SRC=${JSON.stringify(ver("vendor/docx.js"))};</script>\n<script src="${ver("app.js")}"></script>`)
+  .replace("<!--APP-->", `<script>window.__APP_VERSION=${JSON.stringify(appVersion)};window.__DOCX_SRC=${JSON.stringify(ver("vendor/docx.js"))};window.__LAZY=${JSON.stringify({ "event-templates.js": ver("event-templates.js"), "doc-templates.js": ver("doc-templates.js") })};</script>\n<script src="${ver("app.js")}"></script>`)
   .replace(/<script src="(i18n\.js|payroll\.js|holidays\.js|planning\.js|labor\.js|energy\.js|event-templates\.js|doc-templates\.js)"><\/script>/g, (m, f) => `<script src="${ver(f)}"></script>`)
   // Live-Demo: Daten und Mock ebenfalls mit Versions-Kennung
   .replace(`'<script src="demo/demo-mock.js"><\\/script>'`, `'<script src="${ver("demo/demo-mock.js")}"><\\/script>'`)

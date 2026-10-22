@@ -3,7 +3,7 @@ function CriticalPathCard({hotel, tasks}){
   const [open,setOpen] = useState(false);
   const [whatIf,setWhatIf] = useState({id:"", days:7});
   const linked = tasks.some(t=>(t.depends_on||[]).length);
-  if(!linked) return <div className="no-print" style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>💡 {tf("Tipp: Unter „Bearbeiten“ kannst du festlegen, wovon eine Aufgabe abhängt. Dann zeigt Ouverture den kritischen Pfad bis zur Eröffnung.")}</div>;
+  if(!linked) return <div className="no-print" style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}><Icon n="bulb" /> {tf("Tipp: Unter „Bearbeiten“ kannst du festlegen, wovon eine Aufgabe abhängt. Dann zeigt Ouverture den kritischen Pfad bis zur Eröffnung.")}</div>;
   const p = planTasks(tasks, hotel.opening_date);
   const byId = Object.fromEntries(tasks.map(t=>[t.id,t]));
   const crit = tasks.filter(t=>p.critical[t.id]).sort((a,b)=>(a.due_date||"")<(b.due_date||"")?-1:1);
@@ -11,14 +11,14 @@ function CriticalPathCard({hotel, tasks}){
   return (
     <Card className="no-print" style={{marginBottom:14,borderColor:p.conflicts.length?BAD:crit.length?WARN:BORDER}}>
       <div style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
-        <div style={{fontWeight:700,flex:1}}>🧩 {tf("Kritischer Pfad")}</div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="route" /> {tf("Kritischer Pfad")}</div>
         {p.conflicts.length>0 && <Pill color={BAD} bg={BAD_SOFT}>{tf("{0} Konflikte", p.conflicts.length)}</Pill>}
         <Pill color={WARN} bg={WARN_SOFT}>{tf("{0} kritisch", crit.length)}</Pill>
         <span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
       </div>
       {open && (
         <div style={{marginTop:10,fontSize:13.5}}>
-          {p.conflicts.map((c,i)=><div key={i} style={{color:BAD,marginBottom:4}}>⚠ {tf("„{0}“ beginnt {1} Tage vor dem Ende von „{2}“.", byId[c.task].title, c.days, byId[c.pred].title)}</div>)}
+          {p.conflicts.map((c,i)=><div key={i} style={{color:BAD,marginBottom:4}}><Icon n="alert" /> {tf("„{0}“ beginnt {1} Tage vor dem Ende von „{2}“.", byId[c.task].title, c.days, byId[c.pred].title)}</div>)}
           {crit.length>0 && <div style={{marginTop:6}}><div className="field-label">{tf("Ohne Puffer – jede Verspätung verschiebt die Kette")}</div>
             {crit.map(t=><div key={t.id} style={{padding:"3px 0"}} data-no-i18n="">{fmtDate(t.due_date)} · {t.title} <span style={{color:p.slack[t.id]<0?BAD:WARN}}>({p.slack[t.id]>0?"+":""}{p.slack[t.id]} {tf("Tage Puffer")})</span></div>)}</div>}
           <div style={{marginTop:10,background:PAPER,borderRadius:6,padding:"8px 10px"}}>
@@ -62,7 +62,7 @@ function ContractorsCard({hotel, api}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-        <div style={{fontWeight:700,flex:1}}>🔨 {tf("Handwerker und Firmen")}</div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="hammer" /> {tf("Handwerker und Firmen")}</div>
         {!form && <button style={smallBtn} onClick={()=>setForm({name:"", trade:"", email:""})}>{tf("+ Firma")}</button>}
       </div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Jede Firma bekommt einen eigenen Link ohne Anmeldung. Dort sieht sie nur ihre Mängel und meldet sie als behoben – ihr nehmt sie dann ab.")}</div>
@@ -142,10 +142,10 @@ function ProcurementView({hotel, api, role, myDepts}){
             {shown.length===0 && <tr><td style={{padding:16,color:INK_MUTED}}>{tf("Noch keine Positionen. Erfasse hier Ausstattung und Bestellungen bis zur Eröffnung – mit Bestell- und Liefertermin.")}</td></tr>}
             {shown.map(i=>{ const w = warn(i), st = PROC_STYLE[i.status]; return (
               <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
-                <td style={{padding:"9px 12px"}}><b data-no-i18n="">{i.name}</b><div style={{fontSize:11.5,color:INK_MUTED}}><span>{i.department}</span>{i.supplier ? <span data-no-i18n=""> · {i.supplier}</span> : ""}</div>{w && <div style={{fontSize:11.5,color:BAD,fontWeight:600}}>⚠ {w}</div>}</td>
+                <td style={{padding:"9px 12px"}}><b data-no-i18n="">{i.name}</b><div style={{fontSize:11.5,color:INK_MUTED}}><span>{i.department}</span>{i.supplier ? <span data-no-i18n=""> · {i.supplier}</span> : ""}</div>{w && <div style={{fontSize:11.5,color:BAD,fontWeight:600}}><Icon n="alert" /> {w}</div>}</td>
                 <td style={{padding:"9px 8px",whiteSpace:"nowrap"}} data-no-i18n="">{Number(i.quantity).toLocaleString(UI_LOCALE)} {i.unit}</td>
                 <td style={{padding:"9px 8px",whiteSpace:"nowrap",textAlign:"end"}} data-no-i18n="">{i.unit_price!=null ? fmtEur(Number(i.unit_price)*Number(i.quantity)) : "–"}</td>
-                <td style={{padding:"9px 8px",fontSize:12,color:INK_MUTED,whiteSpace:"nowrap"}} data-no-i18n="">{i.order_by ? "⏱ "+fmtDate(i.order_by) : ""}{i.delivery_date ? <div>🚚 {fmtDate(i.delivery_date)}</div> : ""}</td>
+                <td style={{padding:"9px 8px",fontSize:12,color:INK_MUTED,whiteSpace:"nowrap"}} data-no-i18n="">{i.order_by ? <React.Fragment><Icon n="clock" /> {fmtDate(i.order_by)}</React.Fragment> : ""}{i.delivery_date ? <div><Icon n="truck" /> {fmtDate(i.delivery_date)}</div> : ""}</td>
                 <td style={{padding:"9px 8px"}}>{canEdit(i.department) ? <select className="input" style={{width:"auto",padding:"4px 8px",fontSize:12.5,background:st.bg,color:st.color}} value={i.status} onChange={e=>run(()=>api("/api/procurement/"+i.id,"PATCH",{status:e.target.value}))}>{PROC_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select> : <Pill color={st.color} bg={st.bg}>{i.status}</Pill>}</td>
                 <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{canEdit(i.department) && <React.Fragment><button style={linkBtn} onClick={()=>setForm({...i, unit_price:i.unit_price??"", order_by:i.order_by||"", delivery_date:i.delivery_date||""})}>{tf("Bearbeiten")}</button><button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Position löschen?"))) run(()=>api("/api/procurement/"+i.id,"DELETE")); }}>✕</button></React.Fragment>}</td>
               </tr>); })}
@@ -192,7 +192,7 @@ function CandidatesPanel({hotel, api, position, onChanged}){
 }
 function CostRampCard({hotel, positions}){
   const withCost = positions.filter(p=>Number(p.monthly_cost)>0);
-  if(!withCost.length) return <div className="no-print" style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>💡 {tf("Trage bei den Stellen die Monatskosten pro Person ein – dann zeigt Ouverture, wie die Personalkosten bis zur Eröffnung steigen.")}</div>;
+  if(!withCost.length) return <div className="no-print" style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}><Icon n="bulb" /> {tf("Trage bei den Stellen die Monatskosten pro Person ein – dann zeigt Ouverture, wie die Personalkosten bis zur Eröffnung steigen.")}</div>;
   const opening = hotel.opening_date || todayIso();
   const months = []; for(let i=-6;i<=3;i++){ const d = new Date(opening.slice(0,7)+"-01T00:00:00Z"); d.setUTCMonth(d.getUTCMonth()+i); months.push(d.toISOString().slice(0,7)); }
   const costOf = (m) => withCost.reduce((s,p)=>{ const start = (p.start_date || opening).slice(0,7); return start<=m ? s + Number(p.monthly_cost)*Number(p.headcount) : s; },0);
@@ -201,7 +201,7 @@ function CostRampCard({hotel, positions}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"baseline",flexWrap:"wrap",marginBottom:10}}>
-        <div style={{fontWeight:700,flex:1}}>📈 {tf("Personalkosten-Hochlauf")}</div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="trend" /> {tf("Personalkosten-Hochlauf")}</div>
         <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("bis zur Eröffnung: {0}", fmtEur(sumBefore))}</span>
       </div>
       <div style={{display:"flex",gap:6,alignItems:"flex-end",height:130}}>
@@ -265,7 +265,7 @@ function PermitsView({hotel, api, role}){
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <Pill color={st.color} bg={st.bg}>{p.status}</Pill>
             <b style={{flex:1,minWidth:180}}><span>{p.title}</span>{p.authority ? <span style={{fontWeight:400,color:INK_MUTED}} data-no-i18n=""> · {p.authority}</span> : ""}</b>
-            <span style={{fontSize:12.5,color:INK_MUTED}} data-no-i18n="">{p.due_date ? "⏱ "+fmtDate(p.due_date) : ""}{p.valid_until ? " · ✓ "+fmtDate(p.valid_until) : ""}</span>
+            <span style={{fontSize:12.5,color:INK_MUTED}} data-no-i18n="">{p.due_date ? <React.Fragment><Icon n="clock" /> {fmtDate(p.due_date)}</React.Fragment> : ""}{p.valid_until ? " · ✓ "+fmtDate(p.valid_until) : ""}</span>
             {f && <span style={{fontSize:12,fontWeight:700,color:f.c}}>{f.t}</span>}
             {lead && <button style={linkBtn} onClick={()=>setForm({...p, due_date:p.due_date||"", valid_until:p.valid_until||""})}>{tf("Bearbeiten")}</button>}
             {lead && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Genehmigung löschen?"))) run(()=>api("/api/permits/"+p.id,"DELETE")); }}>✕</button>}

@@ -121,7 +121,7 @@ function InstallAppButton({dark}){
   };
   return (
     <div>
-      <button onClick={click} style={style}>📱 {tf("App installieren")}</button>
+      <button onClick={click} style={style}><Icon n="phone" /> {tf("App installieren")}</button>
       {hint && <div style={{fontSize:12,marginTop:6,color:dark?"rgba(255,255,255,0.75)":INK_MUTED,lineHeight:1.4}}>{tf("Am iPhone: unten auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen.")}</div>}
     </div>
   );
@@ -732,7 +732,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                         <React.Fragment>
                           <div data-no-i18n="">{h ? fmtHours(h) : "–"}{t!=null && <span> / {fmtHours(t)}</span>}</div>
                           {t!=null && h-t!==0 && <div data-no-i18n="" style={{fontSize:11,color:h>t?WARN:INK_MUTED}}>{h>t?"+":""}{fmtHours(h-t)}</div>}
-                          {w.length>0 && <div title={w.join("\n")} style={{color:BAD,fontSize:11,cursor:"help"}}>⚠ <span>{tf("Arbeitszeit")}</span></div>}
+                          {w.length>0 && <div title={w.join("\n")} style={{color:BAD,fontSize:11,cursor:"help"}}><Icon n="alert" /> <span>{tf("Arbeitszeit")}</span></div>}
                           {canManage && <button className="no-print" onClick={()=>setTarget(r)} style={{...linkBtn,fontSize:11,padding:0}}>{tf("Soll")}</button>}
                         </React.Fragment>
                       ); })()}

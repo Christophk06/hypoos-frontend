@@ -76,9 +76,9 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
       <PushPrompt api={api} />
       <ClockCard hotel={hotel} api={api} role="member" myDepts={myDepts} compact />
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
-        <button style={smallBtn} onClick={()=>onOpen("tickets")}>🔧 {tf("Mangel melden")}</button>
+        <button style={smallBtn} onClick={()=>onOpen("tickets")}><Icon n="wrench" /> {tf("Mangel melden")}</button>
         <SickButton hotel={hotel} api={api} />
-        {myDepts.some(d=>d==="Housekeeping" || d==="Rezeption & Empfang") && <button style={smallBtn} onClick={()=>onOpen("rooms")}>🛏 {tf("Zimmerstatus")}</button>}
+        {myDepts.some(d=>d==="Housekeeping" || d==="Rezeption & Empfang") && <button style={smallBtn} onClick={()=>onOpen("rooms")}><Icon n="bed" /> {tf("Zimmerstatus")}</button>}
       </div>
       <OnboardingCard orgId={orgId} api={api} me={me} myDepts={myDepts} members={members} />
       <OpenShiftsCard hotel={hotel} api={api} me={me} role="member" myDepts={myDepts} compact />
@@ -140,7 +140,7 @@ function LanguageSwitcher({dark, withDefault, api, me, onCurrency}){
   return (
     <React.Fragment>
       <button onClick={()=>setOpen(true)} style={style} aria-label={tf("Sprache und Währung")} title={tf("Sprache und Währung")}>
-        <span aria-hidden="true">🌐</span> <span data-no-i18n="">{langName}</span>
+        <span aria-hidden="true"><Icon n="globe" /></span> <span data-no-i18n="">{langName}</span>
         {api && <span data-no-i18n="" style={{opacity:0.7}}> · {DISPLAY_CURRENCY || HOTEL_CURRENCY}</span>}
       </button>
       {open && <LocaleDialog onClose={()=>setOpen(false)} withDefault={withDefault} api={api} me={me} onCurrency={onCurrency} />}

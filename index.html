@@ -9,6 +9,10 @@
 <script>try{var m=localStorage.getItem("hpoos_theme")||"auto";document.documentElement.setAttribute("data-theme",m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light")}catch(e){}</script>
 
 <link rel="manifest" href="manifest.webmanifest" />
+<!-- Häufigste Schriften sofort laden (sonst erst nach dem CSS entdeckt) -->
+<link rel="preload" href="fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/fraunces-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
 <meta name="theme-color" content="#1C2430" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -21,8 +25,6 @@
 <script src="planning.js?v=1e94a23b2d"></script>
 <script src="labor.js?v=91afc37276"></script>
 <script src="energy.js?v=7ed65ecfff"></script>
-<script src="event-templates.js?v=08eedd9825"></script>
-<script src="doc-templates.js?v=84970721d7"></script>
 <script>
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
@@ -168,7 +170,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="950b6d5";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";</script>
-<script src="app.js?v=6b81f89fb5"></script>
+<script>window.__APP_VERSION="7ce7a0d";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
+<script src="app.js?v=9e2b0481c7"></script>
 </body>
 </html>

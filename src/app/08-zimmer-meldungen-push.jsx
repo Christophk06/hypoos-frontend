@@ -88,7 +88,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
                 <div style={{fontSize:10.5,lineHeight:1.2,marginTop:2}}>{r.status}</div>
                 {r.occupancy!=="Unbelegt" && <div style={{fontSize:10,lineHeight:1.2,color:INK,opacity:.7}}>{r.occupancy}</div>}
                 {r.assigned_to && <div data-no-i18n="" style={{position:"absolute",top:4,insetInlineStart:5,fontSize:9.5,fontWeight:700,color:INK,opacity:.65}}>{memberLabel(members, me, r.assigned_to).slice(0,3).toUpperCase()}</div>}
-                {(r.note || tk>0) && <div style={{position:"absolute",top:4,insetInlineEnd:5,fontSize:10,fontWeight:700,color:tk?BAD:INK}}>{tk ? "🔧" : "✎"}</div>}
+                {(r.note || tk>0) && <div style={{position:"absolute",top:4,insetInlineEnd:5,fontSize:10,fontWeight:700,color:tk?BAD:INK}}>{tk ? <Icon n="wrench" /> : "✎"}</div>}
               </button>
             ); })}
           </div>
@@ -115,9 +115,9 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
               <label style={{flex:2,minWidth:200}}><div className="field-label">{tf("Notiz")}</div>
                 <input className="input" disabled={!canEdit} key={cur.id} defaultValue={cur.note||""} placeholder={tf("z. B. Babybett, Late Check-out 14 Uhr")} onBlur={e=>{ if((e.target.value||"")!==(cur.note||"")) patch(cur,{note:e.target.value}); }} /></label>
             </div>
-            {ticketsFor(cur.number).map(t=><div key={t.id} style={{fontSize:13,color:BAD,marginBottom:4}}>🔧 <span data-no-i18n="">{t.title}</span> · <span>{t.status}</span></div>)}
+            {ticketsFor(cur.number).map(t=><div key={t.id} style={{fontSize:13,color:BAD,marginBottom:4}}><Icon n="wrench" /> <span data-no-i18n="">{t.title}</span> · <span>{t.status}</span></div>)}
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:6}}>
-              {role!=="viewer" && <button style={smallBtn} onClick={()=>{ setSel(null); onReport(roomLocation(cur.number)); }}>🔧 {tf("Mangel melden")}</button>}
+              {role!=="viewer" && <button style={smallBtn} onClick={()=>{ setSel(null); onReport(roomLocation(cur.number)); }}><Icon n="wrench" /> {tf("Mangel melden")}</button>}
               <span style={{flex:1}}></span>
               {cur.updated_by && <span style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{memberLabel(members, me, cur.updated_by)} · {fmtClock(cur.updated_at)}</span>}
               {canSetup && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Zimmer {0} löschen?", cur.number))) { setSel(null); api("/api/rooms/"+cur.id,"DELETE").then(load).catch(e=>setMsg({ok:false,text:e.message})); } }}>{tf("Löschen")}</button>}
@@ -194,7 +194,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
           XLSX.writeFile(wb, (tf("Meldungen")+" "+hotel.name+" "+todayIso()).replace(/[\/:*?"<>|]+/g,"")+".xlsx");
         } catch(e){ setMsg({ok:false, text:tf("Export fehlgeschlagen: {0}", e.message)}); }
       }}>Excel</button>}
-      {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14,padding:"11px 18px"}} onClick={()=>setForm(emptyForm(""))}>{section==="wishes" ? "🛎 "+tf("Gästewunsch erfassen") : section==="snags" ? "🔨 "+tf("Baumangel erfassen") : "🔧 "+tf("Mangel melden")}</button>}
+      {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14,padding:"11px 18px"}} onClick={()=>setForm(emptyForm(""))}>{section==="wishes" ? <React.Fragment><Icon n="concierge" /> {tf("Gästewunsch erfassen")}</React.Fragment> : section==="snags" ? <React.Fragment><Icon n="hammer" /> {tf("Baumangel erfassen")}</React.Fragment> : <React.Fragment><Icon n="wrench" /> {tf("Mangel melden")}</React.Fragment>}</button>}
       {form && (
         <Card style={{marginBottom:16,borderColor:BRASS}}>
           <div style={{fontWeight:700,marginBottom:10}}>{form.kind==="Gästewunsch" ? tf("Gästewunsch erfassen") : form.kind==="Baumangel" ? tf("Baumangel erfassen") : tf("Mangel melden")}</div>
@@ -209,7 +209,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
             <label style={{minWidth:170}}><div className="field-label">{tf("Zuständig")}</div><select className="input" value={form.department} onChange={e=>setForm({...form,department:e.target.value})}>{TICKET_DEPTS.map(d=><option key={d} value={d}>{d}</option>)}</select></label>
             {form.kind==="Baumangel" && <label><div className="field-label">{tf("Frist")}</div><input className="input" type="date" value={form.due_on||""} onChange={e=>setForm({...form,due_on:e.target.value})} /></label>}
             {form.kind==="Baumangel" && contractors.length>0 && <label style={{minWidth:170}}><div className="field-label">{tf("Firma")}</div><select className="input" value={form.contractor_id} onChange={e=>setForm({...form,contractor_id:e.target.value})}><option value="">–</option>{contractors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
-            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 13px"}}>📷 {form.photo ? tf("Anderes Foto") : tf("Foto aufnehmen")}
+            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 13px"}}><Icon n="camera" /> {form.photo ? tf("Anderes Foto") : tf("Foto aufnehmen")}
               <input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>pickPhoto(e.target.files[0])} /></label>
             {form.photo && <img src={form.photo} alt="" style={{height:56,borderRadius:6,border:`1px solid ${BORDER}`}} />}
             {form.photo && <button style={linkBtn} onClick={()=>setForm({...form,photo:null})}>{tf("Entfernen")}</button>}
@@ -232,7 +232,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
               {t.priority==="Dringend" && <Pill color={BAD} bg={BAD_SOFT}>Dringend</Pill>}
               {t.kind==="Wartung" && <Pill color={BRASS} bg={BRASS_SOFT}>Wartung</Pill>}
-              {t.via_guest && <Pill color="#6B4BA1" bg="#EEE7F7">🛎 {tf("Gast")}</Pill>}
+              {t.via_guest && <Pill color="#6B4BA1" bg="#EEE7F7"><Icon n="concierge" /> {tf("Gast")}</Pill>}
               <Pill color={st.color} bg={st.bg}>{t.status}</Pill>
               {t.due_on && t.status!=="Erledigt" && <Pill color={t.due_on<todayIso()?BAD:INK_MUTED} bg={t.due_on<todayIso()?BAD_SOFT:PAPER}>{tf("Frist {0}", fmtDate(t.due_on))}</Pill>}
               {t.location && <b data-no-i18n="">{t.location}</b>}
@@ -242,7 +242,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
             </div>
             <div style={{fontSize:14.5,fontWeight:600}}><TrText text={t.title} tr={T.tr} /></div>
             {t.description && <div style={{fontSize:13.5,color:INK_SOFT,whiteSpace:"pre-wrap",marginTop:2}}><TrText text={t.description} tr={T.tr} /></div>}
-            {t.has_photo && <button style={{...linkBtn,paddingInlineStart:0,marginTop:4}} onClick={()=>showPhoto(t)}>📷 {photos[t.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
+            {t.has_photo && <button style={{...linkBtn,paddingInlineStart:0,marginTop:4}} onClick={()=>showPhoto(t)}><Icon n="camera" /> {photos[t.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
             {photos[t.id] && <img src={photos[t.id]} alt="" style={{display:"block",maxWidth:"100%",maxHeight:360,borderRadius:8,marginTop:6,border:`1px solid ${BORDER}`}} />}
             {t.status==="Erledigt" && t.done_by && <div style={{fontSize:12,color:GOOD,marginTop:4}}>{tf("Erledigt von {0}", memberLabel(members, me, t.done_by))} · <span data-no-i18n="">{fmtDateTime(t.done_at)}</span></div>}
             {t.done_note && <div style={{fontSize:12.5,color:INK_SOFT,marginTop:2}}>{tf("Ergebnis")}: <span data-no-i18n="">{t.done_note}</span></div>}
@@ -340,7 +340,7 @@ function PushPrompt({api, onOpen}){
   const hide = () => { setHidden(true); try { window.localStorage.setItem("hpoos_push_prompt_hidden","1"); } catch(e){} };
   return (
     <Card style={{marginBottom:14,borderColor:BRASS,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-      <span style={{fontSize:20}}>🔔</span>
+      <span style={{fontSize:20}}><Icon n="bell" /></span>
       <div style={{flex:1,minWidth:200,fontSize:13.5}}>{tf("Erfahre sofort, wenn dein Dienstplan da ist oder sich eine Schicht ändert.")}</div>
       <button className="btn-primary" onClick={()=>p.enable().catch(()=>{})}>{tf("Einschalten")}</button>
       <button style={linkBtn} onClick={hide}>{tf("Später")}</button>

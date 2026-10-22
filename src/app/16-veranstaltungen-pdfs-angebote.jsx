@@ -139,9 +139,9 @@ function SheetButtons({ev, hotel}){
   const canShare = typeof navigator!=="undefined" && !!navigator.share;
   return (
     <React.Fragment>
-      <button style={smallBtn} disabled={!!busy} onClick={()=>run("pdf", ()=>sheetPdf(functionSheetHtml(ev, hotel), sheetName(ev), false))}>{busy==="pdf"?"…":"📄 PDF"}</button>
+      <button style={smallBtn} disabled={!!busy} onClick={()=>run("pdf", ()=>sheetPdf(functionSheetHtml(ev, hotel), sheetName(ev), false))}>{busy==="pdf"?"…":<React.Fragment><Icon n="filetext" /> PDF</React.Fragment>}</button>
       {canShare && <button style={smallBtn} disabled={!!busy} onClick={()=>run("share", ()=>sheetPdf(functionSheetHtml(ev, hotel), sheetName(ev), true))}>{busy==="share"?"…":"↗ "+tf("Teilen")}</button>}
-      <button style={smallBtn} onClick={()=>printFunctionSheet(ev, hotel)} title={tf("Drucken")}>🖨</button>
+      <button style={smallBtn} onClick={()=>printFunctionSheet(ev, hotel)} title={tf("Drucken")}><Icon n="printer" /></button>
     </React.Fragment>
   );
 }
@@ -203,7 +203,7 @@ function HaccpPdfButton({hotel, api, members, me}){
     } catch(e){ window.alert(tf("PDF konnte nicht erstellt werden: {0}", e.message)); }
     setBusy(false);
   };
-  return <span style={{display:"inline-flex",gap:4,alignItems:"center"}}><input type="month" className="input" style={{width:140,padding:"4px 6px",fontSize:12.5}} value={month} onChange={e=>e.target.value&&setMonth(e.target.value)} /><button style={smallBtn} disabled={busy} onClick={make}>{busy?"…":"📄 "+tf("Protokoll (PDF)")}</button></span>;
+  return <span style={{display:"inline-flex",gap:4,alignItems:"center"}}><input type="month" className="input" style={{width:140,padding:"4px 6px",fontSize:12.5}} value={month} onChange={e=>e.target.value&&setMonth(e.target.value)} /><button style={smallBtn} disabled={busy} onClick={make}>{busy?"…":<React.Fragment><Icon n="filetext" /> {tf("Protokoll (PDF)")}</React.Fragment>}</button></span>;
 }
 
 // ------------------------------------------------------------ Personalbedarf aus Veranstaltungen (Richtwerte)
@@ -215,7 +215,7 @@ function EventStaffHint({hotel, api, days}){
   if(!events.length) return null;
   return (
     <Card style={{marginBottom:12,padding:"12px 16px",borderColor:BRASS}}>
-      <div style={{fontWeight:700,marginBottom:4}}>🎉 {tf("Veranstaltungen in dieser Woche")}</div>
+      <div style={{fontWeight:700,marginBottom:4}}><Icon n="glass" /> {tf("Veranstaltungen in dieser Woche")}</div>
       <div style={{fontSize:12,color:INK_MUTED,marginBottom:6}}>{tf("Zusätzlicher Personalbedarf als Richtwert: eine Servicekraft je 15 Gäste, eine Küchenkraft je 30 Gäste.")}</div>
       {events.map(e=>{ const s = eventStaff(e); return (
         <div key={e.id} style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:13,padding:"4px 0",borderTop:`1px solid ${BORDER}`}}>
@@ -274,7 +274,7 @@ function RoomCalendar({events, spaces, onOpen}){
             {days.map(d=><td key={d} style={{padding:4,verticalAlign:"top",minWidth:96}}>
               {inCell(sp,d).map(e=>{ const clash = events.some(o=>evOverlap(e,o)); const [c,bg] = EVENT_STATUS[e.status]||EVENT_STATUS.Anfrage; return (
                 <div key={e.id} {...pressable(()=>onOpen(e))} title={clash?tf("Doppelbuchung"):""} style={{cursor:"pointer",background:clash?BAD_SOFT:bg,borderInlineStart:`3px solid ${clash?BAD:c}`,borderRadius:4,padding:"3px 5px",marginBottom:3}}>
-                  <div style={{fontSize:11,color:INK_MUTED}} data-no-i18n="">{(e.start_time||"").slice(0,5)}{e.end_time?"–"+e.end_time.slice(0,5):""}{clash?" ⚠":""}</div>
+                  <div style={{fontSize:11,color:INK_MUTED}} data-no-i18n="">{(e.start_time||"").slice(0,5)}{e.end_time?"–"+e.end_time.slice(0,5):""}{clash?<React.Fragment>{" "}<Icon n="alert" /></React.Fragment>:""}</div>
                   <div style={{fontWeight:600,fontSize:12}} data-no-i18n="">{e.title}</div>
                 </div>); })}
             </td>)}
@@ -298,7 +298,7 @@ function OfferEditor({form, setForm}){
   const money = (n) => (Number(n)||0).toLocaleString(UI_LOCALE,{style:"currency",currency:HOTEL_CURRENCY||"EUR"});
   return (
     <div style={{background:PAPER,borderRadius:8,padding:"10px 12px",marginBottom:12}}>
-      <div style={{fontWeight:700,marginBottom:6}}>💶 {tf("Angebot")}</div>
+      <div style={{fontWeight:700,marginBottom:6}}><Icon n="euro" /> {tf("Angebot")}</div>
       {items.map((x,i)=>(
         <div key={i} style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
           <input className="input" style={{flex:2,minWidth:160}} value={x.label} placeholder={tf("z. B. 4-Gang-Menü, Raummiete, Getränkepauschale")} onChange={e=>set(i,"label",e.target.value)} />
@@ -353,6 +353,7 @@ function OfferButtons({ev, api, onChanged}){
 }
 
 function EventsView({hotel, api, role}){
+  const templatesReady = useLazyScript("event-templates.js", ()=>!!window.eventTemplates);
   const [list,setList] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [past,setPast] = useState(false);
   const [picker,setPicker] = useState(false); const [view,setView] = useState("list");
   const [spaces,setSpaces] = useState([]); const [mine,setMine] = useState([]); const [invoices,setInvoices] = useState([]);
@@ -394,7 +395,7 @@ function EventsView({hotel, api, role}){
   const byMonth = {}; (list||[]).forEach(e=>{ const m = e.event_date.slice(0,7); (byMonth[m]=byMonth[m]||[]).push(e); });
   const tab = (k, l) => <button onClick={()=>setView(k)} style={{border:`1px solid ${view===k?INK:BORDER}`,background:view===k?INK:CARD,color:view===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{tf(l)}</button>;
   const card = (t, onClick, extra) => <button key={t.id} onClick={onClick} style={{border:`1px solid ${BORDER}`,background:CARD,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"start",fontSize:13.5,position:"relative"}}>{extra}
-    <div style={{fontSize:20}}>{t.icon||"⭐"}</div><b data-no-i18n="">{t.title}</b><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{[t.start_time && (t.start_time+"–"+(t.end_time||"")), t.guests && tf("{0} Personen", t.guests)].filter(Boolean).join(" · ")}</div></button>;
+    <div style={{fontSize:20}}><Icon n={t.icon||"star"} size={20} /></div><b data-no-i18n="">{t.title}</b><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{[t.start_time && (t.start_time+"–"+(t.end_time||"")), t.guests && tf("{0} Personen", t.guests)].filter(Boolean).join(" · ")}</div></button>;
   return (
     <div>
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
@@ -402,15 +403,15 @@ function EventsView({hotel, api, role}){
         {tab("list","Liste")}{tab("calendar","Raumkalender")}{lead && tab("spaces","Räume")}
         <span style={{flex:1}} />
         {view==="list" && <label style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={past} onChange={e=>setPast(e.target.checked)} /> {tf("Vergangene anzeigen")}</label>}
-        {list && list.length>0 && <button style={smallBtn} onClick={async()=>{ try { await sheetPdf(weekSheetHtml(list, hotel, todayIso()), (translateString("Veranstaltungen")+" "+todayIso()+".pdf")); } catch(e){ setMsg({ok:false,text:e.message}); } }}>📄 {tf("Wochen-Übersicht (PDF)")}</button>}
+        {list && list.length>0 && <button style={smallBtn} onClick={async()=>{ try { await sheetPdf(weekSheetHtml(list, hotel, todayIso()), (translateString("Veranstaltungen")+" "+todayIso()+".pdf")); } catch(e){ setMsg({ok:false,text:e.message}); } }}><Icon n="filetext" /> {tf("Wochen-Übersicht (PDF)")}</button>}
       </div>
       {picker && !form && <Card style={{marginBottom:14}}>
         <div style={{fontWeight:700,marginBottom:4}}>{tf("Womit beginnen?")}</div>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Vorlagen füllen Menü, Aufbau, Technik und den Ablauf mit Aufgaben je Abteilung vor – alles lässt sich danach anpassen.")}</div>
         {mine.length>0 && <React.Fragment>
-          <div className="field-label">⭐ {tf("Eigene Vorlagen")}</div>
+          <div className="field-label"><Icon n="star" /> {tf("Eigene Vorlagen")}</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:8,marginBottom:12}}>
-            {mine.map(m=>card({...m.data, id:m.id, title:m.name, icon:"⭐"}, ()=>startFrom({...m.data}),
+            {mine.map(m=>card({...m.data, id:m.id, title:m.name, icon:"star"}, ()=>startFrom({...m.data}),
               <span role="button" title={tf("Vorlage löschen")} onClick={async(ev)=>{ ev.stopPropagation(); if(!window.confirm(tf("Vorlage „{0}“ löschen?", m.name))) return; try { await api("/api/event-templates/"+m.id,"DELETE"); load(); } catch(e){ setMsg({ok:false,text:e.message}); } }}
                 style={{position:"absolute",top:6,insetInlineEnd:8,color:INK_MUTED,fontSize:12}}>✕</span>))}
           </div>
@@ -418,7 +419,7 @@ function EventsView({hotel, api, role}){
         <div className="field-label">{tf("Vorlagen")}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:8}}>
           <button onClick={()=>startFrom({})} style={{border:`1px dashed ${BORDER}`,background:CARD,borderRadius:10,padding:"12px 10px",cursor:"pointer",textAlign:"start",fontSize:13.5}}><div style={{fontSize:20}}>＋</div><b>{tf("Leer beginnen")}</b></button>
-          {eventTemplates(UI_LANG).map(t=>card(t, ()=>startFrom(t)))}
+          {templatesReady ? eventTemplates(UI_LANG).map(t=>card(t, ()=>startFrom(t))) : <div style={{color:INK_MUTED,fontSize:13,padding:12}}>{tf("Lädt…")}</div>}
         </div>
         <button style={{...linkBtn,marginTop:8,paddingInlineStart:0}} onClick={()=>setPicker(false)}>{tf("Abbrechen")}</button>
       </Card>}
@@ -437,10 +438,10 @@ function EventsView({hotel, api, role}){
           {T("setup","Aufbau und Bestuhlung")}{T("tech","Technik")}{T("notes","Hinweise")}
         </div>
         <OfferEditor form={form} setForm={setForm} />
-        {(()=>{ const s = eventStaff(form); return s ? <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>👥 {tf("Personalbedarf (Richtwert): {0} Service, {1} Küche", s.service, s.kitchen)}</div> : null; })()}
+        {(()=>{ const s = eventStaff(form); return s ? <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}><Icon n="users" /> {tf("Personalbedarf (Richtwert): {0} Service, {1} Küche", s.service, s.kitchen)}</div> : null; })()}
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           <button className="btn-primary" disabled={!String(form.title).trim()} onClick={save}>{tf("Speichern")}</button>
-          <button style={smallBtn} onClick={saveAsTemplate}>⭐ {tf("Als eigene Vorlage speichern")}</button>
+          <button style={smallBtn} onClick={saveAsTemplate}><Icon n="star" /> {tf("Als eigene Vorlage speichern")}</button>
           <button style={linkBtn} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button>
           {form.id && <button style={{...linkBtn,color:BAD}} onClick={async()=>{ if(window.confirm(tf("Veranstaltung löschen?"))){ try { await api("/api/events/"+form.id,"DELETE"); setForm(null); load(); } catch(e){ setMsg({ok:false,text:e.message}); } } }}>{tf("Löschen")}</button>}
         </div>
@@ -458,8 +459,8 @@ function EventsView({hotel, api, role}){
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}><Pill color={c} bg={bg}>{tf(e.status)}</Pill><span style={{fontSize:12.5,color:INK_MUTED}}>{fmtDay(e.event_date,{weekday:"short",day:"2-digit",month:"2-digit"})}{e.start_time?" · "+e.start_time.slice(0,5)+(e.end_time?"–"+e.end_time.slice(0,5):""):""}</span></div>
                   <div style={{fontWeight:700,fontSize:15}} data-no-i18n="">{e.title}</div>
                   <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{[spaceName(e.space_id)||e.location, e.guests!=null && tf("{0} Personen", e.guests), e.client].filter(Boolean).join(" · ")}</div>
-                  {clash && <div style={{fontSize:12.5,color:BAD,marginTop:3}}>⚠ {tf("Doppelbuchung im selben Raum")}</div>}
-                  {st && e.status!=="Storniert" && <div style={{fontSize:12,color:INK_MUTED,marginTop:3}}>👥 {tf("+{0} Service · +{1} Küche", st.service, st.kitchen)}</div>}
+                  {clash && <div style={{fontSize:12.5,color:BAD,marginTop:3}}><Icon n="alert" /> {tf("Doppelbuchung im selben Raum")}</div>}
+                  {st && e.status!=="Storniert" && <div style={{fontSize:12,color:INK_MUTED,marginTop:3}}><Icon n="users" /> {tf("+{0} Service · +{1} Küche", st.service, st.kitchen)}</div>}
                   <OfferButtons ev={e} api={api} onChanged={load} />
                   {seeInvoices && <EventInvoices ev={e} hotel={hotel} api={api} invoices={invoices} onChanged={load} />}
                   <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>

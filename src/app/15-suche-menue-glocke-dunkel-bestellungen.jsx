@@ -20,11 +20,11 @@ function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, h
     [tf("Bereiche"), nav.filter(n=>hit(translateString(n.label), n.label)).map(n=>({icon:"↗", label:translateString(n.label), go:()=>onOpen(n.key)}))],
     [tf("Aufgaben"), (tasks||[]).filter(t=>hit(t.title, t.department, t.owner)).slice(0,8).map(t=>({icon:t.status==="Abgeschlossen"?"✓":"□", label:t.title, sub:[t.department, t.due_date && fmtDate(t.due_date)].filter(Boolean).join(" · "), go:()=>openTask(t)}))],
     [tf("Meilensteine"), (milestones||[]).filter(m=>hit(m.title)).slice(0,5).map(m=>({icon:"◆", label:m.title, sub:fmtDate(m.date), go:()=>onOpen("milestones")}))],
-    [tf("Risiken"), (risks||[]).filter(r=>hit(r.title, r.department)).slice(0,5).map(r=>({icon:"⚠", label:r.title, sub:r.department, go:()=>onOpen("risks")}))],
-    [tf("Zimmer"), (extra.rooms||[]).filter(r=>hit(r.number, r.room_type, r.status)).slice(0,6).map(r=>({icon:"🛏", label:r.number, sub:[r.status, r.occupancy].filter(Boolean).join(" · "), go:()=>onOpen("rooms")}))],
-    [tf("Personen"), (members||[]).filter(m=>hit(m.email, (m.departments||[]).join(" "))).slice(0,6).map(m=>({icon:"👤", label:shortName(m.email), sub:m.email, go:()=>onOpen("team")}))],
-    [tf("Dokumente"), (extra.docs||[]).filter(d=>hit(d.name, d.category)).slice(0,5).map(d=>({icon:"📄", label:d.name, sub:d.category, go:()=>onOpen("docs")}))],
-    [tf("Veranstaltungen"), (extra.events||[]).filter(e=>hit(e.title, e.client, e.location)).slice(0,5).map(e=>({icon:"🎉", label:e.title, sub:fmtDate(e.event_date), go:()=>onOpen("events")}))],
+    [tf("Risiken"), (risks||[]).filter(r=>hit(r.title, r.department)).slice(0,5).map(r=>({icon:"alert", label:r.title, sub:r.department, go:()=>onOpen("risks")}))],
+    [tf("Zimmer"), (extra.rooms||[]).filter(r=>hit(r.number, r.room_type, r.status)).slice(0,6).map(r=>({icon:"bed", label:r.number, sub:[r.status, r.occupancy].filter(Boolean).join(" · "), go:()=>onOpen("rooms")}))],
+    [tf("Personen"), (members||[]).filter(m=>hit(m.email, (m.departments||[]).join(" "))).slice(0,6).map(m=>({icon:"user", label:shortName(m.email), sub:m.email, go:()=>onOpen("team")}))],
+    [tf("Dokumente"), (extra.docs||[]).filter(d=>hit(d.name, d.category)).slice(0,5).map(d=>({icon:"filetext", label:d.name, sub:d.category, go:()=>onOpen("docs")}))],
+    [tf("Veranstaltungen"), (extra.events||[]).filter(e=>hit(e.title, e.client, e.location)).slice(0,5).map(e=>({icon:"glass", label:e.title, sub:fmtDate(e.event_date), go:()=>onOpen("events")}))],
   ];
   const flat = groups.flatMap(([,items])=>items);
   const choose = (it) => { if(it){ onClose(); it.go(); } };
@@ -46,7 +46,7 @@ function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, h
               <div style={{fontSize:11,fontWeight:700,color:INK_MUTED,textTransform:"uppercase",letterSpacing:0.6,padding:"8px 16px 4px"}}>{g}</div>
               {items.map((it)=>{ idx++; const i = idx; return (
                 <div key={i} onMouseEnter={()=>setSel(i)} onClick={()=>choose(it)} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 16px",cursor:"pointer",background:sel===i?BRASS_SOFT:"transparent"}}>
-                  <span style={{width:20,textAlign:"center"}}>{it.icon}</span>
+                  <span style={{width:20,textAlign:"center"}}><Icon n={it.icon} /></span>
                   <span style={{flex:1,minWidth:0}}><span style={{fontSize:14}} data-no-i18n="">{it.label}</span>{it.sub && <span style={{fontSize:12,color:INK_MUTED}} data-no-i18n=""> · {it.sub}</span>}</span>
                   {sel===i && <span style={{fontSize:11,color:INK_MUTED}}>↵</span>}
                 </div>); })}
@@ -120,7 +120,7 @@ function NotificationBell({api, onOpen}){
     <div style={{position:"relative"}}>
       <button onClick={()=>{ setOpen(!open); if(!open) load(); }} title={tf("Benachrichtigungen")} aria-label={tf("Benachrichtigungen")}
         style={{position:"relative",background:open?BRASS_SOFT:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"5px 10px",fontSize:15,cursor:"pointer",lineHeight:1}}>
-        🔔{data.unread>0 && <span style={{position:"absolute",top:-6,insetInlineEnd:-6,background:BAD,color:"#fff",borderRadius:999,fontSize:10.5,fontWeight:700,padding:"1px 5px",minWidth:16}} data-no-i18n="">{data.unread>99?"99+":data.unread}</span>}
+        <Icon n="bell" />{data.unread>0 && <span style={{position:"absolute",top:-6,insetInlineEnd:-6,background:BAD,color:"#fff",borderRadius:999,fontSize:10.5,fontWeight:700,padding:"1px 5px",minWidth:16}} data-no-i18n="">{data.unread>99?"99+":data.unread}</span>}
       </button>
       {open && <div className="no-print" style={{position:"absolute",top:"calc(100% + 6px)",insetInlineEnd:0,width:340,maxWidth:"86vw",background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,boxShadow:"0 14px 40px rgba(0,0,0,0.18)",zIndex:120}}>
         <div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${BORDER}`}}>
@@ -144,14 +144,14 @@ function NotificationBell({api, onOpen}){
 
 // ------------------------------------------------------------ Untere Leiste am Handy (Mitarbeitende)
 function MobileTabBar({nav, tab, onOpen}){
-  const want = [["dashboard","🏠"],["roster","🗓"],["time","⏱"],["tickets","🔧"],["chat","💬"]];
+  const want = [["dashboard","home"],["roster","calendar"],["time","clock"],["tickets","wrench"],["chat","chat"]];
   const items = want.map(([k,icon])=>{ const n = nav.find(x=>x.key===k); return n && {...n, icon}; }).filter(Boolean);
   if(items.length<3) return null;
   return (
     <div className="mobile-tabbar no-print">
       {items.map(n=>(
         <button key={n.key} onClick={()=>onOpen(n.key)} className={tab===n.key?"on":""}>
-          <span style={{fontSize:19,lineHeight:1}}>{n.icon}</span><span className="lbl">{String(n.label).replace("●","")}</span>
+          <span style={{fontSize:19,lineHeight:1}}><Icon n={n.icon} /></span><span className="lbl">{String(n.label).replace("●","")}</span>
         </button>
       ))}
     </div>
@@ -169,7 +169,7 @@ function ThemeCard(){
   const set = (m) => { setMode(m); try { window.localStorage.setItem(LS_THEME, m); } catch(e){} applyTheme(m); };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}>🌙 {tf("Darstellung")}</div>
+      <div style={{fontWeight:700,marginBottom:6}}><Icon n="moon" /> {tf("Darstellung")}</div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Dunkel schont die Augen in der Nachtschicht. „Automatisch“ folgt der Einstellung des Geräts.")}</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {[["auto","Automatisch"],["light","Hell"],["dark","Dunkel"]].map(([k,l])=><button key={k} onClick={()=>set(k)} style={{border:`1px solid ${mode===k?INK:BORDER}`,background:mode===k?INK:CARD,color:mode===k?"#fff":INK,borderRadius:999,padding:"6px 14px",fontSize:13,cursor:"pointer"}}>{tf(l)}</button>)}
@@ -201,13 +201,13 @@ function FeedbackButton({api, orgId, tab}){
   if(window.OUVERTURE_DEMO) return null;
   return (
     <div className="feedback-ui no-print">
-      {!open && <button className="feedback-fab" onClick={()=>{ setOpen(true); setMsg(null); }} disabled={busy==="shot"}>💬 {tf("Feedback")}</button>}
+      {!open && <button className="feedback-fab" onClick={()=>{ setOpen(true); setMsg(null); }} disabled={busy==="shot"}><Icon n="chat" /> {tf("Feedback")}</button>}
       {open && <div className="feedback-panel" style={{background:CARD,border:`1px solid ${BORDER}`}}>
         <div style={{display:"flex",alignItems:"center",marginBottom:8}}><b style={{flex:1}}>{tf("Feedback oder Problem melden")}</b><button style={linkBtn} onClick={()=>setOpen(false)}>✕</button></div>
         <textarea className="input" rows={4} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Was ist passiert oder was wünschst du dir?")} />
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"8px 0"}}>
-          {shot ? <span style={{fontSize:12.5,color:GOOD}}>📷 {tf("Bildschirmfoto angehängt")} <button style={{...linkBtn,fontSize:12}} onClick={()=>setShot(null)}>✕</button></span>
-            : <button style={smallBtn} onClick={capture}>📷 {tf("Bildschirmfoto anhängen")}</button>}
+          {shot ? <span style={{fontSize:12.5,color:GOOD}}><Icon n="camera" /> {tf("Bildschirmfoto angehängt")} <button style={{...linkBtn,fontSize:12}} onClick={()=>setShot(null)}>✕</button></span>
+            : <button style={smallBtn} onClick={capture}><Icon n="camera" /> {tf("Bildschirmfoto anhängen")}</button>}
         </div>
         {shot && <img src={shot} alt="" style={{width:"100%",maxHeight:140,objectFit:"cover",borderRadius:6,border:`1px solid ${BORDER}`,marginBottom:8}} />}
         <button className="btn-primary" disabled={!text.trim()||busy==="send"} onClick={send}>{busy==="send"?"…":tf("Senden")}</button>
@@ -228,7 +228,7 @@ function AuditView({orgId, api, hotel}){
   return (
     <Card style={{marginTop:18}}>
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}>🕘 {tf("Änderungsverlauf")}</div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="clock" /> {tf("Änderungsverlauf")}</div>
         <select className="input" style={{width:"auto"}} value={table} onChange={e=>setTable(e.target.value)}>
           <option value="">{tf("Alles")}</option>{Object.entries(AUDIT_TABLES).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}
         </select>
@@ -265,7 +265,7 @@ function OrdersPanel({hotel, api, onStockChanged}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
-        <div style={{fontWeight:700,flex:1}}>🚚 {tf("Lieferanten und Bestellungen")}</div><span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
+        <div style={{fontWeight:700,flex:1}}><Icon n="truck" /> {tf("Lieferanten und Bestellungen")}</div><span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
       </div>
       {open && <div style={{marginTop:12}}>
         {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:8}}>{msg.text}</div>}

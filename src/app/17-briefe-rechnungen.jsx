@@ -202,6 +202,7 @@ async function docxFromText(text, {hotel, data, rtl} = {}){
 }
 
 function LettersView({hotel, api, role, me}){
+  useLazyScript("doc-templates.js", ()=>!!window.builtinDocTemplates);
   const lead = role==="admin" || role==="manager" || canManageDept("Rezeption & Empfang") || canManageDept("Food & Beverage");
   const [mode,setMode] = useState("create");
   const [own,setOwn] = useState([]);
@@ -283,7 +284,7 @@ function LettersView({hotel, api, role, me}){
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(190px, 1fr))",gap:8}}>
             {all.map(t=>(
               <button key={t.id} onClick={()=>choose(t)} style={{border:`1px solid ${BORDER}`,background:CARD,borderRadius:10,padding:"12px",cursor:"pointer",textAlign:"start"}}>
-                <div style={{fontSize:20}}>{t.has_file ? "📘" : t.builtin ? "📄" : "⭐"}</div>
+                <div style={{fontSize:20}}><Icon n={t.has_file ? "word" : t.builtin ? "filetext" : "star"} size={20} /></div>
                 <b data-no-i18n="">{t.name}</b>
                 <div style={{fontSize:11.5,color:INK_MUTED}}>{tf(DOC_KIND_LABELS[t.kind]||"Sonstiges")} · {t.has_file ? tf("eigene Word-Datei") : t.builtin ? tf("fertige Vorlage") : tf("eigene Vorlage")}</div>
               </button>
@@ -347,8 +348,8 @@ function LettersView({hotel, api, role, me}){
             </div>}
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:6}}>
-            <button className="btn-primary" disabled={!!busy} onClick={()=>download("docx")}>{busy==="docx"?"…":"📘 Word"}</button>
-            {!tpl.has_file && <button style={smallBtn} disabled={!!busy} onClick={()=>download("pdf")}>{busy==="pdf"?"…":"📄 PDF"}</button>}
+            <button className="btn-primary" disabled={!!busy} onClick={()=>download("docx")}>{busy==="docx"?"…":<React.Fragment><Icon n="word" /> Word</React.Fragment>}</button>
+            {!tpl.has_file && <button style={smallBtn} disabled={!!busy} onClick={()=>download("pdf")}>{busy==="pdf"?"…":<React.Fragment><Icon n="filetext" /> PDF</React.Fragment>}</button>}
             {role!=="viewer" && <button style={smallBtn} disabled={!!busy} onClick={()=>setMail({email:form.email||"", format:tpl.has_file?"docx":"pdf", message:""})}>✉ {tf("Per E-Mail senden")}</button>}
           </div>
           {mail && (
@@ -368,7 +369,7 @@ function LettersView({hotel, api, role, me}){
         <div>
           {!edit && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
             <button className="btn-primary" onClick={()=>setEdit({name:"", kind:"sonstiges", body:""})}>{tf("+ Eigene Vorlage")}</button>
-            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6}}>📘 {tf("Word-Datei hochladen")}<input type="file" accept=".docx" style={{display:"none"}} onChange={e=>{ setEdit({name:"", kind:"sonstiges", body:null}); pickFile(e.target.files[0]); e.target.value=""; }} /></label>
+            <label style={{...smallBtn,display:"inline-flex",alignItems:"center",gap:6}}><Icon n="word" /> {tf("Word-Datei hochladen")}<input type="file" accept=".docx" style={{display:"none"}} onChange={e=>{ setEdit({name:"", kind:"sonstiges", body:null}); pickFile(e.target.files[0]); e.target.value=""; }} /></label>
           </div>}
           {!edit && <Card style={{marginBottom:12,fontSize:12.5,color:INK_SOFT,lineHeight:1.55}}>
             <b>{tf("So nutzen Sie eigene Word-Vorlagen:")}</b><br/>
@@ -382,7 +383,7 @@ function LettersView({hotel, api, role, me}){
                 <label><div className="field-label">{tf("Art")}</div><select className="input" value={edit.kind} onChange={e=>setEdit({...edit,kind:e.target.value})}>{Object.entries(DOC_KIND_LABELS).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select></label>
               </div>
               {edit.file_data || edit.has_file ? (
-                <div style={{margin:"10px 0",fontSize:13}}>📘 <span data-no-i18n="">{edit.file_name}</span>
+                <div style={{margin:"10px 0",fontSize:13}}><Icon n="word" /> <span data-no-i18n="">{edit.file_name}</span>
                   {edit._tags && <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{edit._tags.length ? tf("Gefundene Platzhalter: {0}", edit._tags.map(t=>"{"+t+"}").join(" ")) : tf("Keine Platzhalter gefunden – die Datei wird unverändert ausgegeben.")}</div>}
                   <label style={{...linkBtn,display:"inline-block",marginInlineStart:8,cursor:"pointer"}}>{tf("Andere Datei")}<input type="file" accept=".docx" style={{display:"none"}} onChange={e=>{ pickFile(e.target.files[0]); e.target.value=""; }} /></label>
                 </div>
@@ -398,7 +399,7 @@ function LettersView({hotel, api, role, me}){
           {!edit && all.map(t=>(
             <Card key={t.id} style={{marginBottom:8,padding:"10px 14px"}}>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <span>{t.has_file ? "📘" : t.builtin ? "📄" : "⭐"}</span>
+                <span><Icon n={t.has_file ? "word" : t.builtin ? "filetext" : "star"} /></span>
                 <b style={{flex:1,minWidth:150}} data-no-i18n="">{t.name}</b>
                 <span style={{fontSize:12,color:INK_MUTED}}>{tf(DOC_KIND_LABELS[t.kind]||"Sonstiges")}</span>
                 {!t.has_file && <button style={smallBtn} title={tf("Als Word-Datei mit Platzhaltern herunterladen, in Word gestalten und wieder hochladen")} onClick={()=>act("dl"+t.id, async()=>downloadBlob(await docxFromText(t.body, {hotel, rtl:(t.builtin?lang:UI_LANG)==="ar"}), safeFile(t.name)+".docx"))}>{busy==="dl"+t.id?"…":"⬇ "+tf("Word-Vorlage")}</button>}
@@ -552,7 +553,7 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
   const m = (n) => moneyIn(n);
   return (
     <div>
-      <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>🧾 {tf("Rechnung erstellen")}{ev ? <span style={{fontWeight:400,color:INK_MUTED}} data-no-i18n=""> · {ev.title}</span> : null}</div>
+      <div style={{fontWeight:700,fontSize:16,marginBottom:8}}><Icon n="receipt" /> {tf("Rechnung erstellen")}{ev ? <span style={{fontWeight:400,color:INK_MUTED}} data-no-i18n=""> · {ev.title}</span> : null}</div>
       {!(hotel.invoice_settings && hotel.invoice_settings.company) && <div style={{fontSize:12.5,color:WARN,marginBottom:8}}>{tf("Tipp: Zuerst unter „Rechnungen“ die Rechnungsdaten des Hotels (Firma, UID, Bank) eintragen.")}</div>}
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
         {(ev ? ["Anzahlung","Schlussrechnung","Rechnung"] : ["Rechnung"]).map(k=><button key={k} onClick={()=>setF({...f,kind:k})} style={{border:`1px solid ${f.kind===k?INK:BORDER}`,background:f.kind===k?INK:CARD,color:f.kind===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{tf(INV_KIND_TITLE[k])}</button>)}
@@ -603,7 +604,7 @@ function InvoiceActions({inv, hotel, api, list, onChanged, onMsg}){
   const act = async (k, fn) => { setBusy(k); try { await fn(); } catch(e){ onMsg({ok:false,text:e.message}); } setBusy(""); };
   return (
     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-      <button style={smallBtn} disabled={!!busy} onClick={()=>act("pdf", ()=>sheetPdf(invoiceSheetHtml(inv, hotel, cancelsNo), invoiceFile(inv)))}>{busy==="pdf"?"…":"📄 PDF"}</button>
+      <button style={smallBtn} disabled={!!busy} onClick={()=>act("pdf", ()=>sheetPdf(invoiceSheetHtml(inv, hotel, cancelsNo), invoiceFile(inv)))}>{busy==="pdf"?"…":<React.Fragment><Icon n="filetext" /> PDF</React.Fragment>}</button>
       <button style={smallBtn} disabled={!!busy} title={tf("E-Rechnung für öffentliche Auftraggeber (ebInterface)")} onClick={()=>act("ebi", async()=>{
         const ref = window.prompt(tf("Auftragsreferenz des Auftraggebers (bei Bundesdienststellen Pflicht, sonst leer lassen):"), ""); if(ref===null) return;
         downloadBlob(new Blob([ebInterfaceXml(inv, hotel, ref.trim())], {type:"application/xml"}), invoiceFile(inv).replace(/\.pdf$/i,"")+".xml");
@@ -652,7 +653,7 @@ function InvoicesView({hotel, api, role, onHotel}){
       </div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:12}}>
         {canEdit && <button className="btn-primary" onClick={()=>setForm(true)}>{tf("+ Rechnung")}</button>}
-        <button style={smallBtn} onClick={()=>setSettings(!settings)}>⚙ {tf("Rechnungsdaten")}</button>
+        <button style={smallBtn} onClick={()=>setSettings(!settings)}><Icon n="gear" /> {tf("Rechnungsdaten")}</button>
         {list.length>0 && <button style={smallBtn} onClick={exportXlsx}>Excel</button>}
         <span style={{flex:1}} />
         {[["all","Alle"],["open","Offen"],["overdue","Überfällig"]].map(([k,l])=><button key={k} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:CARD,color:filter===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{tf(l)}</button>)}
@@ -683,10 +684,10 @@ function EventInvoices({ev, hotel, api, invoices, onChanged}){
   return (
     <div style={{marginTop:6}}>
       {mine.map(i=>{ const [c,bg,l] = INV_STATUS[i.status]; return <div key={i.id} style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",fontSize:12.5,marginBottom:3}}>
-        🧾 <b data-no-i18n="">{i.number}</b> <span style={{color:INK_MUTED}}>{tf(INV_KIND_TITLE[i.kind])}</span> <span data-no-i18n="">{moneyIn(invDue(i), i.currency)}</span> <Pill color={invOverdue(i)?BAD:c} bg={invOverdue(i)?BAD_SOFT:bg}>{invOverdue(i)?tf("überfällig"):tf(l)}</Pill>
+        <Icon n="receipt" /> <b data-no-i18n="">{i.number}</b> <span style={{color:INK_MUTED}}>{tf(INV_KIND_TITLE[i.kind])}</span> <span data-no-i18n="">{moneyIn(invDue(i), i.currency)}</span> <Pill color={invOverdue(i)?BAD:c} bg={invOverdue(i)?BAD_SOFT:bg}>{invOverdue(i)?tf("überfällig"):tf(l)}</Pill>
         <button style={{...linkBtn,padding:"0 4px"}} onClick={()=>sheetPdf(invoiceSheetHtml(i, hotel, i.cancels ? ((invoices||[]).find(x=>x.id===i.cancels)||{}).number : null), invoiceFile(i)).catch(e=>setMsg({ok:false,text:e.message}))}>PDF</button>
       </div>; })}
-      {canEdit && <button style={smallBtn} onClick={()=>setOpen(true)}>🧾 {tf("Rechnung")}</button>}
+      {canEdit && <button style={smallBtn} onClick={()=>setOpen(true)}><Icon n="receipt" /> {tf("Rechnung")}</button>}
       {msg && <div style={{fontSize:12,color:msg.ok?GOOD:BAD}}>{msg.text}</div>}
       {open && <Overlay onClose={()=>setOpen(false)}><InvoiceForm hotel={hotel} api={api} ev={ev} invoices={invoices} onCancel={()=>setOpen(false)} onDone={(inv)=>{ setOpen(false); setMsg({ok:true,text:tf("Rechnung {0} ausgestellt.", inv.number)}); onChanged(); }} /></Overlay>}
     </div>

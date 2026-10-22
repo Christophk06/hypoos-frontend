@@ -100,7 +100,7 @@ function RosterDemand({hotel, api, dept, week, days, shifts, onApplied}){
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:8}}>
         <div style={{fontWeight:700,flex:1}}>{tf("Belegung und Personalbedarf")} · <span>{dept}</span></div>
         <button style={smallBtn} onClick={()=>setEdit(!edit)}>{edit ? tf("Fertig") : tf("Bearbeiten")}</button>
-        <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={busy} onClick={()=>suggest(false)}>{busy ? "…" : "✨ "+tf("Plan-Vorschlag")}</button>
+        <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={busy} onClick={()=>suggest(false)}>{busy ? "…" : <React.Fragment><Icon n="sparkle" /> {tf("Plan-Vorschlag")}</React.Fragment>}</button>
       </div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Der Plan-Vorschlag füllt freie Schichten nach Mindestbesetzung und Bedarf – mit Rücksicht auf Verfügbarkeit, Soll-Stunden und 11 Stunden Ruhezeit. Bestehende Schichten bleiben, alles kommt als Entwurf.")}</div>
       {edit && (
@@ -172,7 +172,7 @@ function TempView({hotel, api, me, members, role, myDepts}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}>🌡 {tf("Temperaturen (HACCP)")}</div>
+        <div style={{fontWeight:700,flex:1}}><Icon n="thermo" /> {tf("Temperaturen (HACCP)")}</div>
         {points.length>0 && <HaccpPdfButton hotel={hotel} api={api} members={members} me={me} />}
         {points.length>0 && <button style={smallBtn} onClick={exportMonth}>{tf("Nachweis als Excel")}</button>}
         {canSetup && !form && <button style={smallBtn} onClick={()=>setForm({name:"", min_c:"0", max_c:"4", department:"Food & Beverage"})}>{tf("+ Messpunkt")}</button>}

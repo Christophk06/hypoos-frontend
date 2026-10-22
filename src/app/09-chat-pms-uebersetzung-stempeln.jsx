@@ -263,11 +263,11 @@ function useTranslated(api, texts){
 function TrText({text, tr, style}){
   const [orig,setOrig] = useState(false);
   const t = tr(text); const differs = t && t !== text;
-  return <span style={style} data-no-i18n="">{orig || !differs ? text : t}{differs && <button onClick={()=>setOrig(!orig)} style={{...linkBtn,fontSize:10.5,padding:"0 0 0 6px",verticalAlign:"baseline"}} title={orig ? tf("Übersetzung anzeigen") : tf("Original anzeigen")}>🌐</button>}</span>;
+  return <span style={style} data-no-i18n="">{orig || !differs ? text : t}{differs && <button onClick={()=>setOrig(!orig)} style={{...linkBtn,fontSize:10.5,padding:"0 0 0 6px",verticalAlign:"baseline"}} title={orig ? tf("Übersetzung anzeigen") : tf("Original anzeigen")}><Icon n="globe" /></button>}</span>;
 }
 function TranslateToggle({t}){
   if(!t.enabled) return null;
-  return <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:6,alignItems:"center",cursor:"pointer",whiteSpace:"nowrap"}}><input type="checkbox" checked={t.on} onChange={e=>t.toggle(e.target.checked)} /> 🌐 {tf("Automatisch übersetzen")}</label>;
+  return <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:6,alignItems:"center",cursor:"pointer",whiteSpace:"nowrap"}}><input type="checkbox" checked={t.on} onChange={e=>t.toggle(e.target.checked)} /> <Icon n="globe" /> {tf("Automatisch übersetzen")}</label>;
 }
 
 // ------------------------------------------------------------ Stempeln: QR-Code und Offline-Speicher
@@ -291,7 +291,17 @@ async function flushClockQueue(api){
   return {sent, errors};
 }
 
-function loadScriptOnce(src){ return new Promise((res, rej)=>{ if(document.querySelector('script[src="'+src+'"]')) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Script")); document.head.appendChild(s); }); }
+const SCRIPT_LOADS = {};
+function loadScriptOnce(src){
+  if(!SCRIPT_LOADS[src]) SCRIPT_LOADS[src] = new Promise((res, rej)=>{ const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => { delete SCRIPT_LOADS[src]; s.remove(); rej(new Error("Script")); }; document.head.appendChild(s); });
+  return SCRIPT_LOADS[src];
+}
+// Selten gebrauchte Dateien (Vorlagen) erst laden, wenn ein Bereich sie braucht; true, sobald da
+function useLazyScript(file, isReady){
+  const [ok,setOk] = useState(isReady());
+  useEffect(()=>{ if(!ok) loadScriptOnce((window.__LAZY||{})[file] || file).then(()=>setOk(true)).catch(()=>{}); },[]);
+  return ok;
+}
 async function qrSvg(text, cell){
   await loadScriptOnce("https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js");
   const q = window.qrcode(0, "M"); q.addData(text); q.make();

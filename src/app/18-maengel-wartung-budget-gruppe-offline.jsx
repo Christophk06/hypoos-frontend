@@ -20,7 +20,7 @@ function SnagReportButton({hotel, api, contractors, members, me}){
   const run = async () => { setBusy(true); try { const t = await api("/api/hotels/"+hotel.id+"/tickets?status=all&kind=Baumangel"); await sheetPdf(snagReportHtml({hotel, tickets:t, contractors, members, me, contractorId:firm}), safeFile(translateString("Abnahmeprotokoll")+" "+hotel.name+" "+todayIso())+".pdf"); } catch(e){ window.alert(tf("PDF konnte nicht erstellt werden: {0}", e.message)); } setBusy(false); };
   return (
     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
-      <button style={smallBtn} disabled={busy} onClick={run}>{busy?"…":"📄 "+tf("Abnahmeprotokoll (PDF)")}</button>
+      <button style={smallBtn} disabled={busy} onClick={run}>{busy?"…":<React.Fragment><Icon n="filetext" /> {tf("Abnahmeprotokoll (PDF)")}</React.Fragment>}</button>
       {contractors.length>0 && <select className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}} value={firm} onChange={e=>setFirm(e.target.value)}><option value="">{tf("Alle Firmen")}</option>{contractors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>}
     </div>
   );
@@ -48,7 +48,7 @@ function maintProofHtml({hotel, plan, tickets, nameOf}){
 function MaintProofButton({hotel, api, plan, members, me}){
   const [busy,setBusy] = useState(false);
   const run = async () => { setBusy(true); try { const t = await api("/api/hotels/"+hotel.id+"/tickets?status=all&plan_id="+plan.id); await sheetPdf(maintProofHtml({hotel, plan, tickets:t, nameOf:(id)=>id ? memberLabel(members||[], me, id) : ""}), safeFile(translateString("Prüfnachweis")+" "+plan.title)+".pdf"); } catch(e){ window.alert(tf("PDF konnte nicht erstellt werden: {0}", e.message)); } setBusy(false); };
-  return <button style={linkBtn} disabled={busy} onClick={run}>{busy?"…":"📄 "+tf("Nachweis")}</button>;
+  return <button style={linkBtn} disabled={busy} onClick={run}>{busy?"…":<React.Fragment><Icon n="filetext" /> {tf("Nachweis")}</React.Fragment>}</button>;
 }
 
 // ------------------------------------------------------------ Budget: PDF und Excel
@@ -219,7 +219,7 @@ function OfflineBadge(){
   if(online && !n) return null;
   return (
     <div className="no-print" style={{position:"fixed",bottom:76,insetInlineStart:"50%",transform:"translateX(-50%)",zIndex:150,background:online?BRASS:INK,color:"#fff",borderRadius:999,padding:"7px 14px",fontSize:12.5,boxShadow:"0 6px 18px rgba(0,0,0,.2)",display:"flex",gap:8,alignItems:"center"}}>
-      {online ? "⟳ "+tf("{0} Einträge werden gesendet …", n) : "⚡ "+(n ? tf("Offline – {0} Einträge warten und werden automatisch gesendet.", n) : tf("Offline – Sie sehen den zuletzt geladenen Stand."))}
+      {online ? "⟳ "+tf("{0} Einträge werden gesendet …", n) : <React.Fragment><Icon n="bolt" /> {n ? tf("Offline – {0} Einträge warten und werden automatisch gesendet.", n) : tf("Offline – Sie sehen den zuletzt geladenen Stand.")}</React.Fragment>}
       {online && n>0 && <button style={{background:"transparent",border:"1px solid #fff",color:"#fff",borderRadius:999,padding:"2px 9px",fontSize:12,cursor:"pointer"}} onClick={()=>flushOfflineQueue()}>{tf("Jetzt senden")}</button>}
     </div>
   );

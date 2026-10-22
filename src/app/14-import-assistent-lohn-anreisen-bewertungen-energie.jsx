@@ -169,17 +169,17 @@ function SetupWizard({hotel, api, orgId, onHotel, onOpen}){
 
 // ------------------------------------------------------------ Hilfe-Center
 const HELP_ARTICLES = [
-  {id:"start", icon:"🚀", title:"Erste Schritte", steps:["Unter „Hotel bearbeiten“ Name, Eröffnungstermin und Feiertagsregion eintragen.","Unter „Team“ Personen einladen und ihnen Rolle und Abteilung geben.","Für die Eröffnung unter „Aufgaben“ die Vorlage anwenden – für den Betrieb unter „Dienstplan“ die erste Woche planen.","Ouverture auf dem Handy als App installieren: Konto → „Ouverture als App“."]},
-  {id:"roles", icon:"👥", title:"Rollen und Rechte", steps:["Admin: sieht und ändert alles, verwaltet Team und Abo.","Abteilungsleitung: plant und genehmigt für die eigenen Abteilungen; ohne Abteilung für alle (z. B. Direktion).","Mitarbeitende: sehen ihre Abteilung, ihren Dienstplan und ihre Aufgaben.","Eigentümer: lesen alles, ändern nichts."]},
-  {id:"roster", icon:"🗓", title:"Dienstplan erstellen und veröffentlichen", steps:["Abteilung und Woche wählen, auf ein Feld tippen und Schicht wählen – oder „Plan-Vorschlag“ nutzen.","Warnungen zu Ruhezeit, Höchstarbeitszeit und Wochenruhe erscheinen direkt neben der Person.","Erst „Veröffentlichen“ macht die Woche für Mitarbeitende sichtbar – sie bekommen eine Nachricht.","Krankmeldungen erzeugen offene Schichten, die Kolleginnen und Kollegen übernehmen können."]},
-  {id:"time", icon:"⏱", title:"Zeiterfassung und Lohnexport", steps:["Mitarbeitende stempeln unter „Zeiterfassung“ – auch ohne Netz.","Die Leitung korrigiert Buchungen und trägt vergessene Zeiten nach.","Die Monatsauswertung gibt es als Excel; unter „Lohnarten-Export“ als Datei für BMD, DATEV & Co.","Personalnummern und Lohnarten einmal eintragen – sie bleiben gespeichert."]},
-  {id:"rooms", icon:"🛏", title:"Zimmer, Housekeeping und PMS", steps:["Zimmerstatus antippen, um ihn zu ändern; mehrere Zimmer lassen sich gemeinsam setzen.","„Zimmer verteilen“ teilt die schmutzigen Zimmer fair auf das Team auf.","Unter „PMS-Anbindung“ Mews oder Apaleo verbinden – oder ein anderes System per Webhook.","Gäste-QR-Codes im Zimmer melden Wünsche direkt an Housekeeping oder Technik."]},
-  {id:"arrivals", icon:"🧳", title:"Gäste vor der Anreise anschreiben", steps:["Unter „Anreisen“ die Mail einschalten und Check-in-Zeit, Infos und Extras eintragen.","Gäste kommen aus dem PMS (Apaleo) oder per Excel-Import.","Ouverture schickt die Mail automatisch einige Tage vor der Anreise.","Antworten (Ankunftszeit, Extras, Wünsche) erscheinen in der Liste – die Rezeption bekommt eine Nachricht."]},
-  {id:"reviews", icon:"⭐", title:"Bewertungen auswerten", steps:["Bewertungen aus Google, Booking.com & Co. als Excel/CSV exportieren und unter „Bewertungen“ importieren.","Die Übersicht zeigt den Schnitt je Portal und Monat.","„Mit KI auswerten“ fasst Lob und wiederkehrende Probleme zusammen – mit Abteilung und Vorschlag."]},
-  {id:"energy", icon:"⚡", title:"Energie und Verbrauch", steps:["Unter „Energie“ Zähler für Strom, Gas, Wasser oder Wärme anlegen.","Zählerstände regelmäßig eintragen – am besten immer am gleichen Wochentag.","Ouverture rechnet den Verbrauch je Monat aus und warnt bei ungewöhnlich hohem Verbrauch."]},
-  {id:"docs", icon:"📄", title:"Dokumente mit Ablaufdatum", steps:["Verträge, Zertifikate und Wartungsnachweise unter „Dokumente“ hochladen.","Bei „Ablauf“ das Ablaufdatum und die Vorwarnzeit eintragen.","Admins bekommen rechtzeitig eine Erinnerung aufs Handy."]},
-  {id:"owner", icon:"🏁", title:"Eigentümer auf dem Laufenden halten", steps:["Unter „Hotel bearbeiten“ den Eröffnungs-Countdown einschalten und den Link teilen – ohne Anmeldung.","Den Wochenbericht jeden Montag per E-Mail einschalten.","Für volle Einsicht Eigentümer mit der Rolle „Eigentümer“ ins Team einladen."]},
-  {id:"calendar", icon:"📅", title:"Dienstplan im Handy-Kalender", steps:["Unter „Konto“ das Kalender-Abo einschalten.","Den Link in Google Kalender, Apple Kalender oder Outlook als Abo hinzufügen.","Veröffentlichte Schichten erscheinen automatisch und bleiben aktuell."]},
+  {id:"start", icon:"play", title:"Erste Schritte", steps:["Unter „Hotel bearbeiten“ Name, Eröffnungstermin und Feiertagsregion eintragen.","Unter „Team“ Personen einladen und ihnen Rolle und Abteilung geben.","Für die Eröffnung unter „Aufgaben“ die Vorlage anwenden – für den Betrieb unter „Dienstplan“ die erste Woche planen.","Ouverture auf dem Handy als App installieren: Konto → „Ouverture als App“."]},
+  {id:"roles", icon:"users", title:"Rollen und Rechte", steps:["Admin: sieht und ändert alles, verwaltet Team und Abo.","Abteilungsleitung: plant und genehmigt für die eigenen Abteilungen; ohne Abteilung für alle (z. B. Direktion).","Mitarbeitende: sehen ihre Abteilung, ihren Dienstplan und ihre Aufgaben.","Eigentümer: lesen alles, ändern nichts."]},
+  {id:"roster", icon:"calendar", title:"Dienstplan erstellen und veröffentlichen", steps:["Abteilung und Woche wählen, auf ein Feld tippen und Schicht wählen – oder „Plan-Vorschlag“ nutzen.","Warnungen zu Ruhezeit, Höchstarbeitszeit und Wochenruhe erscheinen direkt neben der Person.","Erst „Veröffentlichen“ macht die Woche für Mitarbeitende sichtbar – sie bekommen eine Nachricht.","Krankmeldungen erzeugen offene Schichten, die Kolleginnen und Kollegen übernehmen können."]},
+  {id:"time", icon:"clock", title:"Zeiterfassung und Lohnexport", steps:["Mitarbeitende stempeln unter „Zeiterfassung“ – auch ohne Netz.","Die Leitung korrigiert Buchungen und trägt vergessene Zeiten nach.","Die Monatsauswertung gibt es als Excel; unter „Lohnarten-Export“ als Datei für BMD, DATEV & Co.","Personalnummern und Lohnarten einmal eintragen – sie bleiben gespeichert."]},
+  {id:"rooms", icon:"bed", title:"Zimmer, Housekeeping und PMS", steps:["Zimmerstatus antippen, um ihn zu ändern; mehrere Zimmer lassen sich gemeinsam setzen.","„Zimmer verteilen“ teilt die schmutzigen Zimmer fair auf das Team auf.","Unter „PMS-Anbindung“ Mews oder Apaleo verbinden – oder ein anderes System per Webhook.","Gäste-QR-Codes im Zimmer melden Wünsche direkt an Housekeeping oder Technik."]},
+  {id:"arrivals", icon:"suitcase", title:"Gäste vor der Anreise anschreiben", steps:["Unter „Anreisen“ die Mail einschalten und Check-in-Zeit, Infos und Extras eintragen.","Gäste kommen aus dem PMS (Apaleo) oder per Excel-Import.","Ouverture schickt die Mail automatisch einige Tage vor der Anreise.","Antworten (Ankunftszeit, Extras, Wünsche) erscheinen in der Liste – die Rezeption bekommt eine Nachricht."]},
+  {id:"reviews", icon:"star", title:"Bewertungen auswerten", steps:["Bewertungen aus Google, Booking.com & Co. als Excel/CSV exportieren und unter „Bewertungen“ importieren.","Die Übersicht zeigt den Schnitt je Portal und Monat.","„Mit KI auswerten“ fasst Lob und wiederkehrende Probleme zusammen – mit Abteilung und Vorschlag."]},
+  {id:"energy", icon:"bolt", title:"Energie und Verbrauch", steps:["Unter „Energie“ Zähler für Strom, Gas, Wasser oder Wärme anlegen.","Zählerstände regelmäßig eintragen – am besten immer am gleichen Wochentag.","Ouverture rechnet den Verbrauch je Monat aus und warnt bei ungewöhnlich hohem Verbrauch."]},
+  {id:"docs", icon:"filetext", title:"Dokumente mit Ablaufdatum", steps:["Verträge, Zertifikate und Wartungsnachweise unter „Dokumente“ hochladen.","Bei „Ablauf“ das Ablaufdatum und die Vorwarnzeit eintragen.","Admins bekommen rechtzeitig eine Erinnerung aufs Handy."]},
+  {id:"owner", icon:"flag", title:"Eigentümer auf dem Laufenden halten", steps:["Unter „Hotel bearbeiten“ den Eröffnungs-Countdown einschalten und den Link teilen – ohne Anmeldung.","Den Wochenbericht jeden Montag per E-Mail einschalten.","Für volle Einsicht Eigentümer mit der Rolle „Eigentümer“ ins Team einladen."]},
+  {id:"calendar", icon:"calendar", title:"Dienstplan im Handy-Kalender", steps:["Unter „Konto“ das Kalender-Abo einschalten.","Den Link in Google Kalender, Apple Kalender oder Outlook als Abo hinzufügen.","Veröffentlichte Schichten erscheinen automatisch und bleiben aktuell."]},
 ];
 function HelpView({onOpen}){
   const [q,setQ] = useState(""); const [open,setOpen] = useState("start");
@@ -192,7 +192,7 @@ function HelpView({onOpen}){
       {list.map(a=>(
         <Card key={a.id} style={{marginBottom:10,padding:"14px 18px"}}>
           <button onClick={()=>setOpen(open===a.id?null:a.id)} style={{display:"flex",gap:10,alignItems:"center",width:"100%",background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"start",color:INK}}>
-            <span style={{fontSize:20}}>{a.icon}</span><span style={{fontWeight:700,fontSize:15,flex:1}}>{a.title}</span><span style={{color:INK_MUTED}}>{open===a.id||q?"▴":"▾"}</span>
+            <Icon n={a.icon} size={20} /><span style={{fontWeight:700,fontSize:15,flex:1}}>{a.title}</span><span style={{color:INK_MUTED}}>{open===a.id||q?"▴":"▾"}</span>
           </button>
           {(open===a.id || q) && <ol style={{margin:"10px 0 0",paddingInlineStart:22,fontSize:13.5,lineHeight:1.55}}>{a.steps.map((s,i)=><li key={i} style={{marginBottom:4}}>{s}</li>)}</ol>}
         </Card>
@@ -434,7 +434,7 @@ function ReviewsView({hotel, api, role}){
       </Card>}
       <Card style={{marginBottom:14,borderColor:sum?BRASS:BORDER}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:sum?10:0}}>
-          <div style={{fontWeight:700,flex:1}}>✨ {tf("KI-Auswertung")} {data.summary && <span style={{fontWeight:400,fontSize:12.5,color:INK_MUTED}}>· {tf("{0} Bewertungen, Stand {1}", data.summary.review_count, fmtDateTime(data.summary.created_at))}</span>}</div>
+          <div style={{fontWeight:700,flex:1}}><Icon n="sparkle" /> {tf("KI-Auswertung")} {data.summary && <span style={{fontWeight:400,fontSize:12.5,color:INK_MUTED}}>· {tf("{0} Bewertungen, Stand {1}", data.summary.review_count, fmtDateTime(data.summary.created_at))}</span>}</div>
           {lead && data.ai && <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={!!busy} onClick={summarize}>{busy==="ai" ? tf("Wird ausgewertet…") : sum ? tf("Neu auswerten") : tf("Mit KI auswerten")}</button>}
           {!data.ai && <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("Die KI ist noch nicht eingerichtet.")}</span>}
         </div>
@@ -450,7 +450,7 @@ function ReviewsView({hotel, api, role}){
             </div>
             <div><div className="field-label" style={{color:GOOD}}>{tf("Was Gäste loben")}</div>
               {sum.lob.map((p,i)=><div key={i} style={{borderTop:`1px solid ${BORDER}`,padding:"7px 0",fontSize:13}}><b data-no-i18n="">{p.thema}</b> <span style={{color:INK_MUTED}}>· {tf("{0}×", p.anzahl)}</span><div style={{color:INK_MUTED,fontStyle:"italic"}} data-no-i18n="">„{p.beispiel}“</div></div>)}
-              {sum.trend && <div style={{fontSize:13,marginTop:8}} data-no-i18n="">📈 {sum.trend}</div>}
+              {sum.trend && <div style={{fontSize:13,marginTop:8}} data-no-i18n=""><Icon n="trend" /> {sum.trend}</div>}
             </div>
           </div>
         </div>}
@@ -480,7 +480,7 @@ function ReviewsView({hotel, api, role}){
 }
 
 // ------------------------------------------------------------ Energie und Verbrauch
-const METER_KINDS = [["Strom","kWh","⚡"],["Gas","m³","🔥"],["Wasser","m³","💧"],["Wärme","kWh","♨️"],["Öl","l","🛢"],["Pellets","kg","🪵"],["Andere","","📟"]];
+const METER_KINDS = [["Strom","kWh","bolt"],["Gas","m³","fire"],["Wasser","m³","drop"],["Wärme","kWh","heat"],["Öl","l","barrel"],["Pellets","kg","log"],["Andere","","gauge"]];
 function energyAlertText(a, unit){
   if(a.code==="high") return tf("Zuletzt {0} % mehr Verbrauch pro Tag als üblich", a.value);
   if(a.code==="reset") return tf("Zählerstand gesunken ({0}) – Zählertausch oder Tippfehler?", fmtDay(a.to,{day:"2-digit",month:"2-digit",year:"numeric"}));
@@ -525,11 +525,11 @@ function EnergyView({hotel, api, role}){
           return (
             <Card key={m.id}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                <span style={{fontSize:20}}>{icon}</span>
+                <Icon n={icon} size={20} />
                 <div style={{flex:1}}><div style={{fontWeight:700}} data-no-i18n="">{m.name}</div><div style={{fontSize:12,color:INK_MUTED}}>{tf(m.kind)} · {m.unit}</div></div>
                 {lead && <button style={linkBtn} onClick={()=>setForm({...m, price_per_unit:m.price_per_unit??""})}>{tf("Bearbeiten")}</button>}
               </div>
-              {alerts.map((a,i)=><div key={i} style={{fontSize:12.5,color:a.code==="high"?BAD:WARN,marginBottom:4}}>⚠ {energyAlertText(a, m.unit)}</div>)}
+              {alerts.map((a,i)=><div key={i} style={{fontSize:12.5,color:a.code==="high"?BAD:WARN,marginBottom:4}}><Icon n="alert" /> {energyAlertText(a, m.unit)}</div>)}
               <div style={{display:"flex",gap:14,fontSize:12.5,color:INK_MUTED,marginBottom:8,flexWrap:"wrap"}}>
                 <span>{tf("Letzter Stand")}: <b style={{color:INK}} data-no-i18n="">{last ? Number(last.value).toLocaleString(UI_LOCALE)+" "+m.unit : "–"}</b>{last && " ("+fmtDay(last.read_on,{day:"2-digit",month:"2-digit"})+")"}</span>
                 {thisMonth && <span>{tf("Dieser Monat")}: <b style={{color:INK}} data-no-i18n="">{Math.round(thisMonth.used).toLocaleString(UI_LOCALE)} {m.unit}</b>{m.price_per_unit ? " ≈ "+fmtEur(thisMonth.used*m.price_per_unit) : ""}</span>}
@@ -566,7 +566,7 @@ function OwnerLinkCard({hotel, api}){
   const copy = (u) => { try { navigator.clipboard.writeText(u); setMsg({ok:true,text:tf("Link kopiert.")}); } catch(e){} };
   return (
     <div style={{background:PAPER,borderRadius:8,padding:"10px 12px",marginBottom:12}}>
-      <div style={{fontWeight:700,fontSize:13.5,marginBottom:4}}>🏁 {tf("Eröffnungs-Countdown für Eigentümer")}</div>
+      <div style={{fontWeight:700,fontSize:13.5,marginBottom:4}}><Icon n="flag" /> {tf("Eröffnungs-Countdown für Eigentümer")}</div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Eine Seite ohne Anmeldung: Tage bis zur Eröffnung, Bereitschaft je Abteilung und die nächsten Meilensteine. Aufgaben, Budget und Personal bleiben verborgen.")}</div>
       {link ? <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
         <code style={{flex:1,minWidth:200,overflowX:"auto",whiteSpace:"nowrap",background:"#fff",border:`1px solid ${BORDER}`,borderRadius:4,padding:"6px 8px",fontSize:12}} data-no-i18n="">{link}</code>
@@ -611,7 +611,7 @@ function CalendarCard({api}){
   const copy = () => { try { navigator.clipboard.writeText(feed.url); setMsg({ok:true,text:tf("Link kopiert.")}); } catch(e){} };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}>📅 {tf("Dienstplan im Handy-Kalender")}</div>
+      <div style={{fontWeight:700,marginBottom:6}}><Icon n="calendar" /> {tf("Dienstplan im Handy-Kalender")}</div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Deine veröffentlichten Schichten erscheinen automatisch in Google Kalender, Apple Kalender oder Outlook – und bleiben aktuell. Der Link ist persönlich: bitte nicht weitergeben.")}</div>
       {feed ? <div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>

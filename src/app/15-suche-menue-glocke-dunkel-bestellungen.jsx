@@ -179,8 +179,9 @@ function ThemeCard(){
 }
 
 // ------------------------------------------------------------ Feedback mit Bildschirmfoto
-function FeedbackButton({api, orgId, tab}){
-  const [open,setOpen] = useState(false); const [text,setText] = useState(""); const [shot,setShot] = useState(null);
+// embedded: im Hilfe-Fenster des KI-Service (ohne eigenen Knopf, mit vorbefülltem Text)
+function FeedbackButton({api, orgId, tab, embedded, initialText, onClose}){
+  const [open,setOpen] = useState(!!embedded); const [text,setText] = useState(initialText||""); const [shot,setShot] = useState(null);
   const [busy,setBusy] = useState(""); const [msg,setMsg] = useState(null);
   const capture = async () => {
     setBusy("shot"); setOpen(false);
@@ -198,12 +199,13 @@ function FeedbackButton({api, orgId, tab}){
     catch(e){ setMsg({ok:false,text:e.message}); }
     setBusy("");
   };
-  if(window.OUVERTURE_DEMO) return null;
+  if(window.OUVERTURE_DEMO && !embedded) return null;
+  const close = () => { setOpen(false); if(onClose) onClose(); };
   return (
     <div className="feedback-ui no-print">
-      {!open && <button className="feedback-fab" onClick={()=>{ setOpen(true); setMsg(null); }} disabled={busy==="shot"}><Icon n="chat" /> {tf("Feedback")}</button>}
+      {!open && !embedded && <button className="feedback-fab" onClick={()=>{ setOpen(true); setMsg(null); }} disabled={busy==="shot"}><Icon n="chat" /> {tf("Feedback")}</button>}
       {open && <div className="feedback-panel" style={{background:CARD,border:`1px solid ${BORDER}`}}>
-        <div style={{display:"flex",alignItems:"center",marginBottom:8}}><b style={{flex:1}}>{tf("Feedback oder Problem melden")}</b><button style={linkBtn} onClick={()=>setOpen(false)}>✕</button></div>
+        <div style={{display:"flex",alignItems:"center",marginBottom:8}}><b style={{flex:1}}>{tf("Feedback oder Problem melden")}</b><button style={linkBtn} aria-label={tf("Schließen")} onClick={close}>✕</button></div>
         <textarea className="input" rows={4} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Was ist passiert oder was wünschst du dir?")} />
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"8px 0"}}>
           {shot ? <span style={{fontSize:12.5,color:GOOD}}><Icon n="camera" /> {tf("Bildschirmfoto angehängt")} <button style={{...linkBtn,fontSize:12}} onClick={()=>setShot(null)}>✕</button></span>

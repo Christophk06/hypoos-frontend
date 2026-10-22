@@ -119,7 +119,12 @@
   .feedback-fab:hover { opacity: 1; }
   .feedback-panel { position: fixed; right: 16px; bottom: 16px; z-index: 81; width: 340px; max-width: calc(100vw - 32px); border-radius: 12px;
     padding: 14px; box-shadow: 0 14px 40px rgba(0,0,0,0.22); }
+  .service-panel { position: fixed; right: 16px; bottom: 16px; z-index: 81; width: 380px; max-width: calc(100vw - 32px);
+    height: min(600px, calc(100vh - 32px)); border-radius: 14px; box-shadow: 0 14px 40px rgba(0,0,0,0.22); display: flex; flex-direction: column; overflow: hidden; }
+  .service-panel .feedback-panel { position: static; width: auto; box-shadow: none; border: none !important; }
   @media (max-width: 640px) {
+    .service-panel { right: 8px; left: 8px; width: auto; max-width: none; bottom: 8px; height: calc(100vh - 16px); }
+    body:has(.mobile-tabbar) .service-panel { bottom: 72px; height: calc(100vh - 88px); }
     body:has(.mobile-tabbar) .feedback-fab { bottom: 76px; }
     .feedback-fab { padding: 7px 11px; }
   }

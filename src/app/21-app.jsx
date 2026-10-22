@@ -338,7 +338,7 @@ function App(){
         <div className="page-content" style={{padding:"22px 28px"}}>
           <SearchPalette open={searchOpen} onClose={()=>setSearchOpen(false)} nav={NAV} tasks={tasks} milestones={milestones} risks={risks} members={members} hotel={hotel} api={api} onOpen={(k)=>{ setTab(k); setHelpOpen(false); }} />
           {role==="member" && <MobileTabBar nav={NAV} tab={tab} onOpen={(k)=>setTab(k)} />}
-          <FeedbackButton api={api} orgId={orgId} tab={tab} />
+          <ServiceButton api={api} orgId={orgId} hotel={hotel} tab={tab} nav={NAV} onOpen={setTab} />
           <OfflineBadge />
           {window.OUVERTURE_DEMO && <DemoBar role={role} />}
           <HelpTip tab={tab} role={role} hotel={hotel} open={helpOpen} onClose={()=>setHelpOpen(false)} />

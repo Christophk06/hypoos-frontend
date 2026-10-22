@@ -188,7 +188,7 @@ function HelpView({onOpen}){
   return (
     <div style={{maxWidth:760}}>
       <input className="input" style={{marginBottom:14}} placeholder={tf("Suchen, z. B. Dienstplan, Lohn, Zimmer …")} value={q} onChange={e=>setQ(e.target.value)} />
-      {list.length===0 && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Nichts gefunden. Schreib uns gern: Konto → Kontakt.")}</div>}
+      {list.length===0 && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Nichts gefunden. Frag den KI-Service unten rechts – „Hilfe 24/7“.")}</div>}
       {list.map(a=>(
         <Card key={a.id} style={{marginBottom:10,padding:"14px 18px"}}>
           <button onClick={()=>setOpen(open===a.id?null:a.id)} style={{display:"flex",gap:10,alignItems:"center",width:"100%",background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"start",color:INK}}>

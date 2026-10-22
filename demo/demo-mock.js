@@ -776,6 +776,25 @@
     if (p === H + "/calendar-notes" && m === "POST") { if (!b.title) return ok({ error: "Bitte einen Titel angeben." }, 400);
       var cn = { id: nid("cn"), date_from: b.date_from || todayIso, date_to: b.date_to || b.date_from || todayIso, title: b.title, kind: b.kind || "Hinweis", note: b.note || null }; D.cal_notes.push(cn); return ok(cn); }
     if ((mm = p.match(/^\/api\/calendar-notes\/([^/]+)$/)) && m === "DELETE") { remove(D.cal_notes, mm[1]); return ok({ ok: true }); }
+    // KI-Service (Demo: Stichwort-Regeln statt echter KI)
+    if (p === "/api/assistant" && m !== "POST") return ok({ enabled: true });
+    if (p === "/api/assistant" && m === "POST") {
+      var amsgs = (b && b.messages) || [], alast = "";
+      for (var ai = amsgs.length - 1; ai >= 0; ai--) { if (amsgs[ai].role === "user") { alast = String(amsgs[ai].content || ""); break; } }
+      var at = alast.toLowerCase(), anav = ((b && b.nav) || []).map(function (n) { return n[0]; });
+      var ar = function (txt, key, fw) { return { antwort: txt, bereich: key && anav.indexOf(key) >= 0 ? key : "", weiterleiten: !!fw }; };
+      var aout;
+      if (/dienstplan|veröffentlich/.test(at)) aout = ar("So veröffentlichst du den Dienstplan:\n1. Im Dienstplan Abteilung und Woche wählen.\n2. Schichten setzen oder „Plan-Vorschlag“ nutzen.\n3. Auf „Veröffentlichen“ klicken – die Mitarbeitenden bekommen eine Nachricht.", "roster");
+      else if (/ruhezeit|warnung/.test(at)) aout = ar("Nach dem Arbeitszeitgesetz (AZG) müssen zwischen zwei Diensten mindestens 11 Stunden Ruhezeit liegen. Wird das unterschritten, erscheint im Dienstplan eine Warnung neben der Person.", "roster");
+      else if (/einlad|team/.test(at)) aout = ar("So lädst du jemanden ein:\n1. „Team“ öffnen.\n2. Auf „Einladen“ klicken.\n3. E-Mail, Rolle und Abteilung angeben und absenden.", "team");
+      else if (/zwei-faktor|2fa|authenticator/.test(at)) aout = ar("So schaltest du die Zwei-Faktor-Anmeldung ein:\n1. „Konto“ öffnen.\n2. Bei „Zwei-Faktor-Anmeldung“ auf Einrichten klicken.\n3. Den Code mit einer Authenticator-App scannen und bestätigen.", "account");
+      else if (/lohn|export|buchung/.test(at)) aout = ar("Zeiten und Lohn:\n1. „Zeiterfassung“ öffnen – dort siehst du alle Buchungen.\n2. Fehlende oder falsche Buchungen korrigiert die Leitung.\n3. Danach kannst du den Lohnarten-Export erzeugen.", "time");
+      else if (/zimmer|pms/.test(at)) aout = ar("Zimmer:\n1. Im „Zimmerstatus“ siehst du den Stand aller Zimmer.\n2. Mit „Zimmer verteilen“ teilst du sie dem Housekeeping zu.\n3. Die PMS-Anbindung liefert den Status automatisch nach.", "rooms");
+      else if (/abo|rechnung|zahlung|fehler|kaputt/.test(at)) aout = ar("Das kann ich hier nicht selbst klären. Ich leite deine Frage an den Support weiter.", "", true);
+      else aout = ar("Das ist die Demo – der echte KI-Service beantwortet frei formulierte Fragen. Schau gern in den Bereich „Hilfe“.", "help");
+      return new Promise(function (res) { setTimeout(function () { ok(aout).then(res); }, 600); });
+    }
+    if (p === "/api/feedback" && m === "POST") return ok({ ok: true });
     return ok({});
   };
 })();

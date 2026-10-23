@@ -60,6 +60,8 @@ const ICON_SVG = {
   fog: '<path d="M4 8h16M3 12h18M5 16h14M8 20h8"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M16 7l3 3M18 5l2 2"/>',
   shirt: '<path d="M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3a4 4 0 0 1-8 0z"/>',
+  speaker: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   cash: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/>',
 };
 // Bisherige Emojis → Symbol (für Daten, in denen noch ein Emoji steht, z. B. Veranstaltungs-Vorlagen)

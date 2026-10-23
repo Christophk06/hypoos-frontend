@@ -304,7 +304,8 @@ function App(){
 
   return (
     <div className="app-shell" style={{fontFamily:"Inter, sans-serif",background:PAPER,minHeight:"100vh",display:"flex"}}>
-      <div className="sidebar" style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
+      <a href="#inhalt" className="skip-link no-print" onClick={(e)=>{ e.preventDefault(); const m = document.getElementById("inhalt"); if(m){ m.focus(); m.scrollIntoView(); } }}>{tf("Zum Inhalt springen")}</a>
+      <nav className="sidebar" aria-label={tf("Hauptmenü")} style={{width:210,background:INK,color:"#fff",padding:"22px 14px",flexShrink:0}}>
         <div className="brand" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:500,letterSpacing:0.3,padding:"0 8px 20px",borderBottom:"1px solid "+(hotel.brand_color||"rgba(201,166,107,0.3)"),marginBottom:16,display:"flex",alignItems:"center",gap:9}}><Logo size={22} color={hotel.brand_color||"#C9A66B"} />Ouverture</div>
         <OrgSwitcher orgs={orgs} orgId={orgId} onSwitch={switchOrg} dark />
         <SideNav nav={NAV} tab={tab} onOpen={(k)=>{ setTab(k); setHelpOpen(false); }} accent={hotel.brand_color||"#C9A66B"} />
@@ -312,8 +313,8 @@ function App(){
         <div style={{marginTop:18}}><LanguageSwitcher dark withDefault api={api} me={me} onCurrency={()=>setFxTick(x=>x+1)} /></div>
         <div style={{marginTop:8}}><InstallAppButton dark /></div>
         <div className="logout" {...pressable(logout)} style={{marginTop:20,fontSize:13,color:"rgba(255,255,255,0.5)",cursor:"pointer"}}>Abmelden</div>
-      </div>
-      <div style={{flex:1,minWidth:0}}>
+      </nav>
+      <main id="inhalt" tabIndex={-1} style={{flex:1,minWidth:0,outline:"none"}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
           <div>
             <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.logo_data && <img src={hotel.logo_data} alt="" style={{height:30,maxWidth:90,objectFit:"contain"}} />}<span data-no-i18n="">{hotel.name}</span>{hotel.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispielhotel</Pill>}</div>
@@ -367,6 +368,7 @@ function App(){
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} hotel={hotel} />}
           {tab==="time" && <TimeView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="rooms" && <RoomsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onReport={(loc)=>{ setTicketPrefill(loc); setTab("tickets"); }} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="tickets" && role==="admin" && <AutomationsCard hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="tickets" && <TicketsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} prefill={ticketPrefill} onPrefillUsed={()=>setTicketPrefill(null)} />}
           {tab==="chat" && <ChatView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
           {tab==="logbook" && <LogbookView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
@@ -387,6 +389,8 @@ function App(){
           {tab==="cash" && <CashView hotel={hotel} api={api} me={me} members={members} myDepts={myDepts} />}
           {tab==="keys" && <KeysView hotel={hotel} api={api} members={members} />}
           {tab==="uniforms" && <UniformsView hotel={hotel} api={api} members={members} />}
+          {tab==="emergency" && <EmergencyView hotel={hotel} api={api} />}
+          {tab==="staffdocs" && <StaffDocsView orgId={orgId} api={api} members={members} />}
           {tab==="pulse" && <PulseView orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />}
           {tab==="tourismtax" && <TourismTaxView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="frontdesk" && <FrontDeskView hotel={hotel} api={api} onOpen={setTab} />}
@@ -414,7 +418,7 @@ function App(){
           {tab==="billing" && <BillingView hotel={hotel} billing={billing} orgId={orgId} api={api} notice={billingNotice}
             isAdmin={isAdmin} onReload={loadBilling} />}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

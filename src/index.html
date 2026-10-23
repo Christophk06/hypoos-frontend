@@ -86,6 +86,10 @@
     html[data-theme="dark"] [style*="color: rgb(63, 122, 92)"] { color: #8fd0ae !important; }
     html[data-theme="dark"] [style*="color: rgb(47, 93, 138)"] { color: #8fbbe6 !important; }
     html[data-theme="dark"] [style*="color: rgb(162, 59, 50)"] { color: #f08a80 !important; }
+    /* Kontrast (WCAG AA) für Zweittext, Warn- und Messingtexte im dunklen Modus */
+    html[data-theme="dark"] [style*="color: rgb(107, 114, 128)"] { color: #a3abb7 !important; }
+    html[data-theme="dark"] [style*="color: rgb(185, 130, 46)"] { color: #e6b974 !important; }
+    html[data-theme="dark"] [style*="color: rgb(169, 131, 75)"] { color: #d9b77e !important; }
     html[data-theme="dark"] [style*="background: rgb(28, 36, 48)"] { background: #3a4352 !important; }
     html[data-theme="dark"] [style^="color: rgb(28, 36, 48)"], html[data-theme="dark"] [style*="; color: rgb(28, 36, 48)"] { color: #e7e4dc !important; }
     html[data-theme="dark"] [style*="rgb(228, 223, 211)"] { border-color: #2d3542 !important; }
@@ -114,6 +118,8 @@
   }
 
   /* ---------- Feedback-Knopf ---------- */
+  .skip-link { position: absolute; left: 8px; top: -60px; z-index: 200; background: #1C2430; color: #fff; padding: 10px 14px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+  .skip-link:focus { top: 8px; }
   .feedback-fab { position: fixed; right: 16px; bottom: 16px; z-index: 80; background: #1C2430; color: #fff; border: none; border-radius: 999px;
     padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.18); opacity: 0.85; }
   .feedback-fab:hover { opacity: 1; }

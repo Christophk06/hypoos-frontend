@@ -61,6 +61,13 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
   const myTasks = tasks.filter(t=>t.status!=="Abgeschlossen" && (t.assignee_id===(me&&me.id))).sort((a,b)=>(a.due_date||"9")<(b.due_date||"9")?-1:1);
   const deptSoon = tasks.filter(t=>t.status!=="Abgeschlossen" && t.assignee_id!==(me&&me.id) && myDepts.includes(t.department) && t.due_date && t.due_date<=addDaysIso(today,14)).sort((a,b)=>a.due_date<b.due_date?-1:1);
   const myDuty = duties.filter(d=>me && d.user_id===me.id);
+  // Schicht abgeben: geht als offene Schicht an die Abteilung; wer übernimmt, bekommt sie, die eigene entfällt
+  const offerShift = async (sh) => {
+    const note = window.prompt(tf("Schicht am {0} abgeben? Kolleginnen und Kollegen der Abteilung können sie übernehmen. Grund (optional):", fmtDay(sh.shift_date)), "");
+    if(note===null) return;
+    try { await api("/api/shifts/"+sh.id+"/offer","POST",{note}); alert(tf("Abgegeben. Bis jemand übernimmt, bleibt es deine Schicht.")); }
+    catch(e){ alert(e.message); }
+  };
   const todayShift = shifts.filter(s=>s.shift_date===today && s.hotel_id===hotel.id);
   const nextShifts = shifts.filter(s=>s.shift_date>today).slice(0,6);
   const listsMine = lists.filter(l=>myDepts.includes(l.department));
@@ -96,7 +103,8 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
           <div style={{fontWeight:700,marginBottom:8}}>{tf("Nächste Schichten")}</div>
           {nextShifts.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch nichts veröffentlicht.")}</div> : (
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(110px, 1fr))",gap:6}}>
-              {nextShifts.map(s=><div key={s.id}><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{fmtDay(s.shift_date)}</div><ShiftChip s={s} /></div>)}
+              {nextShifts.map(s=><div key={s.id}><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{fmtDay(s.shift_date)}</div><ShiftChip s={s} />
+                {s.start_time && ["Früh","Spät","Nacht","Zwischen"].includes(s.kind) && <button style={{...linkBtn,fontSize:11.5,paddingInlineStart:0}} onClick={()=>offerShift(s)}>{tf("Abgeben")}</button>}</div>)}
             </div>
           )}
           <button style={{...linkBtn,marginTop:6}} onClick={()=>onOpen("roster")}>{tf("Zum Dienstplan →")}</button>

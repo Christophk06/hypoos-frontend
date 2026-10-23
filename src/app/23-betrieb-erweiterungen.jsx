@@ -13,7 +13,8 @@ const btnLine = {background:"none",border:`1px solid ${BORDER}`,borderRadius:8,p
 function AssetsView({hotel, api}){
   const [list, load, error] = useList(api, "/api/hotels/"+hotel.id+"/assets");
   const [form,setForm] = useState(null); const [msg,setMsg] = useState(null);
-  const empty = {name:"", category:"", location:"", manufacturer:"", model:"", serial_no:"", department:"Technik", purchased_on:"", warranty_until:"", inspection_interval_months:"", last_inspection:"", next_inspection:"", notes:""};
+  const empty = {name:"", category:"", location:"", manufacturer:"", model:"", serial_no:"", department:"Technik", purchased_on:"", warranty_until:"", inspection_interval_months:"", last_inspection:"", next_inspection:"", notes:"", service_company:"", service_email:"", service_phone:"", contract_cost_year:"", contract_until:""};
+  const hasContract = list && list.some(a=>"service_company" in a);
   const save = async () => {
     setMsg(null);
     try { if(form.id) await api("/api/assets/"+form.id,"PATCH",form); else await api("/api/hotels/"+hotel.id+"/assets","POST",form); setForm(null); load(); }
@@ -37,6 +38,12 @@ function AssetsView({hotel, api}){
           {F("purchased_on","Gekauft am",{type:"date"})}{F("warranty_until","Garantie bis",{type:"date"})}
           {F("inspection_interval_months","Prüfintervall (Monate)",{type:"number",min:1,max:120})}{F("last_inspection","Letzte Prüfung",{type:"date"})}{F("next_inspection","Nächste Prüfung",{type:"date"})}
         </div>
+        {hasContract && <div>
+          <div className="field-label" style={{marginTop:4}}>{tf("Wartungsvertrag")}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:"0 10px"}}>
+            {F("service_company","Wartungsfirma")}{F("service_email","E-Mail der Firma",{type:"email"})}{F("service_phone","Telefon der Firma")}
+            {F("contract_cost_year","Kosten pro Jahr",{inputMode:"decimal"})}{F("contract_until","Vertrag läuft bis",{type:"date"})}
+          </div></div>}
         <Field label={tf("Notizen (z. B. Wartungsfirma, Vertrag)")}><textarea className="input" rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})} /></Field>
         <div style={{display:"flex",gap:8}}><button className="btn-primary" onClick={save}>{tf("Speichern")}</button><button style={btnLine} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>
       </Card>}
@@ -45,12 +52,13 @@ function AssetsView({hotel, api}){
         <thead><tr style={{textAlign:"start",color:INK_MUTED,fontSize:12}}><th style={{padding:10,textAlign:"start"}}>{tf("Gerät")}</th><th style={{textAlign:"start"}}>{tf("Standort")}</th><th style={{textAlign:"start"}}>{tf("Garantie bis")}</th><th style={{textAlign:"start"}}>{tf("Nächste Prüfung")}</th><th></th></tr></thead>
         <tbody>{list.map(a=>{ const st = state(a); return (
           <tr key={a.id} style={{borderTop:`1px solid ${BORDER}`}}>
-            <td style={{padding:10}}><b data-no-i18n="">{a.name}</b><div style={{fontSize:12,color:INK_MUTED}} data-no-i18n="">{[a.category, a.manufacturer, a.model, a.serial_no].filter(Boolean).join(" · ")}</div></td>
+            <td style={{padding:10}}><b data-no-i18n="">{a.name}</b><div style={{fontSize:12,color:INK_MUTED}} data-no-i18n="">{[a.category, a.manufacturer, a.model, a.serial_no].filter(Boolean).join(" · ")}</div>{a.service_company && <div style={{fontSize:12,color:INK_MUTED}}><Icon n="wrench" /> <span data-no-i18n="">{a.service_company}</span>{a.contract_until ? " · "+tf("Vertrag bis {0}", fmtDate(a.contract_until)) : ""}</div>}</td>
             <td data-no-i18n="">{a.location||"–"}</td>
             <td>{a.warranty_until ? fmtDate(a.warranty_until) : "–"}</td>
             <td>{a.next_inspection ? fmtDate(a.next_inspection) : "–"} {st && <Pill color={st[0]} bg={st[1]}>{st[2]}</Pill>}</td>
             <td style={{whiteSpace:"nowrap",textAlign:"end",paddingInlineEnd:10}}>
               {a.next_inspection && <button style={linkBtn} onClick={()=>inspected(a)}>{tf("Heute geprüft")}</button>}
+              {a.service_email && <a style={linkBtn} href={"mailto:"+a.service_email+"?subject="+encodeURIComponent(tf("Wartungstermin: {0}", a.name))+"&body="+encodeURIComponent(tf("Guten Tag,\n\nbitte schlagen Sie uns einen Termin für die Wartung von {0} ({1}) vor.\n\nVielen Dank", a.name, [a.manufacturer,a.model,a.serial_no].filter(Boolean).join(" ")))}>{tf("Termin anfragen")}</a>}
               <button style={linkBtn} onClick={()=>setForm({...empty, ...Object.fromEntries(Object.entries(a).map(([k,v])=>[k, v??""]))})}>{tf("Bearbeiten")}</button>
             </td>
           </tr>); })}</tbody></table></Card>}
@@ -66,7 +74,11 @@ function PatrolsView({hotel, api}){
   const [scans, loadScans] = useList(api, "/api/hotels/"+hotel.id+"/patrol-scans");
   const [form,setForm] = useState(null); const [msg,setMsg] = useState(null);
   const lead = isLeadRole();
-  const save = async () => { setMsg(null); try { await api("/api/hotels/"+hotel.id+"/patrol-points","POST",form); setForm(null); loadPoints(); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  const save = async () => { setMsg(null); try {
+    const body = {name:form.name, kind:form.kind, department:form.department, require_photo:!!form.require_photo, require_signature:!!form.require_signature};
+    if(form.id) await api("/api/patrol-points/"+form.id,"PATCH",body); else await api("/api/hotels/"+hotel.id+"/patrol-points","POST",body);
+    setForm(null); loadPoints(); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  const [proof,setProof] = useState(null);
   const lastScan = (p) => (scans||[]).find(s=>s.point_id===p.id);
   const pointName = (id) => ((points||[]).find(p=>p.id===id)||{}).name || "–";
   return (
@@ -74,7 +86,7 @@ function PatrolsView({hotel, api}){
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("QR-Codes an Brandschutztüren, Wasserhähnen oder Kontrollpunkten aufhängen. Wer den Code mit dem Handy scannt, bestätigt den Kontrollgang mit Uhrzeit – auf Wunsch mit Temperatur und Notiz.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {lead && !form && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
-        <button className="btn-primary" onClick={()=>setForm({name:"", kind:"brandschutz", department:"Technik"})}>{tf("Kontrollpunkt anlegen")}</button>
+        <button className="btn-primary" onClick={()=>setForm({name:"", kind:"brandschutz", department:"Technik", require_photo:false, require_signature:false})}>{tf("Kontrollpunkt anlegen")}</button>
         {(points||[]).length>0 && <button style={btnLine} onClick={()=>printQrCards(points.filter(p=>p.active).map(p=>({label:p.name, url:patrolUrl(p.token), text:tf(PATROL_KIND_LABEL[p.kind]||p.kind)})), tf("Kontrollgänge"))}>{tf("QR-Codes drucken")}</button>}
       </div>}
       {form && <Card style={{marginBottom:16,borderColor:BRASS}}>
@@ -83,14 +95,19 @@ function PatrolsView({hotel, api}){
           <Field label={tf("Art")}><select className="input" value={form.kind} onChange={e=>setForm({...form,kind:e.target.value})}>{Object.entries(PATROL_KIND_LABEL).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select></Field>
           <Field label={tf("Abteilung")}><select className="input" value={form.department} onChange={e=>setForm({...form,department:e.target.value})}>{DEPARTMENTS.map(d=><option key={d} value={d}>{translateString(d)}</option>)}</select></Field>
         </div>
+        <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:13.5,marginBottom:12}}>
+          <label style={{display:"flex",gap:6,alignItems:"center"}}><input type="checkbox" checked={!!form.require_photo} onChange={e=>setForm({...form,require_photo:e.target.checked})} /> {tf("Foto ist Pflicht")}</label>
+          <label style={{display:"flex",gap:6,alignItems:"center"}}><input type="checkbox" checked={!!form.require_signature} onChange={e=>setForm({...form,require_signature:e.target.checked})} /> {tf("Unterschrift ist Pflicht")}</label>
+        </div>
         <div style={{display:"flex",gap:8}}><button className="btn-primary" onClick={save}>{tf("Speichern")}</button><button style={btnLine} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>
       </Card>}
       {points && points.length===0 && <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch keine Kontrollpunkte.")}</div>}
       {points && points.length>0 && <Card style={{padding:0,marginBottom:16}}>
         {points.map(p=>{ const s = lastScan(p); return (
           <div key={p.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 14px",borderTop:`1px solid ${BORDER}`,flexWrap:"wrap"}}>
-            <div style={{flex:1,minWidth:200}}><b data-no-i18n="">{p.name}</b><div style={{fontSize:12,color:INK_MUTED}}>{tf(PATROL_KIND_LABEL[p.kind]||p.kind)} · {translateString(p.department)}{!p.active ? " · "+tf("inaktiv") : ""}</div></div>
+            <div style={{flex:1,minWidth:200}}><b data-no-i18n="">{p.name}</b><div style={{fontSize:12,color:INK_MUTED}}>{tf(PATROL_KIND_LABEL[p.kind]||p.kind)} · {translateString(p.department)}{!p.active ? " · "+tf("inaktiv") : ""}{p.require_photo ? " · "+tf("Foto-Pflicht") : ""}{p.require_signature ? " · "+tf("Unterschrift-Pflicht") : ""}</div></div>
             <div style={{fontSize:12.5,color:s ? (s.ok ? GOOD : BAD) : INK_MUTED}}>{s ? tf("Zuletzt {0}", fmtDateTime(s.scanned_at)) + (s.ok ? "" : " · "+tf("Problem")) : tf("Noch nie kontrolliert")}</div>
+            {lead && p.require_photo!==undefined && <button style={linkBtn} onClick={()=>setForm({...p})}>{tf("Bearbeiten")}</button>}
             {lead && <button style={linkBtn} onClick={async()=>{ try { await api("/api/patrol-points/"+p.id,"PATCH",{active:!p.active}); loadPoints(); } catch(e){ setMsg({ok:false,text:e.message}); } }}>{p.active ? tf("Deaktivieren") : tf("Aktivieren")}</button>}
           </div>); })}
       </Card>}
@@ -99,16 +116,24 @@ function PatrolsView({hotel, api}){
         {scans.slice(0,100).map(s=><div key={s.id} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,flexWrap:"wrap"}}>
           <div style={{minWidth:130,color:INK_MUTED}}>{fmtDateTime(s.scanned_at)}</div>
           <div style={{flex:1}} data-no-i18n="">{pointName(s.point_id)}{s.temperature!=null ? " · "+s.temperature+" °C" : ""}{s.note ? " – "+s.note : ""}</div>
+          {(s.has_photo || s.has_signature) && <button style={linkBtn} onClick={()=>api("/api/patrol-scans/"+s.id+"/proof").then(setProof).catch(e=>setMsg({ok:false,text:e.message}))}>{tf("Nachweis")}</button>}
           {s.ok ? <Pill color={GOOD} bg={GOOD_SOFT}>{tf("in Ordnung")}</Pill> : <Pill color={BAD} bg={BAD_SOFT}>{tf("Problem")}</Pill>}
         </div>)}
       </Card>}
+      {proof && <Overlay onClose={()=>setProof(null)} width={560} label={tf("Nachweis")}>
+        <b>{tf("Nachweis")}</b>
+        {proof.photo_data && <img src={proof.photo_data} alt={tf("Foto")} style={{maxWidth:"100%",borderRadius:8,margin:"10px 0"}} />}
+        {proof.signature_data && <div><div className="field-label">{tf("Unterschrift")}</div><img src={proof.signature_data} alt={tf("Unterschrift")} style={{maxWidth:"100%",background:"#fff",border:`1px solid ${BORDER}`,borderRadius:8}} /></div>}
+        <div style={{marginTop:10}}><button className="btn-primary" onClick={()=>setProof(null)}>{tf("Schließen")}</button></div>
+      </Overlay>}
     </div>
   );
 }
 // Nach dem Scannen eines Kontrollpunkt-QR-Codes (index.html?patrol=…)
 function PatrolScanDialog({api, token, onClose}){
   const [point,setPoint] = useState(null); const [error,setError] = useState("");
-  const [f,setF] = useState({ok:true, temperature:"", note:""}); const [done,setDone] = useState(false); const [busy,setBusy] = useState(false);
+  const [f,setF] = useState({ok:true, temperature:"", note:"", photo_data:null, signature_data:null}); const [done,setDone] = useState(false); const [busy,setBusy] = useState(false);
+  const needOk = point && (!point.require_photo || f.photo_data) && (!point.require_signature || f.signature_data);
   useEffect(()=>{ api("/api/patrol/"+encodeURIComponent(token)).then(setPoint).catch(e=>setError(e.message)); },[token]);
   const send = async () => { setBusy(true); setError(""); try { await api("/api/patrol/"+encodeURIComponent(token)+"/scan","POST",{...f, scanned_at:new Date().toISOString()}); setDone(true); } catch(e){ setError(e.message); } setBusy(false); };
   return (
@@ -123,7 +148,13 @@ function PatrolScanDialog({api, token, onClose}){
         </div>
         {(point.kind==="legionellen" || point.kind==="technik") && <Field label={tf("Temperatur in °C (optional)")}><input className="input" inputMode="decimal" value={f.temperature} onChange={e=>setF({...f,temperature:e.target.value.replace(",",".")})} /></Field>}
         <Field label={f.ok ? tf("Notiz (optional)") : tf("Was ist das Problem?")}><textarea className="input" rows={2} value={f.note} onChange={e=>setF({...f,note:e.target.value})} /></Field>
-        <button className="btn-primary" style={{width:"100%"}} disabled={busy || (!f.ok && !f.note.trim())} onClick={send}>{busy ? tf("Speichert…") : tf("Bestätigen")}</button>
+        {point.require_photo && <div style={{marginBottom:12}}>
+          <label style={{...btnLine,display:"inline-flex",alignItems:"center",gap:6}}><Icon n="camera" /> {f.photo_data ? tf("Anderes Foto") : tf("Foto aufnehmen (Pflicht)")}
+            <input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={async e=>{ try { setF({...f, photo_data: await compressImage(e.target.files[0], 1280, 0.72)}); } catch(x){ setError(x.message); } }} /></label>
+          {f.photo_data && <img src={f.photo_data} alt="" style={{height:60,borderRadius:6,marginInlineStart:8,verticalAlign:"middle"}} />}
+        </div>}
+        {point.require_signature && <div style={{marginBottom:12}}><div className="field-label">{tf("Unterschrift (Pflicht)")}</div><SignaturePad onChange={(d)=>setF(x=>({...x, signature_data:d}))} /></div>}
+        <button className="btn-primary" style={{width:"100%"}} disabled={busy || (!f.ok && !f.note.trim()) || !needOk} onClick={send}>{busy ? tf("Speichert…") : tf("Bestätigen")}</button>
       </div>}
       {done && <div><div style={{color:GOOD,fontSize:15,marginBottom:12}}>✓ {tf("Kontrolle gespeichert.")}</div><button className="btn-primary" onClick={onClose}>{tf("Schließen")}</button></div>}
       {!point && !error && <div style={{color:INK_MUTED}}>…</div>}
@@ -132,6 +163,26 @@ function PatrolScanDialog({api, token, onClose}){
 }
 
 // ------------------------------------------------------------ Arbeitsanweisungen mit Fotos
+// Vorlesen (Sprachausgabe des Geräts, in der Sprache der Oberfläche) – für Teams, die ungern lesen oder die Sprache lernen
+const canSpeak = () => typeof window!=="undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance==="function";
+const SPEECH_LANG = {de:"de-DE", en:"en-GB", fr:"fr-FR", it:"it-IT", es:"es-ES", pt:"pt-PT", tr:"tr-TR", ja:"ja-JP", zh:"zh-CN", ar:"ar-SA"};
+function SpeakButton({target}){
+  const [on,setOn] = useState(false);
+  useEffect(()=>()=>{ try { window.speechSynthesis.cancel(); } catch(e){} },[]);
+  const speak = () => {
+    const synth = window.speechSynthesis; synth.cancel();
+    if(on){ setOn(false); return; }
+    // Der angezeigte (ggf. übersetzte) Text jedes Schritts, nacheinander
+    const box = document.querySelector('[data-steps="'+target+'"]'); if(!box) return;
+    const texts = [...box.querySelectorAll(".speak-step")].map((el,i)=>(i+1)+". "+el.innerText.trim()).filter(Boolean);
+    if(!texts.length) return;
+    setOn(true);
+    texts.forEach((t,i)=>{ const u = new window.SpeechSynthesisUtterance(t); u.lang = SPEECH_LANG[UI_LANG] || "de-DE"; u.rate = 0.95;
+      if(i===texts.length-1){ u.onend = () => setOn(false); u.onerror = () => setOn(false); } synth.speak(u); });
+  };
+  return <button style={smallBtn} onClick={speak} aria-pressed={on}><Icon n={on ? "stop" : "speaker"} /> {on ? tf("Vorlesen beenden") : tf("Vorlesen")}</button>;
+}
+
 function InstructionsView({hotel, api}){
   const [list, load, error] = useList(api, "/api/hotels/"+hotel.id+"/work-instructions");
   const [open,setOpen] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [dept,setDept] = useState("");
@@ -184,10 +235,11 @@ function InstructionsView({hotel, api}){
             <div style={{flex:1}}><b>{w.title}</b><div style={{fontSize:12,color:INK_MUTED}}>{translateString(w.department)} · {tf("{0} Schritte", (w.steps||[]).length)}</div></div>
             <span style={{color:INK_MUTED}}>{open===w.id ? "▴" : "▾"}</span>
           </div>
-          {open===w.id && <div style={{marginTop:12}}>
+          {open===w.id && <div style={{marginTop:12}} data-steps={w.id}>
+            {canSpeak() && <div style={{marginBottom:8}}><SpeakButton target={w.id} /></div>}
             {(w.steps||[]).map((st,i)=><div key={i} style={{display:"flex",gap:12,padding:"10px 0",borderTop:`1px solid ${BORDER}`}}>
               <div style={{fontFamily:"Fraunces, serif",fontSize:22,color:BRASS,minWidth:26}} data-no-i18n="">{i+1}</div>
-              <div style={{flex:1}}><div style={{fontSize:14.5,whiteSpace:"pre-wrap"}}>{st.text}</div>{st.photo_data && <img src={st.photo_data} alt="" style={{maxWidth:"100%",maxHeight:320,borderRadius:8,marginTop:8}} />}</div>
+              <div style={{flex:1}}><div className="speak-step" style={{fontSize:14.5,whiteSpace:"pre-wrap"}}>{st.text}</div>{st.photo_data && <img src={st.photo_data} alt="" style={{maxWidth:"100%",maxHeight:320,borderRadius:8,marginTop:8}} />}</div>
             </div>)}
             {canManageDept(w.department) && <div style={{display:"flex",gap:8,marginTop:8}}>
               <button style={linkBtn} onClick={()=>setForm({id:w.id, title:w.title, department:w.department, steps:(w.steps||[]).map(s=>({...s}))})}>{tf("Bearbeiten")}</button>
@@ -370,7 +422,7 @@ function DayInfoCell({info, date}){
   if(!w && !notes.length && !ev.length) return null;
   return (
     <div style={{fontSize:10.5,fontWeight:500,lineHeight:1.35,marginTop:2}}>
-      {w && <div title={tf(WEATHER_LABEL[w.group]||"")+(w.rain ? " · "+w.rain+" mm" : "")} style={{color:INK_MUTED}}><Icon n={WEATHER_ICON[w.group]||""} /> {w.tmin}–{w.tmax}°{w.rain>=1 ? " · "+Math.round(w.rain)+" mm" : ""}</div>}
+      {w && <div title={tf(WEATHER_LABEL[w.group]||"")+(w.rain ? " · "+w.rain+" mm" : "")} aria-label={tf(WEATHER_LABEL[w.group]||"")+", "+w.tmin+"–"+w.tmax+" °C"+(w.rain>=1 ? ", "+Math.round(w.rain)+" mm" : "")} style={{color:INK_MUTED,fontSize:11.5}}><Icon n={WEATHER_ICON[w.group]||""} /> {w.tmin}–{w.tmax}°{w.rain>=1 ? " · "+Math.round(w.rain)+" mm" : ""}</div>}
       {notes.map(n=><div key={n.id} style={{color:BRASS}} title={n.note||""}>◆ {n.title}</div>)}
       {ev.map(e=><div key={e.id} style={{color:INK}} title={e.guests ? tf("{0} Personen", e.guests) : ""}>♦ {e.title}{e.guests ? " ("+e.guests+")" : ""}</div>)}
     </div>

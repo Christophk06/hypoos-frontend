@@ -73,7 +73,7 @@ function SideNav({nav, tab, onOpen, accent}){
   const [favs,setFavs] = useStoredList(LS_NAV_FAVS);
   const favItems = favs.map(k=>nav.find(n=>n.key===k)).filter(Boolean);
   const item = (n, fav) => (
-    <div key={(fav?"f-":"")+n.key} className="nav-item nav-row" {...pressable(()=>onOpen(n.key))} style={{padding:"8px 10px 8px 12px",cursor:"pointer",marginBottom:2,fontSize:13.5,display:"flex",alignItems:"center",gap:6,
+    <div key={(fav?"f-":"")+n.key} className="nav-item nav-row" aria-current={n.key===tab ? "page" : undefined} {...pressable(()=>onOpen(n.key))} style={{padding:"8px 10px 8px 12px",cursor:"pointer",marginBottom:2,fontSize:13.5,display:"flex",alignItems:"center",gap:6,
       borderInlineStart:"2px solid "+(tab===n.key?accent:"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.72)"}}>
       <span style={{flex:1}}>{n.label}</span>
       <button className="nav-star" title={favs.includes(n.key)?tf("Aus Favoriten entfernen"):tf("Zu Favoriten")} aria-label={tf("Favorit")}

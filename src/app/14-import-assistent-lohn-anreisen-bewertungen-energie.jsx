@@ -462,7 +462,7 @@ function ReviewsView({hotel, api, role}){
       </div>}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {data.reviews.length>0 && <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-        {[["",tf("Alle")], ...(lead ? [["__open",tf("Unbeantwortet")]] : []), ...st.sources.map(s=>[s.source, tf(REVIEW_SOURCE_LABELS[s.source]||s.source)])].map(([k,l])=><button key={k||"all"} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:"#fff",color:filter===k?"#fff":INK,borderRadius:999,padding:"4px 11px",fontSize:12.5,cursor:"pointer"}}>{l}</button>)}
+        {[["",tf("Alle")], ...(lead ? [["__open",tf("Unbeantwortet")]] : []), ...st.sources.map(s=>[s.source, tf(REVIEW_SOURCE_LABELS[s.source]||s.source)])].map(([k,l])=><button key={k||"all"} aria-pressed={filter===k} onClick={()=>setFilter(k)} style={{border:`1px solid ${filter===k?INK:BORDER}`,background:filter===k?INK:"#fff",color:filter===k?"#fff":INK,borderRadius:999,padding:"4px 11px",fontSize:12.5,cursor:"pointer"}}>{l}</button>)}
       </div>}
       {data.reviews.length===0 ? <Card><div style={{fontSize:13,color:INK_MUTED}}>{tf("Noch keine Bewertungen. Exportiere sie aus Google, Booking.com & Co. und importiere die Datei hier.")}</div></Card> :
         <Card style={{padding:0}}>{shown.slice(0,100).map(r=>(
@@ -499,7 +499,7 @@ function ReviewReply({r, api, ai, onSaved}){
         {ai && !r.reply_draft && <button style={{...linkBtn,fontSize:12.5,color:BRASS}} disabled={!!busy} onClick={draft}><Icon n="sparkle" /> {busy==="ai" ? tf("Wird geschrieben…") : tf("Antwort mit KI entwerfen")}</button>}
       </div>
       {open && <div style={{marginTop:8}}>
-        <textarea className="input" rows={5} maxLength={3000} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Antwort an den Gast …")} />
+        <textarea className="input" rows={5} maxLength={3000} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Antwort an den Gast …")} aria-label={tf("Antwort an den Gast …")} autoFocus />
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
           <button style={smallBtn} disabled={!text.trim()} onClick={copy}>{tf("Kopieren")}</button>
           <button style={smallBtn} disabled={!!busy || !text.trim()} onClick={()=>save("beantwortet")}>{tf("Als beantwortet markieren")}</button>

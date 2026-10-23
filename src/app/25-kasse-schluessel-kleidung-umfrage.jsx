@@ -22,7 +22,7 @@ const CASH_CATEGORIES = ["Trinkgeld","Einkauf","Wechselgeld","Sonstiges"];
 function CashView({hotel, api, me, members, myDepts}){
   const [month,setMonth] = useState(todayIso().slice(0,7));
   const [data,setData] = useState(null); const [msg,setMsg] = useState(null); const [form,setForm] = useState(null); const [photo,setPhoto] = useState(null);
-  const lead = isLeadRole();
+  const lead = isLeadRole(); const [zipBusy,setZipBusy] = useState(false);
   const load = useCallback(()=>api("/api/hotels/"+hotel.id+"/cash?month="+month).then(setData).catch(e=>setMsg({ok:false,text:e.message})),[api, hotel.id, month]);
   useEffect(()=>{ load(); },[load]);
   const money = (v) => Number(v||0).toLocaleString(UI_LOCALE,{style:"currency",currency:hotel.currency||"EUR"});
@@ -45,12 +45,14 @@ function CashView({hotel, api, me, members, myDepts}){
   const saldo = data ? Math.round((data.total_in - data.total_out)*100)/100 : 0;
   return (
     <div>
+      {lead && <TipSplitCard hotel={hotel} api={api} month={month} members={members} />}
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Kleine Bargeldbewegungen außerhalb der Registrierkasse: Trinkgeld-Kasse, Einkäufe mit Beleg, Wechselgeld. Einträge älter als 7 Tage ändert nur ein Admin.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginBottom:14}}>
         {!form && <button className="btn-primary" onClick={()=>setForm(empty)}>{tf("Eintrag hinzufügen")}</button>}
         <input className="input" type="month" style={{width:170}} value={month} aria-label={tf("Monat")} onChange={e=>e.target.value && setMonth(e.target.value)} />
         {data && data.entries.length>0 && <button style={btnLine} onClick={csv}>{tf("Als CSV exportieren")}</button>}
+        {lead && <button style={btnLine} disabled={zipBusy} onClick={async()=>{ setZipBusy(true); try { await taxAdvisorZip({api, hotel, month, members}); } catch(e){ setMsg({ok:false,text:e.message}); } setZipBusy(false); }}><Icon n="filetext" /> {zipBusy ? tf("Wird erstellt…") : tf("Paket für die Steuerberatung (ZIP)")}</button>}
       </div>
       {form && <Card style={{marginBottom:16,borderColor:BRASS}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:"0 10px"}}>

@@ -5,6 +5,7 @@ const ROOM_STYLE = {"Schmutzig":{bg:BAD_SOFT,fg:BAD}, "In Reinigung":{bg:WARN_SO
 const roomLocation = (n) => tf("Zimmer {0}", n);
 
 function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
+  const [inspect,setInspect] = useState(null);
   const visible = visibleDeptsFor(role, myDepts);
   const canEdit = role!=="viewer" && (visible.includes("Housekeeping") || visible.includes("Rezeption & Empfang"));
   const canSetup = canManageDept("Housekeeping") || canManageDept("Rezeption & Empfang");
@@ -52,6 +53,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
   );
   return (
     <div>
+      {inspect && <InspectionDialog room={inspect} hotel={hotel} api={api} onHotel={onHotel} onClose={()=>setInspect(null)} onDone={()=>{ setSel(null); load(); }} />}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {role==="admin" && <PmsCard hotel={hotel} api={api} onSynced={load} />}
       {role==="admin" && <GuestQrCard hotel={hotel} api={api} />}
@@ -118,6 +120,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
             {ticketsFor(cur.number).map(t=><div key={t.id} style={{fontSize:13,color:BAD,marginBottom:4}}><Icon n="wrench" /> <span data-no-i18n="">{t.title}</span> · <span>{t.status}</span></div>)}
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:6}}>
               {role!=="viewer" && <button style={smallBtn} onClick={()=>{ setSel(null); onReport(roomLocation(cur.number)); }}><Icon n="wrench" /> {tf("Mangel melden")}</button>}
+              {hotel.inspection_items!==undefined && canInspect() && <button style={smallBtn} onClick={()=>setInspect(cur)}><Icon n="clipboard" /> {tf("Abnahme")}</button>}
               <span style={{flex:1}}></span>
               {cur.updated_by && <span style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{memberLabel(members, me, cur.updated_by)} · {fmtClock(cur.updated_at)}</span>}
               {canSetup && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Zimmer {0} löschen?", cur.number))) { setSel(null); api("/api/rooms/"+cur.id,"DELETE").then(load).catch(e=>setMsg({ok:false,text:e.message})); } }}>{tf("Löschen")}</button>}
@@ -126,6 +129,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
         </div>
       )}
       {cur && <div style={{height:300}}></div>}
+      {canManageDept("Housekeeping") && <CleaningTimesCard hotel={hotel} api={api} members={members} />}
     </div>
   );
 }

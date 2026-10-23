@@ -9,12 +9,13 @@ function GuestInfoCard({hotel, api, onHotel}){
     try { const h = await api("/api/hotels/"+hotel.id,"PATCH",{guest_info:f}); onHotel && onHotel(h); setMsg({ok:true,text:tf("Gespeichert. Gäste sehen die Infos sofort nach dem Scannen des Zimmer-Codes.")}); }
     catch(e){ setMsg({ok:false,text:e.message}); } setBusy(false); };
   const F = (k, l, ph) => <Field label={tf(l)}><input className="input" value={f[k]} placeholder={ph||""} onChange={e=>setF({...f,[k]:e.target.value})} /></Field>;
-  const listEditor = (k, cols) => (
+  const listEditor = (k, cols, extra) => (
     <div>
       {f[k].map((row,i)=>(
         <div key={i} style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
           {cols.map(([c,l,w])=><input key={c} className="input" style={{flex:w,minWidth:90}} placeholder={tf(l)} aria-label={tf(l)} value={row[c]||""} onChange={e=>setF({...f,[k]:f[k].map((x,j)=>j===i?{...x,[c]:e.target.value}:x)})} />)}
           <button style={linkBtn} aria-label={tf("Entfernen")} onClick={()=>setF({...f,[k]:f[k].filter((_,j)=>j!==i)})}>✕</button>
+          {extra && <div style={{flexBasis:"100%"}}>{extra(row, i)}</div>}
         </div>))}
       <button style={smallBtn} onClick={()=>setF({...f,[k]:[...f[k],{}]})}>{tf("Zeile hinzufügen")}</button>
     </div>
@@ -36,7 +37,8 @@ function GuestInfoCard({hotel, api, onHotel}){
           <span><b><Icon n="sparkle" /> {tf("Digitaler Concierge (KI) – rund um die Uhr")}</b><br/>{tf("Gäste stellen auf der Gästeseite Fragen in ihrer Sprache. Die KI antwortet nur aus den Infos auf dieser Karte, bietet passende Wünsche zum Anfordern an und leitet alles andere an den Rezeptions-Chat weiter.")}</span>
         </label>
         <div className="field-label">{tf("Speisekarte")}</div>
-        {listEditor("menu", [["name","Gericht",3],["note","Hinweis, z. B. Allergene",2],["price","Preis",1]])}
+        {listEditor("menu", [["name","Gericht",3],["note","Hinweis (optional)",2],["price","Preis",1]], (row,i)=><AllergenPicker value={row.allergens} onChange={(v)=>setF({...f,menu:f.menu.map((x,j)=>j===i?{...x,allergens:v}:x)})} />)}
+        {f.menu.some(m=>m.name) && <button style={{...smallBtn,marginTop:6}} onClick={()=>sheetPdf(allergenMatrixHtml(hotel, f.menu), safeFile(translateString("Allergene")+" "+hotel.name)+".pdf")}><Icon n="filetext" /> {tf("Allergene-Matrix (PDF)")}</button>}
         <div className="field-label" style={{marginTop:12}}>{tf("Spa-Angebote")}</div>
         {listEditor("spa", [["name","Behandlung",3],["duration","Dauer",1],["price","Preis",1]])}
         {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,margin:"10px 0"}}>{msg.text}</div>}

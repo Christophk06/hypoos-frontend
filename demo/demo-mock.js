@@ -165,6 +165,26 @@
       note: psi === 4 ? "Feuerlöscher-Plombe fehlt, Meldung an Technik." : psi === 11 ? "Temperatur zu niedrig, Speicher prüfen." : null,
       scanned_at: new Date(now.getTime() - (psi * 0.9 + 0.2) * 86400000).toISOString() });
   }
+  // Ergänzungen: Automatik, Abnahme, Kontrollpunkt-Nachweise, Mitarbeiter-Dokumente, Gerätebuch-Verträge, Allergene, Pflichtplan
+  D.hotel.automations = D.hotel.automations || {}; D.hotel.inspection_items = D.hotel.inspection_items || [];
+  D.patrol_points.forEach(function (pp) { pp.require_photo = pp.kind === "brandschutz" && pp.name.indexOf("Feuerlöscher") === 0 || pp.id === "pp-1"; pp.require_signature = pp.id === "pp-5"; });
+  D.patrol_scans.forEach(function (s) { s.has_photo = s.point_id === "pp-1"; s.has_signature = s.point_id === "pp-5"; });
+  var PX_PHOTO = "data:image/svg+xml;base64," + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="#d9d4c7"/><rect x="130" y="50" width="60" height="110" rx="10" fill="#b3402f"/><rect x="150" y="30" width="20" height="25" fill="#444"/></svg>');
+  var PX_SIGN = "data:image/svg+xml;base64," + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100"><rect width="300" height="100" fill="#fff"/><path d="M20 70 C50 10 70 90 100 40 S150 80 180 35 S240 70 280 30" stroke="#1a2b4c" stroke-width="3" fill="none"/></svg>');
+  [["as-1", "Kältetechnik Huber GmbH", "service@kaeltetechnik-huber.example", "+43 512 555 0142", 1280, add(todayIso, 240)], ["as-3", "Securitas Brandschutz", "wartung@brandschutz.example", "+43 512 555 0177", 2400, add(todayIso, 25)]].forEach(function (c) {
+    var a = byId(D.assets, c[0]); if (a) { a.service_company = c[1]; a.service_email = c[2]; a.service_phone = c[3]; a.contract_cost_year = c[4]; a.contract_until = c[5]; } });
+  D.assets.forEach(function (a) { if (a.service_company === undefined) { a.service_company = null; a.service_email = null; a.service_phone = null; a.contract_cost_year = null; a.contract_until = null; } });
+  var ALG = [["A", "C", "G"], ["A", "C", "G", "L"], ["A", "C", "G"], ["A", "C", "G", "H"]];
+  ((D.hotel.guest_info || {}).menu || []).forEach(function (it, i) { if (!it.allergens) it.allergens = ALG[i % ALG.length]; });
+  D.acks = D.acks.filter(function (a) { return !(a.training_id === "tr-1" && a.user_id === "u-ewa"); });
+  D.acks.push({ training_id: "tr-1", user_id: "u-ewa", acked_at: new Date(now.getTime() - 350 * 86400000).toISOString() }, { training_id: "tr-1", user_id: "u-member", acked_at: new Date(now.getTime() - 420 * 86400000).toISOString() });
+  D.trainings.forEach(function (t) { if (t.valid_months === undefined) t.valid_months = 12; if (!t.departments) t.departments = []; });
+  D.staff_docs = [
+    { id: "sd-1", organization_id: "demo-org", hotel_id: AH, user_id: "u-member", person_name: null, kind: "Gesundheitszeugnis", title: "Gesundheitszeugnis Lebensmittel", valid_until: add(todayIso, 20), remind_days: 30, note: null, has_file: true, created_at: new Date(now.getTime() - 300 * 86400000).toISOString() },
+    { id: "sd-2", organization_id: "demo-org", hotel_id: AH, user_id: "u-ewa", person_name: null, kind: "Aufenthaltstitel", title: "Aufenthaltstitel Rot-Weiß-Rot Karte", valid_until: add(todayIso, -12), remind_days: 60, note: "Verlängerung beantragt.", has_file: true, created_at: new Date(now.getTime() - 700 * 86400000).toISOString() },
+    { id: "sd-3", organization_id: "demo-org", hotel_id: AH, user_id: "u-hkm", person_name: null, kind: "Arbeitsvertrag", title: "Arbeitsvertrag unbefristet", valid_until: null, remind_days: 30, note: null, has_file: false, created_at: new Date(now.getTime() - 900 * 86400000).toISOString() }];
+  D.room_insp = [{ id: "ri-1", room_id: D.rooms[0] && D.rooms[0].id, inspector: "u-hkm", created_at: new Date(now.getTime() - 2 * 86400000).toISOString(), passed: false, note: "Nachkontrolle am Nachmittag.",
+    items: [{ label: "Bett und Wäsche", ok: true, note: null, has_photo: false }, { label: "Bad sauber", ok: false, note: "Haare im Duschablauf", has_photo: true }, { label: "Boden gesaugt", ok: true, note: null, has_photo: false }] }];
   D.work_instructions = [
     { id: "wi-1", title: "Bett richtig beziehen", department: "Housekeeping", steps: [{ text: "Alte Wäsche abziehen und im Wäschesack sammeln." }, { text: "Matratzenschoner auf Sauberkeit prüfen." }, { text: "Spannleintuch faltenfrei über die Matratze ziehen." }, { text: "Duvet in den Bezug einziehen, Ecken ausrichten." }, { text: "Kopfpolster aufschütteln und mittig platzieren." }, { text: "Tagesdecke glatt streichen, Zierpolster anordnen." }] },
     { id: "wi-2", title: "Kaffeemaschine reinigen", department: "F&B", steps: [{ text: "Maschine ausschalten und Reinigungsprogramm starten." }, { text: "Reinigungstablette in den Schacht legen." }, { text: "Milchsystem mit Reiniger spülen." }, { text: "Auffangschale und Abtropfgitter ausspülen." }, { text: "Gehäuse feucht abwischen, Protokoll abzeichnen." }] },
@@ -757,6 +777,40 @@
         D.assets.push(na); return ok(na); }
       return ok(D.assets.slice().sort(function (a, c) { return a.name < c.name ? -1 : 1; })); }
     if ((mm = p.match(/^\/api\/assets\/([^/]+)$/))) { if (m === "DELETE") { remove(D.assets, mm[1]); return ok({ ok: true }); } return ok(Object.assign(byId(D.assets, mm[1]), b)); }
+    // Ergänzte Routen: Schicht abgeben, Zimmer-Abnahme, Mitarbeiter-Dokumente, Nachweise, Trinkgeld, Reinigungszeiten, Notfall
+    if ((mm = p.match(/^\/api\/shifts\/([^/]+)\/offer$/)) && m === "POST") { var osh = byId(D.shifts, mm[1]); if (!osh) return ok({ error: "Nicht gefunden." }, 404);
+      var oo = { id: nid("os"), hotel_id: D.hotel.id, department: osh.department, shift_date: osh.shift_date, kind: osh.kind, start_time: osh.start_time, end_time: osh.end_time, reason: "abgabe", status: "offen", created_by: ME, offered_shift_id: osh.id, note: (b && b.note) || null };
+      D.open_shifts.push(oo); return ok({ open_shift_id: oo.id }); }
+    if ((mm = p.match(/^\/api\/open-shifts\/([^/]+)\/withdraw$/)) && m === "POST") { var ow = byId(D.open_shifts, mm[1]); if (ow) ow.status = "abgesagt"; return ok({ ok: true }); }
+    if ((mm = p.match(/^\/api\/patrol-scans\/([^/]+)\/proof$/))) { var pse = byId(D.patrol_scans, mm[1]); return ok({ photo_data: pse && pse.has_photo ? PX_PHOTO : null, signature_data: pse && pse.has_signature ? PX_SIGN : null }); }
+    if ((mm = p.match(/^\/api\/rooms\/([^/]+)\/inspections$/))) {
+      if (m === "POST") { var irm = byId(D.rooms, mm[1]); if (!irm) return ok({ error: "Nicht gefunden." }, 404);
+        var its = (b.items || []).filter(function (x) { return x && String(x.label || "").trim(); }); if (!its.length) return ok({ error: "Bitte die Prüfpunkte ausfüllen." }, 400);
+        var okAll = its.every(function (x) { return x.ok !== false; });
+        var ins = { id: nid("ri"), room_id: irm.id, inspector: ME, created_at: new Date().toISOString(), passed: okAll, note: b.note || null,
+          items: its.map(function (x) { return { label: x.label, ok: x.ok !== false, note: x.note || null, has_photo: !!x.photo_data }; }) };
+        D.room_insp.unshift(ins); irm.status = okAll ? "Kontrolliert" : "Schmutzig"; irm.updated_by = ME; irm.updated_at = ins.created_at;
+        return ok({ id: ins.id, created_at: ins.created_at, passed: ins.passed }); }
+      return ok(D.room_insp.filter(function (x) { return x.room_id === mm[1]; }).slice(0, 20)); }
+    if ((mm = p.match(/^\/api\/room-inspections\/([^/]+)$/))) { var rin = byId(D.room_insp, mm[1]); return rin ? ok(Object.assign({ hotel_id: D.hotel.id }, rin)) : ok({ error: "Nicht gefunden." }, 404); }
+    if (p === "/api/organizations/demo-org/staff-documents") {
+      if (m === "POST") { var nsd = Object.assign({ id: nid("sd"), organization_id: "demo-org", hotel_id: D.hotel.id, user_id: null, person_name: null, kind: "Sonstiges", title: "", valid_until: null, remind_days: 30, note: null, created_at: new Date().toISOString() }, b);
+        nsd.has_file = !!b.file_data; if (b.file_data) nsd._file = b.file_data; delete nsd.file_data; D.staff_docs.push(nsd); return ok({ id: nsd.id }); }
+      return ok(D.staff_docs.filter(function (d) { return lead || d.user_id === ME; }).sort(function (a, c) { return (a.valid_until || "9999") < (c.valid_until || "9999") ? -1 : 1; }).map(function (d) { var o = Object.assign({}, d); delete o._file; return o; })); }
+    if ((mm = p.match(/^\/api\/staff-documents\/([^/]+)\/file$/))) { var sdf = byId(D.staff_docs, mm[1]); if (!sdf || !sdf.has_file) return ok({ error: "Nicht gefunden." }, 404); return ok({ file_data: sdf._file || PX_PHOTO, title: sdf.title, kind: sdf.kind }); }
+    if ((mm = p.match(/^\/api\/staff-documents\/([^/]+)$/))) { if (m === "DELETE") { remove(D.staff_docs, mm[1]); return ok({ ok: true }); }
+      var sdp = byId(D.staff_docs, mm[1]); if (!sdp) return ok({ error: "Nicht gefunden." }, 403); var pb = Object.assign({}, b); if (pb.file_data !== undefined) { sdp._file = pb.file_data || null; sdp.has_file = !!pb.file_data; delete pb.file_data; } Object.assign(sdp, pb); return ok({ id: sdp.id }); }
+    if (p === H + "/tip-split") {
+      var tmo = q.get("month") || todayIso.slice(0, 7), tdp = q.get("department") || "";
+      var tsh = [["u-member", 142.5], ["u-ewa", 118], ["u-hkm", 96.25]], tsum = 356.75, ttot = 214.5, tdone = 0;
+      var tshares = tsh.map(function (x, i) { var a = i < tsh.length - 1 ? Math.floor(ttot * x[1] / tsum * 100) / 100 : Math.round((ttot - tdone) * 100) / 100; tdone += a; return { user_id: x[0], hours: x[1], amount: a }; });
+      return ok({ month: tmo, department: tdp, total: ttot, hours: tsum, currency: "EUR", shares: tshares.sort(function (a, c) { return c.amount - a.amount; }) }); }
+    if (p === H + "/cleaning-times") { var cto = q.get("to") || todayIso;
+      return ok({ from: q.get("from") || add(cto, -30), to: cto, runs: 186, by_user: [{ key: "u-member", count: 78, avg: 26, median: 25 }, { key: "u-ewa", count: 71, avg: 29, median: 28 }, { key: "u-hkm", count: 37, avg: 33, median: 31 }],
+        by_type: [{ key: "Doppelzimmer", count: 112, avg: 27, median: 26 }, { key: "Einzelzimmer", count: 49, avg: 22, median: 21 }, { key: "Suite", count: 25, avg: 41, median: 40 }] }); }
+    if (p === H + "/emergency/present") { return ok({ at: new Date().toISOString(), people: [{ user_id: "u-member", name: "Ana Petrovic", department: "Housekeeping", since: new Date(now.getTime() - 3 * 3600000).toISOString() },
+      { user_id: "u-fo", name: "L. Stein", department: "Rezeption & Empfang", since: new Date(now.getTime() - 5 * 3600000).toISOString() }, { user_id: "u-fb", name: "L. Bianchi", department: "Food & Beverage", since: new Date(now.getTime() - 2 * 3600000).toISOString() }] }); }
+    if (p === H + "/emergency" && m === "POST") return ok({ ok: true, sent: 12 });
     if (p === H + "/patrol-points") { if (m === "POST") { var npp = Object.assign({ id: nid("pp"), hotel_id: D.hotel.id, kind: "sonstiges", department: "Technik", active: true, created_at: new Date().toISOString() }, b, { token: tok(nextId + 40) }); D.patrol_points.push(npp); return ok(npp); }
       return ok(D.patrol_points.slice().sort(function (a, c) { return a.name < c.name ? -1 : 1; })); }
     if ((mm = p.match(/^\/api\/patrol-points\/([^/]+)$/))) { if (m === "DELETE") { remove(D.patrol_points, mm[1]); return ok({ ok: true }); } return ok(Object.assign(byId(D.patrol_points, mm[1]), b)); }

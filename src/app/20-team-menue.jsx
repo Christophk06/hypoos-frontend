@@ -15,6 +15,49 @@ function DeptChips({value, onChange, disabled}){
   );
 }
 
+// Rechte-Übersicht (Admins): wer was sehen und ändern darf – je Rolle und je Person.
+// Maßgeblich sind die Regeln in der Datenbank; diese Übersicht fasst sie verständlich zusammen.
+const RIGHTS_AREAS = [
+  // [Bereich, Admin, Leitung (mit Abteilungen), Mitarbeitende, Eigentümer]
+  ["Team, Rollen und Abo", "ändern", "–", "–", "–"],
+  ["Dienstplan", "ändern", "ändern (eigene Abteilungen)", "eigene Schichten sehen, Anträge stellen", "–"],
+  ["Zeiterfassung und Lohnexport", "ändern", "korrigieren (eigene Abteilungen)", "eigene Zeiten stempeln", "–"],
+  ["Aufgaben, Budget, Risiken", "ändern", "ändern (eigene Abteilungen)", "eigene Abteilung sehen", "sehen"],
+  ["Zimmerstatus und Meldungen", "ändern", "ändern", "melden und bearbeiten", "–"],
+  ["Kassenbuch", "ändern (auch älter als 7 Tage)", "Finanzen ändert, Rezeption/F&B sehen", "eigene Einträge", "–"],
+  ["Mitarbeiter-Dokumente", "ändern", "nur Leitung Personal", "eigene sehen", "–"],
+  ["Umfrage-Auswertung", "sehen (ab 5 Antworten)", "sehen (ab 5 Antworten)", "anonym teilnehmen", "–"],
+  ["Kennzahlen und Berichte", "sehen", "sehen", "–", "sehen"],
+];
+function RightsOverview({members}){
+  const [open,setOpen] = useState(false);
+  const who = (m) => m.role==="admin" ? tf("darf alles, auch Team und Abo")
+    : m.role==="viewer" ? tf("liest Berichte und Kennzahlen, ändert nichts")
+    : m.role==="manager" ? ((m.departments||[]).length ? tf("leitet: {0}", (m.departments||[]).map(translateString).join(", ")) : tf("leitet alle Abteilungen (Direktion)"))
+    : ((m.departments||[]).length ? tf("arbeitet in: {0}", (m.departments||[]).map(translateString).join(", ")) : tf("keine Abteilung – sieht nur Eigenes"));
+  return (
+    <Card style={{marginBottom:18}}>
+      <div {...pressable(()=>setOpen(!open))} aria-expanded={open} style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}}>
+        <div style={{flex:1}}><b><Icon n="users" /> {tf("Wer darf was?")}</b><div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Rechte je Rolle und je Person auf einen Blick.")}</div></div>
+        <span style={{color:INK_MUTED}}>{open ? "▴" : "▾"}</span>
+      </div>
+      {open && <div style={{marginTop:12}}>
+        <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5,minWidth:640}}>
+          <thead><tr style={{color:INK_MUTED,textAlign:"start"}}><th style={{textAlign:"start",padding:"6px 8px"}}>{tf("Bereich")}</th>{["admin","manager","member","viewer"].map(r=><th key={r} style={{textAlign:"start",padding:"6px 8px"}}>{tf(ROLE_LABELS[r])}</th>)}</tr></thead>
+          <tbody>{RIGHTS_AREAS.map(([area,...cells])=><tr key={area} style={{borderTop:`1px solid ${BORDER}`}}>
+            <td style={{padding:"6px 8px",fontWeight:600}}>{tf(area)}</td>
+            {cells.map((c,i)=><td key={i} style={{padding:"6px 8px",color:c==="–"?INK_MUTED:INK}}>{c==="–" ? "–" : tf(c)}</td>)}
+          </tr>)}</tbody>
+        </table></div>
+        <div className="field-label" style={{marginTop:14}}>{tf("Je Person")}</div>
+        {members.map(m=><div key={m.user_id} style={{display:"flex",gap:10,flexWrap:"wrap",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13}}>
+          <b style={{minWidth:160}} data-no-i18n="">{shortName(m.email)}</b><span style={{color:INK_MUTED}}>{tf(ROLE_LABELS[m.role]||m.role)}</span><span style={{flex:1}}>{who(m)}</span></div>)}
+        <div style={{fontSize:11.5,color:INK_MUTED,marginTop:8}}>{tf("Rechte ändern: Rolle und Abteilungen in der Mitgliederliste unten. Die Datenbank prüft jede Aktion selbst – auch wenn jemand die App umgeht.")}</div>
+      </div>}
+    </Card>
+  );
+}
+
 function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLanguage, onOrgGone, onLanguageChanged}){
   const [members,setMembers] = useState([]);
   const [invites,setInvites] = useState([]);
@@ -145,6 +188,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
         </div>
       </Card>}
 
+      {isAdmin && <RightsOverview members={members} />}
       <Card style={{marginBottom:18,padding:0}}>
         <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Mitglieder</div>
         <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
@@ -249,7 +293,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 const NAV_DAY = "Tagesgeschäft", NAV_TEAM = "Team & Dienstplan", NAV_HOUSE = "Haus & Technik", NAV_GUESTS = "Gäste & Verkauf";
 const NAV_SECTION_OF = {
   logbook:NAV_DAY, checklists:NAV_DAY, cash:NAV_DAY,
-  roster:NAV_TEAM, time:NAV_TEAM, trainings:NAV_TEAM, academy:NAV_TEAM, instructions:NAV_TEAM, sick:NAV_TEAM, uniforms:NAV_TEAM, pulse:NAV_TEAM, chat:NAV_TEAM,
+  roster:NAV_TEAM, time:NAV_TEAM, trainings:NAV_TEAM, academy:NAV_TEAM, instructions:NAV_TEAM, sick:NAV_TEAM, uniforms:NAV_TEAM, pulse:NAV_TEAM, staffdocs:NAV_TEAM, chat:NAV_TEAM,
   rooms:NAV_HOUSE, tickets:NAV_HOUSE, assets:NAV_HOUSE, patrols:NAV_HOUSE, keys:NAV_HOUSE, stock:NAV_HOUSE, lostfound:NAV_HOUSE, energy:NAV_HOUSE,
   frontdesk:NAV_GUESTS, arrivals:NAV_GUESTS, guestchat:NAV_GUESTS, reviews:NAV_GUESTS, feedback:NAV_GUESTS, events:NAV_GUESTS, letters:NAV_GUESTS, invoices:NAV_GUESTS, tourismtax:NAV_GUESTS,
 };
@@ -277,8 +321,8 @@ function navForAll(role, hasBilling, myDepts){
     N("dashboard","Dashboard"), N("group","Hotelgruppe"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"),
     N("tasks","Aufgaben","Projekt"), N("milestones","Meilensteine","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     N("risks","Risiken","Projekt"), N("budget","Budget","Projekt"), N("staff","Personal","Projekt"), N("procurement","Bestellungen","Projekt"),
-    ...ops, N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb"), N("tourismtax","Ortstaxe","Betrieb"), N("sick","Krankmeldungen","Betrieb"), N("cash","Kassenbuch","Betrieb"), N("keys","Schlüssel & Karten","Betrieb"), N("uniforms","Dienstkleidung","Betrieb"), N("pulse","Mitarbeiter-Umfrage","Betrieb"), N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
-    N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
+    ...ops, N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb"), N("tourismtax","Ortstaxe","Betrieb"), N("sick","Krankmeldungen","Betrieb"), N("cash","Kassenbuch","Betrieb"), N("keys","Schlüssel & Karten","Betrieb"), N("uniforms","Dienstkleidung","Betrieb"), N("pulse","Mitarbeiter-Umfrage","Betrieb"), N("staffdocs","Mitarbeiter-Dokumente","Betrieb"), N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
+    N("emergency","Notfall","Allgemein"), N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
     ...(role==="admin" && hasBilling ? [N("billing","Abo","Allgemein")] : []),
     N("account","Konto","Allgemein"),
   ];

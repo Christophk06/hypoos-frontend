@@ -1,5 +1,6 @@
 &after=
 &amp;
+&body=
 &department=
 &department=Housekeeping
 &gt;
@@ -40,6 +41,7 @@
 ?hotelType=
 ?invite=
 ?status=open
+?subject=
 ?subject=Ouverture%20Enterprise
 ?task_id=
 @ouverture
@@ -80,6 +82,7 @@ HolidayCheck
 Inter, sans-serif
 Invoice
 Ist (
+LIESMICH.txt
 Mews
 Notification
 Ouverture
@@ -121,18 +124,23 @@ application/octet-stream
 application/pdf
 application/vnd.openxmlformats-officedocument.wordprocessingml.document
 application/xml
+ar-SA
 calc(
 code_128
 code_39
 copyMove
 currentColor
 daysInRow
+de-AT
 de-DE
 doc-templates.js
 ean_13
 ean_8
+en-GB
+es-ES
 event-templates.js
 feedback.html?demo=1
+fr-FR
 fälligkeit
 hpoos_c:
 hpoos_connection_config_v1
@@ -146,16 +154,21 @@ image/jpeg
 image/png
 image/svg+xml
 index.html?patrol=
+it-IT
+ja-JP
 kWh
 mailto:
 maßnahme
+monatsabschluss.pdf
 optionsText
 ouv_ref_v1
 priorität
+pt-PT
 rotate(45deg)
 sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx
 script[src="
 serviceWorker
+speechSynthesis
 splitRest
 status: dirty, clean, inspected, out of order · occupancy: vacant, occupied, departure, arrival
 text/calendar;charset=utf-8
@@ -164,6 +177,7 @@ text/csv;charset=utf-8
 text/plain
 text/plain;charset=utf-8
 text/plain;charset=windows-1252
+tr-TR
 translateX(-50%)
 vendor/docx.js
 weeklyRest
@@ -173,6 +187,7 @@ word/footer1.xml
 word/media/logo.png
 word/styles.xml
 xMidYMax slice
+zh-CN
 zuständig
 {notes}
 °C</h3><table class="t"><thead><tr><th>

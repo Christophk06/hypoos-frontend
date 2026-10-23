@@ -14,7 +14,8 @@ function ServiceButton({api, orgId, hotel, tab, nav, onOpen}){
   const [open,setOpen] = useState(false); const [mode,setMode] = useState("chat");
   const [enabled,setEnabled] = useState(null);
   const [msgs,setMsgs] = useState([]); const [text,setText] = useState(""); const [busy,setBusy] = useState(false); const [err,setErr] = useState("");
-  const listRef = React.useRef(null); const inputRef = React.useRef(null);
+  const listRef = React.useRef(null); const inputRef = React.useRef(null); const fabRef = React.useRef(null); const wasOpen = React.useRef(false);
+  useEffect(()=>{ if(open) wasOpen.current = true; else if(wasOpen.current && fabRef.current) fabRef.current.focus(); },[open]);
   useEffect(()=>{ if(open && enabled===null) api("/api/assistant").then(r=>setEnabled(!!r.enabled)).catch(()=>setEnabled(false)); },[open]);
   useEffect(()=>{ if(listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; },[msgs, busy]);
   useEffect(()=>{ if(open && mode==="chat" && inputRef.current) inputRef.current.focus(); },[open, mode]);
@@ -36,8 +37,8 @@ function ServiceButton({api, orgId, hotel, tab, nav, onOpen}){
   const starters = SERVICE_STARTERS[tab] || SERVICE_DEFAULT_STARTERS;
   return (
     <div className="feedback-ui no-print">
-      {!open && <button className="feedback-fab" aria-haspopup="dialog" onClick={()=>{ setOpen(true); setMode("chat"); }}><Icon n="sparkle" /> {tf("Hilfe 24/7")}</button>}
-      {open && <div className="service-panel" role="dialog" aria-label={tf("KI-Service")} style={{background:CARD,border:`1px solid ${BORDER}`}}>
+      {!open && <button ref={fabRef} className="feedback-fab" aria-haspopup="dialog" onClick={()=>{ setOpen(true); setMode("chat"); }}><Icon n="sparkle" /> {tf("Hilfe 24/7")}</button>}
+      {open && <div className="service-panel" role="dialog" aria-modal="false" aria-label={tf("KI-Service")} style={{background:CARD,border:`1px solid ${BORDER}`}}>
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",borderBottom:`1px solid ${BORDER}`}}>
           <Icon n="sparkle" size={18} style={{color:BRASS}} />
           <div style={{flex:1}}><b>{mode==="chat" ? tf("KI-Service") : tf("Problem melden")}</b><div style={{fontSize:11.5,color:INK_MUTED}}>{mode==="chat" ? tf("Antwortet rund um die Uhr auf Fragen zur Bedienung") : tf("Geht direkt an das Support-Team")}</div></div>

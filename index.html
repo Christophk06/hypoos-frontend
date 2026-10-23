@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Ouverture" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="i18n.js?v=138f15ad5b"></script>
+<script src="i18n.js?v=ad25b51735"></script>
 <script src="payroll.js?v=2bf4fdbb12"></script>
 <script src="holidays.js?v=cb6e74aef2"></script>
 <script src="planning.js?v=1e94a23b2d"></script>
@@ -29,7 +29,7 @@
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
     document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=95ca8bac72"><\/script>');
-    document.write('<script src="demo/demo-mock.js?v=7ec209ec77"><\/script>');
+    document.write('<script src="demo/demo-mock.js?v=2342d8f27e"><\/script>');
   }
   // Als App installierbar: Service Worker (nicht in der Demo)
   if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
@@ -87,6 +87,10 @@
     html[data-theme="dark"] [style*="color: rgb(63, 122, 92)"] { color: #8fd0ae !important; }
     html[data-theme="dark"] [style*="color: rgb(47, 93, 138)"] { color: #8fbbe6 !important; }
     html[data-theme="dark"] [style*="color: rgb(162, 59, 50)"] { color: #f08a80 !important; }
+    /* Kontrast (WCAG AA) für Zweittext, Warn- und Messingtexte im dunklen Modus */
+    html[data-theme="dark"] [style*="color: rgb(107, 114, 128)"] { color: #a3abb7 !important; }
+    html[data-theme="dark"] [style*="color: rgb(185, 130, 46)"] { color: #e6b974 !important; }
+    html[data-theme="dark"] [style*="color: rgb(169, 131, 75)"] { color: #d9b77e !important; }
     html[data-theme="dark"] [style*="background: rgb(28, 36, 48)"] { background: #3a4352 !important; }
     html[data-theme="dark"] [style^="color: rgb(28, 36, 48)"], html[data-theme="dark"] [style*="; color: rgb(28, 36, 48)"] { color: #e7e4dc !important; }
     html[data-theme="dark"] [style*="rgb(228, 223, 211)"] { border-color: #2d3542 !important; }
@@ -115,6 +119,8 @@
   }
 
   /* ---------- Feedback-Knopf ---------- */
+  .skip-link { position: absolute; left: 8px; top: -60px; z-index: 200; background: #1C2430; color: #fff; padding: 10px 14px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+  .skip-link:focus { top: 8px; }
   .feedback-fab { position: fixed; right: 16px; bottom: 16px; z-index: 80; background: #1C2430; color: #fff; border: none; border-radius: 999px;
     padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.18); opacity: 0.85; }
   .feedback-fab:hover { opacity: 1; }
@@ -184,7 +190,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="474fd4e";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
-<script src="app.js?v=24a3605f10"></script>
+<script>window.__APP_VERSION="1b064e5";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
+<script src="app.js?v=761c4bbba7"></script>
 </body>
 </html>

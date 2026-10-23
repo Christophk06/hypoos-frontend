@@ -2,7 +2,7 @@
 const MODULE_GROUPS = [
   ["Pre-Opening", [["tasks","Aufgaben"],["milestones","Meilensteine"],["timeline","Zeitstrahl"],["risks","Risiken"],["budget","Budget"],["staff","Personal"],["procurement","Bestellungen"]]],
   ["Betrieb", [["roster","Dienstplan"],["time","Zeiterfassung"],["rooms","Zimmerstatus"],["tickets","Meldungen"],["logbook","Übergabebuch"],["checklists","Checklisten"],["stock","Lager"],["arrivals","Anreisen"],["guestchat","Gäste-Chat"],["events","Veranstaltungen"],["invoices","Rechnungen"],["letters","Briefe & Vorlagen"],["reviews","Bewertungen"],["energy","Energie"],["lostfound","Fundsachen"],["trainings","Unterweisungen"],["chat","Chat"],["kpis","Kennzahlen"],["feedback","Gäste-Feedback"]]],
-  ["Allgemein", [["docs","Dokumente"],["permits","Genehmigungen"],["instructions","Arbeitsanweisungen"],["academy","Akademie"],["assets","Gerätebuch"],["patrols","Kontrollgänge"],["tourismtax","Ortstaxe"],["sick","Krankmeldungen"],["frontdesk","Rezeption heute"],["cash","Kassenbuch"],["keys","Schlüssel & Karten"],["uniforms","Dienstkleidung"],["pulse","Mitarbeiter-Umfrage"]]],
+  ["Allgemein", [["docs","Dokumente"],["permits","Genehmigungen"],["instructions","Arbeitsanweisungen"],["academy","Akademie"],["assets","Gerätebuch"],["patrols","Kontrollgänge"],["tourismtax","Ortstaxe"],["sick","Krankmeldungen"],["frontdesk","Rezeption heute"],["cash","Kassenbuch"],["keys","Schlüssel & Karten"],["uniforms","Dienstkleidung"],["pulse","Mitarbeiter-Umfrage"],["staffdocs","Mitarbeiter-Dokumente"]]],
 ];
 const PRE_MODULES = MODULE_GROUPS[0][1].map(([k])=>k);
 const OPS_MODULES = MODULE_GROUPS[1][1].map(([k])=>k);
@@ -274,7 +274,7 @@ function OpenShiftsCard({hotel, api, me, role, myDepts, onChanged, compact, memb
         <div key={o.id} style={{display:"flex",gap:10,alignItems:"center",padding:"7px 0",borderTop:`1px solid ${BORDER}`,flexWrap:"wrap"}}>
           <span style={{width:110}} data-no-i18n="">{fmtDay(o.shift_date)}</span>
           <ShiftChip s={o} />
-          <span style={{fontSize:12.5,color:INK_MUTED,flex:1}}><span>{o.department}</span>{o.reason==="krank" ? " · "+tf("Krankheitsvertretung") : ""}{o.note ? " · " : ""}<span data-no-i18n="">{o.note||""}</span></span>
+          <span style={{fontSize:12.5,color:INK_MUTED,flex:1}}><span>{o.department}</span>{o.reason==="abgabe" ? " · "+tf("von einer Kollegin oder einem Kollegen abgegeben") : ""}{o.reason==="krank" ? " · "+tf("Krankheitsvertretung") : ""}{o.note ? " · " : ""}<span data-no-i18n="">{o.note||""}</span></span>
           {role!=="viewer" && <button className="btn-primary" style={{padding:"6px 12px",fontSize:12.5}} onClick={()=>run(()=>api("/api/open-shifts/"+o.id+"/claim","POST",{}), tf("Danke! Die Schicht steht jetzt in deinem Dienstplan."))}>{tf("Übernehmen")}</button>}
           {canManageDept(o.department) && <button style={{...linkBtn,color:BAD}} onClick={()=>run(()=>api("/api/open-shifts/"+o.id,"DELETE"))}>✕</button>}
         </div>

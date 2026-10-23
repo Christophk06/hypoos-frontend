@@ -23,6 +23,7 @@ function TrainingsView({orgId, api, me, members, role, myDepts, hotel}){
   const save = () => run(async()=>{ const {id, ...b} = form; if(id) await api("/api/trainings/"+id,"PATCH",b); else await api("/api/organizations/"+orgId+"/trainings","POST",b); setForm(null); }, tf("Gespeichert."));
   return (
     <div>
+      {lead && list && <TrainingPlanCard trainings={list} members={members} />}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {pending.length>0 && <Card style={{marginBottom:14,borderColor:WARN,background:WARN_SOFT}}><b>{tf("{0} Unterweisungen warten auf deine Bestätigung.", pending.length)}</b></Card>}
       {lead && !form && <button className="btn-primary" style={{marginBottom:12}} onClick={()=>setForm({title:"", body:"", departments:[], valid_months:12})}>{tf("+ Unterweisung")}</button>}
@@ -203,9 +204,9 @@ function StockView({hotel, api, me, role, myDepts}){
             <div style={{flex:1,minWidth:150}}><b data-no-i18n="">{it.name}</b>
               <div style={{fontSize:12,color:isLow?BAD:INK_MUTED}}><span data-no-i18n="">{fmtQ(it.quantity)} {it.unit}</span> · {tf("Minimum {0}", fmtQ(it.min_quantity))}{it.reorder_ticket ? " · "+tf("nachbestellt") : ""}</div></div>
             {role!=="viewer" && <React.Fragment>
-              <button style={{...smallBtn,minWidth:38,fontWeight:700}} onClick={()=>move(it,-1)} title={tf("Entnahme")}>−</button>
-              <input className="input" inputMode="decimal" style={{width:64,textAlign:"center"}} placeholder="1" value={amount[it.id]||""} onChange={e=>setAmount({...amount,[it.id]:e.target.value})} />
-              <button style={{...smallBtn,minWidth:38,fontWeight:700}} onClick={()=>move(it,1)} title={tf("Zugang")}>+</button>
+              <button style={{...smallBtn,minWidth:38,fontWeight:700}} onClick={()=>move(it,-1)} title={tf("Entnahme")} aria-label={tf("Entnahme")+": "+it.name}>−</button>
+              <input className="input" inputMode="decimal" aria-label={tf("Menge")+": "+it.name} style={{width:64,textAlign:"center"}} placeholder="1" value={amount[it.id]||""} onChange={e=>setAmount({...amount,[it.id]:e.target.value})} />
+              <button style={{...smallBtn,minWidth:38,fontWeight:700}} onClick={()=>move(it,1)} title={tf("Zugang")} aria-label={tf("Zugang")+": "+it.name}>+</button>
             </React.Fragment>}
             <button style={linkBtn} onClick={async()=>{ if(hist[it.id]) return setHist(h=>({...h,[it.id]:null})); const r = await api("/api/stock/"+it.id+"/moves"); setHist(h=>({...h,[it.id]:r})); }}>{tf("Verlauf")}</button>
             {canManageDept(it.department) && <button style={linkBtn} onClick={()=>{ const v = window.prompt(tf("Neuer Mindestbestand"), it.min_quantity); if(v!==null) api("/api/stock/"+it.id,"PATCH",{min_quantity:v}).then(load).catch(e=>setMsg({ok:false,text:e.message})); }}>{tf("Minimum")}</button>}

@@ -25,6 +25,7 @@
 100vh
 1fr
 1fr 1fr
+1fr 1fr 1fr
 1fr 1fr 1fr 2fr
 2-digit
 210mm
@@ -69,6 +70,7 @@ DTSTART;VALUE=DATE:
 Deutsch
 END:VCALENDAR
 END:VEVENT
+Eier; 1,5; Stk Semmeln; 2; Stk Kaffee; 0,02; kg
 Enter
 Enterprise
 Escape

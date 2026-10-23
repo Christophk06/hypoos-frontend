@@ -169,6 +169,14 @@
   D.hotel.automations = D.hotel.automations || {}; D.hotel.inspection_items = D.hotel.inspection_items || [];
   D.patrol_points.forEach(function (pp) { pp.require_photo = pp.kind === "brandschutz" && pp.name.indexOf("Feuerlöscher") === 0 || pp.id === "pp-1"; pp.require_signature = pp.id === "pp-5"; });
   D.patrol_scans.forEach(function (s) { s.has_photo = s.point_id === "pp-1"; s.has_signature = s.point_id === "pp-5"; });
+  // Rundgänge (Migration 037): Nachtrunde mit 4 Punkten, Brandschutz mit 2; heute sind die ersten zwei Punkte der Nachtrunde gescannt
+  [["Wellness-Eingang", "Rezeption"], ["Tiefgarage Zugang", "Technik"], ["Hintereingang Küche", "Technik"]].forEach(function (x, i) {
+    D.patrol_points.push({ id: "pp-" + (6 + i), hotel_id: AH, name: x[0], kind: "nachtrunde", department: x[1], token: tok(6 + i), active: true, created_at: now.toISOString(), require_photo: false, require_signature: false }); });
+  [["pp-5", "Nachtrunde", 1], ["pp-6", "Nachtrunde", 2], ["pp-7", "Nachtrunde", 3], ["pp-8", "Nachtrunde", 4], ["pp-1", "Brandschutz", 1], ["pp-2", "Brandschutz", 2]].forEach(function (r) {
+    var pt = byId(D.patrol_points, r[0]); pt.route = r[1]; pt.route_order = r[2]; });
+  D.patrol_points.forEach(function (pt) { if (!("route" in pt)) { pt.route = null; pt.route_order = null; } });
+  ["pp-5", "pp-6"].forEach(function (id, i) { D.patrol_scans.push({ id: "ps-r" + i, hotel_id: AH, point_id: id, user_id: "u-hkm", ok: true, temperature: null, note: null, has_photo: false, has_signature: id === "pp-5",
+    scanned_at: new Date(now.getTime() - (12 + i * 8) * 60000).toISOString() }); });
   var PX_PHOTO = "data:image/svg+xml;base64," + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="#d9d4c7"/><rect x="130" y="50" width="60" height="110" rx="10" fill="#b3402f"/><rect x="150" y="30" width="20" height="25" fill="#444"/></svg>');
   var PX_SIGN = "data:image/svg+xml;base64," + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100"><rect width="300" height="100" fill="#fff"/><path d="M20 70 C50 10 70 90 100 40 S150 80 180 35 S240 70 280 30" stroke="#1a2b4c" stroke-width="3" fill="none"/></svg>');
   [["as-1", "Kältetechnik Huber GmbH", "service@kaeltetechnik-huber.example", "+43 512 555 0142", 1280, add(todayIso, 240)], ["as-3", "Securitas Brandschutz", "wartung@brandschutz.example", "+43 512 555 0177", 2400, add(todayIso, 25)]].forEach(function (c) {
@@ -258,6 +266,42 @@
   (D.stock || []).filter(function (s) { return s.department === "Housekeeping"; }).forEach(function (s) { D.inventories[0].lines.push({ item_id: s.id, counted: s.quantity, counted_at: nowIso(24 * 20) }); });
   function invOut(c) { return Object.assign({}, c, { lines: c.lines.slice() }); }
 
+  /* Migration 037: Wäscherei, Minibar, Frühstück, Personalunterkünfte */
+  function dayIn(k) { var d = add(todayIso, -k); return d < MON + "-01" ? MON + "-01" : d; }
+  D.laundry_items = [["Bettlaken", 18, 400], ["Badetuch", 9.5, 300], ["Handtuch", 5.5, 350], ["Bademantel", 32, 60]].map(function (x, i) {
+    return { id: "li-" + (i + 1), hotel_id: AH, name: x[0], unit_cost: x[1], par_level: x[2], active: true, created_at: now.toISOString() }; });
+  D.laundry_moves = [];
+  [["li-1", [[6, 120, 118, 1], [4, 110, 106, 2], [2, 130, 124, 1], [0, 90, 0, 0]]], ["li-2", [[6, 80, 79, 0], [3, 90, 85, 3], [1, 70, 68, 0]]],
+    ["li-3", [[5, 100, 97, 1], [2, 120, 116, 2], [0, 60, 0, 0]]], ["li-4", [[5, 20, 20, 0], [2, 24, 22, 1]]]].forEach(function (g) {
+    g[1].forEach(function (r, j) { D.laundry_moves.push({ id: "lm-" + g[0] + "-" + j, hotel_id: AH, item_id: g[0], move_date: dayIn(r[0]), sent: r[1], returned: r[2], damaged: r[3],
+      note: r[3] ? "Flecken, aussortiert" : null, created_by: "u-hkm", created_at: now.toISOString() }); }); });
+  D.minibar_items = [["Wasser 0,33 l", 3.5], ["Cola 0,33 l", 4.5], ["Bier 0,33 l", 5], ["Erdnüsse", 3.9], ["Schokolade", 4.2]].map(function (x, i) {
+    return { id: "mi-" + (i + 1), hotel_id: AH, name: x[0], price: x[1], active: true, sort: i, created_at: now.toISOString() }; });
+  function roomOf(num) { return D.rooms.find(function (r) { return r.number === num; }) || D.rooms[0] || { id: "room-" + num, number: num }; }
+  D.minibar_charges = [["214", "mi-2", 2, 30], ["214", "mi-4", 1, 30], ["305", "mi-3", 2, 22], ["118", "mi-1", 3, 14], ["118", "mi-5", 1, 14], ["402", "mi-3", 1, 6], ["402", "mi-2", 1, 6], ["226", "mi-1", 2, 3]].map(function (c, i) {
+    var it = byId(D.minibar_items, c[1]), rm = roomOf(c[0]);
+    return { id: "mc-" + (i + 1), hotel_id: AH, room_id: rm.id, item_id: it.id, item_name: it.name, unit_price: it.price, quantity: c[2], charged_at: nowIso(c[3]), created_by: "u-hkm", billed_at: null, billed_by: null, room: c[0] }; });
+  D.minibar_charges.push({ id: "mc-b1", hotel_id: AH, room_id: roomOf("109").id, item_id: "mi-3", item_name: "Bier 0,33 l", unit_price: 5, quantity: 2, charged_at: nowIso(72), created_by: "u-hkm", billed_at: nowIso(60), billed_by: "u-fo", room: "109" });
+  D.hotel.breakfast_settings = D.hotel.breakfast_settings || { persons_per_room: 1.8, share: 0.9, guests_per_staff: 30, min_staff: 1,
+    items: [{ name: "Eier", per_guest: 1.5, unit: "Stk" }, { name: "Brötchen", per_guest: 2.2, unit: "Stk" }, { name: "Milch", per_guest: 0.15, unit: "l" }, { name: "Joghurt", per_guest: 0.8, unit: "Stk" }, { name: "Aufschnitt", per_guest: 60, unit: "g" }, { name: "Kaffee", per_guest: 0.4, unit: "Tassen" }] };
+  function cleanBf(o) {
+    function num(v, lo, hi, d) { var n = Number(String(v == null ? "" : v).replace(",", ".")); return n >= lo && n <= hi ? Math.round(n * 100) / 100 : d; }
+    o = o || {};
+    return { persons_per_room: num(o.persons_per_room, 0.5, 6, 1.8), share: num(o.share, 0, 1, 0.9), guests_per_staff: num(o.guests_per_staff, 5, 200, 30), min_staff: Math.round(num(o.min_staff, 0, 20, 1)),
+      items: (Array.isArray(o.items) ? o.items : []).slice(0, 40).map(function (x) { return { name: String((x && x.name) || "").trim().slice(0, 60), per_guest: num(x && x.per_guest, 0, 100, 0), unit: String((x && x.unit) || "").trim().slice(0, 15) }; }).filter(function (x) { return x.name && x.per_guest > 0; }) };
+  }
+  D.hotel.breakfast_settings = cleanBf(D.hotel.breakfast_settings);
+  D.housing_units = [["Personalhaus Zimmer 1", 2, 180, "Erdgeschoss, eigenes Bad"], ["Personalhaus Zimmer 2", 1, 240, "1. Stock, Balkon"], ["Personalhaus Zimmer 3", 2, 180, "1. Stock, Gemeinschaftsküche"]].map(function (x, i) {
+    return { id: "hu-" + (i + 1), hotel_id: AH, name: x[0], beds: x[1], rent_month: x[2], note: x[3], active: true, created_at: now.toISOString() }; });
+  D.housing_assignments = [
+    { id: "ha-1", unit_id: "hu-1", user_id: "u-member", person_name: null, from_date: add(todayIso, -200), to_date: null, deposit: 300, deposit_returned_at: null, handover_note: "Schlüssel und Bettwäsche übergeben." },
+    { id: "ha-2", unit_id: "hu-1", user_id: "u-fb", person_name: null, from_date: add(todayIso, -90), to_date: null, deposit: 300, deposit_returned_at: null, handover_note: null },
+    { id: "ha-3", unit_id: "hu-3", user_id: "u-ewa", person_name: null, from_date: add(todayIso, -150), to_date: null, deposit: 300, deposit_returned_at: null, handover_note: "Zimmer ohne Mängel übergeben." },
+    { id: "ha-4", unit_id: "hu-3", user_id: null, person_name: "Tomasz W. (Saison)", from_date: add(todayIso, -40), to_date: add(todayIso, 50), deposit: 200, deposit_returned_at: null, handover_note: null },
+    { id: "ha-5", unit_id: "hu-2", user_id: null, person_name: "Anna K. (Aushilfe)", from_date: add(todayIso, -120), to_date: add(todayIso, -10), deposit: 300, deposit_returned_at: add(todayIso, -8), handover_note: "Sauber zurückgegeben, Kaution erstattet." }
+  ].map(function (a) { return Object.assign({ hotel_id: AH, created_at: now.toISOString() }, a); });
+  function numOrNull(v) { if (v === "" || v == null) return null; var n = Math.round(Number(String(v).replace(",", ".")) * 100) / 100; return isNaN(n) ? null : n; }
+
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, opt) {
     var url = new URL(typeof input === "string" ? input : input.url, location.href);
@@ -274,7 +318,7 @@
     if (p === "/api/bootstrap-organization") return ok({ organization_id: "demo-org" });
     if (p === "/api/organizations") return ok([{ id: "demo-org", name: "Alpenblick Hotels", role: ROLE, departments: MYDEPTS, language: D.lang }]);
     if (p === "/api/hotels") return ok([D.hotel]);
-    if (p === "/api/hotels/" + D.hotel.id && m === "PATCH") { Object.assign(D.hotel, b); return ok(D.hotel); }
+    if (p === "/api/hotels/" + D.hotel.id && m === "PATCH") { if (b.breakfast_settings !== undefined) b = Object.assign({}, b, { breakfast_settings: cleanBf(b.breakfast_settings) }); Object.assign(D.hotel, b); return ok(D.hotel); }
     if (p === "/api/organizations/demo-org/members") return ok(D.members.map(function (x) { return Object.assign({ joined_at: D.hotel.created_at }, x); }));
     if (p === "/api/organizations/demo-org/my-role") return ok({ is_admin: ROLE === "admin" });
     if (p === "/api/organizations/demo-org/invites") return ok([]);
@@ -920,6 +964,65 @@
       return new Promise(function (res) { setTimeout(function () { ok(aout).then(res); }, 600); });
     }
     if (p === "/api/feedback" && m === "POST") return ok({ ok: true });
+    // Migration 037: Wäscherei, Minibar, Frühstück, Unterkünfte
+    function itemsRoute(list, coll, prefix, fields, orderKey, defaults) {
+      if (p === H + "/" + coll) {
+        if (m === "POST") { if (!String(b.name || "").trim()) return ok({ error: "Bitte einen Namen angeben." }, 400);
+          var row = Object.assign({ id: nid(prefix), hotel_id: D.hotel.id, active: true, created_at: new Date().toISOString() }, defaults || {}, b); fields(row); list.push(row); return ok(row); }
+        return ok(list.slice().sort(function (a, c) { return a[orderKey] < c[orderKey] ? -1 : a[orderKey] > c[orderKey] ? 1 : 0; })); }
+      var im = p.match(new RegExp("^/api/" + coll + "/([^/]+)$"));
+      if (im) { if (m === "DELETE") { remove(list, im[1]); return ok({ ok: true }); } var row2 = byId(list, im[1]); if (!row2) return ok({ error: "Nicht gefunden." }, 403); Object.assign(row2, b); fields(row2); return ok(row2); }
+      return null;
+    }
+    var r037 = itemsRoute(D.laundry_items, "laundry-items", "li", function (r) { r.unit_cost = numOrNull(r.unit_cost); r.par_level = r.par_level === "" || r.par_level == null ? null : Math.round(Number(r.par_level)); }, "name")
+      || itemsRoute(D.minibar_items, "minibar-items", "mi", function (r) { r.price = numOrNull(r.price) || 0; r.sort = Number(r.sort) || (r.sort === 0 ? 0 : D.minibar_items.length); }, "sort")
+      || itemsRoute(D.housing_units, "housing-units", "hu", function (r) { r.beds = Math.max(1, Math.round(Number(r.beds)) || 1); r.rent_month = numOrNull(r.rent_month); }, "name", { beds: 1 });
+    if (r037) return r037;
+    if (p === H + "/laundry") {
+      var lmo = /^\d{4}-\d{2}$/.test(q.get("month") || "") ? q.get("month") : MON;
+      var lmv = D.laundry_moves.filter(function (x) { return x.move_date.slice(0, 7) === lmo; }).sort(function (a, c) { return a.move_date < c.move_date ? 1 : -1; });
+      var lsum = D.laundry_items.map(function (it) {
+        var mv = lmv.filter(function (x) { return x.item_id === it.id; }), t = function (k) { return mv.reduce(function (s, x) { return s + (x[k] || 0); }, 0); };
+        var sent = t("sent"), ret = t("returned"), dam = t("damaged"), miss = Math.max(0, sent - ret - dam);
+        return { item_id: it.id, sent: sent, returned: ret, damaged: dam, missing: miss, cost: it.unit_cost != null ? Math.round((miss + dam) * it.unit_cost * 100) / 100 : null }; });
+      return ok({ month: lmo, items: D.laundry_items.slice().sort(function (a, c) { return a.name < c.name ? -1 : 1; }), moves: lmv, summary: lsum }); }
+    if ((mm = p.match(/^\/api\/laundry-items\/([^/]+)\/moves$/)) && m === "POST") {
+      var nn = function (k) { var v = Math.round(Number(b[k] || 0)); return v >= 0 && v <= 100000 ? v : 0; };
+      if (!byId(D.laundry_items, mm[1])) return ok({ error: "Nicht gefunden." }, 400);
+      if (!nn("sent") && !nn("returned") && !nn("damaged")) return ok({ error: "Bitte eine Menge angeben." }, 400);
+      var nlm = { id: nid("lm"), hotel_id: D.hotel.id, item_id: mm[1], move_date: b.move_date || todayIso, sent: nn("sent"), returned: nn("returned"), damaged: nn("damaged"), note: b.note || null, created_by: ME, created_at: new Date().toISOString() };
+      D.laundry_moves.push(nlm); return ok(nlm); }
+    if ((mm = p.match(/^\/api\/laundry-moves\/([^/]+)$/)) && m === "DELETE") { remove(D.laundry_moves, mm[1]); return ok({ ok: true }); }
+    if (p === H + "/minibar-charges") {
+      return ok(D.minibar_charges.filter(function (c) { return q.get("open") === "1" ? !c.billed_at : true; }).sort(function (a, c) { return a.charged_at < c.charged_at ? 1 : -1; })); }
+    if ((mm = p.match(/^\/api\/rooms\/([^/]+)\/minibar$/)) && m === "POST") {
+      var mrm = byId(D.rooms, mm[1]); if (!mrm) return ok({ error: "Nicht gefunden." }, 404);
+      var mits = (b.items || []).map(function (x) { return { it: byId(D.minibar_items, x && x.item_id), qty: Math.round(Number(x && x.quantity)) }; }).filter(function (x) { return x.it && x.qty >= 1 && x.qty <= 50; });
+      if (!mits.length) return ok({ error: "Bitte einen Minibar-Artikel auswählen." }, 400);
+      return ok(mits.map(function (x) { var c = { id: nid("mc"), hotel_id: D.hotel.id, room_id: mrm.id, item_id: x.it.id, item_name: x.it.name, unit_price: x.it.price, quantity: x.qty, charged_at: new Date().toISOString(), created_by: ME, billed_at: null, billed_by: null, room: mrm.number };
+        D.minibar_charges.push(c); return { id: c.id, item_name: c.item_name, unit_price: c.unit_price, quantity: c.quantity }; })); }
+    if (p === "/api/minibar-charges/bill" && m === "POST") { var bn = 0; D.minibar_charges.forEach(function (c) { if ((b.ids || []).indexOf(c.id) >= 0 && !c.billed_at) { c.billed_at = new Date().toISOString(); c.billed_by = ME; bn++; } });
+      return bn ? ok({ billed: bn }) : ok({ billed: 0 }); }
+    if ((mm = p.match(/^\/api\/minibar-charges\/([^/]+)$/)) && m === "DELETE") { remove(D.minibar_charges, mm[1]); return ok({ ok: true }); }
+    if (p === H + "/breakfast-plan") {
+      var bfrom = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : todayIso, bst = cleanBf(D.hotel.breakfast_settings), btot = 0;
+      var bdays = [0, 1, 2, 3, 4, 5, 6].map(function (i) {
+        var d = add(bfrom, i), prev = add(d, -1), fx = D.forecast.find(function (x) { return x.day === prev; });
+        var rooms = fx ? fx.occupied : [118, 92, 88, 96, 112, 131, 126][new Date(prev + "T00:00:00Z").getUTCDay()];
+        var guests = Math.round(rooms * bst.persons_per_room * bst.share); btot += guests;
+        return { date: d, rooms: rooms, guests: guests, staff: Math.max(bst.min_staff, Math.ceil(guests / bst.guests_per_staff)) }; });
+      return ok({ from: bfrom, settings: bst, days: bdays, shopping: bst.items.map(function (it) { return Object.assign({}, it, { total: Math.ceil(it.per_guest * btot * 10) / 10 }); }) }); }
+    if (p === H + "/housing-assignments") {
+      if (m === "POST") { if (!byId(D.housing_units, b.unit_id)) return ok({ error: "Unterkunft nicht gefunden." }, 400); if (!b.from_date) return ok({ error: "Bitte ein Einzugsdatum angeben." }, 400);
+        var nha = { id: nid("ha"), hotel_id: D.hotel.id, unit_id: b.unit_id, user_id: b.user_id || null, person_name: b.user_id ? null : (b.person_name || b.holder_name || null), from_date: b.from_date, to_date: b.to_date || null,
+          deposit: numOrNull(b.deposit), deposit_returned_at: b.deposit_returned_at || null, handover_note: b.handover_note || null, created_at: new Date().toISOString() };
+        D.housing_assignments.push(nha); return ok(nha); }
+      return ok(D.housing_assignments.slice().sort(function (a, c) { return a.from_date < c.from_date ? 1 : -1; })); }
+    if ((mm = p.match(/^\/api\/housing-assignments\/([^/]+)$/))) {
+      if (m === "DELETE") { remove(D.housing_assignments, mm[1]); return ok({ ok: true }); }
+      var eha = byId(D.housing_assignments, mm[1]); if (!eha) return ok({ error: "Unterkünfte verwalten Admins und die Leitung Personal." }, 403);
+      var pb2 = Object.assign({}, b); if (pb2.holder_name !== undefined) { pb2.person_name = pb2.holder_name; delete pb2.holder_name; } if (pb2.deposit !== undefined) pb2.deposit = numOrNull(pb2.deposit);
+      Object.assign(eha, pb2); return ok(eha); }
     return ok({});
   };
 })();

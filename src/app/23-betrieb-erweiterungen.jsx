@@ -75,7 +75,8 @@ function PatrolsView({hotel, api}){
   const [form,setForm] = useState(null); const [msg,setMsg] = useState(null);
   const lead = isLeadRole();
   const save = async () => { setMsg(null); try {
-    const body = {name:form.name, kind:form.kind, department:form.department, require_photo:!!form.require_photo, require_signature:!!form.require_signature};
+    const body = {name:form.name, kind:form.kind, department:form.department, require_photo:!!form.require_photo, require_signature:!!form.require_signature,
+      ...((points||[]).some(p=>"route" in p) ? {route:form.route||"", route_order:form.route_order===""||form.route_order==null ? null : form.route_order} : {})};
     if(form.id) await api("/api/patrol-points/"+form.id,"PATCH",body); else await api("/api/hotels/"+hotel.id+"/patrol-points","POST",body);
     setForm(null); loadPoints(); } catch(e){ setMsg({ok:false,text:e.message}); } };
   const [proof,setProof] = useState(null);
@@ -99,9 +100,14 @@ function PatrolsView({hotel, api}){
           <label style={{display:"flex",gap:6,alignItems:"center"}}><input type="checkbox" checked={!!form.require_photo} onChange={e=>setForm({...form,require_photo:e.target.checked})} /> {tf("Foto ist Pflicht")}</label>
           <label style={{display:"flex",gap:6,alignItems:"center"}}><input type="checkbox" checked={!!form.require_signature} onChange={e=>setForm({...form,require_signature:e.target.checked})} /> {tf("Unterschrift ist Pflicht")}</label>
         </div>
+        {(points||[]).some(p=>"route" in p) && <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          <Field label={tf("Rundgang (optional)")}><input className="input" value={form.route||""} maxLength={60} placeholder={tf("z. B. Nachtrunde")} onChange={e=>setForm({...form,route:e.target.value})} /></Field>
+          <Field label={tf("Reihenfolge im Rundgang")}><input className="input" type="number" min={0} max={999} style={{width:110}} value={form.route_order??""} onChange={e=>setForm({...form,route_order:e.target.value})} /></Field>
+        </div>}
         <div style={{display:"flex",gap:8}}><button className="btn-primary" onClick={save}>{tf("Speichern")}</button><button style={btnLine} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>
       </Card>}
       {points && points.length===0 && <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch keine Kontrollpunkte.")}</div>}
+      <PatrolRoutes points={points} scans={scans} />
       {points && points.length>0 && <Card style={{padding:0,marginBottom:16}}>
         {points.map(p=>{ const s = lastScan(p); return (
           <div key={p.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 14px",borderTop:`1px solid ${BORDER}`,flexWrap:"wrap"}}>
@@ -482,5 +488,23 @@ function StaffingAdviceCard({hotel, api, from}){
         <div style={{fontSize:11.5,color:INK_MUTED,marginTop:6}}>{tf("Vorschlag der KI – die Entscheidung trifft die Leitung. Personen und Namen werden nicht an die KI übermittelt.")}</div>
       </div>}
     </Card>
+  );
+}
+
+// ------------------------------------------------------------ Kontrollgang-Rundgänge (Migration 037): feste Reihenfolge, Fortschritt heute
+function PatrolRoutes({points, scans}){
+  const routes = {}; (points||[]).filter(p=>p.route && p.active!==false).forEach(p=>{ (routes[p.route] = routes[p.route] || []).push(p); });
+  const names = Object.keys(routes); if(!names.length) return null;
+  const today = todayIso();
+  const doneToday = (p) => (scans||[]).some(s=>s.point_id===p.id && toLocalInput(s.scanned_at).slice(0,10)===today);
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:12,marginBottom:16}}>
+      {names.sort().map(n=>{ const list = routes[n].slice().sort((a,b)=>(a.route_order??999)-(b.route_order??999)); const done = list.filter(doneToday).length; const next = list.find(p=>!doneToday(p)); return (
+        <Card key={n}>
+          <div style={{display:"flex",gap:8,alignItems:"baseline"}}><b style={{flex:1}} data-no-i18n="">{n}</b><span style={{fontSize:12.5,color:done===list.length?GOOD:INK_MUTED}}>{tf("{0} von {1} heute", done, list.length)}</span></div>
+          <div role="progressbar" aria-valuemin={0} aria-valuemax={list.length} aria-valuenow={done} aria-label={tf("Fortschritt")} style={{height:8,background:BORDER,borderRadius:4,margin:"8px 0"}}><div style={{height:8,width:(done/list.length*100)+"%",background:done===list.length?GOOD:BRASS,borderRadius:4}} /></div>
+          <ol style={{margin:0,paddingInlineStart:20,fontSize:13}}>{list.map(p=><li key={p.id} style={{color:doneToday(p)?GOOD:INK,fontWeight:next&&next.id===p.id?700:400}}><span data-no-i18n="">{p.name}</span>{doneToday(p) ? " ✓" : next&&next.id===p.id ? " · "+tf("als Nächstes") : ""}</li>)}</ol>
+        </Card>); })}
+    </div>
   );
 }

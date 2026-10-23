@@ -158,9 +158,11 @@ async function freshToken(token){
 // Offline: zuletzt geladene Listen zeigen und bestimmte Einträge (Meldung, Messwert, Checkliste, Übergabe, Fundsache) später senden
 const OFFLINE_QUEUE_KEY = "hpoos_offline_queue";
 // Offline lesbar: auch Arbeitsanweisungen, Kurse, Gerätebuch, Kontrollpunkte und Gäste-Infos (Keller, Skiraum, Funkloch)
-const OFFLINE_CACHE = /^\/api\/(hotels\/[^/]+\/(tickets|checklists|temp-points|temp-readings|logbook|rooms|lost-found|briefing|shifts|stock|work-instructions|courses|assets|patrol-points|calendar-notes|day-info)|patrol\/[^/]+|me|organizations\/[^/]+\/(my-shifts|my-tasks))(\?|$)/;
+const OFFLINE_CACHE = /^\/api\/(hotels\/[^/]+\/(tickets|checklists|temp-points|temp-readings|logbook|rooms|lost-found|briefing|shifts|stock|work-instructions|courses|assets|patrol-points|calendar-notes|day-info|laundry|laundry-items|minibar-items|minibar-charges|inventory|maintenance-calendar|keys|key-loans)|patrol\/[^/]+|me|organizations\/[^/]+\/(my-shifts|my-tasks))(\?|$)/;
 const OFFLINE_SEND = [[/^\/api\/temp-points\/[^/]+\/readings$/, "POST"], [/^\/api\/checklists\/[^/]+\/run$/, "PUT"], [/^\/api\/hotels\/[^/]+\/tickets$/, "POST"], [/^\/api\/hotels\/[^/]+\/logbook$/, "POST"], [/^\/api\/hotels\/[^/]+\/lost-found$/, "POST"],
-  [/^\/api\/patrol\/[^/]+\/scan$/, "POST"], [/^\/api\/hotels\/[^/]+\/sick-notes$/, "POST"], [/^\/api\/hotels\/[^/]+\/cash$/, "POST"]];
+  [/^\/api\/patrol\/[^/]+\/scan$/, "POST"], [/^\/api\/hotels\/[^/]+\/sick-notes$/, "POST"], [/^\/api\/hotels\/[^/]+\/cash$/, "POST"],
+  // Ohne Netz: Zimmerstatus, Minibar, Wäsche und Inventur-Mengen werden gesammelt und später gesendet
+  [/^\/api\/rooms\/[^/]+$/, "PATCH"], [/^\/api\/rooms\/[^/]+\/minibar$/, "POST"], [/^\/api\/laundry-items\/[^/]+\/moves$/, "POST"], [/^\/api\/inventory\/[^/]+\/lines$/, "PUT"]];
 let LAST_API = null, FLUSHING = false;
 function offlineQueue(){ try { return JSON.parse(window.localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]"); } catch(e){ return []; } }
 function saveOfflineQueue(q){ try { window.localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); } catch(e){} window.dispatchEvent(new Event("hpoos-queue")); }

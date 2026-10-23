@@ -2,7 +2,7 @@
 
 // ------------------------------------------------------------ Gäste-Infos bearbeiten (Admin, unter „Gäste-QR“)
 function GuestInfoCard({hotel, api, onHotel}){
-  const init = () => { const g = hotel.guest_info || {}; return {wifi_name:g.wifi_name||"", wifi_password:g.wifi_password||"", breakfast:g.breakfast||"", checkout:g.checkout||"", reception_phone:g.reception_phone||"", taxi:g.taxi||"", notes:g.notes||"", menu:g.menu||[], spa:g.spa||[], ai:g.ai===true}; };
+  const init = () => { const g = hotel.guest_info || {}; return {wifi_name:g.wifi_name||"", wifi_password:g.wifi_password||"", breakfast:g.breakfast||"", checkout:g.checkout||"", reception_phone:g.reception_phone||"", taxi:g.taxi||"", notes:g.notes||"", menu:g.menu||[], spa:g.spa||[], offers:g.offers||[], ai:g.ai===true}; };
   const [open,setOpen] = useState(false); const [f,setF] = useState(init); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
   if(hotel.guest_info===undefined || ACCESS.role!=="admin") return null;
   const save = async () => { setBusy(true); setMsg(null);
@@ -41,6 +41,8 @@ function GuestInfoCard({hotel, api, onHotel}){
         {f.menu.some(m=>m.name) && <button style={{...smallBtn,marginTop:6}} onClick={()=>sheetPdf(allergenMatrixHtml(hotel, f.menu), safeFile(translateString("Allergene")+" "+hotel.name)+".pdf")}><Icon n="filetext" /> {tf("Allergene-Matrix (PDF)")}</button>}
         <div className="field-label" style={{marginTop:12}}>{tf("Spa-Angebote")}</div>
         {listEditor("spa", [["name","Behandlung",3],["duration","Dauer",1],["price","Preis",1]])}
+        <div className="field-label" style={{marginTop:12}}>{tf("Zusatzangebote zum Bestellen (auf die Zimmerrechnung)")}</div>
+        <GuestOffersEditor value={f.offers} onChange={(v)=>setF({...f,offers:v})} />
         {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,margin:"10px 0"}}>{msg.text}</div>}
         <div style={{marginTop:12}}><button className="btn-primary" disabled={busy} onClick={save}>{busy ? tf("Speichert…") : tf("Speichern")}</button></div>
       </div>}

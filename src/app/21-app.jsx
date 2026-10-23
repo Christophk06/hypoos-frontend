@@ -381,6 +381,15 @@ function App(){
           {tab==="permits" && <PermitsView hotel={hotel} api={api} role={role} />}
           {tab==="feedback" && <FeedbackView hotel={hotel} api={api} me={me} role={role} />}
           {patrolToken && token && <PatrolScanDialog api={api} token={patrolToken} onClose={closePatrol} />}
+          {tab==="assets" && <AssetRiskCard hotel={hotel} api={api} />}
+          {tab==="assets" && <MaintenanceCalendarCard hotel={hotel} api={api} onOpen={setTab} />}
+          {tab==="memory" && <HotelMemoryView hotel={hotel} api={api} />}
+          {tab==="myself" && <MySelfServiceView orgId={orgId} api={api} me={me} hotel={hotel} />}
+          {tab==="simulator" && <SimulatorView hotel={hotel} api={api} />}
+          {tab==="season" && <SeasonHandoverView hotel={hotel} api={api} members={members} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="sustainability" && <SustainabilityView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="network" && <NetworkView hotel={hotel} api={api} me={me} myDepts={myDepts} />}
+          {tab==="apprentices" && <ApprenticesView orgId={orgId} api={api} members={members} me={me} />}
           {tab==="assets" && <AssetsView hotel={hotel} api={api} />}
           {tab==="academy" && <AcademyView hotel={hotel} api={api} me={me} members={members} />}
           {tab==="patrols" && <PatrolsView hotel={hotel} api={api} />}
@@ -396,9 +405,12 @@ function App(){
           {tab==="housing" && <HousingView hotel={hotel} api={api} members={members} />}
           {tab==="staffdocs" && <StaffDocsView orgId={orgId} api={api} members={members} />}
           {tab==="pulse" && <PulseView orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />}
+          {tab==="tourismtax" && <TourismStatsCard hotel={hotel} api={api} />}
           {tab==="tourismtax" && <TourismTaxView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="frontdesk" && <GuestOrdersCard hotel={hotel} api={api} />}
           {tab==="frontdesk" && <FrontDeskView hotel={hotel} api={api} onOpen={setTab} />}
           {tab==="arrivals" && <ArrivalsView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="reviews" && (role==="admin" || canManageDept("Rezeption & Empfang")) && <GoogleReviewsSync hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} onDone={()=>{}} />}
           {tab==="reviews" && <ReviewsView hotel={hotel} api={api} role={role} />}
           {tab==="energy" && <EnergyView hotel={hotel} api={api} role={role} />}
           {tab==="help" && <HelpView onOpen={setTab} />}

@@ -538,6 +538,11 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
     recipient:[ev && ev.client, ev && ev.contact].filter(Boolean).join("\n"), recipient_email:((ev && ev.contact)||"").match(/[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/)?.[0]||"", recipient_uid:"",
     service_date: ev ? fmtDate(ev.event_date) : "", note:"", items: fromOffer().length ? fromOffer() : [{label:"", qty:1, unit:"", unit_price:"", tax_rate:rate0}]});
   const [busy,setBusy] = useState(false); const [msg,setMsg] = useState(null);
+  const [minibarIds,setMinibarIds] = useState([]); const [mbOpen,setMbOpen] = useState(null);
+  const loadMinibar = () => api("/api/hotels/"+hotel.id+"/minibar-charges?open=1").then(list=>{ const by = {}; list.filter(c=>!minibarIds.includes(c.id)).forEach(c=>{ (by[c.room] = by[c.room] || []).push(c); }); setMbOpen(by); }).catch(e=>setMsg({ok:false,text:e.message}));
+  const takeMinibar = (room) => { const list = (mbOpen||{})[room] || [];
+    const add = list.map(c=>({label:tf("Minibar")+": "+c.item_name+" ("+tf("Zimmer")+" "+room+")", qty:c.quantity, unit:"", unit_price:String(c.unit_price), tax_rate:rate0}));
+    setF(x=>({...x, items:[...x.items.filter(i=>i.label || i.unit_price), ...add]})); setMinibarIds(ids=>[...ids, ...list.map(c=>c.id)]); setMbOpen(null); };
   const items = f.items.map(i=>({...i, qty:Number(String(i.qty).replace(",","."))||0, unit_price:Number(String(i.unit_price).replace(",","."))||0, tax_rate:Number(String(i.tax_rate).replace(",","."))||0}));
   const gross = set0.prices_gross!==false;
   const t = invTotals(items, gross);
@@ -546,7 +551,10 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
   const setItem = (n, k, v) => setF({...f, items:f.items.map((x,j)=>j===n?{...x,[k]:v}:x)});
   const submit = async () => {
     setBusy(true); setMsg(null);
-    try { const inv = await api("/api/hotels/"+hotel.id+"/invoices","POST",{...f, items, event_id: ev ? ev.id : undefined}); onDone(inv); }
+    try { const inv = await api("/api/hotels/"+hotel.id+"/invoices","POST",{...f, items, event_id: ev ? ev.id : undefined});
+      // Übernommene Minibar-Posten als abgerechnet markieren
+      if(minibarIds.length) await api("/api/minibar-charges/bill","POST",{ids:minibarIds}).catch(()=>{});
+      onDone(inv); }
     catch(e){ setMsg({ok:false,text:e.message}); }
     setBusy(false);
   };
@@ -581,7 +589,17 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
             </tr>))}</tbody>
         </table>
       </div>
-      <button style={{...linkBtn,paddingInlineStart:0}} onClick={()=>setF({...f,items:[...f.items,{label:"", qty:1, unit:"", unit_price:"", tax_rate:rate0}]})}>{tf("+ Position")}</button>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+        <button style={{...linkBtn,paddingInlineStart:0}} onClick={()=>setF({...f,items:[...f.items,{label:"", qty:1, unit:"", unit_price:"", tax_rate:rate0}]})}>{tf("+ Position")}</button>
+        {!ev && <button style={linkBtn} onClick={loadMinibar}>{tf("Minibar übernehmen")}</button>}
+        {minibarIds.length>0 && <span style={{fontSize:12,color:INK_MUTED}}>{tf("{0} Minibar-Posten werden beim Ausstellen als abgerechnet markiert.", minibarIds.length)}</span>}
+      </div>
+      {mbOpen && <div style={{border:`1px solid ${BORDER}`,borderRadius:8,padding:8,margin:"6px 0",fontSize:13}}>
+        {Object.keys(mbOpen).length===0 ? <span style={{color:INK_MUTED}}>{tf("Keine offenen Minibar-Posten.")}</span>
+          : Object.entries(mbOpen).map(([room,list])=><button key={room} style={{...smallBtn,margin:3}} onClick={()=>takeMinibar(room)}>{tf("Zimmer")} {room} · {moneyIn(list.reduce((x,c)=>x+Number(c.unit_price)*c.quantity,0))}</button>)}
+        <button style={linkBtn} onClick={()=>setMbOpen(null)}>{tf("Schließen")}</button>
+        <div style={{fontSize:11.5,color:INK_MUTED,marginTop:4}}>{tf("Steuersatz bitte prüfen (z. B. Getränke 20 %, Speisen 10 %).")}</div>
+      </div>}
       <div style={{background:PAPER,borderRadius:8,padding:"8px 12px",margin:"8px 0",fontSize:13}}>
         {!set0.small_business && t.rates.map(x=><div key={x.rate} style={{display:"flex",justifyContent:"space-between"}} data-no-i18n=""><span>{tf("USt")} {x.rate} %</span><span>{m(x.tax)}</span></div>)}
         <div style={{display:"flex",justifyContent:"space-between",fontWeight:700}}><span>{tf("Gesamtbetrag")}</span><span data-no-i18n="">{m(t.gross)}</span></div>

@@ -383,6 +383,8 @@ function ArrivalsView({hotel, api, role, onHotel}){
                     </div>
                     {(g.extras||[]).length>0 && <div style={{fontSize:12.5,marginTop:3}}>{(g.extras||[]).map(x=><Pill key={x} color={BRASS} bg={BRASS_SOFT}>{extraName(x)}</Pill>)}</div>}
                     {g.guest_note && <div style={{fontSize:13,marginTop:4,background:PAPER,borderRadius:6,padding:"6px 8px"}} data-no-i18n="">„{g.guest_note}“</div>}
+                    {g.profile && <GuestProfileBadge profile={g.profile} />}
+                    {g.vip!==undefined && <FirstImpressionCheck guest={g} api={api} onSaved={(x)=>setList(l=>(l||[]).map(y=>y.id===x.id?{...y,...x}:y))} />}
                   </div>
                   {lead && <div style={{whiteSpace:"nowrap"}}>
                     {g.email && !g.answered_at && <button style={linkBtn} onClick={()=>run(()=>api("/api/arrivals/"+g.id+"/send","POST",{}), tf("Mail verschickt."))}>{g.mail_sent_at ? tf("Erneut senden") : tf("Jetzt senden")}</button>}

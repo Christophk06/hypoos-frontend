@@ -220,3 +220,33 @@ function HousingView({hotel, api, members}){
     </div>
   );
 }
+
+// ------------------------------------------------------------ Wartungskalender (im Gerätebuch): Prüfungen, Wartungspläne, Verträge, Dokumente, Genehmigungen
+const MCAL_KIND = {pruefung:["Prüfung","wrench"], wartung:["Wartungsplan","gear"], vertrag:["Vertrag endet","filetext"], dokument:["Dokument läuft ab","file"], genehmigung:["Genehmigung läuft ab","flag"]};
+function MaintenanceCalendarCard({hotel, api, onOpen}){
+  const [d,setD] = useState(null); const [open,setOpen] = useState(true);
+  useEffect(()=>{ api("/api/hotels/"+hotel.id+"/maintenance-calendar").then(setD).catch(()=>setD({items:[]})); },[hotel.id]);
+  const today = todayIso();
+  const ics = () => {
+    const esc = (x) => String(x||"").replace(/[\\,;]/g, (m)=>"\\"+m).replace(/\n/g," ");
+    const ev = d.items.map((x,i)=>["BEGIN:VEVENT","UID:ouv-mcal-"+i+"-"+x.date+"@ouverture","DTSTAMP:"+new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z","DTSTART;VALUE=DATE:"+x.date.replace(/-/g,""),"SUMMARY:"+esc(translateString(MCAL_KIND[x.kind][0])+": "+x.title),"DESCRIPTION:"+esc(x.detail),"END:VEVENT"].join("\r\n")).join("\r\n");
+    const text = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Ouverture//Wartung//DE\r\n"+ev+"\r\nEND:VCALENDAR\r\n";
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text],{type:"text/calendar"})); a.download = safeFile(tf("Wartungskalender")+" "+hotel.name)+".ics"; a.click();
+  };
+  if(!d || !d.items.length) return null;
+  const late = d.items.filter(x=>x.date<today).length;
+  return (
+    <Card style={{marginBottom:14,borderColor:late?BAD:BORDER}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <b style={{flex:1}} {...pressable(()=>setOpen(!open))} aria-expanded={open}><Icon n="calendar" /> {tf("Wartungskalender")} <span style={{fontWeight:400,fontSize:12.5,color:late?BAD:INK_MUTED}}>· {late ? tf("{0} überfällig", late) : tf("{0} Termine in 120 Tagen", d.items.length)}</span></b>
+        <button style={smallBtn} onClick={ics}>{tf("In den Kalender (ICS)")}</button>
+      </div>
+      {open && <div style={{marginTop:8}}>{d.items.slice(0,40).map((x,i)=>(
+        <div key={i} {...pressable(()=>onOpen && onOpen(x.tab))} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13,cursor:"pointer"}}>
+          <span style={{minWidth:86,color:x.date<today?BAD:INK,fontWeight:x.date<today?700:400}}>{fmtDate(x.date)}</span>
+          <span style={{minWidth:150,color:INK_MUTED}}><Icon n={MCAL_KIND[x.kind][1]} /> {tf(MCAL_KIND[x.kind][0])}</span>
+          <span style={{flex:1}} data-no-i18n="">{x.title}{x.detail ? " · "+x.detail : ""}</span>
+        </div>))}</div>}
+    </Card>
+  );
+}

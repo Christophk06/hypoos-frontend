@@ -177,6 +177,7 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
           {testMsg && <span style={{marginInlineStart:6,color:INK}}>{testMsg}</span>}</div>
       </div>
       {ACCESS.role==="admin" && !hotel.is_demo && <div style={{marginTop:12}}><OwnerLinkCard hotel={hotel} api={api} /></div>}
+      {ACCESS.role==="admin" && !hotel.is_demo && <InvestorViewCard hotel={hotel} api={api} />}
       <div className="stack" style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap",marginTop:12,paddingTop:12,borderTop:`1px solid ${BORDER}`}}>
         <div>
           <div className="field-label">{tf("Logo")}</div>

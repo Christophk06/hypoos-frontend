@@ -90,7 +90,7 @@ function ChatView({hotel, api, me, members, role, myDepts}){
                   <div style={{maxWidth:"78%",background:mine?BRASS_SOFT:PAPER,border:`1px solid ${mine?BRASS+"55":BORDER}`,borderRadius:12,padding:"7px 11px"}}>
                     {!mine && <div style={{fontSize:11.5,fontWeight:700,color:BRASS,marginBottom:2}} data-no-i18n="">{memberLabel(members, me, m.author_id)}</div>}
                     <div style={{fontSize:14,whiteSpace:"pre-wrap",wordBreak:"break-word"}}><TrText text={m.body} tr={T.tr} /></div>
-                    <div style={{fontSize:10.5,color:INK_MUTED,textAlign:"end",marginTop:2}} data-no-i18n="">{fmtClock(m.created_at)}
+                    <div style={{fontSize:10.5,color:INK_MUTED,textAlign:"end",marginTop:2}} data-no-i18n="">{fmtClock(m.created_at)}<SpeakMsg text={T.tr(m.body) || m.body} />
                       {canDelete(m) && <button style={{...linkBtn,fontSize:10.5,padding:"0 0 0 6px"}} onClick={()=>del(m)} title={tf("Löschen")}>✕</button>}</div>
                   </div>
                 </div>

@@ -464,7 +464,11 @@ function CalendarNotesCard({hotel, api, info, onChanged}){
 
 // ------------------------------------------------------------ KI-Einschätzung Personalbedarf (Leitung, im Dienstplan)
 function StaffingAdviceCard({hotel, api, from}){
-  const [res,setRes] = useState(null); const [busy,setBusy] = useState(false); const [msg,setMsg] = useState("");
+  const [res,setRes] = useState(null); const [busy,setBusy] = useState(false); const [msg,setMsg] = useState(""); const [taken,setTaken] = useState({});
+  // Vorschlag übernehmen: zusätzliche Personen als offene Schichten ausschreiben (Kolleg/innen der Abteilung bekommen eine Nachricht)
+  const take = async (datum, x, kind) => { const k = datum+"|"+x.abteilung; setMsg("");
+    try { for(let i=0;i<Math.min(3,x.aenderung);i++) await api("/api/hotels/"+hotel.id+"/open-shifts","POST",{department:x.abteilung, shift_date:datum, kind, note:tf("Mehrbedarf laut KI-Einschätzung: {0}", x.grund).slice(0,300)}); setTaken({...taken,[k]:kind}); }
+    catch(e){ setMsg(e.message); } };
   useEffect(()=>{ setRes(null); setMsg(""); },[from, hotel.id]);
   const run = async () => { setBusy(true); setMsg(""); try { setRes(await api("/api/hotels/"+hotel.id+"/staffing-advice","POST",{from, lang:UI_LANG})); } catch(e){ setMsg(e.message); } setBusy(false); };
   const a = res && res.advice;
@@ -483,7 +487,10 @@ function StaffingAdviceCard({hotel, api, from}){
             <div><b>{fmtDay ? fmtDay(d.datum,{weekday:"short",day:"2-digit",month:"2-digit"}) : d.datum}</b> <span style={{color:INK_MUTED}} data-no-i18n="">· {d.hinweis}</span></div>
             {d.anpassungen.map((x,i)=><div key={i} style={{display:"flex",gap:8,marginTop:3,paddingInlineStart:10}}>
               <span style={{fontWeight:700,color:x.aenderung>0?BAD:GOOD,minWidth:28}}>{x.aenderung>0?"+":""}{x.aenderung}</span>
-              <span>{translateString(x.abteilung)}</span><span style={{color:INK_MUTED}} data-no-i18n="">– {x.grund}</span></div>)}
+              <span>{translateString(x.abteilung)}</span><span style={{color:INK_MUTED,flex:1}} data-no-i18n="">– {x.grund}</span>
+              {x.aenderung>0 && DEPARTMENTS.includes(x.abteilung) && (taken[d.datum+"|"+x.abteilung]
+                ? <span style={{color:GOOD,fontSize:12}}>✓ {tf("ausgeschrieben")}</span>
+                : <span style={{display:"inline-flex",gap:4}}>{["Früh","Spät"].map(k=><button key={k} style={{...linkBtn,fontSize:12}} onClick={()=>take(d.datum, x, k)}>{tf("Als {0} ausschreiben", tf(k))}</button>)}</span>)}</div>)}
           </div>))}
         <div style={{fontSize:11.5,color:INK_MUTED,marginTop:6}}>{tf("Vorschlag der KI – die Entscheidung trifft die Leitung. Personen und Namen werden nicht an die KI übermittelt.")}</div>
       </div>}

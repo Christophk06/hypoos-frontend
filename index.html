@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Ouverture" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="i18n.js?v=394c21c25e"></script>
+<script src="i18n.js?v=e6333e8ef4"></script>
 <script src="payroll.js?v=2bf4fdbb12"></script>
 <script src="holidays.js?v=cb6e74aef2"></script>
 <script src="planning.js?v=1e94a23b2d"></script>
@@ -29,7 +29,7 @@
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
     document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=95ca8bac72"><\/script>');
-    document.write('<script src="demo/demo-mock.js?v=9f333bcd35"><\/script>');
+    document.write('<script src="demo/demo-mock.js?v=89bc87290c"><\/script>');
   }
   // Als App installierbar: Service Worker (nicht in der Demo)
   if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
@@ -190,7 +190,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="9dbf652";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
-<script src="app.js?v=74f539a707"></script>
+<script>window.__APP_VERSION="ce39821";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
+<script src="app.js?v=be0d81bea8"></script>
 </body>
 </html>

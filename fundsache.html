@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 480px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; min-height: 36px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 16px; line-height: 1.45; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .item { font-size: 16px; font-weight: 600; white-space: pre-line; }
+  .photo { width: 100%; max-height: 280px; object-fit: contain; border-radius: 10px; margin-top: 10px; background: var(--paper); }
+  .fee { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .fee b { font-size: 18px; }
+  label.t { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+  .in { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: inherit; font-size: 15px; background: #fff; color: inherit; }
+  button.main, a.main { display: block; width: 100%; margin-top: 16px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; min-height: 48px; text-align: center; text-decoration: none; }
+  button.main:disabled { opacity: .5; }
+  button.line { width: 100%; margin-top: 10px; background: #fff; color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 15px; cursor: pointer; min-height: 44px; }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; line-height: 1.45; }
+  .ok { background: #E4EFE8; color: var(--good); } .err { background: #F5E1DE; color: var(--bad); }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.45; white-space: pre-line; }
+  .addr { white-space: pre-line; font-size: 14.5px; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Ihre Fundsache", intro: "Wir haben diesen Gegenstand gefunden und schicken ihn Ihnen gern zu.", found: "Gefunden am {date}", fee: "Versandkosten", address: "Versandadresse", name: "Name", street: "Straße und Hausnummer", zip: "PLZ", city: "Ort", country: "Land", phone: "Telefon (optional, für den Paketdienst)", save: "Adresse speichern", pay: "Weiter zur Zahlung", payNote: "Die Zahlung läuft direkt über das Hotel. Danach bestätigt die Rezeption den Eingang und verschickt Ihren Gegenstand.", change: "Adresse ändern", paid: "Zahlung bestätigt. Wir verschicken Ihren Gegenstand in Kürze.", shipped: "Verschickt am {date}.", tracking: "Sendungsnummer", noLink: "Das Hotel meldet sich wegen der Zahlung bei Ihnen.", choose: "Bitte wählen", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…", saved: "Adresse gespeichert." },
+  en: { title: "Your lost item", intro: "We found this item and are happy to send it to you.", found: "Found on {date}", fee: "Shipping cost", address: "Shipping address", name: "Name", street: "Street and number", zip: "Postcode", city: "City", country: "Country", phone: "Phone (optional, for the courier)", save: "Save address", pay: "Continue to payment", payNote: "Payment goes directly to the hotel. Reception will then confirm receipt and ship your item.", change: "Change address", paid: "Payment confirmed. We will ship your item shortly.", shipped: "Shipped on {date}.", tracking: "Tracking number", noLink: "The hotel will contact you about the payment.", choose: "Please choose", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…", saved: "Address saved." },
+  fr: { title: "Votre objet trouvé", intro: "Nous avons trouvé cet objet et vous l’envoyons volontiers.", found: "Trouvé le {date}", fee: "Frais d’envoi", address: "Adresse de livraison", name: "Nom", street: "Rue et numéro", zip: "Code postal", city: "Ville", country: "Pays", phone: "Téléphone (facultatif, pour le transporteur)", save: "Enregistrer l’adresse", pay: "Continuer vers le paiement", payNote: "Le paiement se fait directement auprès de l’hôtel. La réception confirme ensuite la réception et expédie votre objet.", change: "Modifier l’adresse", paid: "Paiement confirmé. Nous expédions votre objet sous peu.", shipped: "Expédié le {date}.", tracking: "Numéro de suivi", noLink: "L’hôtel vous contactera pour le paiement.", choose: "Veuillez choisir", invalid: "Ce lien n’est pas (ou plus) valable.", error: "Cela n’a pas fonctionné. Veuillez réessayer plus tard.", loading: "Chargement…", saved: "Adresse enregistrée." },
+  it: { title: "Il suo oggetto smarrito", intro: "Abbiamo trovato questo oggetto e siamo lieti di spedirglielo.", found: "Trovato il {date}", fee: "Costi di spedizione", address: "Indirizzo di spedizione", name: "Nome", street: "Via e numero civico", zip: "CAP", city: "Città", country: "Paese", phone: "Telefono (facoltativo, per il corriere)", save: "Salva indirizzo", pay: "Prosegui con il pagamento", payNote: "Il pagamento avviene direttamente tramite l’hotel. La reception conferma poi l’incasso e spedisce l’oggetto.", change: "Modifica indirizzo", paid: "Pagamento confermato. Spediremo l’oggetto a breve.", shipped: "Spedito il {date}.", tracking: "Numero di tracciamento", noLink: "L’hotel la contatterà per il pagamento.", choose: "Selezioni", invalid: "Questo link non è (più) valido.", error: "Non è andato a buon fine. Riprovi più tardi.", loading: "Caricamento…", saved: "Indirizzo salvato." },
+  es: { title: "Su objeto perdido", intro: "Hemos encontrado este objeto y con gusto se lo enviamos.", found: "Encontrado el {date}", fee: "Gastos de envío", address: "Dirección de envío", name: "Nombre", street: "Calle y número", zip: "Código postal", city: "Ciudad", country: "País", phone: "Teléfono (opcional, para el transportista)", save: "Guardar dirección", pay: "Continuar al pago", payNote: "El pago se realiza directamente al hotel. Después, la recepción confirma el cobro y envía su objeto.", change: "Cambiar dirección", paid: "Pago confirmado. Enviaremos su objeto en breve.", shipped: "Enviado el {date}.", tracking: "Número de seguimiento", noLink: "El hotel se pondrá en contacto con usted para el pago.", choose: "Seleccione", invalid: "Este enlace no es (o ya no es) válido.", error: "No ha funcionado. Inténtelo de nuevo más tarde.", loading: "Cargando…", saved: "Dirección guardada." },
+  pt: { title: "O seu objeto perdido", intro: "Encontrámos este objeto e teremos todo o gosto em enviá-lo.", found: "Encontrado a {date}", fee: "Custos de envio", address: "Morada de envio", name: "Nome", street: "Rua e número", zip: "Código postal", city: "Localidade", country: "País", phone: "Telefone (opcional, para a transportadora)", save: "Guardar morada", pay: "Continuar para o pagamento", payNote: "O pagamento é feito diretamente ao hotel. Depois, a receção confirma a receção e envia o seu objeto.", change: "Alterar morada", paid: "Pagamento confirmado. Enviaremos o seu objeto em breve.", shipped: "Enviado a {date}.", tracking: "Número de seguimento", noLink: "O hotel entrará em contacto consigo sobre o pagamento.", choose: "Selecione", invalid: "Este link não é (ou já não é) válido.", error: "Não foi possível. Tente novamente mais tarde.", loading: "A carregar…", saved: "Morada guardada." },
+  tr: { title: "Kayıp eşyanız", intro: "Bu eşyayı bulduk ve size göndermekten memnuniyet duyarız.", found: "{date} tarihinde bulundu", fee: "Gönderim ücreti", address: "Gönderim adresi", name: "Ad", street: "Sokak ve numara", zip: "Posta kodu", city: "Şehir", country: "Ülke", phone: "Telefon (isteğe bağlı, kargo için)", save: "Adresi kaydet", pay: "Ödemeye devam et", payNote: "Ödeme doğrudan otel üzerinden yapılır. Ardından resepsiyon ödemeyi onaylar ve eşyanızı gönderir.", change: "Adresi değiştir", paid: "Ödeme onaylandı. Eşyanızı kısa süre içinde göndereceğiz.", shipped: "{date} tarihinde gönderildi.", tracking: "Takip numarası", noLink: "Otel ödeme için sizinle iletişime geçecek.", choose: "Lütfen seçin", invalid: "Bu bağlantı geçerli değil (artık).", error: "Olmadı. Lütfen daha sonra tekrar deneyin.", loading: "Yükleniyor…", saved: "Adres kaydedildi." },
+  ja: { title: "お忘れ物について", intro: "こちらのお品物をお預かりしています。ご希望でしたらお送りいたします。", found: "{date} に発見", fee: "送料", address: "お届け先", name: "お名前", street: "番地・通り", zip: "郵便番号", city: "市区町村", country: "国", phone: "電話番号（任意、配送業者用）", save: "住所を保存", pay: "お支払いへ進む", payNote: "お支払いはホテルへ直接行われます。その後、フロントが入金を確認してお品物を発送します。", change: "住所を変更", paid: "お支払いを確認しました。まもなく発送いたします。", shipped: "{date} に発送しました。", tracking: "追跡番号", noLink: "お支払いについてはホテルからご連絡いたします。", choose: "選択してください", invalid: "このリンクは無効です（期限切れの可能性があります）。", error: "うまくいきませんでした。しばらくしてから再度お試しください。", loading: "読み込み中…", saved: "住所を保存しました。" },
+  zh: { title: "您的遗失物品", intro: "我们找到了这件物品，很乐意寄给您。", found: "发现于 {date}", fee: "运费", address: "收件地址", name: "姓名", street: "街道和门牌号", zip: "邮编", city: "城市", country: "国家", phone: "电话（可选，供快递使用）", save: "保存地址", pay: "前往付款", payNote: "付款直接支付给酒店。之后前台会确认收款并寄出您的物品。", change: "修改地址", paid: "已确认付款，我们会尽快寄出您的物品。", shipped: "已于 {date} 寄出。", tracking: "快递单号", noLink: "酒店会就付款事宜与您联系。", choose: "请选择", invalid: "此链接无效（或已失效）。", error: "操作失败，请稍后再试。", loading: "加载中…", saved: "地址已保存。" },
+  ar: { title: "غرضكم المفقود", intro: "وجدنا هذا الغرض ويسعدنا إرساله إليكم.", found: "وُجد بتاريخ {date}", fee: "تكلفة الشحن", address: "عنوان الشحن", name: "الاسم", street: "الشارع ورقم المبنى", zip: "الرمز البريدي", city: "المدينة", country: "البلد", phone: "الهاتف (اختياري، لشركة الشحن)", save: "حفظ العنوان", pay: "المتابعة إلى الدفع", payNote: "يتم الدفع مباشرة للفندق. بعد ذلك يؤكد الاستقبال استلام المبلغ ويرسل غرضكم.", change: "تعديل العنوان", paid: "تم تأكيد الدفع. سنرسل غرضكم قريبًا.", shipped: "أُرسل بتاريخ {date}.", tracking: "رقم التتبع", noLink: "سيتواصل معكم الفندق بشأن الدفع.", choose: "يرجى الاختيار", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", error: "لم ينجح ذلك. يرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…", saved: "تم حفظ العنوان." },
+};
+var COUNTRIES = "AT DE CH IT NL FR GB US CZ PL HU SK SI BE DK SE ES RO HR LI LU AD AE AL AR AU BA BG BR BY CA CL CN CO CY EE EG FI GR HK ID IE IL IN IS JP KR LT LV MA MC MD ME MK MT MX MY NO NZ PH PT QA RS RU SA SG SM TH TN TR TW UA UY VN ZA".split(" ");
+var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
+var state = { info: null, error: null, busy: false, edit: false, form: { name: "", street: "", zip: "", city: "", country: "", phone: "" }, saved: false };
+var lang = (function () { var p = q.get("lang"); if (T[p]) return p; try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { readForm(); lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick", currency: "EUR" }, item: { description: "Schwarzer Schal, Wolle", found_on: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10), photo: null }, fee: 12.5, payment_link: "https://example.com/zahlung", note: "Versand innerhalb der EU mit der Post.", status: "angefragt", address_given: false, address: null, shipped_at: null, tracking: null };
+function api(path, opt) {
+  if (demo) { if (opt) { var b = JSON.parse(opt.body); DEMO.address_given = true; DEMO.address = b; return Promise.resolve({ ok: true, payment_link: DEMO.payment_link }); } return Promise.resolve(JSON.parse(JSON.stringify(DEMO))); }
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || t("error")); return j; }); });
+}
+function fmtDate(iso) { try { return new Date(String(iso).slice(0, 10) + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : lang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return iso; } }
+function money(p, cur) { try { return new Intl.NumberFormat(lang, { style: "currency", currency: cur || "EUR" }).format(p); } catch (e) { return p + " " + cur; } }
+function cname(c) { try { return new Intl.DisplayNames([lang], { type: "region" }).of(c) || c; } catch (e) { return c; } }
+function readForm() { var f = state.form; ["name", "street", "zip", "city", "country", "phone"].forEach(function (k) { if ($("a_" + k)) f[k] = $("a_" + k).value; }); }
+function safeLink(u) { return /^https:\/\/[^\s<>"']+$/i.test(String(u || "")) ? u : null; }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app"), i = state.info;
+  if (state.error && !i) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!i) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var h = "<h1>" + esc(t("title")) + '</h1><div class="sub">' + esc(t("intro")) + '</div><div class="box"><div class="item" dir="auto">' + esc(i.item.description) + '</div><div class="note">' + esc(t("found", { date: fmtDate(i.item.found_on) })) + "</div>";
+  if (i.item.photo && /^data:image\/(jpeg|png|webp);base64,/.test(i.item.photo)) h += '<img class="photo" alt="" src="' + esc(i.item.photo) + '" />';
+  h += '<div class="fee"><span>' + esc(t("fee")) + "</span><b>" + esc(money(i.fee, i.hotel.currency)) + "</b></div>" + (i.note ? '<div class="note" dir="auto">' + esc(i.note) + "</div>" : "") + "</div>";
+  if (i.status === "versendet") {
+    h += '<div class="msg ok">✓ ' + esc(t("shipped", { date: fmtDate(i.shipped_at) })) + (i.tracking ? "<br><b>" + esc(t("tracking")) + ":</b> " + esc(i.tracking) : "") + "</div>";
+  } else if (i.status === "bezahlt") {
+    h += '<div class="msg ok">✓ ' + esc(t("paid")) + "</div>";
+    if (i.address) h += '<div class="box"><b>' + esc(t("address")) + '</b><div class="addr" dir="auto">' + esc([i.address.name, i.address.street, i.address.zip + " " + i.address.city, cname(i.address.country)].join("\n")) + "</div></div>";
+  } else if (i.address_given && !state.edit) {
+    var ad = i.address || {};
+    h += '<div class="box"><b>' + esc(t("address")) + '</b><div class="addr" dir="auto">' + esc([ad.name, ad.street, ad.zip + " " + ad.city, cname(ad.country), ad.phone].filter(Boolean).join("\n")) + '</div><button class="line" id="chg">' + esc(t("change")) + "</button></div>";
+    if (state.saved) h += '<div class="msg ok">✓ ' + esc(t("saved")) + "</div>";
+    var link = safeLink(i.payment_link);
+    h += link ? '<a class="main" id="pay" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">' + esc(t("pay")) + " →</a>" : '<div class="msg ok">' + esc(t("noLink")) + "</div>";
+    h += '<div class="note">' + esc(t("payNote")) + "</div>";
+  } else {
+    var f = state.form, inp = function (k, ac, max) { return '<label class="t" for="a_' + k + '">' + esc(t(k)) + '</label><input class="in" id="a_' + k + '" autocomplete="' + ac + '" maxlength="' + max + '" value="' + esc(f[k]) + '" />'; };
+    h += '<div class="box"><b>' + esc(t("address")) + "</b>" + inp("name", "name", 160) + inp("street", "street-address", 160)
+      + '<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><div>' + inp("zip", "postal-code", 20) + "</div><div>" + inp("city", "address-level2", 100) + "</div></div>"
+      + '<label class="t" for="a_country">' + esc(t("country")) + '</label><select class="in" id="a_country" autocomplete="country"><option value="">' + esc(t("choose")) + "</option>" + COUNTRIES.map(function (c) { return '<option value="' + c + '"' + (c === f.country ? " selected" : "") + ">" + esc(cname(c)) + "</option>"; }).join("") + "</select>"
+      + inp("phone", "tel", 40) + '<input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" /><button class="main" id="save"' + (state.busy ? " disabled" : "") + ">" + esc(t("save")) + "</button></div>";
+  }
+  if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+  a.innerHTML = h;
+  if ($("chg")) $("chg").onclick = function () { state.edit = true; state.saved = false; render(); };
+  if ($("save")) $("save").onclick = function () {
+    readForm(); state.busy = true; state.error = null; render();
+    api("/api/public/lost-found/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify(Object.assign({}, state.form, { language: lang, website: $("website") ? $("website").value : "" })) })
+      .then(function () { state.edit = false; state.saved = true; return load(); }).catch(function (e) { state.error = e.message; }).then(function () { state.busy = false; render(); });
+  };
+}
+function brand(h) {
+  $("hotel").textContent = h.name || ""; document.title = t("title") + " · " + (h.name || "");
+  if (h.logo_data) { $("logo").src = h.logo_data; $("logo").hidden = false; }
+  if (h.brand_color) document.documentElement.style.setProperty("--ink", h.brand_color);
+}
+function load() {
+  return api("/api/public/lost-found/" + encodeURIComponent(token)).then(function (i) {
+    state.info = i; state.error = null;
+    if (i.address) state.form = { name: i.address.name || "", street: i.address.street || "", zip: i.address.zip || "", city: i.address.city || "", country: i.address.country || "", phone: i.address.phone || "" };
+    if (i.language && T[i.language] && !q.get("lang")) { var chosen = null; try { chosen = localStorage.getItem("ouv_guest_lang"); } catch (e) {} if (!chosen) { lang = i.language; $("lang").value = lang; } }
+    brand(i.hotel); render();
+  }).catch(function (e) { state.error = e.message || t("invalid"); render(); });
+}
+render();
+if (!token && !demo) { state.error = t("invalid"); render(); } else load();
+</script>
+</body>
+</html>

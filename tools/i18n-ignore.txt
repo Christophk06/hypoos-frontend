@@ -1,10 +1,14 @@
+%PDF
 &after=
 &amp;
 &body=
+&days=
 &department=
 &department=Housekeeping
 &gt;
+&lang=
 &lt;
+&nbsp;</td><td>
 &open=true
 &quot;
 &redirect_to=
@@ -17,6 +21,7 @@
 (prefers-color-scheme: dark)
 -0.16em
 0 KB
+0 auto
 0.18em
 0.85em
 1 1 auto
@@ -51,6 +56,8 @@ AbortError
 Anfrage fehlgeschlagen.
 Apaleo
 ArrowDown
+ArrowLeft
+ArrowRight
 ArrowUp
 BEGIN:VCALENDAR
 BEGIN:VEVENT
@@ -61,21 +68,27 @@ Booking.com
 CALSCALE:GREGORIAN
 Client-ID
 Client-Secret
+Content-Type: application/json
 CreditMemo
 DATEV LODAS
 DESCRIPTION:
+DTEND:
 DTEND;VALUE=DATE:
 DTSTAMP:
+DTSTART:
 DTSTART;VALUE=DATE:
 Deutsch
 END:VCALENDAR
 END:VEVENT
 Eier; 1,5; Stk Semmeln; 2; Stk Kaffee; 0,02; kg
+English
 Enter
 Enterprise
 Escape
+Español
 Expedia
 FBFAF7
+Français
 Fraunces, serif
 Function Sheet
 Georgia
@@ -84,15 +97,19 @@ HolidayCheck
 Inter, sans-serif
 Invoice
 Ist (
+Italiano
 LIESMICH.txt
+LOCATION:
 Mews
 Notification
 Ouverture
 Ouverture ·
 Ouverture –
 Ouverture — Verbindung einrichten
+PRODID:-//Ouverture//Bewerbung//DE
 PRODID:-//Ouverture//Pre-Opening//DE
 Plan (
+Português
 Priorität:
 PushManager
 RE-
@@ -109,7 +126,9 @@ Termin:
 Titel: „
 Title
 Tripadvisor
+Türkçe
 UID:
+UID:ouv-int-
 VERSION:2.0
 Wie war Ihr Aufenthalt? · How was your stay? · Com’è stato il soggiorno?
 Word
@@ -127,7 +146,10 @@ application/pdf
 application/vnd.openxmlformats-officedocument.wordprocessingml.document
 application/xml
 ar-SA
+beleg.
+beleg.pdf
 calc(
+class="g"
 code_128
 code_39
 copyMove
@@ -143,7 +165,10 @@ es-ES
 event-templates.js
 feedback.html?demo=1
 fr-FR
+frei:
 fälligkeit
+geschäftstag
+gäste
 hpoos_c:
 hpoos_connection_config_v1
 hpoos_last_hotel_v1
@@ -155,15 +180,19 @@ image/
 image/jpeg
 image/png
 image/svg+xml
+image/webp
 index.html?patrol=
 it-IT
 ja-JP
+jobs.html?
 kWh
 mailto:
 maßnahme
 monatsabschluss.pdf
 optionsText
 ouv_ref_v1
+pos:
+post:
 priorität
 pt-PT
 rotate(45deg)
@@ -182,6 +211,7 @@ text/plain;charset=windows-1252
 tr-TR
 translateX(-50%)
 vendor/docx.js
+warten.html
 weeklyRest
 word/_rels/document.xml.rels
 word/document.xml
@@ -191,8 +221,10 @@ word/styles.xml
 xMidYMax slice
 zh-CN
 zuständig
+{ "date": "2026-10-24", "outlet": "Restaurant", "net": 3120.50, "gross": 3577.80, "tax": 457.30, "cash": 812.00, "card": 2765.80, "covers": 96 }
 {notes}
 °C</h3><table class="t"><thead><tr><th>
+· Waiting list: scan & we’ll call you.
 · überfällig
 “ eingeben
 📄 PDF

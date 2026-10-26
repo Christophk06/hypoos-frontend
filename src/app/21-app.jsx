@@ -10,6 +10,7 @@ function App(){
   const [hotels,setHotels] = useState(null);
   const [hotel,setHotel] = useState(null);
   const [tab,setTab] = useState("dashboard");
+  const [roomHistory,setRoomHistory] = useState(null);
   useEffect(()=>{ window.__ouvTab = tab; window.scrollTo(0,0); },[tab]);
   const [searchOpen,setSearchOpen] = useState(false);
   useEffect(()=>{ const k = (e) => { if((e.ctrlKey||e.metaKey) && (e.key==="k"||e.key==="K")){ e.preventDefault(); setSearchOpen(true); } }; window.addEventListener("keydown", k); return ()=>window.removeEventListener("keydown", k); },[]); // neue Ansicht beginnt oben; Ansicht merken für Fehlermeldungen
@@ -336,6 +337,7 @@ function App(){
                 catch(e){ setFatalError(e.message); }
               }} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer",color:INK_MUTED}}>Beispiel entfernen</button>}
             {!editingHotel && isAdmin && <button onClick={()=>setEditingHotel(true)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}>Hotel bearbeiten</button>}
+            <DemoTourButton onStart={()=>window.dispatchEvent(new Event("ouverture-demo-tour"))} />
           </div>
         </div>
         <div className="page-content" style={{padding:"22px 28px"}}>
@@ -344,9 +346,11 @@ function App(){
           <ServiceButton api={api} orgId={orgId} hotel={hotel} tab={tab} nav={NAV} onOpen={setTab} />
           <OfflineBadge />
           {window.OUVERTURE_DEMO && <DemoBar role={role} />}
+          {window.OUVERTURE_DEMO && <DemoTour tab={tab} setTab={setTab} role={role} />}
           <HelpTip tab={tab} role={role} hotel={hotel} open={helpOpen} onClose={()=>setHelpOpen(false)} />
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
           {tab!=="billing" && isAdmin && !window.OUVERTURE_DEMO && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
+          {role==="member" && tab==="dashboard" && <TmReferralCard hotel={hotel} api={api} />}
           {role==="member" && tab==="dashboard" && <MemberHome hotel={hotel} api={api} me={me} orgId={orgId} tasks={tasks} myDepts={myDepts} onOpen={setTab} members={members} />}
           {isViewer && <div className="no-print" style={{border:`1px solid ${BRASS}`,background:BRASS_SOFT,borderRadius:8,padding:"9px 14px",marginBottom:16,fontSize:13.5}}>
             <b>Eigentümer-Ansicht:</b> Du siehst den aktuellen Stand, den KI-Lagebericht und den Statusbericht. Ändern können nur Mitglieder des Projektteams.
@@ -357,6 +361,9 @@ function App(){
           {tab==="dashboard" && isAdmin && !window.OUVERTURE_DEMO && <PhaseHint key={hotel.id} hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="dashboard" && isAdmin && !preOpeningOff(hotel) && hotel.setup_completed!==false && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
           {tab==="dashboard" && role!=="member" && preOpeningOff(hotel) && <KpiView hotel={hotel} api={api} />}
+          {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmOnDutyCard hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmProbationDueCard hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="dashboard" && role!=="member" && role!=="viewer" && <CityEventsCard hotel={hotel} api={api} />}
           {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
           {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} lead={role!=="member"} onOpen={isLead ? setTab : ()=>{}} />}
           {tab==="mine" && <MyTasksView orgId={orgId} api={api} hotelId={hotel.id} refresh={()=>loadHotelData(hotel)} />}
@@ -367,6 +374,8 @@ function App(){
           {tab==="budget" && <ConversionNote />}
           {tab==="budget" && <BudgetView items={budget} callHotel={callHotel} callId={callId} refresh={()=>loadHotelData(hotel)} hotel={hotel} />}
           {tab==="time" && <TimeView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="rooms" && <CleaningOrderCard hotel={hotel} api={api} />}
+          {tab==="rooms" && role!=="member" && <ProblemRoomsCard hotel={hotel} api={api} onOpen={setRoomHistory} />}
           {tab==="rooms" && <RoomsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} onReport={(loc)=>{ setTicketPrefill(loc); setTab("tickets"); }} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="tickets" && role==="admin" && <AutomationsCard hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="tickets" && <TicketsView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} prefill={ticketPrefill} onPrefillUsed={()=>setTicketPrefill(null)} />}
@@ -374,6 +383,7 @@ function App(){
           {tab==="logbook" && <LogbookView hotel={hotel} api={api} me={me} members={members} role={role} myDepts={myDepts} />}
           {tab==="checklists" && <ChecklistsView hotel={hotel} api={api} me={me} role={role} myDepts={myDepts} members={members} />}
           {tab==="trainings" && <TrainingsView orgId={orgId} api={api} me={me} members={members} role={role} myDepts={myDepts} hotel={hotel} />}
+          {tab==="lostfound" && isAdmin && <GsLostFoundShippingSettings hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="lostfound" && <LostFoundView hotel={hotel} api={api} me={me} members={members} role={role} />}
           {tab==="stock" && <StockView hotel={hotel} api={api} me={me} role={role} myDepts={myDepts} />}
           {tab==="kpis" && <KpiView hotel={hotel} api={api} />}
@@ -390,8 +400,22 @@ function App(){
           {tab==="sustainability" && <SustainabilityView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="network" && <NetworkView hotel={hotel} api={api} me={me} myDepts={myDepts} />}
           {tab==="apprentices" && <ApprenticesView orgId={orgId} api={api} members={members} me={me} />}
+          {tab==="equipment" && <OpEquipmentView hotel={hotel} api={api} />}
+          {tab==="quotes" && <OpQuotesView hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="payables" && <OpPayablesView hotel={hotel} api={api} />}
+          {tab==="waitlist" && <OpWaitlistView hotel={hotel} api={api} />}
+          {tab==="accessibility" && <OpAccessibilityView hotel={hotel} api={api} />}
+          {tab==="cityevents" && <OpCityEventsView hotel={hotel} api={api} />}
+          {tab==="recruiting" && <TmRecruitingView hotel={hotel} api={api} members={members} me={me} orgId={orgId} />}
+          {tab==="probation" && <TmProbationView hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="firstaid" && <TmFirstAidView hotel={hotel} api={api} members={members} me={me} orgId={orgId} />}
+          {tab==="queue" && <GsQueueView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="pos" && <GsPosView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="staffdocs" && canManageDept("Personal") && <TmReferenceLetterCard hotel={hotel} api={api} members={members} />}
+          {roomHistory && <RoomHistoryView room={roomHistory} api={api} hotel={hotel} onClose={()=>setRoomHistory(null)} />}
           {tab==="assets" && <AssetsView hotel={hotel} api={api} />}
           {tab==="academy" && <AcademyView hotel={hotel} api={api} me={me} members={members} />}
+          {tab==="academy" && <TmRoleplayView hotel={hotel} api={api} me={me} members={members} />}
           {tab==="patrols" && <PatrolsView hotel={hotel} api={api} />}
           {tab==="instructions" && <InstructionsView hotel={hotel} api={api} />}
           {tab==="sick" && <SickNotesView hotel={hotel} api={api} members={members} />}
@@ -409,7 +433,10 @@ function App(){
           {tab==="tourismtax" && <TourismTaxView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="frontdesk" && <GuestOrdersCard hotel={hotel} api={api} />}
           {tab==="frontdesk" && <FrontDeskView hotel={hotel} api={api} onOpen={setTab} />}
-          {tab==="arrivals" && <ArrivalsView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="arrivals" && <GsRegistrationCard hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="arrivals" && <GsOccasionMailCard hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="arrivals" && <GsFloorPlanCard hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
+          {tab==="arrivals" && <ArrivalsView hotels={hotels} hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="reviews" && (role==="admin" || canManageDept("Rezeption & Empfang")) && <GoogleReviewsSync hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} onDone={()=>{}} />}
           {tab==="reviews" && <ReviewsView hotel={hotel} api={api} role={role} />}
           {tab==="energy" && <EnergyView hotel={hotel} api={api} role={role} />}

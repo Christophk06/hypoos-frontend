@@ -158,6 +158,14 @@ async function freshToken(token){
 // Offline: zuletzt geladene Listen zeigen und bestimmte Einträge (Meldung, Messwert, Checkliste, Übergabe, Fundsache) später senden
 const OFFLINE_QUEUE_KEY = "hpoos_offline_queue";
 // Offline lesbar: auch Arbeitsanweisungen, Kurse, Gerätebuch, Kontrollpunkte und Gäste-Infos (Keller, Skiraum, Funkloch)
+// Hochgeladene Dateien nur als PDF oder Bild anzeigen; jeder andere Typ (z. B. HTML) wird nie im Browser ausgeführt
+const SAFE_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+async function safeFileBlob(dataUrl){
+  const m = /^data:([a-z0-9.+\/-]+)[;,]/i.exec(String(dataUrl||""));
+  const type = m && SAFE_FILE_TYPES.includes(m[1].toLowerCase()) ? m[1].toLowerCase() : "application/octet-stream";
+  const raw = await (await fetch(dataUrl)).blob();
+  return new Blob([raw], {type});
+}
 const OFFLINE_CACHE = /^\/api\/(hotels\/[^/]+\/(tickets|checklists|temp-points|temp-readings|logbook|rooms|lost-found|briefing|shifts|stock|work-instructions|courses|assets|patrol-points|calendar-notes|day-info|laundry|laundry-items|minibar-items|minibar-charges|inventory|maintenance-calendar|keys|key-loans)|patrol\/[^/]+|me|organizations\/[^/]+\/(my-shifts|my-tasks))(\?|$)/;
 const OFFLINE_SEND = [[/^\/api\/temp-points\/[^/]+\/readings$/, "POST"], [/^\/api\/checklists\/[^/]+\/run$/, "PUT"], [/^\/api\/hotels\/[^/]+\/tickets$/, "POST"], [/^\/api\/hotels\/[^/]+\/logbook$/, "POST"], [/^\/api\/hotels\/[^/]+\/lost-found$/, "POST"],
   [/^\/api\/patrol\/[^/]+\/scan$/, "POST"], [/^\/api\/hotels\/[^/]+\/sick-notes$/, "POST"], [/^\/api\/hotels\/[^/]+\/cash$/, "POST"],

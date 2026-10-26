@@ -134,6 +134,7 @@ function LostFoundView({hotel, api, me, members, role}){
           {(x.guest_name || x.guest_contact) && <div style={{fontSize:12.5,color:INK_SOFT,marginTop:2}}>{tf("Gast")}: <span data-no-i18n="">{[x.guest_name, x.guest_contact].filter(Boolean).join(" · ")}</span>{x.notified_at ? " · ✉ "+tf("benachrichtigt am {0}", fmtDate(x.notified_at)) : ""}</div>}
           {x.storage && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{tf("Aufbewahrt in")}: <span data-no-i18n="">{x.storage}</span></div>}
           {x.returned_to && <div style={{fontSize:12.5,color:GOOD,marginTop:2}}>{tf("Zurückgegeben an")}: <span data-no-i18n="">{x.returned_to}</span></div>}
+          {role!=="viewer" && <LostFoundShippingPanel item={x} api={api} hotel={hotel} onChange={load} />}
           {x.has_photo && <button style={{...linkBtn,paddingInlineStart:0}} onClick={async()=>{ if(photos[x.id]) return setPhotos(p=>({...p,[x.id]:null})); const r = await api("/api/lost-found/"+x.id+"/photo"); setPhotos(p=>({...p,[x.id]:r.photo_data})); }}><Icon n="camera" /> {photos[x.id] ? tf("Foto ausblenden") : tf("Foto ansehen")}</button>}
           {photos[x.id] && <img src={photos[x.id]} alt="" style={{display:"block",maxWidth:"100%",maxHeight:300,borderRadius:8,marginTop:6}} />}
           {role!=="viewer" && x.status==="Aufbewahrt" && <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>

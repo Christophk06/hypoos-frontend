@@ -370,6 +370,312 @@
     { id: "al-1", apprentice_id: "ap-1", week_start: mondayOf(add(todayIso, -7)), text: "Diese Woche Etage 2 gereinigt, Wäsche gezählt und das Minibar-Auffüllen gelernt.", trainer_feedback: "Gut gemacht, bitte noch auf die Reihenfolge beim Bettenmachen achten.", created_at: nowIso(24 * 6) },
     { id: "al-2", apprentice_id: "ap-1", week_start: mondayOf(add(todayIso, -14)), text: "Einschulung Reinigungswagen und Chemikalien (Sicherheitsdatenblätter).", trainer_feedback: null, created_at: nowIso(24 * 13) }];
 
+  /* ===== Paket 040: Eröffnung & Einkauf, Team & Sicherheit, Gäste/Zimmer/Kasse (Beispieldaten, nur im Speicher) ===== */
+  var HID = D.hotel.id, ORG = "demo-org";
+  function dAt(n) { return add(todayIso, n); }
+  function slugKey(s) { return String(s).toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 36) || "a"; }
+  function cmpNum(a, c) { return String(a).localeCompare(String(c), "de", { numeric: true }); }
+  var TINY_PDF = "data:application/pdf;base64," + btoa("%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 120]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length 68>>stream\nBT /F1 14 Tf 20 60 Td (Beispiel-Beleg aus der Live-Demo) Tj ET\nendstream endobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R/Size 6>>\n%%EOF");
+
+  // --- Hotel-Felder
+  var WL_TOKEN = "DEMOwartelisteAlpenblick01";
+  D.hotel.waitlist = { enabled: true, token: WL_TOKEN, headline: "Alpenblick eröffnet im Herbst – seien Sie als Erste dabei",
+    text: "Tragen Sie sich ein und erfahren Sie als Erste, wann die Buchung startet. Wir melden uns einmal zur Eröffnung, mehr nicht.",
+    offer: "Frühbucher-Angebot: 3 Nächte zum Preis von 2 in den ersten zwei Wochen nach der Eröffnung." };
+  D.hotel.accessibility_info = { areas: {
+    entrance: { step_free: true, automatic_door: true, note: "" }, parking: { accessible_spaces: true, near_entrance: false, note: "2 Plätze in der Tiefgarage, mit Aufzug zur Rezeption." },
+    elevator: { available: true, wheelchair_size: true, note: "" }, restaurant: { step_free: true, accessible_table: false, note: "" },
+    spa: { step_free: true, pool_lift: false, note: "" }, toilets: { accessible_public: true, note: "" } }, note: "Ein Rollstuhl steht an der Rezeption zum Verleih bereit.", saved: true };
+  D.hotel.referral_settings = { bonus: 300, after_weeks: 4, note: "Die Prämie wird mit dem Gehalt nach der Probezeit ausbezahlt." };
+  D.hotel.safety_settings = { min_first_aid: 2, min_fire: 1 };
+  D.hotel.registration_settings = { enabled: true, require_id: false };
+  D.hotel.queue_settings = { enabled: true, areas: ["Restaurant", "Spa", "Bar"], token: "DEMOwarteschlangeAlpenblick" };
+  D.hotel.occasion_mail = { enabled: true, anniversary: true, birthday: true, offer: "10 % auf Ihre nächste Direktbuchung mit dem Code WIEDERSEHEN." };
+  D.hotel.lost_found_shipping = { enabled: true, fee: 12.9, payment_link: "https://example.com/zahlung-beispiel", note: "Versand per Post innerhalb Europas, Fundsachen bewahren wir 3 Monate auf." };
+  D.hotel.pos_settings = { enabled: true, token_hash: "demo-beispiel-pruefsumme", token_created_at: nowIso(24 * 9) };
+  D.hotel.floor_settings = { kwh_per_floor_day: 180, price_kwh: 0.24 };
+
+  // --- Zimmer: Barrierefreiheit (einige Zimmer ausgestattet)
+  var ACC_FLAGS = ["step_free", "wide_door", "roll_in_shower", "grab_bars", "lowered_bed", "hearing_loop", "visual_alarm"];
+  function cleanRoomAccess(a) { var o = a && typeof a === "object" ? a : {}, out = {}; ACC_FLAGS.forEach(function (k) { out[k] = o[k] === true; }); out.note = String(o.note || "").trim().slice(0, 300); return out; }
+  D.rooms.forEach(function (r) { r.accessibility = cleanRoomAccess(null); });
+  [["101", ["step_free", "wide_door", "roll_in_shower", "grab_bars"], "Nahe am Aufzug."], ["102", ["step_free", "wide_door", "roll_in_shower", "grab_bars", "lowered_bed"], ""],
+    ["103", ["step_free", "wide_door", "grab_bars"], ""], ["201", ["step_free", "wide_door", "roll_in_shower", "grab_bars"], ""], ["202", ["hearing_loop", "visual_alarm"], "Für Gäste mit Hörbehinderung."]].forEach(function (x) {
+    var rr = D.rooms.find(function (r) { return r.number === x[0]; }); if (!rr) return; x[1].forEach(function (k) { rr.accessibility[k] = true; }); rr.accessibility.note = x[2]; });
+  function accAreas(info) {
+    var def = { entrance: ["step_free", "automatic_door"], parking: ["accessible_spaces", "near_entrance"], elevator: ["available", "wheelchair_size"], restaurant: ["step_free", "accessible_table"], spa: ["step_free", "pool_lift"], toilets: ["accessible_public"] };
+    var src = info && info.areas && typeof info.areas === "object" ? info.areas : {}, areas = {};
+    Object.keys(def).forEach(function (a) { var x = src[a] && typeof src[a] === "object" ? src[a] : {}; areas[a] = {}; def[a].forEach(function (f) { areas[a][f] = x[f] === true; }); areas[a].note = String(x.note || "").trim().slice(0, 200); });
+    return { areas: areas, note: String((info && info.note) || "").trim().slice(0, 1000), saved: !!(info && (info.saved === true || info.areas)) };
+  }
+  var ACC_TXT = {
+    rooms: { de: { step_free: "stufenlos erreichbar", wide_door: "mit breiter Tür (mind. 90 cm)", roll_in_shower: "mit bodengleicher Dusche", grab_bars: "mit Haltegriffen im Bad", lowered_bed: "mit unterfahrbarem bzw. niedrigerem Bett", hearing_loop: "mit Höranlage (Induktion)", visual_alarm: "mit optischem Alarm" },
+      en: { step_free: "with step-free access", wide_door: "with a wide door (at least 90 cm)", roll_in_shower: "with a roll-in shower", grab_bars: "with grab bars in the bathroom", lowered_bed: "with an accessible or lower bed", hearing_loop: "with a hearing loop", visual_alarm: "with a visual alarm" } },
+    areas: { de: { "entrance.step_free": "Der Eingang ist stufenlos.", "entrance.automatic_door": "Die Eingangstür öffnet automatisch.", "parking.accessible_spaces": "Es gibt Behindertenparkplätze.", "parking.near_entrance": "Parkplätze liegen nahe am Eingang.", "elevator.available": "Ein Aufzug ist vorhanden.", "elevator.wheelchair_size": "Der Aufzug ist rollstuhlgerecht.", "restaurant.step_free": "Das Restaurant ist stufenlos erreichbar.", "restaurant.accessible_table": "Im Restaurant gibt es unterfahrbare Tische.", "spa.step_free": "Der Wellnessbereich ist stufenlos erreichbar.", "spa.pool_lift": "Am Pool gibt es einen Lift.", "toilets.accessible_public": "Es gibt eine öffentliche barrierefreie Toilette." },
+      en: { "entrance.step_free": "The entrance is step-free.", "entrance.automatic_door": "The entrance door opens automatically.", "parking.accessible_spaces": "Accessible parking spaces are available.", "parking.near_entrance": "Parking is close to the entrance.", "elevator.available": "There is a lift.", "elevator.wheelchair_size": "The lift is wheelchair-accessible.", "restaurant.step_free": "The restaurant has step-free access.", "restaurant.accessible_table": "The restaurant has wheelchair-accessible tables.", "spa.step_free": "The spa has step-free access.", "spa.pool_lift": "There is a pool lift.", "toilets.accessible_public": "There is an accessible public toilet." } },
+    ask: { de: "Bitte sprechen Sie uns vor der Buchung an – wir beschreiben Ihnen gern Maße und Wege genau.", en: "Please contact us before booking – we are happy to describe dimensions and routes in detail." },
+    title: { de: "Barrierefreiheit", en: "Accessibility" }, none: { de: "Wir haben noch keine Zimmer mit besonderer Ausstattung für Gäste mit Behinderung.", en: "We do not yet have rooms with special equipment for guests with disabilities." } };
+  function accPublic() {
+    var info = accAreas(D.hotel.accessibility_info), counts = {}, text = {};
+    ACC_FLAGS.forEach(function (k) { counts[k] = D.rooms.filter(function (r) { return r.accessibility && r.accessibility[k]; }).length; });
+    ["de", "en"].forEach(function (l) {
+      var rl = ACC_FLAGS.filter(function (k) { return counts[k] > 0; }).map(function (k) { return l === "de" ? counts[k] + " Zimmer " + ACC_TXT.rooms.de[k] : counts[k] + (counts[k] > 1 ? " rooms " : " room ") + ACC_TXT.rooms.en[k]; });
+      var lines = [rl.length ? rl.join(", ") + "." : ACC_TXT.none[l]];
+      Object.keys(info.areas).forEach(function (a) { Object.keys(info.areas[a]).forEach(function (f) { if (f !== "note" && info.areas[a][f]) lines.push(ACC_TXT.areas[l][a + "." + f]); }); });
+      if (info.note) lines.push(info.note); lines.push(ACC_TXT.ask[l]);
+      text[l] = ACC_TXT.title[l] + " – " + D.hotel.name + "\n" + lines.join("\n"); });
+    return { rooms: counts, areas: info.areas, note: info.note, text: text };
+  }
+
+  // --- 1. Erstausstattung: 2 Zimmertypen, Etagen 1-3 vollständig montiert (= 60 %), Etage 4 geliefert, Etage 5 teilweise
+  var EQ_STD = [["Föhn", 1], ["Bademantel", 2], ["Kleiderbügel", 8], ["TV-Fernbedienung", 1], ["Wasserkocher", 1], ["Zimmersafe", 1]];
+  var EQ_SUITE = EQ_STD.map(function (x) { return x[0] === "Bademantel" ? [x[0], 4] : x[0] === "Kleiderbügel" ? [x[0], 12] : x; }).concat([["Kaffeemaschine", 1], ["Minibar-Kühlschrank", 1]]);
+  function eqItems(list) { return list.map(function (x) { return { key: slugKey(x[0]), name: x[0], qty: x[1] }; }); }
+  var EQ_TPL = [{ id: "eqt-1", hotel_id: HID, room_type: "Standard", items: eqItems(EQ_STD), updated_at: nowIso(24 * 8) }, { id: "eqt-2", hotel_id: HID, room_type: "Suite", items: eqItems(EQ_SUITE), updated_at: nowIso(24 * 8) }];
+  function eqType(r) { return r.room_type || "Standard"; }
+  function eqNeed(r) {
+    var all = EQ_TPL.find(function (t) { return t.room_type === ""; }), own = EQ_TPL.find(function (t) { return t.room_type === eqType(r); }), mp = {}, out = [];
+    (all ? all.items : []).concat(own ? own.items : []).forEach(function (it) { if (!(it.key in mp)) out.push(it.key); mp[it.key] = it; });
+    return out.map(function (k) { return mp[k]; });
+  }
+  var EQ = {}, EQ_INSP = {};
+  D.rooms.forEach(function (r) {
+    var f = Number(r.floor) || 0, st = { room_id: r.id, hotel_id: HID, delivered: {}, installed: {}, note: null, updated_at: nowIso(24 * (7 - f)), updated_by: "u-hkm" };
+    eqNeed(r).forEach(function (it, i) {
+      var del = f <= 3 ? it.qty : f === 4 ? (i === 5 ? 0 : it.qty) : (i % 2 ? 0 : Math.ceil(it.qty / 2));
+      if (del > 0) st.delivered[it.key] = del; if (f <= 3) st.installed[it.key] = true; });
+    if (r.number === "214") st.note = "Safe-Code von Technik gesetzt.";
+    EQ[r.id] = st;
+    var n = Number(r.number);
+    if (f <= 2) EQ_INSP[r.id] = { passed: true, created_at: nowIso(24 * 4) };
+    else if (f === 3 && n <= 314) EQ_INSP[r.id] = { passed: true, created_at: nowIso(24 * 2) };
+    else if (f === 3 && n >= 327) EQ_INSP[r.id] = { passed: false, created_at: nowIso(24) };
+  });
+  function lastInsp(roomId) {
+    var a = D.room_insp.find(function (x) { return x.room_id === roomId; }), b = EQ_INSP[roomId];
+    if (a && (!b || a.created_at >= b.created_at)) return { passed: a.passed, created_at: a.created_at };
+    return b || null;
+  }
+  function eqView() {
+    var arts = {}, floors = {}, need = 0, deliv = 0, inst = 0, ready = 0;
+    var rooms = D.rooms.slice().sort(function (a, c) { return cmpNum(a.number, c.number); }).map(function (room) {
+      var items = eqNeed(room), st = EQ[room.id] || {}, dv = st.delivered || {}, ins = st.installed || {}, rn = 0, rd = 0, ri = 0;
+      var lines = items.map(function (it) {
+        var d = Math.min(it.qty, Math.max(0, Math.round(Number(dv[it.key]) || 0))), mo = ins[it.key] === true ? it.qty : 0;
+        rn += it.qty; rd += d; ri += mo;
+        var a = arts[it.key] || (arts[it.key] = { key: it.key, name: it.name, need: 0, delivered: 0, installed: 0 }); a.need += it.qty; a.delivered += d; a.installed += mo;
+        return { key: it.key, name: it.name, qty: it.qty, delivered: d, installed: mo > 0 }; });
+      var last = lastInsp(room.id), complete = ri >= rn, isReady = complete && !!(last && last.passed);
+      need += rn; deliv += rd; inst += ri; if (isReady) ready++;
+      var fk = room.floor || "", fl = floors[fk] || (floors[fk] = { floor: fk, rooms: 0, need: 0, delivered: 0, installed: 0, ready: 0 });
+      fl.rooms++; fl.need += rn; fl.delivered += rd; fl.installed += ri; if (isReady) fl.ready++;
+      return { id: room.id, number: room.number, floor: room.floor, room_type: eqType(room), items: lines, note: st.note || null, updated_at: st.updated_at || null,
+        need: rn, delivered: rd, installed: ri, complete: complete, inspection: last ? { passed: last.passed, at: last.created_at } : null, ready: isReady };
+    });
+    return { rooms: rooms, templates: EQ_TPL.slice(), summary: { rooms: rooms.length, ready: ready, need: need, delivered: deliv, installed: inst,
+      floors: Object.keys(floors).map(function (k) { return floors[k]; }).sort(function (a, c) { return cmpNum(a.floor, c.floor); }),
+      articles: Object.keys(arts).map(function (k) { var a = arts[k]; return Object.assign({}, a, { missing: a.need - a.delivered }); }).sort(function (a, c) { return a.name.localeCompare(c.name, "de"); }) } };
+  }
+  function cleanEqItems(raw) {
+    var used = {}; return (Array.isArray(raw) ? raw : []).slice(0, 80).map(function (x) {
+      var name = String((x && x.name) || "").trim().slice(0, 120); if (!name) return null;
+      var key = slugKey(name), base = key, n = 2; while (used[key]) key = base.slice(0, 36) + "-" + n++; used[key] = 1;
+      var qty = Math.round(Number(x.qty)); return { key: key, name: name, qty: qty >= 1 && qty <= 999 ? qty : 1 }; }).filter(Boolean);
+  }
+
+  // --- 2. Angebotsvergleich
+  var QR = [
+    { id: "qr-1", hotel_id: HID, title: "Matratzen und Lattenroste für 140 Zimmer", department: "Einkauf", budget_item_id: (D.budget[0] || {}).id || null, status: "offen", decided_quote_id: null, decision_reason: null, decided_by: null, decided_at: null, created_at: nowIso(24 * 6) },
+    { id: "qr-2", hotel_id: HID, title: "Scheuersaugmaschine für das Housekeeping", department: "Housekeeping", budget_item_id: null, status: "entschieden", decided_quote_id: "qt-4", decision_reason: "Günstigster Preis bei kürzester Lieferzeit, Service vor Ort in Innsbruck.", decided_by: "u-admin", decided_at: nowIso(24 * 3), created_at: nowIso(24 * 12) }];
+  var QT = [
+    { id: "qt-1", request_id: "qr-1", supplier_id: null, supplier_name: "Schlafwelt Tirol", amount: 86400, currency: "EUR", delivery_days: 35, valid_until: dAt(20), note: "Inklusive Lieferung und Montage, 10 Jahre Garantie.", created_at: nowIso(24 * 5), has_file: true },
+    { id: "qt-2", request_id: "qr-1", supplier_id: null, supplier_name: "Möbel Moser", amount: 79800, currency: "EUR", delivery_days: 49, valid_until: dAt(12), note: "Ohne Montage; Lieferzeit abhängig vom Werk.", created_at: nowIso(24 * 4), has_file: false },
+    { id: "qt-3", request_id: "qr-1", supplier_id: null, supplier_name: "Hotelbetten Austria", amount: 92150, currency: "EUR", delivery_days: 21, valid_until: dAt(30), note: "Premium-Kaltschaum, Rücknahme der Altmatratzen inklusive.", created_at: nowIso(24 * 3), has_file: false },
+    { id: "qt-4", request_id: "qr-2", supplier_id: null, supplier_name: "Reinigungstechnik Pichler", amount: 6480, currency: "EUR", delivery_days: 14, valid_until: dAt(-5), note: "", created_at: nowIso(24 * 10), has_file: false },
+    { id: "qt-5", request_id: "qr-2", supplier_id: null, supplier_name: "Gastro Service Wagner", amount: 7120, currency: "EUR", delivery_days: 28, valid_until: dAt(-5), note: "", created_at: nowIso(24 * 10), has_file: false }];
+  function quoteOut(x) { return Object.assign({}, x); }
+
+  // --- 3. Eingangsrechnungen (eine mit Skonto bis morgen)
+  var INV = [
+    { id: "si-1", hotel_id: HID, supplier_id: "sp-1", supplier_name: "Textil Moser", invoice_number: "RE-2026-0412", amount: 4280, currency: "EUR", invoice_date: dAt(-12), due_on: dAt(18), skonto_percent: 2, skonto_until: dAt(1), paid_at: null, paid_by: null, budget_item_id: null, note: "Bettwäsche und Frottee, 2 % Skonto bei Zahlung bis morgen.", created_at: nowIso(24 * 11), has_file: true },
+    { id: "si-2", hotel_id: HID, supplier_id: "sp-2", supplier_name: "GastroGroß", invoice_number: "2026-88213", amount: 8915.6, currency: "EUR", invoice_date: dAt(-33), due_on: dAt(-3), skonto_percent: null, skonto_until: null, paid_at: null, paid_by: null, budget_item_id: null, note: "Geschirr und Besteck Restaurant.", created_at: nowIso(24 * 30), has_file: false },
+    { id: "si-3", hotel_id: HID, supplier_id: null, supplier_name: "Elektro Huber", invoice_number: "E-1187", amount: 2340, currency: "EUR", invoice_date: dAt(-14), due_on: dAt(9), skonto_percent: 2, skonto_until: dAt(-2), paid_at: null, paid_by: null, budget_item_id: null, note: "Leuchten Flur 3. Etage; Skonto verpasst.", created_at: nowIso(24 * 13), has_file: false },
+    { id: "si-4", hotel_id: HID, supplier_id: null, supplier_name: "Sanitär Wagner", invoice_number: "SW-2026-203", amount: 1560, currency: "EUR", invoice_date: dAt(-25), due_on: dAt(-5), skonto_percent: null, skonto_until: null, paid_at: nowIso(24 * 6), paid_by: "u-admin", budget_item_id: null, note: "", created_at: nowIso(24 * 24), has_file: false }];
+
+  // --- 4. Warteliste (23 Einträge)
+  var WL_NAMES = ["Anna Hofer", "Thomas Gruber", "Familie Steiner", "Elena Rossi", "Martin Bauer", "Julia Winkler", "Peter Mayr", "Sophie Martin", "Lukas Brandstätter", "Claudia Pichler", "Henrik Larsen", "Mia Schneider",
+    "Robert Fuchs", "Sarah Collins", "Katrin Egger", "Daniel Wolf", "Ines Moser", "Paul Leitner", "Nora Hartmann", "Felix Kaiser", "Laura Berger", "Markus Huber", "Eva Lindner"];
+  var WL_LANG = ["de", "de", "de", "it", "de", "de", "de", "fr", "de", "de", "en", "de", "de", "en", "de", "de", "de", "de", "de", "de", "de", "de", "de"];
+  var WL_SIGNUPS = WL_NAMES.map(function (nm, i) {
+    var created = nowIso(24 * (30 - i) + (i * 5) % 11), conf = i % 8 !== 5;
+    return { id: "wl-" + i, email: slugKey(nm).replace(/-/g, ".") + "@example.com", name: nm, language: WL_LANG[i], created_at: created,
+      confirmed_at: conf ? created : null, notified_at: null, unsubscribed_at: i === 3 || i === 17 ? nowIso(24 * 4) : null };
+  }).reverse();
+  function waitlistUrl() { try { return new URL("warteliste.html?w=" + encodeURIComponent(D.hotel.waitlist.token), location.href).href; } catch (e) { return "warteliste.html?w=" + D.hotel.waitlist.token; } }
+  function waitlistSettings() { var w = D.hotel.waitlist; return { enabled: !!w.enabled, headline: w.headline || "", text: w.text || "", offer: w.offer || "" }; }
+
+  // --- 6. Ereignisse in der Stadt
+  var CITY_EV = [
+    { id: "ce-1", hotel_id: HID, title: "Innsbrucker Herbstmesse", start_date: dAt(6), end_date: dAt(9), impact: "hoch", note: "Hotels in der Stadt meist ausgebucht, Preise anheben.", created_at: nowIso(100) },
+    { id: "ce-2", hotel_id: HID, title: "Konzert in der Olympiahalle", start_date: dAt(13), end_date: null, impact: "mittel", note: "Späte Anreisen, Frühstück verlängern.", created_at: nowIso(90) },
+    { id: "ce-3", hotel_id: HID, title: "Christkindlmarkt Eröffnung", start_date: dAt(24), end_date: dAt(30), impact: "hoch", note: "", created_at: nowIso(80) },
+    { id: "ce-4", hotel_id: HID, title: "Baustelle Maria-Theresien-Straße", start_date: dAt(3), end_date: dAt(16), impact: "niedrig", note: "Anfahrt über die Museumstraße empfehlen.", created_at: nowIso(70) }];
+
+  // --- Team: Stellenanzeigen, Bewerbungen, Probezeit, Qualifikationen
+  var posRez = (D.staff.find(function (s) { return s.department === "Rezeption & Empfang"; }) || D.staff[0] || {}).id;
+  var posHk = (D.staff.find(function (s) { return s.department === "Housekeeping"; }) || D.staff[0] || {}).id;
+  var JOBS = [
+    { id: "jp-1", hotel_id: HID, organization_id: ORG, title: "Rezeptionist:in", department: "Rezeption & Empfang", employment: "Vollzeit", start_date: D.hotel.opening_date, salary_note: "Kollektivvertragliches Mindestentgelt ab 2.450 € brutto monatlich, Überzahlung je nach Erfahrung möglich.", status: "Veröffentlicht", public_token: "DEMOjobRezeptionAlpenblick1",
+      description: "Du bist die erste Ansprechperson unserer Gäste: Check-in und Check-out, Reservierungen, Auskünfte und kleine Wünsche.\n\nDas bringst du mit:\n- Freude am Umgang mit Menschen\n- Gute Deutsch- und Englischkenntnisse\n- Erfahrung mit einem Hotel-PMS ist von Vorteil\n\nDas bieten wir:\n- Ein neues Haus und ein junges Team\n- Geregelte Dienstpläne mit zwei freien Tagen pro Woche\n- Mitarbeiterverpflegung und Einschulung", created_at: nowIso(24 * 20) },
+    { id: "jp-2", hotel_id: HID, organization_id: ORG, title: "Zimmerreinigung (Saison)", department: "Housekeeping", employment: "Saison", start_date: D.hotel.opening_date, salary_note: "Ab 2.150 € brutto monatlich laut Kollektivvertrag.", status: "Veröffentlicht", public_token: "DEMOjobHousekeepingAlpenbl2",
+      description: "Du sorgst dafür, dass sich unsere Gäste vom ersten Moment an wohlfühlen: Zimmer reinigen, Betten machen, Wäsche versorgen.\n\nWir freuen uns über Erfahrung, sind aber auch offen für Quereinsteiger:innen. Einschulung am Haus.", created_at: nowIso(24 * 18) }];
+  var CVDATA = TINY_PDF;
+  var APPS = [
+    { id: "ap-1", hotel_id: HID, position_id: posRez, posting_id: "jp-1", name: "Katharina Gruber", email: "k.gruber@example.com", phone: null, stage: "Eingegangen", note: "Drei Jahre Rezeption im Stadthotel, sucht Veränderung.", source: "Website", interview_at: null, referred_by: null, referral_bonus: null, referral_paid_at: null, consent_at: nowIso(30), created_at: nowIso(30), updated_at: nowIso(30), cv: true },
+    { id: "ap-2", hotel_id: HID, position_id: posRez, posting_id: "jp-1", name: "Luka Horvat", email: "luka.horvat@example.com", phone: "+43 660 555 0142", stage: "Gespräch", note: "Spricht fünf Sprachen.", source: "Website", interview_at: null, referred_by: null, referral_bonus: null, referral_paid_at: null, consent_at: nowIso(100), created_at: nowIso(100), updated_at: nowIso(60), cv: true },
+    { id: "ap-3", hotel_id: HID, position_id: posHk, posting_id: "jp-2", name: "Sofia Marin", email: null, phone: "+43 664 555 0177", stage: "Eingegangen", note: "", source: "Empfehlung", interview_at: null, referred_by: "u-member", referral_bonus: null, referral_paid_at: null, consent_at: null, created_at: nowIso(48), updated_at: nowIso(48), cv: false },
+    { id: "ap-4", hotel_id: HID, position_id: posHk, posting_id: "jp-2", name: "Jonas Berger", email: "jonas.berger@example.com", phone: null, stage: "Angebot", note: "Kann ab dem ersten Tag starten.", source: "Website", interview_at: null, referred_by: null, referral_bonus: null, referral_paid_at: null, consent_at: nowIso(200), created_at: nowIso(200), updated_at: nowIso(24), cv: false },
+    { id: "ap-5", hotel_id: HID, position_id: posHk, posting_id: "jp-2", name: "Aylin Demir", email: "aylin.demir@example.com", phone: null, stage: "Zusage", note: "Zusage mündlich erteilt.", source: "Empfehlung", interview_at: null, referred_by: "u-ewa", referral_bonus: 300, referral_paid_at: null, consent_at: null, created_at: nowIso(24 * 25), updated_at: nowIso(24 * 21), cv: false }];
+  APPS[1].interview_at = new Date(now.getTime() + 20 * 3600000).toISOString();
+  function appOut(a) { var o = {}; Object.keys(a).forEach(function (k) { if (k !== "cv") o[k] = a[k]; }); o.has_cv = !!a.cv; return o; }
+  function hrNow() { return ROLE === "admin" || (ROLE === "manager" && MYDEPTS.indexOf("Personal") >= 0); }
+
+  var PROB = [
+    { id: "pr-1", hotel_id: HID, organization_id: ORG, user_id: "u-ewa", week: 1, due_on: dAt(-22), done_at: nowIso(24 * 22), done_by: "u-hkm", rating: "gut", notes: "Findet sich schnell zurecht, gutes Verhältnis im Team." },
+    { id: "pr-2", hotel_id: HID, organization_id: ORG, user_id: "u-ewa", week: 2, due_on: dAt(-15), done_at: nowIso(24 * 15), done_by: "u-hkm", rating: "gut", notes: "Etagenwagen sicher im Griff. Wunsch: mehr Einschulung zur Wäscheausgabe." },
+    { id: "pr-3", hotel_id: HID, organization_id: ORG, user_id: "u-ewa", week: 4, due_on: dAt(-1), done_at: null, done_by: null, rating: null, notes: null },
+    { id: "pr-4", hotel_id: HID, organization_id: ORG, user_id: "u-it", week: 1, due_on: dAt(-7), done_at: nowIso(24 * 7), done_by: "u-admin", rating: "in Ordnung", notes: "Technisch stark, Abstimmung mit der Rezeption noch holprig." },
+    { id: "pr-5", hotel_id: HID, organization_id: ORG, user_id: "u-it", week: 2, due_on: dAt(0), done_at: null, done_by: null, rating: null, notes: null },
+    { id: "pr-6", hotel_id: HID, organization_id: ORG, user_id: "u-it", week: 4, due_on: dAt(14), done_at: null, done_by: null, rating: null, notes: null }];
+  var QUALS = [
+    { id: "ql-1", organization_id: ORG, user_id: "u-fo", kind: "Erste Hilfe", valid_until: dAt(300), note: "Kurs Rotes Kreuz, 16 Stunden" },
+    { id: "ql-2", organization_id: ORG, user_id: "u-hkm", kind: "Erste Hilfe", valid_until: dAt(25), note: "" },
+    { id: "ql-3", organization_id: ORG, user_id: "u-hkm", kind: "Brandschutz", valid_until: dAt(400), note: "Brandschutzbeauftragte Etage 1-3" },
+    { id: "ql-4", organization_id: ORG, user_id: "u-fb", kind: "Erste Hilfe", valid_until: dAt(-10), note: "Auffrischung nötig" },
+    { id: "ql-5", organization_id: ORG, user_id: "u-it", kind: "Brandschutz", valid_until: dAt(180), note: "" },
+    { id: "ql-6", organization_id: ORG, user_id: "u-fb", kind: "Hygiene", valid_until: dAt(500), note: "HACCP-Schulung Küche" }];
+  function qualSet(day) { var map = {}; QUALS.forEach(function (q) { if ((q.kind === "Erste Hilfe" || q.kind === "Brandschutz") && (!q.valid_until || q.valid_until >= day)) (map[q.user_id] = map[q.user_id] || {})[q.kind] = true; }); return map; }
+
+  // --- Rollenspiel: feste Beispielverläufe, keine KI
+  var RP_FEEDBACK = { zusammenfassung: "Beispiel-Rückmeldung (fest hinterlegt, keine KI-Auswertung): Du bist freundlich und ruhig geblieben und hast dich für die Unannehmlichkeit entschuldigt. Noch besser wird das Gespräch, wenn du eine konkrete Lösung mit Uhrzeit anbietest.",
+    staerken: ["Freundlicher Einstieg mit Entschuldigung", "Ruhiger Ton, auch als der Gast ungeduldig wurde", "Du hast nachgefragt, was dem Gast am wichtigsten ist"],
+    verbesserungen: ["Eine konkrete Lösung mit Uhrzeit nennen (z. B. „bis 15 Uhr“)", "Den Namen des Gastes öfter verwenden", "Am Ende kurz zusammenfassen, was vereinbart wurde"], punktzahl: 7,
+    musterformulierungen: [{ situation: "Entschuldigung und Lösung", formulierung: "Das tut mir wirklich leid, Frau Berger. Ich kümmere mich sofort darum und gebe Ihnen bis 15 Uhr persönlich Bescheid." }, { situation: "Abschluss", formulierung: "Damit ich sichergehe: Wir tauschen das Zimmer heute Nachmittag, und ich rufe Sie auf Ihrem Zimmer an, sobald es fertig ist." }] };
+  var RP_OPEN = { de: { laerm: "Entschuldigung, ich habe heute Nacht kaum geschlafen. Im Nebenzimmer war bis drei Uhr laute Musik. So geht das nicht.", ueberbuchung: "Guten Abend, ich habe ein bestätigtes Zimmer für drei Nächte – und Sie sagen mir, es ist keines frei?", zimmer: "Hallo, wir sind schon da. Das Zimmer ist doch sicher fertig? Wir kommen direkt vom Flughafen und sind müde.", sonderwunsch: "Wir feiern morgen unseren 25. Hochzeitstag. Können Sie uns ein kleines Abendessen auf dem Zimmer organisieren?", rechnung: "Auf meiner Rechnung stehen Minibar-Artikel, die ich nie angerührt habe, und eine Nacht zu viel.", vip: "Ich komme seit zehn Jahren zu Ihnen, und diesmal bekomme ich ein Zimmer zur Straße? Wo ist mein gewohntes Zimmer?" },
+    en: { laerm: "Excuse me, I hardly slept last night. There was loud music next door until three in the morning. This is not acceptable.", ueberbuchung: "Good evening, I have a confirmed room for three nights – and you tell me there is none available?", zimmer: "Hello, we are here already. The room is surely ready? We came straight from the airport and are tired.", sonderwunsch: "We celebrate our 25th wedding anniversary tomorrow. Could you arrange a small dinner in our room?", rechnung: "My bill shows minibar items I never touched, and one night too many.", vip: "I have been coming here for ten years, and this time I get a room facing the street? Where is my usual room?" } };
+  var RP_NEXT = { de: ["Hm, das klingt schon besser. Und was genau können Sie jetzt konkret für mich tun?", "Okay, das ist ein Anfang. Bis wann ist das erledigt?", "Gut, das beruhigt mich. Danke, dass Sie sich Zeit genommen haben."],
+    en: ["Hm, that sounds better. What exactly can you do for me now?", "Okay, that is a start. By when will it be done?", "Good, that reassures me. Thank you for taking the time."] };
+  function rpLang(l) { return l === "en" ? "en" : "de"; }
+  var RP = [
+    { id: "rp-1", hotel_id: HID, user_id: ME, scenario: "laerm", language: "de", score: 7, finished_at: nowIso(24 * 2), created_at: nowIso(24 * 2 + 1), feedback: RP_FEEDBACK,
+      transcript: [{ role: "guest", text: "(Beispielgast aus der Demo, keine KI) " + RP_OPEN.de.laerm }, { role: "staff", text: "Das tut mir sehr leid, dass Sie so schlecht geschlafen haben. Darf ich fragen, welches Zimmer Sie haben?" }, { role: "guest", text: RP_NEXT.de[0] },
+        { role: "staff", text: "Ich sehe nach, ob wir Sie heute in ein ruhigeres Zimmer auf der anderen Seite des Hauses umquartieren können." }, { role: "guest", text: RP_NEXT.de[1] }, { role: "staff", text: "Ich melde mich bis 15 Uhr bei Ihnen." }, { role: "guest", text: RP_NEXT.de[2] }] },
+    { id: "rp-2", hotel_id: HID, user_id: "u-ewa", scenario: "zimmer", language: "de", score: 8, finished_at: nowIso(24 * 4), created_at: nowIso(24 * 4 + 1), feedback: Object.assign({}, RP_FEEDBACK, { punktzahl: 8 }), transcript: [{ role: "guest", text: "(Beispielgast aus der Demo, keine KI) " + RP_OPEN.de.zimmer }] },
+    { id: "rp-3", hotel_id: HID, user_id: "u-hkm", scenario: "rechnung", language: "de", score: 5, finished_at: nowIso(24 * 6), created_at: nowIso(24 * 6 + 1), feedback: Object.assign({}, RP_FEEDBACK, { punktzahl: 5 }), transcript: [{ role: "guest", text: "(Beispielgast aus der Demo, keine KI) " + RP_OPEN.de.rechnung }] }];
+
+  // --- Gäste: Anreisen heute (für Zimmerverteilung), Meldeschein bei 2 Anreisen
+  [["Familie Berger", "de", "Superior", false, "15:30"], ["Dr. Hannah Weiss", "en", null, true, "13:00"], ["Marco Ricci", "it", "Deluxe", false, "19:45"], ["Yuki Tanaka", "ja", "Superior", false, "21:10"]].forEach(function (g, i) {
+    D.arrivals.push({ id: "ar-t" + i, hotel_id: HID, organization_id: ORG, guest_name: g[0], language: g[1], arrival_date: todayIso, departure_date: add(todayIso, 2 + i), email: null, room_type: g[2], source: "pms", mail_sent_at: null,
+      answered_at: null, eta: g[4], extras: [], guest_note: null, vip: g[3], adults: 2, children: 0, country: ["AT", "GB", "IT", "JP"][i], assigned_room: null, first_impression: {} }); });
+  (function () {
+    var w = D.arrivals[0], c = D.arrivals[1];
+    Object.assign(w, { has_registration: true, birth_date: "1984-03-12", nationality: "DE", street: "Lindenstraße 14", zip: "80331", city: "München", address_country: "DE", id_doc_type: null, id_doc_number: null, registration_at: nowIso(20),
+      companions: [{ name: "Anja Weber", birth_date: "1986-07-02", nationality: "DE" }, { name: "Mia Weber", birth_date: "2015-05-20", nationality: "DE" }, { name: "Ben Weber", birth_date: "2018-01-09", nationality: "DE" }] });
+    Object.assign(c, { has_registration: true, birth_date: "1979-11-30", nationality: "GB", street: "14 Mill Lane", zip: "OX2 6AE", city: "Oxford", address_country: "GB", id_doc_type: "Reisepass", id_doc_number: "5321****", registration_at: nowIso(5), companions: [{ name: "James Collins", birth_date: "1977-02-14", nationality: "GB" }] });
+  })();
+
+  // --- Warteschlange Restaurant/Spa (3 Gäste)
+  var QUEUE = [
+    { id: "gq-1", area: "Restaurant", name: "Familie Hofmann", party_size: 4, note: "Kinderstuhl bitte", status: "wartet", called_at: null, done_at: null, created_at: nowIso(0.5) },
+    { id: "gq-2", area: "Spa", name: "Herr Lindgren", party_size: 2, note: "", status: "wartet", called_at: null, done_at: null, created_at: nowIso(0.3) },
+    { id: "gq-3", area: "Restaurant", name: "Frau Okafor", party_size: 2, note: "Tisch am Fenster", status: "aufgerufen", called_at: nowIso(0.05), done_at: null, created_at: nowIso(0.8) }];
+
+  // --- Fundsachen-Rückversand (eine Anfrage mit Adresse, wartet auf Zahlung)
+  var SHIP = {};
+  if (D.lost_found[0]) SHIP[D.lost_found[0].id] = { ship_status: "angefragt", ship_token: "DEMOfundsacheVersand0001", ship_fee: 12.9, ship_requested_at: nowIso(20), paid_confirmed_at: null, shipped_at: null, tracking: null, guest_name: "Herr Brandt", guest_contact: "brandt@example.com",
+    ship_address: { lang: "de", name: "Stefan Brandt", street: "Hauptstraße 7", zip: "70173", city: "Stuttgart", country: "DE", phone: "+49 711 555 0100" } };
+  function shipOut(x) { var s = SHIP[x.id] || {}; return { id: x.id, hotel_id: HID, organization_id: ORG, description: x.description, found_on: x.found_on, guest_name: s.guest_name || x.guest_name || null, guest_contact: s.guest_contact || x.guest_contact || null, has_photo: !!x.has_photo, status: x.status,
+    ship_status: s.ship_status || null, ship_address: s.ship_address || null, ship_fee: s.ship_fee == null ? null : s.ship_fee, ship_requested_at: s.ship_requested_at || null, paid_confirmed_at: s.paid_confirmed_at || null, shipped_at: s.shipped_at || null, tracking: s.tracking || null,
+    link: s.ship_token ? "fundsache.html?t=" + s.ship_token : null }; }
+
+  // --- Zimmer-Lebenslauf und Problemzimmer: ältere, erledigte Meldungen und Abnahmen (nur für diese Auswertung)
+  function hoursAgoIso(h) { return new Date(now.getTime() - h * 3600000).toISOString(); }
+  var HIST_T = [["214", "Klimagerät tropft", 24 * 21, "Normal"], ["214", "TV findet keine Sender", 24 * 33, "Normal"], ["214", "Duschkopf verkalkt", 24 * 52, "Normal"], ["214", "Tür schließt nicht richtig", 24 * 70, "Dringend"],
+    ["305", "Wasserschaden Decke", 24 * 12, "Dringend"], ["305", "Heizkörper kalt", 24 * 29, "Normal"], ["305", "Fenster klemmt", 24 * 61, "Normal"], ["118", "Glühbirne Bad defekt", 24 * 15, "Normal"], ["226", "Minibar zu warm", 24 * 40, "Normal"]]
+    .map(function (x, i) { return { id: "ht-" + i, location: "Zimmer " + x[0], title: x[1], status: "Erledigt", priority: x[3], created_at: hoursAgoIso(x[2]), done_at: hoursAgoIso(x[2] - 20) }; });
+  var HIST_INSP = [["214", true, 24 * 40, "Alles in Ordnung."], ["214", false, 24 * 18, "Teppich fleckig."], ["305", false, 24 * 11, "Feuchter Fleck an der Decke."]]
+    .map(function (x, i) { var rm = D.rooms.find(function (r) { return r.number === x[0]; }) || {}; return { id: "hi-" + i, room_id: rm.id, passed: x[1], created_at: hoursAgoIso(x[2]), note: x[3], inspector: "u-hkm" }; });
+  function mentionsRoom(text, number) { var n = String(number || "").trim(); if (!n) return false; return new RegExp("(^|[^0-9A-Za-z])" + n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^0-9A-Za-z]|$)", "i").test(String(text || "")); }
+  function allTickets() { return D.tickets.map(function (t) { return { id: t.id, location: t.location, title: t.title, status: t.status, priority: t.priority, created_at: t.created_at, done_at: t.done_at || null }; }).concat(HIST_T); }
+
+  // --- Kassenumsätze: 14 Tage, Restaurant und Bar
+  var POS = [];
+  (function () {
+    var base = [3100, 2650, 2800, 3300, 3900, 5200, 4800];
+    for (var d = 13; d >= 0; d--) {
+      var day = dAt(-d), wd = new Date(day + "T00:00:00Z").getUTCDay(), k = (d * 37) % 11;
+      var g1 = Math.round((base[wd] * (0.92 + k / 60)) * 100) / 100, n1 = Math.round(g1 / 1.13 * 100) / 100, c1 = Math.round(g1 * (0.2 + (k % 4) / 40) * 100) / 100;
+      POS.push({ id: "pos-r" + d, sale_date: day, outlet: "Restaurant", net: n1, gross: g1, tax: Math.round((g1 - n1) * 100) / 100, cash: c1, card: Math.round((g1 - c1) * 100) / 100, covers: Math.round(g1 / 36), source: "api", created_at: nowIso(d * 24) });
+      var g2 = Math.round((base[wd] * (0.3 + k / 80)) * 100) / 100, n2 = Math.round(g2 / 1.2 * 100) / 100, c2 = Math.round(g2 * 0.35 * 100) / 100;
+      POS.push({ id: "pos-b" + d, sale_date: day, outlet: "Bar", net: n2, gross: g2, tax: Math.round((g2 - n2) * 100) / 100, cash: c2, card: Math.round((g2 - c2) * 100) / 100, covers: null, source: "api", created_at: nowIso(d * 24) });
+    }
+  })();
+  function cleanPosRow(s) {
+    var o = s && typeof s === "object" ? s : {}, date = String(o.date != null ? o.date : o.sale_date || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Ungültiges Datum (JJJJ-MM-TT).");
+    var row = { sale_date: date, outlet: String(o.outlet || "").replace(/[<>]/g, "").trim().slice(0, 60) };
+    ["net", "gross", "tax", "cash", "card"].forEach(function (k) { var v = o[k]; if (v === "" || v == null) { row[k] = null; return; } var n = typeof v === "number" ? v : Number(String(v).replace(/[\s€$]/g, "").replace(/\./g, "").replace(",", "."));
+      if (!isFinite(n)) throw new Error("Ungültiger Betrag: " + k); row[k] = Math.round(n * 100) / 100; });
+    var cv = o.covers === "" || o.covers == null ? null : Number(o.covers); if (cv !== null && !(cv >= 0)) throw new Error("Ungültige Anzahl Couverts."); row.covers = cv === null ? null : Math.round(cv);
+    if (row.gross === null && row.net === null) throw new Error("Bitte Netto- oder Bruttoumsatz angeben.");
+    return row;
+  }
+
+  // --- Etagen-Vorschlag und Reinigungs-Reihenfolge (gleiche Regeln wie der Server)
+  function floorOfR(r) { var f = r.floor; if (!f) { var mt = String(r.number).match(/^(\d+)/); f = mt && mt[1].length >= 3 ? String(Number(mt[1].slice(0, mt[1].length - 2))) : null; } return String(f || "?"); }
+  function sameTypeR(room, arr) { return !arr.room_type || !room.room_type || String(room.room_type).trim().toLowerCase() === String(arr.room_type).trim().toLowerCase(); }
+  function floorPlanAssign(rooms, arrivals) {
+    var usable = rooms.filter(function (r) { return r.status !== "Außer Betrieb"; }), byNumber = {}; usable.forEach(function (r) { byNumber[String(r.number)] = r; });
+    var busy = usable.filter(function (r) { return r.occupancy === "Belegt" || r.occupancy === "Anreise"; }), open = {}, taken = {};
+    busy.forEach(function (r) { open[floorOfR(r)] = 1; taken[String(r.number)] = 1; });
+    var out = [], unassigned = [], rest = [];
+    arrivals.forEach(function (a) {
+      var r = a.assigned_room && byNumber[String(a.assigned_room)];
+      if (r && !taken[String(r.number)]) { taken[String(r.number)] = 1; open[floorOfR(r)] = 1;
+        out.push({ arrival_id: a.id, guest_name: a.guest_name, vip: !!a.vip, room_type: a.room_type || null, assigned_room: String(r.number), floor: floorOfR(r), kept: true, needs_cleaning: ["Sauber", "Kontrolliert"].indexOf(r.status) < 0 }); }
+      else rest.push(a); });
+    var clean = function (r) { return r.occupancy === "Unbelegt" && ["Sauber", "Kontrolliert"].indexOf(r.status) >= 0; }, later = function (r) { return r.occupancy === "Unbelegt" || r.occupancy === "Abreise"; };
+    rest.sort(function (a, c) { return (c.vip ? 1 : 0) - (a.vip ? 1 : 0) || String(a.eta || "99").localeCompare(String(c.eta || "99")) || String(a.guest_name || "").localeCompare(String(c.guest_name || "")); });
+    rest.forEach(function (a) {
+      var pick = null;
+      [clean, later].some(function (okf) {
+        var cand = usable.filter(function (r) { return okf(r) && !taken[String(r.number)] && sameTypeR(r, a); }); if (!cand.length) return false;
+        var pool = cand.filter(function (r) { return open[floorOfR(r)]; });
+        if (!pool.length) { var count = {}; cand.forEach(function (r) { count[floorOfR(r)] = (count[floorOfR(r)] || 0) + 1; });
+          var fl = Object.keys(count).sort(function (x, y) { return a.vip ? cmpNum(y, x) : count[y] - count[x] || cmpNum(x, y); }); pool = cand.filter(function (r) { return floorOfR(r) === fl[0]; }); }
+        pool.sort(function (x, y) { return (a.vip ? cmpNum(floorOfR(y), floorOfR(x)) : cmpNum(floorOfR(x), floorOfR(y))) || cmpNum(x.number, y.number); });
+        pick = { r: pool[0], needs_cleaning: okf === later && !clean(pool[0]) }; return true; });
+      if (!pick) { unassigned.push({ arrival_id: a.id, guest_name: a.guest_name, vip: !!a.vip, room_type: a.room_type || null }); return; }
+      taken[String(pick.r.number)] = 1; open[floorOfR(pick.r)] = 1;
+      out.push({ arrival_id: a.id, guest_name: a.guest_name, vip: !!a.vip, room_type: a.room_type || null, assigned_room: String(pick.r.number), floor: floorOfR(pick.r), kept: false, needs_cleaning: pick.needs_cleaning }); });
+    var fls = {}; usable.forEach(function (r) { fls[floorOfR(r)] = 1; });
+    var floors = Object.keys(fls).sort(cmpNum).map(function (f) { return { floor: f, rooms: usable.filter(function (r) { return floorOfR(r) === f; }).length, used: usable.filter(function (r) { return floorOfR(r) === f && taken[String(r.number)]; }).length }; });
+    return { assignments: out, unassigned: unassigned, floors: floors, empty_floors: floors.filter(function (f) { return f.used === 0; }).map(function (f) { return f.floor; }) };
+  }
+  function cleaningOrderList() {
+    var arr = {}; D.arrivals.filter(function (a) { return a.arrival_date === todayIso && a.assigned_room; }).forEach(function (a) { var k = String(a.assigned_room), cur = arr[k];
+      if (!cur || (a.vip && !cur.vip) || (!!a.vip === !!cur.vip && String(a.eta || "99") < String(cur.eta || "99"))) arr[k] = a; });
+    var dep = {}; D.arrivals.filter(function (a) { return a.departure_date === todayIso && a.assigned_room; }).forEach(function (a) { dep[String(a.assigned_room)] = 1; });
+    var list = D.rooms.filter(function (r) { return r.status === "Schmutzig" || r.status === "In Reinigung"; }).map(function (r) {
+      var n = String(r.number), a = arr[n], isArr = !!a || r.occupancy === "Anreise", isDep = r.occupancy === "Abreise" || !!dep[n], prio = isArr ? 0 : isDep ? 1 : r.occupancy === "Belegt" ? 3 : 2;
+      var eta = a && /^\d{1,2}:\d{2}/.test(String(a.eta || "")) ? String(a.eta).slice(0, 5).padStart(5, "0") : null, vip = !!(a && a.vip);
+      return { id: r.id, number: n, floor: floorOfR(r), status: r.status, occupancy: r.occupancy, assigned_to: r.assigned_to || null, prio: prio, reason: { kind: ["anreise", "abreise", "frei", "bleibe"][prio], eta: eta, vip: vip, departure: isArr && isDep },
+        text: "", _vip: vip, _eta: eta || "99:99" }; });
+    list.sort(function (x, y) { return x.prio - y.prio || (x.prio === 0 ? (y._vip ? 1 : 0) - (x._vip ? 1 : 0) || x._eta.localeCompare(y._eta) : 0) || cmpNum(x.floor, y.floor) || cmpNum(x.number, y.number); });
+    return list.map(function (r, i) { var o = Object.assign({}, r, { order: i + 1 }); delete o._vip; delete o._eta;
+      o.text = r.prio === 0 ? ["Anreise" + (r.reason.eta ? " " + r.reason.eta : " heute"), r.reason.vip ? "VIP" : "", r.reason.departure ? "nach Abreise" : ""].filter(Boolean).join(", ") : r.prio === 1 ? "Abreise" : r.prio === 3 ? "Bleibe" : "Schmutzig, unbelegt"; return o; });
+  }
+
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, opt) {
     var url = new URL(typeof input === "string" ? input : input.url, location.href);
@@ -485,6 +791,7 @@
     // Anreisen
     if (p === H + "/arrivals") { if (m === "POST") { var ag = Object.assign({ id: nid("ar"), hotel_id: D.hotel.id, source: "hand", extras: [], mail_sent_at: null, answered_at: null }, b); D.arrivals.push(ag); return ok({ ok: true }); }
       return ok(D.arrivals.filter(function (g) { return g.arrival_date >= add(todayIso, -1); }).sort(function (a, c) { return a.arrival_date < c.arrival_date ? -1 : 1; }).map(arrivalOut)); }
+    if ((mm = p.match(/^\/api\/arrivals\/([^/]+)\/registration$/))) { var rg = byId(D.arrivals, mm[1]); if (!rg || !rg.has_registration) return ok(null); return ok({ arrival_guest_id: rg.id, birth_date: rg.birth_date, nationality: rg.nationality, street: rg.street, zip: rg.zip, city: rg.city, address_country: rg.address_country, id_doc_type: rg.id_doc_type, id_doc_number: rg.id_doc_number, companions: rg.companions || [], registration_at: rg.registration_at }); }
     if ((mm = p.match(/^\/api\/arrivals\/([^/]+)$/)) && m === "PATCH") { var pa = byId(D.arrivals, mm[1]); if (!pa) return ok({ error: "Gäste pflegt die Rezeption bzw. ihre Leitung." }, 403);
       var chg = false;
       if (b.vip !== undefined) { pa.vip = !!b.vip; chg = true; }
@@ -819,7 +1126,7 @@
     if ((mm = p.match(/^\/api\/procurement\/([^/]+)$/))) { if (m === "DELETE") { remove(D.procurement, mm[1]); return ok({ ok: true }); } var pc2 = byId(D.procurement, mm[1]); Object.assign(pc2, b); return ok(pc2); }
     // Bewerbungen
     if (p === H + "/candidates") { if (m === "POST") { var cd = Object.assign({ id: nid("cd"), hotel_id: D.hotel.id, stage: "Eingegangen" }, b); D.candidates.push(cd); return ok(cd); } return ok(lead ? D.candidates : []); }
-    if ((mm = p.match(/^\/api\/candidates\/([^/]+)$/))) { if (m === "DELETE") { remove(D.candidates, mm[1]); return ok({ ok: true }); } var cd2 = byId(D.candidates, mm[1]); Object.assign(cd2, b); return ok(cd2); }
+    if ((mm = p.match(/^\/api\/candidates\/([^/]+)$/))) { if (m === "DELETE") { remove(D.candidates, mm[1]); remove(APPS, mm[1]); return ok({ ok: true }); } var cd2 = byId(D.candidates, mm[1]); Object.assign(cd2, b); return ok(cd2); }
     // Genehmigungen
     if (p === H + "/permits") { if (m === "POST") { var pm = Object.assign({ id: nid("pm"), hotel_id: D.hotel.id, status: "offen" }, b); D.permits.push(pm); return ok(pm); } return ok(lead ? D.permits : []); }
     if ((mm = p.match(/^\/api\/permits\/([^/]+)$/))) { if (m === "DELETE") { remove(D.permits, mm[1]); return ok({ ok: true }); } var pm2 = byId(D.permits, mm[1]); Object.assign(pm2, b); return ok(pm2); }
@@ -1227,6 +1534,352 @@
       ["trade", "start_date", "end_date", "trainer_user_id", "user_id", "person_name"].forEach(function (k) { if (b[k] !== undefined) apx[k] = b[k] === "" ? null : b[k]; });
       if (b.plan !== undefined) apx.plan = (Array.isArray(b.plan) ? b.plan : []).slice(0, 200).map(function (x) { return { item: String((x && x.item) || "").trim().slice(0, 200), done: !!(x && x.done), done_at: x && x.done ? (x.done_at || todayIso) : null }; }).filter(function (x) { return x.item; });
       return ok(apx); }
+    /* ===== Paket 040 (Beispieldaten im Speicher; Antworten wie routes-opening/-team/-guests.js) ===== */
+    var deny = function (msg) { return ok({ error: msg }, 403); };
+    var nf = function () { return ok({ error: "Nicht gefunden." }, 404); };
+    var hasDept = function () { if (ROLE === "admin") return true; for (var i = 0; i < arguments.length; i++) if (MYDEPTS.indexOf(arguments[i]) >= 0) return true; return false; };
+    var s200 = function (v, n) { return String(v == null ? "" : v).trim().slice(0, n); };
+    var isoOr = function (v) { return /^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? v : null; };
+    var nowS = function () { return new Date().toISOString(); };
+
+    // --- Erstausstattung
+    if (p === H + "/equipment-templates") {
+      if (m === "PUT") { if (!lead) return deny("Die Erstausstattung pflegt die Leitung.");
+        var etr = s200(b.room_type, 60), eit = cleanEqItems(b.items), eti = EQ_TPL.findIndex(function (t) { return t.room_type === etr; });
+        if (!eit.length) { if (eti >= 0) EQ_TPL.splice(eti, 1); return ok({ room_type: etr, items: [], deleted: true }); }
+        if (eti >= 0) { EQ_TPL[eti].items = eit; EQ_TPL[eti].updated_at = nowS(); return ok(EQ_TPL[eti]); }
+        var etn = { id: nid("eqt"), hotel_id: D.hotel.id, room_type: etr, items: eit, updated_at: nowS() }; EQ_TPL.push(etn); return ok(etn); }
+      return ok(EQ_TPL.slice()); }
+    if (p === H + "/room-equipment") return ok(eqView());
+    if ((mm = p.match(/^\/api\/room-equipment\/([^/]+)$/)) && m === "PUT") {
+      var eqr = byId(D.rooms, mm[1]); if (!eqr) return nf();
+      if (!lead && !hasDept("Housekeeping", "Technik", "Einkauf")) return deny("Den Lieferstand pflegen Housekeeping, Technik oder Einkauf.");
+      var eqs = EQ[eqr.id] || (EQ[eqr.id] = { room_id: eqr.id, hotel_id: D.hotel.id, delivered: {}, installed: {}, note: null });
+      if (b.delivered !== undefined) { eqs.delivered = {}; Object.keys(b.delivered || {}).forEach(function (k) { var n = Math.round(Number(b.delivered[k])); if (n > 0 && n <= 999) eqs.delivered[k] = n; }); }
+      if (b.installed !== undefined) { eqs.installed = {}; Object.keys(b.installed || {}).forEach(function (k) { if (b.installed[k] === true) eqs.installed[k] = true; }); }
+      if (b.note !== undefined) eqs.note = s200(b.note, 500) || null;
+      eqs.updated_at = nowS(); eqs.updated_by = ME; return ok(eqs); }
+
+    // --- Angebotsvergleich
+    var DENIED_Q = "Angebote pflegen die Leitung und der Einkauf.";
+    if (p === H + "/quote-requests") {
+      if (m === "POST") { if (!lead) return deny(DENIED_Q); var qtitle = s200(b.title, 200); if (!qtitle) return ok({ error: "Bitte einen Titel angeben." }, 400);
+        var qrn = { id: nid("qr"), hotel_id: D.hotel.id, title: qtitle, department: s200(b.department, 80) || "Einkauf", budget_item_id: b.budget_item_id || null, status: "offen", decided_quote_id: null, decision_reason: null, decided_by: null, decided_at: null, created_at: nowS() };
+        QR.unshift(qrn); return ok(Object.assign({ quotes: [] }, qrn)); }
+      return ok(QR.slice().sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; }).map(function (r) {
+        return Object.assign({}, r, { quotes: QT.filter(function (x) { return x.request_id === r.id; }).sort(function (a, c) { return a.amount - c.amount; }).map(quoteOut) }); })); }
+    if ((mm = p.match(/^\/api\/quote-requests\/([^/]+)$/))) { var qrr = byId(QR, mm[1]); if (!qrr) return deny(DENIED_Q); if (!lead) return deny(DENIED_Q);
+      if (m === "DELETE") { remove(QR, qrr.id); QT = QT.filter(function (x) { return x.request_id !== qrr.id; }); return ok({ ok: true }); }
+      if (qrr.status === "entschieden") return deny("Entschiedene Anfragen können nicht mehr geändert werden.");
+      if (b.status !== undefined) { if (["offen", "verworfen"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400); qrr.status = b.status; }
+      if (b.title !== undefined) qrr.title = s200(b.title, 200) || qrr.title;
+      return ok(qrr); }
+    if ((mm = p.match(/^\/api\/quote-requests\/([^/]+)\/quotes$/)) && m === "POST") { var qrq = byId(QR, mm[1]); if (!qrq) return nf(); if (!lead) return deny(DENIED_Q);
+      if (qrq.status === "entschieden") return ok({ error: "Diese Anfrage ist schon entschieden." }, 400);
+      var qam = Number(String(b.amount == null ? "" : b.amount).replace(",", ".")); if (!(qam >= 0) || b.amount === "" || b.amount == null) return ok({ error: "Bitte einen gültigen Betrag angeben." }, 400);
+      var qsn = s200(b.supplier_name, 120), qsup = b.supplier_id ? byId(D.suppliers, b.supplier_id) : null; if (qsup && !qsn) qsn = qsup.name; if (!qsn) return ok({ error: "Bitte einen Lieferanten angeben." }, 400);
+      var qnew = { id: nid("qt"), request_id: qrq.id, supplier_id: qsup ? qsup.id : null, supplier_name: qsn, amount: Math.round(qam * 100) / 100, currency: /^[A-Z]{3}$/.test(b.currency || "") ? b.currency : null,
+        delivery_days: b.delivery_days === "" || b.delivery_days == null ? null : Math.round(Number(b.delivery_days)), valid_until: isoOr(b.valid_until), note: s200(b.note, 1000), created_at: nowS(), has_file: !!b.file_data };
+      QT.push(qnew); return ok(qnew); }
+    if ((mm = p.match(/^\/api\/quotes\/([^/]+)$/))) { var qto = byId(QT, mm[1]); if (!qto) return nf(); if (!lead) return deny(DENIED_Q);
+      if (m === "DELETE") { var qpr = byId(QR, qto.request_id); if (qpr && qpr.decided_quote_id === qto.id) return ok({ error: "Das gewählte Angebot bleibt als Nachweis erhalten." }, 400); remove(QT, qto.id); return ok({ ok: true }); }
+      ["supplier_name", "note"].forEach(function (k) { if (b[k] !== undefined) qto[k] = s200(b[k], k === "note" ? 1000 : 120); });
+      if (b.amount !== undefined) qto.amount = Math.round(Number(b.amount) * 100) / 100; if (b.delivery_days !== undefined) qto.delivery_days = b.delivery_days === "" ? null : Math.round(Number(b.delivery_days)); if (b.valid_until !== undefined) qto.valid_until = isoOr(b.valid_until);
+      return ok(qto); }
+    if ((mm = p.match(/^\/api\/quotes\/([^/]+)\/file$/))) { var qtf = byId(QT, mm[1]); if (!qtf || !qtf.has_file) return ok({ error: "Keine Datei hinterlegt." }, 404); return ok({ file_data: TINY_PDF }); }
+    if ((mm = p.match(/^\/api\/quote-requests\/([^/]+)\/decide$/)) && m === "POST") {
+      var qrd = byId(QR, mm[1]); if (!qrd) return nf(); if (!lead) return deny(DENIED_Q);
+      var reason = s200(b.reason, 2000); if (!reason) return ok({ error: "Bitte die Entscheidung kurz begründen." }, 400);
+      if (qrd.status !== "offen") return ok({ error: "Diese Anfrage ist nicht mehr offen." }, 400);
+      var qdq = byId(QT, b.quote_id); if (!qdq || qdq.request_id !== qrd.id) return ok({ error: "Bitte ein Angebot dieser Anfrage wählen." }, 400);
+      var budg = null;
+      if (qrd.budget_item_id) { budg = byId(D.budget, qrd.budget_item_id); if (budg) budg.committed = Math.round((Number(budg.committed || 0) + qdq.amount) * 100) / 100; }
+      else if (b.create_budget_item) { var cbi = typeof b.create_budget_item === "object" ? b.create_budget_item : {};
+        budg = { id: nid("b"), hotel_id: D.hotel.id, department: s200(cbi.department, 80) || qrd.department || "Einkauf", category: s200(cbi.category, 80) || "Sonstiges", title: s200(cbi.title, 200) || qrd.title, planned: qdq.amount, committed: qdq.amount, actual: 0, note: "Vergabe: " + qdq.supplier_name };
+        D.budget.push(budg); qrd.budget_item_id = budg.id; }
+      Object.assign(qrd, { status: "entschieden", decided_quote_id: qdq.id, decision_reason: reason, decided_by: ME, decided_at: nowS() });
+      return ok({ request: qrd, budget: budg }); }
+
+    // --- Eingangsrechnungen
+    var DENIED_I = "Eingangsrechnungen pflegen die Leitung, Finanzen und der Einkauf.";
+    var invFiles = { "si-1": true };
+    if (p === H + "/supplier-invoices") {
+      if (m === "POST") { if (!lead) return deny(DENIED_I); var iam = Number(String(b.amount == null ? "" : b.amount).replace(",", ".")); if (!(iam >= 0) || b.amount === "" || b.amount == null) return ok({ error: "Bitte einen gültigen Betrag angeben." }, 400);
+        if (!s200(b.supplier_name, 120) && !b.supplier_id) return ok({ error: "Bitte einen Lieferanten angeben." }, 400);
+        var isk = b.skonto_percent === "" || b.skonto_percent == null ? null : Number(b.skonto_percent); if (isk && !b.skonto_until) return ok({ error: "Bitte das Datum für den Skonto angeben." }, 400);
+        var inw = { id: nid("si"), hotel_id: D.hotel.id, supplier_id: b.supplier_id || null, supplier_name: s200(b.supplier_name, 120) || (byId(D.suppliers, b.supplier_id) || {}).name || "", invoice_number: s200(b.invoice_number, 80), amount: Math.round(iam * 100) / 100, currency: b.currency || null,
+          invoice_date: isoOr(b.invoice_date), due_on: isoOr(b.due_on), skonto_percent: isk || null, skonto_until: isoOr(b.skonto_until), paid_at: null, paid_by: null, budget_item_id: b.budget_item_id || null, note: s200(b.note, 1000), created_at: nowS(), has_file: !!b.file_data };
+        INV.push(inw); return ok(inw); }
+      return ok(lead ? INV.filter(function (x) { return q.get("open") !== "1" || !x.paid_at; }).sort(function (a, c) { return String(a.due_on || "9") < String(c.due_on || "9") ? -1 : 1; }) : []); }
+    if ((mm = p.match(/^\/api\/supplier-invoices\/([^/]+)$/))) { var inv = byId(INV, mm[1]); if (!inv || !lead) return deny(DENIED_I);
+      if (m === "DELETE") { remove(INV, inv.id); return ok({ ok: true }); }
+      ["supplier_name", "invoice_number", "note"].forEach(function (k) { if (b[k] !== undefined) inv[k] = s200(b[k], k === "note" ? 1000 : 120); });
+      ["invoice_date", "due_on", "skonto_until"].forEach(function (k) { if (b[k] !== undefined) inv[k] = isoOr(b[k]); });
+      if (b.amount !== undefined) inv.amount = Math.round(Number(String(b.amount).replace(",", ".")) * 100) / 100;
+      if (b.skonto_percent !== undefined) inv.skonto_percent = Number(b.skonto_percent) || null;
+      if (b.budget_item_id !== undefined) inv.budget_item_id = b.budget_item_id || null;
+      if (b.paid !== undefined) { inv.paid_at = b.paid ? nowS() : null; inv.paid_by = b.paid ? ME : null; }
+      return ok(inv); }
+    if ((mm = p.match(/^\/api\/supplier-invoices\/([^/]+)\/file$/))) { var invf = byId(INV, mm[1]); if (!invf || !invf.has_file) return ok({ error: "Keine Datei hinterlegt." }, 404); return ok({ file_data: TINY_PDF }); }
+
+    // --- Warteliste (Eröffnung)
+    if (p === H + "/waitlist") {
+      if (m === "PUT") { if (ROLE !== "admin") return deny("Die Warteliste stellen Admins ein.");
+        var wo = D.hotel.waitlist; D.hotel.waitlist = { enabled: b.enabled === true, token: b.rotate === true ? "DEMOwartelisteNeu" + Math.floor(Math.random() * 1e6) : wo.token, headline: s200(b.headline, 160), text: String(b.text == null ? "" : b.text).trim().slice(0, 3000), offer: s200(b.offer, 1000) };
+        return ok({ settings: waitlistSettings(), url: waitlistUrl() }); }
+      if (!lead) return deny("Die Warteliste sehen Admins und die Leitung.");
+      return ok({ settings: waitlistSettings(), url: waitlistUrl(), signups: WL_SIGNUPS.slice() }); }
+    if ((mm = p.match(/^\/api\/waitlist-signups\/([^/]+)$/)) && m === "DELETE") { if (ROLE !== "admin") return deny("Einträge löschen Admins."); remove(WL_SIGNUPS, mm[1]); return ok({ ok: true }); }
+    if (p === H + "/waitlist/send" && m === "POST") { if (!lead) return deny("Die Eröffnungs-Mail verschicken Admins und die Leitung.");
+      if (!s200(b.subject, 160) || !String(b.text || "").trim()) return ok({ error: "Bitte Betreff und Text angeben." }, 400);
+      var wq = WL_SIGNUPS.filter(function (s) { return s.confirmed_at && !s.unsubscribed_at && !s.notified_at; });
+      if (!wq.length) return ok({ error: "Niemand wartet auf eine Mail: keine bestätigten, noch nicht benachrichtigten Einträge." }, 400);
+      wq.forEach(function (s) { s.notified_at = nowS(); }); return ok({ queued: wq.length }); }
+
+    // --- Barrierefreiheit
+    if (p === H + "/accessibility") {
+      if (m === "PUT") { if (ROLE !== "admin") return deny("Die Angaben zum Haus pflegen Admins."); D.hotel.accessibility_info = accAreas(b); return ok({ info: accAreas(D.hotel.accessibility_info) }); }
+      return ok({ info: accAreas(D.hotel.accessibility_info), rooms: D.rooms.slice().sort(function (a, c) { return cmpNum(a.number, c.number); }).map(function (r) { return { id: r.id, number: r.number, floor: r.floor, room_type: r.room_type, accessibility: cleanRoomAccess(r.accessibility) }; }), public: accPublic() }); }
+    if ((mm = p.match(/^\/api\/rooms\/([^/]+)\/accessibility$/)) && m === "PUT") { var acr = byId(D.rooms, mm[1]); if (!acr || !(lead || hasDept("Housekeeping", "Rezeption & Empfang"))) return deny("Zimmerangaben pflegen Housekeeping und Rezeption.");
+      acr.accessibility = cleanRoomAccess(b); return ok({ id: acr.id, number: acr.number, accessibility: acr.accessibility }); }
+
+    // --- Ereignisse in der Stadt
+    if (p === H + "/city-events") {
+      if (m === "POST") { if (!lead) return deny("Ereignisse pflegt die Leitung."); if (!s200(b.title, 160)) return ok({ error: "Bitte einen Titel angeben." }, 400); if (!isoOr(b.start_date)) return ok({ error: "Bitte ein Datum angeben." }, 400);
+        if (b.end_date && b.end_date < b.start_date) return ok({ error: "Das Ende liegt vor dem Beginn." }, 400);
+        var cen = { id: nid("ce"), hotel_id: D.hotel.id, title: s200(b.title, 160), start_date: b.start_date, end_date: isoOr(b.end_date), impact: ["niedrig", "mittel", "hoch"].indexOf(b.impact) >= 0 ? b.impact : "mittel", note: s200(b.note, 1000), created_at: nowS() };
+        CITY_EV.push(cen); return ok(cen); }
+      return ok(CITY_EV.slice().sort(function (a, c) { return a.start_date < c.start_date ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/city-events\/([^/]+)$/))) { var cev = byId(CITY_EV, mm[1]); if (!cev || !lead) return deny("Ereignisse pflegt die Leitung.");
+      if (m === "DELETE") { remove(CITY_EV, cev.id); return ok({ ok: true }); }
+      ["title", "note"].forEach(function (k) { if (b[k] !== undefined) cev[k] = s200(b[k], k === "title" ? 160 : 1000); }); if (b.start_date !== undefined) cev.start_date = isoOr(b.start_date) || cev.start_date; if (b.end_date !== undefined) cev.end_date = isoOr(b.end_date);
+      if (b.impact !== undefined && ["niedrig", "mittel", "hoch"].indexOf(b.impact) >= 0) cev.impact = b.impact; return ok(cev); }
+
+    // --- Stellenanzeigen und Bewerbungen
+    var DENIED_J = "Stellenanzeigen pflegt die Leitung der Abteilung oder des Personals.";
+    if (p === H + "/job-postings") {
+      if (m === "POST") { if (!lead) return deny(DENIED_J); if (!s200(b.title, 160)) return ok({ error: "Bitte einen Titel angeben." }, 400); if (!s200(b.department, 80)) return ok({ error: "Bitte eine Abteilung wählen." }, 400);
+        var jn = { id: nid("jp"), hotel_id: D.hotel.id, organization_id: ORG, title: s200(b.title, 160), department: s200(b.department, 80), employment: ["Vollzeit", "Teilzeit", "Saison", "Lehre", "Aushilfe"].indexOf(b.employment) >= 0 ? b.employment : "Vollzeit",
+          description: s200(b.description, 8000), salary_note: s200(b.salary_note, 300), start_date: isoOr(b.start_date), status: ["Entwurf", "Veröffentlicht", "Geschlossen"].indexOf(b.status) >= 0 ? b.status : "Entwurf", public_token: null, created_at: nowS() };
+        if (jn.status === "Veröffentlicht") jn.public_token = "DEMOjob" + Math.floor(Math.random() * 1e9) + "abcdefgh"; JOBS.unshift(jn); return ok(jn); }
+      return ok(lead ? JOBS.slice().sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; }) : []); }
+    if ((mm = p.match(/^\/api\/job-postings\/([^/]+)$/))) { var jo = byId(JOBS, mm[1]); if (!jo || !lead) return deny(DENIED_J);
+      if (m === "DELETE") { remove(JOBS, jo.id); return ok({ ok: true }); }
+      ["title", "department", "description", "salary_note"].forEach(function (k) { if (b[k] !== undefined) jo[k] = s200(b[k], k === "description" ? 8000 : k === "salary_note" ? 300 : 160); });
+      if (b.employment !== undefined && ["Vollzeit", "Teilzeit", "Saison", "Lehre", "Aushilfe"].indexOf(b.employment) >= 0) jo.employment = b.employment; if (b.start_date !== undefined) jo.start_date = isoOr(b.start_date);
+      if (b.status !== undefined && ["Entwurf", "Veröffentlicht", "Geschlossen"].indexOf(b.status) >= 0) { jo.status = b.status; if (b.status === "Veröffentlicht" && !jo.public_token) jo.public_token = "DEMOjob" + Math.floor(Math.random() * 1e9) + "abcdefgh"; }
+      if (b.new_token) jo.public_token = "DEMOjob" + Math.floor(Math.random() * 1e9) + "abcdefgh"; return ok(jo); }
+    if (p === H + "/job-postings/draft" && m === "POST") { if (!lead) return deny(DENIED_J); var jt = s200(b.title, 160) || "Mitarbeiter:in";
+      return ok({ titel: jt + " (m/w/d)", text: "BEISPIELTEXT AUS DER DEMO – in der echten Version schreibt die KI einen Vorschlag zu deiner Stelle.\n\nDein Alltag als " + jt + " bei uns:\n- Du bist Teil eines jungen Teams in einem neuen Haus\n- Du bekommst eine ausführliche Einschulung\n- Geregelte Dienstpläne und Mitarbeiterverpflegung\n\nWas wir uns wünschen:\n- Freude am Umgang mit Gästen\n- Zuverlässigkeit und Teamgeist\n\nWir freuen uns auf deine Bewerbung! Das kollektivvertragliche Mindestentgelt und die Bereitschaft zur Überzahlung ergänzt du bitte oben im Feld Gehalt." }); }
+    if (p === H + "/applications") return ok(lead ? APPS.filter(function (a) { return !q.get("posting_id") || a.posting_id === q.get("posting_id"); }).sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; }).map(appOut) : []);
+    if ((mm = p.match(/^\/api\/applications\/([^/]+)\/cv$/))) { var apc = byId(APPS, mm[1]); if (!apc || !apc.cv || !lead) return ok({ error: "Kein Lebenslauf vorhanden." }, 404); return ok({ cv_data: CVDATA }); }
+    if ((mm = p.match(/^\/api\/applications\/([^/]+)\/referral-paid$/)) && m === "POST") { var apr = byId(APPS, mm[1]); if (!apr || !hrNow()) return deny("Prämien verwaltet die Leitung Personal.");
+      if (!apr.referred_by) return ok({ error: "Diese Bewerbung kam nicht über eine Empfehlung." }, 400); if (b.paid && apr.stage !== "Zusage") return ok({ error: "Die Prämie ist erst nach einer Zusage fällig." }, 400);
+      apr.referral_paid_at = b.paid ? nowS() : null; return ok({ id: apr.id, referral_paid_at: apr.referral_paid_at }); }
+    if ((mm = p.match(/^\/api\/applications\/([^/]+)$/)) && m === "PATCH") { var apa = byId(APPS, mm[1]); if (!apa || !lead) return deny("Bewerbungen sieht und pflegt nur die Leitung der Abteilung.");
+      if (b.stage !== undefined) { if (["Eingegangen", "Gespräch", "Angebot", "Zusage", "Absage"].indexOf(b.stage) < 0) return ok({ error: "Unbekannter Status." }, 400);
+        if (b.stage !== apa.stage) { apa.stage = b.stage; apa.updated_at = nowS(); if (b.stage === "Zusage" && apa.referred_by && apa.referral_bonus == null && Number(D.hotel.referral_settings.bonus) > 0) apa.referral_bonus = Number(D.hotel.referral_settings.bonus); } }
+      if (b.interview_at !== undefined) { if (b.interview_at && isNaN(Date.parse(b.interview_at))) return ok({ error: "Bitte einen gültigen Termin angeben." }, 400); apa.interview_at = b.interview_at ? new Date(b.interview_at).toISOString() : null; }
+      if (b.note !== undefined) apa.note = s200(b.note, 2000); return ok(appOut(apa)); }
+
+    // --- Mitarbeiter-Empfehlung und Einstellungen
+    if (p === H + "/referral-options") {
+      var rs0 = D.hotel.referral_settings || {};
+      return ok({ postings: JOBS.filter(function (j) { return j.status === "Veröffentlicht"; }).map(function (j) { return { id: j.id, title: j.title, department: j.department }; }),
+        positions: D.staff.filter(function (s) { return (s.filled || 0) < (s.headcount || 1); }).map(function (s) { return { id: s.id, title: s.title, department: s.department }; }),
+        settings: { bonus: Number(rs0.bonus) > 0 ? Number(rs0.bonus) : null, after_weeks: Number(rs0.after_weeks) > 0 ? Number(rs0.after_weeks) : null, note: s200(rs0.note, 500) } }); }
+    if (p === H + "/referrals" && m === "POST") {
+      var rname = s200(b.name, 120), rcon = s200(b.contact, 200); if (!rname || !rcon) return ok({ error: "Bitte Name und Kontakt angeben." }, 400);
+      if (b.agreed !== true) return ok({ error: "Bitte bestätigen, dass die Person mit der Weitergabe ihrer Daten einverstanden ist." }, 400);
+      var rmail = rcon.indexOf("@") >= 0; if (rmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rcon)) return ok({ error: "Ungültige E-Mail-Adresse." }, 400);
+      var rpost = b.posting_id ? byId(JOBS, b.posting_id) : null, rpos = b.position_id ? byId(D.staff, b.position_id) : null; if (!rpost && !rpos) return ok({ error: "Bitte eine Stelle wählen." }, 400);
+      var rna = { id: nid("ap"), hotel_id: D.hotel.id, position_id: rpos ? rpos.id : (rpost.department === "Housekeeping" ? posHk : posRez), posting_id: rpost ? rpost.id : null, name: rname, email: rmail ? rcon : null, phone: rmail ? null : rcon.slice(0, 60), stage: "Eingegangen", note: s200(b.note, 1000), source: "Empfehlung",
+        interview_at: null, referred_by: ME, referral_bonus: null, referral_paid_at: null, consent_at: null, created_at: nowS(), updated_at: nowS(), cv: false };
+      APPS.push(rna); return ok({ ok: true, id: rna.id }); }
+    if (p === H + "/my-referrals") return ok(APPS.filter(function (a) { return a.referred_by === ME; }).sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; }).map(function (a) {
+      var pj = byId(JOBS, a.posting_id), ps = byId(D.staff, a.position_id); return { id: a.id, name: a.name, position: pj ? pj.title : ps ? ps.title : "", created_at: a.created_at, status: a.stage === "Zusage" ? "eingestellt" : a.stage === "Absage" ? "abgesagt" : "läuft" }; }));
+    if (p === H + "/referral-bonuses") { if (!hrNow()) return deny("Prämien verwaltet die Leitung Personal.");
+      var rs1 = D.hotel.referral_settings || {}, wk = Number(rs1.after_weeks) > 0 ? Number(rs1.after_weeks) : 0;
+      return ok({ settings: { bonus: Number(rs1.bonus) > 0 ? Number(rs1.bonus) : null, after_weeks: wk || null, note: rs1.note || "" },
+        list: APPS.filter(function (a) { return a.referred_by; }).sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; }).map(function (a) {
+          var pj = byId(JOBS, a.posting_id), ps = byId(D.staff, a.position_id);
+          return { id: a.id, name: a.name, stage: a.stage, referred_by: a.referred_by, referral_bonus: a.referral_bonus, referral_paid_at: a.referral_paid_at, created_at: a.created_at, updated_at: a.updated_at, position: pj ? pj.title : ps ? ps.title : "", due_on: a.stage === "Zusage" ? add(String(a.updated_at).slice(0, 10), wk * 7) : null }; }) }); }
+    if (p === H + "/team-settings") {
+      if (m === "PUT") { var tso = {};
+        var tnum = function (v, max) { var n = Number(String(v == null ? "" : v).replace(",", ".")); return isFinite(n) && String(v == null ? "" : v) !== "" && n >= 0 && n <= max ? Math.round(n * 100) / 100 : null; };
+        if (b.referral_settings !== undefined) { if (!hrNow()) return deny("Die Empfehlungsprämie stellt die Leitung Personal ein."); var rr = b.referral_settings || {};
+          tso.referral_settings = { bonus: tnum(rr.bonus, 100000), after_weeks: tnum(rr.after_weeks, 104) === null ? null : Math.round(tnum(rr.after_weeks, 104)), note: s200(rr.note, 500) }; }
+        if (b.safety_settings !== undefined) { if (!hrNow() && !(ROLE === "manager" && MYDEPTS.indexOf("Sicherheit") >= 0)) return deny("Die Mindestbesetzung stellt die Leitung Personal oder Sicherheit ein."); var ss = b.safety_settings || {}, ti = function (v) { var n = Math.round(Number(v)); return n >= 0 && n <= 50 ? n : 0; };
+          tso.safety_settings = { min_first_aid: ti(ss.min_first_aid), min_fire: ti(ss.min_fire) }; }
+        if (!Object.keys(tso).length) return ok({ error: "Nichts zu speichern." }, 400);
+        Object.assign(D.hotel, tso); return ok({ referral_settings: D.hotel.referral_settings, safety_settings: D.hotel.safety_settings }); }
+      return ok({ referral_settings: D.hotel.referral_settings || {}, safety_settings: D.hotel.safety_settings || {} }); }
+
+    // --- Probezeit
+    var DENIED_P = "Probezeit-Gespräche führt die Leitung Personal.";
+    if (p === H + "/probation") { if (!hrNow()) return deny(DENIED_P);
+      var planned = {}; PROB.forEach(function (r) { planned[r.user_id] = 1; });
+      var fresh = D.onboardings.filter(function (o) { return !planned[o.user_id] && o.start_date >= dAt(-120); }).map(function (o) { return { user_id: o.user_id, start_date: o.start_date, from_onboarding: true }; });
+      return ok({ reviews: PROB.slice().sort(function (a, c) { return a.due_on < c.due_on ? -1 : 1; }), new_members: fresh, country: D.hotel.country || null }); }
+    if (p === H + "/probation/plan" && m === "POST") { if (!hrNow()) return deny(DENIED_P);
+      if (!byId(D.members.map(function (x) { return { id: x.user_id }; }), b.user_id)) return ok({ error: "Bitte eine Person wählen." }, 400); if (!isoOr(b.start_date)) return ok({ error: "Bitte das Eintrittsdatum angeben." }, 400);
+      var pw = (Array.isArray(b.weeks) ? b.weeks : [2, 6, 10]).map(Number).filter(function (w, i, a) { return w >= 1 && w <= 26 && a.indexOf(w) === i; }).sort(function (x, y) { return x - y; }).slice(0, 6);
+      if (!pw.length) return ok({ error: "Bitte mindestens eine Woche angeben (1–26)." }, 400);
+      var made = []; pw.forEach(function (w) { if (PROB.some(function (r) { return r.user_id === b.user_id && r.week === w; })) return;
+        var r = { id: nid("pr"), hotel_id: D.hotel.id, organization_id: ORG, user_id: b.user_id, week: w, due_on: add(b.start_date, w * 7), done_at: null, done_by: null, rating: null, notes: null }; PROB.push(r); made.push(r); });
+      return ok(made); }
+    if ((mm = p.match(/^\/api\/probation-reviews\/([^/]+)$/))) { var pro = byId(PROB, mm[1]); if (!pro || !hrNow()) return deny(DENIED_P);
+      if (m === "DELETE") { remove(PROB, pro.id); return ok({ ok: true }); }
+      if (b.notes !== undefined) pro.notes = s200(b.notes, 5000); if (b.rating !== undefined) pro.rating = ["gut", "in Ordnung", "kritisch"].indexOf(b.rating) >= 0 ? b.rating : null;
+      if (b.due_on !== undefined) { if (!isoOr(b.due_on)) return ok({ error: "Bitte ein gültiges Datum angeben." }, 400); pro.due_on = b.due_on; }
+      if (b.done !== undefined) { pro.done_at = b.done ? nowS() : null; pro.done_by = b.done ? ME : null; } return ok(pro); }
+
+    // --- Qualifikationen und Ersthelfer im Dienst
+    var DENIED_QL = "Qualifikationen pflegt die Leitung Personal oder Sicherheit.", canQual = hrNow() || (ROLE === "manager" && MYDEPTS.indexOf("Sicherheit") >= 0);
+    if (p === "/api/organizations/demo-org/qualifications") {
+      if (m === "POST") { if (!canQual) return deny(DENIED_QL); var QK = ["Erste Hilfe", "Brandschutz", "Evakuierungshelfer", "Sicherheitsvertrauensperson", "Hygiene", "Sonstiges"];
+        if (!b.user_id) return ok({ error: "Bitte eine Person wählen." }, 400); if (QK.indexOf(b.kind) < 0) return ok({ error: "Bitte die Art der Qualifikation wählen." }, 400);
+        var qln = { id: nid("ql"), organization_id: ORG, user_id: b.user_id, kind: b.kind, valid_until: isoOr(b.valid_until), note: s200(b.note, 500) }; QUALS.push(qln); return ok(qln); }
+      return ok(QUALS.filter(function (x) { return lead || x.user_id === ME; }).sort(function (a, c) { return String(a.valid_until || "9") < String(c.valid_until || "9") ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/qualifications\/([^/]+)$/))) { var qlo = byId(QUALS, mm[1]); if (!qlo || !canQual) return deny(DENIED_QL);
+      if (m === "DELETE") { remove(QUALS, qlo.id); return ok({ ok: true }); }
+      if (b.kind !== undefined) qlo.kind = b.kind; if (b.valid_until !== undefined) qlo.valid_until = isoOr(b.valid_until); if (b.note !== undefined) qlo.note = s200(b.note, 500); return ok(qlo); }
+    if (p === H + "/on-duty") { if (meRow.role === "viewer") return deny("Nicht berechtigt.");
+      var qs0 = qualSet(todayIso), hh = new Date(), at0 = String(hh.getHours()).padStart(2, "0") + ":" + String(hh.getMinutes()).padStart(2, "0"), since = new Date(); since.setHours(6, 0, 0, 0);
+      var pres = [["u-fo", "Rezeption & Empfang", "Stempeluhr"], ["u-member", "Housekeeping", "Stempeluhr"], ["u-ewa", "Housekeeping", "Stempeluhr"], ["u-it", "IT & Systeme", "Dienstplan"], [null, "Food & Beverage", "Dienstplan"]].map(function (x) {
+        var o = { user_id: x[0], name: x[0] ? null : "Joana Silva", department: x[1], via: x[2] }; if (x[2] === "Stempeluhr") o.since = since.toISOString(); else o.shift = "Früh 06:00–14:30";
+        o.first_aid = !!(x[0] && qs0[x[0]] && qs0[x[0]]["Erste Hilfe"]); o.fire = !!(x[0] && qs0[x[0]] && qs0[x[0]]["Brandschutz"]); return o; });
+      var sf = D.hotel.safety_settings || {}, mi = { min_first_aid: Number(sf.min_first_aid) || 0, min_fire: Number(sf.min_fire) || 0 }, fa0 = pres.filter(function (x) { return x.first_aid; }), fi0 = pres.filter(function (x) { return x.fire; });
+      return ok({ min_first_aid: mi.min_first_aid, min_fire: mi.min_fire, total: pres.length, first_aid: fa0, fire: fi0, warn_first_aid: mi.min_first_aid > 0 && fa0.length < mi.min_first_aid, warn_fire: mi.min_fire > 0 && fi0.length < mi.min_fire, present: lead ? pres : undefined, at: at0 }); }
+    if (p === H + "/first-aid-roster") { if (!lead) return deny("Nicht berechtigt.");
+      var rfrom = isoOr(q.get("from")) || todayIso, rn = Math.min(31, Math.max(1, Number(q.get("days")) || 7)), sf2 = D.hotel.safety_settings || {}, rdays = [];
+      for (var ri = 0; ri < rn; ri++) { var rd = add(rfrom, ri), per = {}, qd = qualSet(rd);
+        D.shifts.filter(function (s) { return s.shift_date === rd && ["Früh", "Spät", "Nacht", "Zwischen"].indexOf(s.kind) >= 0; }).forEach(function (s) {
+          var c = per[s.kind] || (per[s.kind] = { total: 0, first_aid: 0, fire: 0, seen: {} }), k = s.user_id || "x" + c.total; if (c.seen[k]) return; c.seen[k] = 1; c.total++;
+          if (s.user_id && qd[s.user_id] && qd[s.user_id]["Erste Hilfe"]) c.first_aid++; if (s.user_id && qd[s.user_id] && qd[s.user_id]["Brandschutz"]) c.fire++; });
+        var sh = {}; Object.keys(per).forEach(function (k) { sh[k] = { total: per[k].total, first_aid: per[k].first_aid, fire: per[k].fire }; }); rdays.push({ date: rd, shifts: sh }); }
+      return ok({ min_first_aid: Number(sf2.min_first_aid) || 0, min_fire: Number(sf2.min_fire) || 0, days: rdays }); }
+
+    // --- Übungsgast (feste Beispieltexte, keine KI)
+    if (p === H + "/roleplay") {
+      if (m === "POST") { var rsk = b.scenario === "frei" ? "frei" : RP_OPEN.de[b.scenario] ? b.scenario : null; if (!rsk) return ok({ error: "Bitte ein Szenario wählen." }, 400);
+        var rcu = rsk === "frei" ? s200(b.custom, 600) : null; if (rsk === "frei" && !rcu) return ok({ error: "Bitte die Situation kurz beschreiben." }, 400);
+        var rl = /^(de|en|fr|it|es|pt|tr|ja|zh|ar)$/.test(String(b.language || "")) ? b.language : "de", open1 = rsk === "frei" ? (rpLang(rl) === "en" ? "Hello, I have a concern: " : "Guten Tag, ich habe ein Anliegen: ") + rcu : RP_OPEN[rpLang(rl)][rsk];
+        var rsn = { id: nid("rp"), hotel_id: D.hotel.id, user_id: ME, scenario: rsk === "frei" ? "frei:" + rcu : rsk, language: rl, score: null, feedback: null, finished_at: null, created_at: nowS(), transcript: [{ role: "guest", text: "(Beispielgast aus der Demo, keine KI) " + open1 }] };
+        RP.unshift(rsn); return ok(rsn); }
+      var rall = q.get("all") === "1" && lead;
+      return ok(RP.filter(function (s) { return rall || s.user_id === ME; }).sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; }).map(function (s) {
+        return q.get("full") ? s : { id: s.id, user_id: s.user_id, scenario: s.scenario, language: s.language, score: s.score, feedback: s.feedback, finished_at: s.finished_at, created_at: s.created_at }; })); }
+    if ((mm = p.match(/^\/api\/roleplay\/([^/]+)$/))) { var rpo = byId(RP, mm[1]);
+      if (m === "DELETE") { if (!rpo || rpo.user_id !== ME) return deny("Nicht berechtigt."); remove(RP, rpo.id); return ok({ ok: true }); }
+      if (!rpo || (rpo.user_id !== ME && !lead)) return nf(); return ok(rpo); }
+    if ((mm = p.match(/^\/api\/roleplay\/([^/]+)\/turn$/)) && m === "POST") { var rpt = byId(RP, mm[1]); if (!rpt || rpt.user_id !== ME) return nf();
+      if (rpt.finished_at) return ok({ error: "Diese Übung ist schon beendet." }, 400); var rtx = s200(b.text, 1000); if (!rtx) return ok({ error: "Bitte eine Antwort eingeben." }, 400);
+      if (rpt.transcript.length >= 40) return ok({ error: "Die Übung ist lang genug – bitte beenden und die Rückmeldung ansehen." }, 400);
+      rpt.transcript.push({ role: "staff", text: rtx }); var nst = rpt.transcript.filter(function (x) { return x.role === "staff"; }).length, nxt = RP_NEXT[rpLang(rpt.language)];
+      rpt.transcript.push({ role: "guest", text: nxt[Math.min(nst - 1, nxt.length - 1)] }); return ok(Object.assign({}, rpt, { satisfied: nst >= 3 })); }
+    if ((mm = p.match(/^\/api\/roleplay\/([^/]+)\/finish$/)) && m === "POST") { var rpf = byId(RP, mm[1]); if (!rpf || rpf.user_id !== ME) return nf(); if (rpf.finished_at) return ok(rpf);
+      if (rpf.transcript.some(function (x) { return x.role === "staff"; })) { rpf.feedback = RP_FEEDBACK; rpf.score = RP_FEEDBACK.punktzahl; } rpf.finished_at = nowS(); return ok(rpf); }
+
+    // --- Dienstzeugnis-Entwurf (fester Beispieltext)
+    if (p === H + "/reference-letter" && m === "POST") { if (!hrNow()) return deny("Dienstzeugnisse erstellt die Leitung Personal.");
+      var rlm = D.members.find(function (x) { return x.user_id === b.user_id; }); if (!b.user_id) return ok({ error: "Bitte eine Person wählen." }, 400); if (!rlm) return ok({ error: "Diese Person gehört nicht zur Organisation." }, 400);
+      var rnm = s200(b.name, 120) || "[Name]", rps = s200(b.position, 120) || "[Position]", rst = isoOr(b.start_date) || "[Eintrittsdatum]", ren = isoOr(b.end_date) || "[Austrittsdatum]", rat = b.country !== "DE", rdep = (rlm.departments || []).join(", ") || "[Abteilung]";
+      var rtxt = (rat ? "Dienstzeugnis" : "Arbeitszeugnis") + " (BEISPIELTEXT AUS DER DEMO – kein KI-Entwurf)\n\n" + rnm + " war vom " + rst + " bis " + ren + " in unserem Haus " + D.hotel.name + " als " + rps + " in der Abteilung " + rdep + " beschäftigt.\n\n"
+        + "Aufgaben: " + (s200(b.tasks, 2000) || "[Aufgaben ergänzen]") + "\n\n" + (b.type === "qualifiziert" ? "Frau/Herr " + rnm + " erledigte die übertragenen Aufgaben stets zu unserer vollen Zufriedenheit, zuverlässig und selbstständig. Das Verhalten gegenüber Vorgesetzten, Kolleg:innen und Gästen war stets vorbildlich.\n\n" : "")
+        + "Das Dienstverhältnis endete [Grund des Austritts]. Wir danken für die Zusammenarbeit und wünschen alles Gute für die Zukunft.\n\n[Ort], am [Datum]\n\n[Name und Unterschrift der Leitung]";
+      return ok({ text: rtxt, hinweise: ["Beispieltext aus der Demo: In der echten Version erstellt die KI einen Entwurf aus Eintritt, Kursen und Notizen.", "Platzhalter in eckigen Klammern ergänzen und vor der Ausgabe von der Leitung prüfen und unterschreiben lassen."], draft: true,
+        input: { eintritt: rst, austritt: ren, abteilung: rdep, kurse: 0, unterweisungen: 0 } }); }
+
+    // --- Gäste: Einstellungen, Meldeschein, Warteschlange, Wiederkehr-Mail, Fundsachen-Rückversand
+    if (p === H + "/guest-settings" && m === "PUT") { if (ROLE !== "admin") return deny("Nur Admins können das einstellen.");
+      var gso = {}, gok = false;
+      if (b.registration_settings !== undefined) { var rg = b.registration_settings || {}; D.hotel.registration_settings = { enabled: !!rg.enabled, require_id: !!rg.require_id }; gok = true; }
+      if (b.queue_settings !== undefined) { var qsn2 = b.queue_settings || {}, ar0 = [], seen0 = {}; (Array.isArray(qsn2.areas) ? qsn2.areas : []).forEach(function (a) { a = String(a || "").replace(/[<>]/g, "").trim().slice(0, 40); if (a && !seen0[a]) { seen0[a] = 1; ar0.push(a); } });
+        D.hotel.queue_settings = { enabled: !!qsn2.enabled, areas: ar0.slice(0, 8), token: b.rotate_queue_token ? "DEMOwarteschlange" + Math.floor(Math.random() * 1e7) : (D.hotel.queue_settings || {}).token || "DEMOwarteschlangeAlpenblick" }; gok = true; }
+      if (b.occasion_mail !== undefined) { var om = b.occasion_mail || {}; D.hotel.occasion_mail = { enabled: !!om.enabled, anniversary: om.anniversary !== false, birthday: !!om.birthday, offer: String(om.offer || "").trim().slice(0, 600) }; gok = true; }
+      if (b.lost_found_shipping !== undefined) { var ls = b.lost_found_shipping || {}, lfee = Number(String(ls.fee == null ? "" : ls.fee).replace(",", ".")), llink = String(ls.payment_link || "").trim().slice(0, 500);
+        if (llink && !/^https:\/\/[^\s<>"']+$/i.test(llink)) return ok({ error: "Der Zahlungslink muss mit https:// beginnen." }, 400);
+        D.hotel.lost_found_shipping = { enabled: !!ls.enabled, fee: lfee >= 0 && lfee <= 500 ? Math.round(lfee * 100) / 100 : 0, payment_link: llink, note: String(ls.note || "").trim().slice(0, 500) }; gok = true; }
+      if (b.floor_settings !== undefined) { var fl0 = b.floor_settings || {}, fk = Number(fl0.kwh_per_floor_day), fp = Number(fl0.price_kwh);
+        D.hotel.floor_settings = { kwh_per_floor_day: fk >= 0 && fk <= 5000 ? fk : 0, price_kwh: fl0.price_kwh !== "" && fl0.price_kwh != null && fp >= 0 && fp <= 5 ? fp : null }; gok = true; }
+      if (b.pos_enabled !== undefined) { D.hotel.pos_settings = Object.assign({}, D.hotel.pos_settings, { enabled: !!b.pos_enabled }); gok = true; }
+      if (!gok) return ok({ error: "Nichts zu ändern." }, 400); return ok(D.hotel); }
+    if (p === H + "/registrations") { if (!(lead || hasDept("Rezeption & Empfang"))) return deny("Meldescheine sieht die Rezeption.");
+      var gto = isoOr(q.get("to")) || todayIso, gfrom = isoOr(q.get("from")) || add(gto, -31), gtoDemo = add(gto, 7); // Demo: Anreisen der nächsten Tage zählen mit
+      return ok(D.arrivals.filter(function (g) { return g.registration_at && g.arrival_date >= gfrom && g.arrival_date <= gtoDemo; }).sort(function (a, c) { return a.arrival_date < c.arrival_date ? -1 : 1; }).map(function (g) {
+        return { id: g.id, guest_name: g.guest_name, arrival_date: g.arrival_date, departure_date: g.departure_date, adults: g.adults, children: g.children, country: g.country, assigned_room: g.assigned_room || null, birth_date: g.birth_date, nationality: g.nationality, street: g.street, zip: g.zip, city: g.city,
+          address_country: g.address_country, id_doc_type: g.id_doc_type, id_doc_number: g.id_doc_number, companions: g.companions || [], registration_at: g.registration_at }; })); }
+    if (p === H + "/queue") { var qarea = q.get("area"); return ok(QUEUE.filter(function (x) { return !qarea || x.area === qarea; }).sort(function (a, c) { return a.created_at < c.created_at ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/queue\/([^/]+)$/)) && m === "PATCH") { var qe = byId(QUEUE, mm[1]); if (["wartet", "aufgerufen", "platziert", "abgesagt"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400); if (!qe) return deny("Nicht berechtigt.");
+      qe.status = b.status; if (b.status === "aufgerufen") { qe.called_at = nowS(); qe.done_at = null; } else if (b.status === "wartet") { qe.called_at = null; qe.done_at = null; } else qe.done_at = nowS(); return ok(qe); }
+    if (p === H + "/marketing-stats") { if (!(lead || hasDept("Rezeption & Empfang"))) return deny("Gästeprofile sieht die Rezeption."); return ok({ confirmed: 186, pending: 14, unsubscribed: 5, mailed_30d: 23 }); }
+    if (p === H + "/occasion-mail/preview") { var okind = q.get("kind") === "birthday" ? "birthday" : "anniversary", ol = q.get("lang") === "en" ? "en" : "de", offer = (D.hotel.occasion_mail || {}).offer || "";
+      var osub = ol === "en" ? (okind === "birthday" ? "Happy birthday from " : "One year ago you stayed with us – ") + D.hotel.name : (okind === "birthday" ? "Alles Gute zum Geburtstag von " : "Vor einem Jahr waren Sie bei uns zu Gast – ") + D.hotel.name;
+      var otx = ol === "en" ? (okind === "birthday" ? "We wish you a wonderful birthday." : "We would be delighted to welcome you again.") : (okind === "birthday" ? "Wir wünschen Ihnen einen wunderschönen Geburtstag." : "Wir würden uns freuen, Sie bald wieder bei uns zu begrüßen.");
+      return ok({ subject: osub, html: "<div style=\"font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#1C2430\"><h2 style=\"font-family:Georgia,serif\">" + osub + "</h2><p>" + (ol === "en" ? "Hello Maria Muster," : "Guten Tag Maria Muster,") + "</p><p>" + otx + "</p>"
+        + (offer ? "<div style=\"padding:12px 14px;background:#F6F4EF;border-radius:8px\"><b>" + (ol === "en" ? "Our offer" : "Unser Angebot") + "</b><br>" + offer + "</div>" : "") + "<p style=\"font-size:12px;color:#6B7280;margin-top:24px\">Vorschau mit Beispielname (Demo)</p></div>" }); }
+    if ((mm = p.match(/^\/api\/lost-found\/([^/]+)\/shipping$/))) { var lfs = byId(D.lost_found, mm[1]); if (!lfs) return nf(); return ok(shipOut(lfs)); }
+    if ((mm = p.match(/^\/api\/lost-found\/([^/]+)\/ship-offer$/)) && m === "POST") { var lfo = byId(D.lost_found, mm[1]); if (!lfo) return nf(); if (lfo.status !== "Aufbewahrt") return ok({ error: "Diese Fundsache ist schon abgeschlossen." }, 400);
+      var lsh = D.hotel.lost_found_shipping || {}; if (!lsh.enabled || !lsh.payment_link) return ok({ error: "Bitte zuerst den Rückversand mit Gebühr und Zahlungslink einstellen." }, 400);
+      var lto = s200(b.email, 200); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lto)) return ok({ error: "Bitte die E-Mail-Adresse des Gastes angeben." }, 400);
+      SHIP[lfo.id] = { ship_status: "angefragt", ship_token: "DEMOfundsache" + lfo.id.replace(/\W/g, ""), ship_fee: lsh.fee, ship_requested_at: nowS(), paid_confirmed_at: null, shipped_at: null, tracking: null, guest_name: lfo.guest_name || null, guest_contact: lto, ship_address: { lang: b.language || "de" } };
+      return ok(shipOut(lfo)); }
+    if ((mm = p.match(/^\/api\/lost-found\/([^/]+)\/ship-status$/)) && m === "POST") { var lfp = byId(D.lost_found, mm[1]); if (["bezahlt", "versendet"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400); if (!lfp || !SHIP[lfp.id]) return nf();
+      var sh2 = SHIP[lfp.id]; if (b.status === "bezahlt") { sh2.ship_status = "bezahlt"; sh2.paid_confirmed_at = nowS(); } else { sh2.ship_status = "versendet"; sh2.shipped_at = nowS(); sh2.tracking = s200(b.tracking, 120) || null; sh2.paid_confirmed_at = sh2.paid_confirmed_at || nowS(); lfp.status = "Zurückgegeben"; lfp.closed_at = nowS(); lfp.returned_to = ("Versand" + (sh2.tracking ? " " + sh2.tracking : "")).slice(0, 200); }
+      return ok(Object.assign(shipOut(lfp), { mailed: false })); }
+
+    // --- Zimmer: Etagen-Vorschlag, Reinigungs-Reihenfolge, Lebenslauf, Problemzimmer
+    if (p === H + "/floor-plan") { if (!(lead || hasDept("Rezeption & Empfang"))) return deny("Die Zimmerverteilung sieht die Rezeption.");
+      var fdate = isoOr(q.get("date")) || todayIso, frs = fdate === todayIso ? D.rooms : D.rooms.map(function (r) { return Object.assign({}, r, { occupancy: "Unbelegt", status: r.status === "Außer Betrieb" ? r.status : "Sauber" }); });
+      var fplan = floorPlanAssign(frs, D.arrivals.filter(function (a) { return a.arrival_date === fdate; })), ffs = D.hotel.floor_settings || {}, fmeter = (D.meters || []).find(function (x) { return x.kind === "Strom" && Number(x.price_per_unit) > 0; });
+      var fprice = fmeter ? Number(fmeter.price_per_unit) : ffs.price_kwh != null ? ffs.price_kwh : null, fkwh = fplan.empty_floors.length * (ffs.kwh_per_floor_day || 0);
+      return ok(Object.assign({ date: fdate }, fplan, { kwh_per_floor_day: ffs.kwh_per_floor_day || 0, kwh_saved: fkwh, price_kwh: fprice, price_source: fmeter ? "zaehler" : fprice != null ? "einstellung" : null, saving: fprice != null && fkwh ? Math.round(fkwh * fprice * 100) / 100 : null, status_live: fdate === todayIso })); }
+    if (p === H + "/floor-plan/apply" && m === "POST") { if (!(lead || hasDept("Rezeption & Empfang"))) return deny("Zimmer weist die Rezeption zu.");
+      var fl2 = (Array.isArray(b.assignments) ? b.assignments : []).slice(0, 500); if (!fl2.length) return ok({ error: "Nichts zu übernehmen." }, 400);
+      var fsaved = 0; fl2.forEach(function (a) { var ga = byId(D.arrivals, a && a.arrival_id); if (!ga) return; var rn2 = a.room === null || a.room === "" ? null : String(a.room || "").trim(); if (rn2 !== null && !D.rooms.some(function (r) { return r.number === rn2; })) return; ga.assigned_room = rn2; fsaved++; });
+      if (!fsaved) return deny("Zimmer weist die Rezeption zu."); return ok({ saved: fsaved }); }
+    if (p === H + "/cleaning-order") return ok(cleaningOrderList());
+    if ((mm = p.match(/^\/api\/rooms\/([^/]+)\/history$/))) { var hr0 = byId(D.rooms, mm[1]); if (!hr0) return nf();
+      var hnr = String(hr0.number), hts = allTickets().filter(function (t) { return mentionsRoom(t.location, hnr); }), hin = D.room_insp.filter(function (x) { return x.room_id === hr0.id; }).concat(HIST_INSP.filter(function (x) { return x.room_id === hr0.id; }));
+      if (EQ_INSP[hr0.id] && !hin.length) hin.push({ id: "hi-eq", room_id: hr0.id, passed: EQ_INSP[hr0.id].passed, created_at: EQ_INSP[hr0.id].created_at, note: "Abnahme Erstausstattung" });
+      var hmb = D.minibar_charges.filter(function (c) { return c.room_id === hr0.id; }), hlf = D.lost_found.filter(function (x) { return mentionsRoom(x.location, hnr); });
+      var hev = lead ? [["Sauber", 26], ["Schmutzig", 50], ["Kontrolliert", 74]].map(function (x) { return { status: x[0], at: hoursAgoIso(x[1]), by_user: "u-hkm" }; }) : [];
+      var htl = hts.map(function (x) { return { kind: "meldung", at: x.created_at, title: x.title, status: x.status, priority: x.priority, id: x.id }; })
+        .concat(hin.map(function (x) { return { kind: "abnahme", at: x.created_at, passed: x.passed, title: x.note || "", id: x.id }; }))
+        .concat(hmb.map(function (x) { return { kind: "minibar", at: x.charged_at, title: x.quantity + " × " + x.item_name, billed: !!x.billed_at, amount: Math.round(x.quantity * x.unit_price * 100) / 100, id: x.id }; }))
+        .concat(hlf.map(function (x) { return { kind: "fundsache", at: x.found_on, title: x.description, status: x.status, id: x.id }; }))
+        .concat(hev.map(function (x) { return { kind: "status", at: x.at, title: x.status }; })).sort(function (a, c) { return String(c.at).localeCompare(String(a.at)); }).slice(0, 400);
+      var h90 = hoursAgoIso(24 * 90), heq = EQ[hr0.id];
+      return ok({ room: { id: hr0.id, number: hnr, floor: hr0.floor || floorOfR(hr0), room_type: hr0.room_type, status: hr0.status, occupancy: hr0.occupancy, note: hr0.note, accessibility: hr0.accessibility || {} },
+        equipment: heq ? { delivered: heq.delivered, installed: heq.installed, note: heq.note, updated_at: heq.updated_at } : null, timeline: htl,
+        counts: { tickets: hts.length, tickets_90d: hts.filter(function (x) { return x.created_at >= h90; }).length, open_tickets: hts.filter(function (x) { return x.status !== "Erledigt"; }).length, inspections: hin.length, failed_inspections: hin.filter(function (x) { return !x.passed; }).length,
+          minibar_unbilled: hmb.filter(function (x) { return !x.billed_at; }).length, lost_found: hlf.length }, status_log: hev.length > 0 }); }
+    if (p === H + "/problem-rooms") { var h90b = hoursAgoIso(24 * 90), alt = allTickets().filter(function (t) { return t.location && t.created_at >= h90b; });
+      var prs = D.rooms.map(function (r) { var t = alt.filter(function (x) { return mentionsRoom(x.location, r.number); });
+        return { id: r.id, number: r.number, floor: r.floor || floorOfR(r), room_type: r.room_type, status: r.status, tickets_90d: t.length, open: t.filter(function (x) { return x.status !== "Erledigt"; }).length, urgent: t.filter(function (x) { return x.priority === "Dringend"; }).length, last_at: t.map(function (x) { return x.created_at; }).sort().pop() || null }; })
+        .filter(function (r) { return r.tickets_90d > 0; }).sort(function (a, c) { return c.tickets_90d - a.tickets_90d || c.urgent - a.urgent || cmpNum(a.number, c.number); });
+      return ok(prs.slice(0, Math.min(50, Number(q.get("limit")) || 10))); }
+
+    // --- Kassen-Anbindung
+    if (p === H + "/pos/token" && m === "POST") { if (ROLE !== "admin") return deny("Nur Admins können das einstellen.");
+      var ptk = "DEMO-BEISPIEL-" + Math.floor(Math.random() * 1e9); D.hotel.pos_settings = { enabled: true, token_hash: "demo-" + ptk, token_created_at: nowS() };
+      return ok({ token: ptk, endpoint: "https://hpoos-backend-1.onrender.com/api/public/pos/" + ptk }); }
+    if (p === H + "/pos-sales") { if (!lead) return deny("Kassenumsätze sieht die Leitung."); var pmo = /^\d{4}-\d{2}$/.test(String(q.get("month") || "")) ? q.get("month") : todayIso.slice(0, 7);
+      return ok({ month: pmo, rows: POS.filter(function (r) { return r.sale_date.slice(0, 7) === pmo; }).sort(function (a, c) { return a.sale_date < c.sale_date ? -1 : a.sale_date > c.sale_date ? 1 : a.outlet < c.outlet ? -1 : 1; }) }); }
+    if (p === H + "/pos-sales/import" && m === "POST") { if (!lead) return deny("Kassenumsätze pflegt die Leitung."); var plist = Array.isArray(b.rows) ? b.rows.slice(0, 3000) : [], prow = [], pskip = [];
+      plist.forEach(function (r, i) { try { prow.push(cleanPosRow(r)); } catch (e) { if (pskip.length < 20) pskip.push({ row: i + 1, error: e.message }); } });
+      if (!prow.length) return ok({ error: "In der Datei wurden keine gültigen Tageszeilen erkannt.", skipped: pskip }, 400);
+      prow.forEach(function (r) { var ex = POS.find(function (x) { return x.sale_date === r.sale_date && x.outlet === r.outlet; }); if (ex) Object.assign(ex, r, { source: "csv" }); else POS.push(Object.assign({ id: nid("pos"), source: "csv", created_at: nowS() }, r)); });
+      return ok({ saved: prow.length, skipped: pskip, skipped_count: plist.length - prow.length }); }
+    if ((mm = p.match(/^\/api\/pos-sales\/([^/]+)$/)) && m === "DELETE") { if (!lead || !byId(POS, mm[1])) return deny("Nicht berechtigt."); remove(POS, mm[1]); return ok({ ok: true }); }
+    if (p === H + "/pos-sales/cash-to-book" && m === "POST") { if (!lead) return deny("Kassenbuch: nicht berechtigt."); var cdate = String(b.date || ""); if (!/^\d{4}-\d{2}-\d{2}$/.test(cdate)) return ok({ error: "Bitte ein Datum wählen." }, 400);
+      var ccr = [], csales = POS.filter(function (x) { return x.sale_date === cdate && (typeof b.outlet !== "string" || x.outlet === b.outlet); });
+      csales.forEach(function (s) { var amt = Math.round(Number(s.cash || 0) * 100) / 100; if (!(amt > 0)) return; var note = ("Barumsatz Kasse " + (s.outlet || "gesamt") + " " + cdate).slice(0, 500);
+        if (D.cash.some(function (x) { return x.entry_date === cdate && x.note === note; })) return;
+        var ce2 = { id: nid("cash"), entry_date: cdate, direction: "ein", category: "Sonstiges", amount: amt, note: note, department: "Food & Beverage", created_by: ME, created_at: nowS(), has_receipt: false }; D.cash.push(ce2); ccr.push({ outlet: s.outlet, id: ce2.id, amount: amt }); });
+      return ok({ created: ccr, skipped: csales.length - ccr.length }); }
+
     return ok({});
   };
 })();

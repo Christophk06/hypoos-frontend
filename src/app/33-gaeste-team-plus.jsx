@@ -33,7 +33,7 @@ function MySelfServiceView({orgId, api, me, hotel}){
     const from = month+"-01", to = todayIso();
     api("/api/hotels/"+hotel.id+"/time-entries?from="+from+"&to="+to).then(l=>setHours((l||[]).filter(e=>e.user_id===me.id && e.clock_out && e.clock_in.slice(0,7)===month || false))).catch(()=>setHours(null));
   },[orgId, hotel.id, me && me.id]);
-  const open = async (d) => { setMsg(null); try { const x = await api("/api/staff-documents/"+d.id+"/file"); const b = await (await fetch(x.file_data)).blob(); const url = URL.createObjectURL(b); const w = window.open(url, "_blank", "noopener"); if(!w){ const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.click(); } setTimeout(()=>URL.revokeObjectURL(url), 60000); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  const open = async (d) => { setMsg(null); try { const x = await api("/api/staff-documents/"+d.id+"/file"); const b = await safeFileBlob(x.file_data); const url = URL.createObjectURL(b); const w = window.open(url, "_blank", "noopener"); if(!w){ const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.click(); } setTimeout(()=>URL.revokeObjectURL(url), 60000); } catch(e){ setMsg({ok:false,text:e.message}); } };
   if(!me) return null;
   const myDocs = (docs||[]).filter(d=>d.user_id===me.id);
   const bal = leave && (leave.balances||[]).find(b=>b.user_id===me.id);

@@ -109,18 +109,40 @@
   function payrollLinesCsv(lines, month, header) {
     return toCsv(header || ["Personalnummer", "Name", "Lohnart", "Menge", "Zeitraum"], lines.map(function (l) { return [l.pnr, l.name, l.la, comma(l.value), month]; }));
   }
-  // DATEV LODAS: ASCII-Import "Bewegungsdaten" (bitte einmal mit der Lohnverrechnung testen)
+  // DATEV LODAS: ASCII-Import "Bewegungsdaten". Feldschluessel, Satzbeschreibung und Format sind mit der Vorlage der
+  // Kanzlei abzustimmen (bitte einmal mit der Lohnverrechnung testen). Die Lohnart muss numerisch und hoechstens 4-stellig sein.
+  // settings: { berater, mandant, vs: { "<Lohnart>": "<Verarbeitungsschluessel>" } } - Verarbeitungsschluessel Standard 1.
+  function asciiOnly(v) {
+    return String(v == null ? "" : v).replace(/ß/g, "ss").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe").replace(/Ü/g, "Ue")
+      .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/€/g, "EUR")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[\r\n;]+/g, " ").replace(/[^\x20-\x7E]/g, "").trim();
+  }
+  // Ungueltige Lohnarten (leer, nicht numerisch, mehr als 4 Stellen) - Liste der betroffenen Werte
+  function payrollDatevProblems(lines) {
+    var bad = [];
+    lines.filter(function (l) { return l.pnr; }).forEach(function (l) {
+      if (!/^\d{1,4}$/.test(String(l.la == null ? "" : l.la).trim()) && bad.indexOf(String(l.la)) < 0) bad.push(String(l.la));
+    });
+    return bad;
+  }
   function payrollDatevLodas(lines, month, settings) {
-    var y = month.slice(0, 4), m = month.slice(5, 7);
-    var out = ["[Allgemein]", "Ziel=LODAS", "Version_SST=1.0", "BeraterNr=" + ((settings && settings.berater) || ""), "MandantenNr=" + ((settings && settings.mandant) || ""), "Datumsangaben=DDMMJJJJ", "",
+    var bad = payrollDatevProblems(lines);
+    if (bad.length) throw new Error("DATEV: Ungültige Lohnart-Nummer (nur Ziffern, höchstens 4 Stellen erlaubt): " + bad.map(function (x) { return x || "(leer)"; }).join(", "));
+    var y = month.slice(0, 4), m = month.slice(5, 7), vs = (settings && settings.vs) || {};
+    var out = ["[Allgemein]", "Ziel=LODAS", "Version_SST=1.0", "BeraterNr=" + asciiOnly(settings && settings.berater), "MandantenNr=" + asciiOnly(settings && settings.mandant),
+      "Datumsangaben=DDMMJJJJ", "Feldtrennzeichen=;", "Zahlenkomma=,", "",
       "[Satzbeschreibung]", "1;u_lod_bwd_buchung_standard;abrechnung_zeitraum#bwd;pnr#bwd;la_eigene#bwd;bs_nr#bwd;bs_wert_butab#bwd;", "", "[Bewegungsdaten]"];
-    lines.filter(function (l) { return l.pnr; }).forEach(function (l) { out.push("1;01" + m + y + ";" + l.pnr + ";" + l.la + ";1;" + comma(l.value.toFixed(2)) + ";"); });
+    lines.filter(function (l) { return l.pnr; }).forEach(function (l) {
+      var la = String(l.la).trim(), v = String(vs[la] != null && String(vs[la]).trim() !== "" ? vs[la] : 1);
+      out.push("1;01" + m + y + ";" + asciiOnly(l.pnr) + ";" + la + ";" + asciiOnly(v) + ";" + comma(l.value.toFixed(2)) + ";");
+    });
     return out.join("\r\n") + "\r\n";
   }
 
   root.payrollLines = payrollLines;
   root.payrollLinesCsv = payrollLinesCsv;
   root.payrollDatevLodas = payrollDatevLodas;
+  root.payrollDatevProblems = payrollDatevProblems;
   root.payrollSummary = payrollSummary;
   root.splitTimeEntry = splitEntry;
   root.payrollMonthBounds = monthBounds;

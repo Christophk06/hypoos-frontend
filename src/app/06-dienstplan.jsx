@@ -811,6 +811,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
       {canManage && <CalendarNotesCard hotel={hotel} api={api} info={dayInfo} onChanged={reloadDayInfo} />}
       {canManage && dayInfo && dayInfo.notes!==undefined && <StaffingAdviceCard hotel={hotel} api={api} from={days[0]} />}
       {canManage && <WellbeingCard hotel={hotel} api={api} members={members} />}
+      {canManage && <FirstAidRosterHint hotel={hotel} api={api} days={days} />}
       {canManage && dept && (
         <Card className="no-print" style={{marginBottom:18}}>
           <div style={{fontWeight:700,marginBottom:6}}>{tf("Schichtzeiten und Mindestbesetzung")} · <span>{dept}</span></div>

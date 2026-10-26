@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ouverture – Keine Verbindung</title>
+<style>
+  :root { --bg:#F6F4EF; --fg:#1C2430; --mut:#5b6472; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1C2430; --fg:#F6F4EF; --mut:#b4bac4; } }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px 16px; box-sizing:border-box; }
+  h1 { font-size:1.5rem; margin:0 0 .5rem; font-weight:600; }
+  p { color:var(--mut); max-width:28rem; line-height:1.5; margin:0 0 1.5rem; }
+  button { font:inherit; padding:.75rem 1.5rem; min-height:44px; border-radius:8px; border:0; background:var(--fg); color:var(--bg); cursor:pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Keine Verbindung</h1>
+  <p>Ouverture kann gerade nicht geladen werden. Bitte prüfe deine Internetverbindung und versuche es erneut.</p>
+  <button id="retry" type="button">Erneut versuchen</button>
+</main>
+<script>
+  var LIVE = "https://hypoos-frontend.onrender.com/index.html";
+  document.getElementById("retry").addEventListener("click", function () { location.href = LIVE; });
+  window.addEventListener("online", function () { location.href = LIVE; });
+</script>
+</body>
+</html>

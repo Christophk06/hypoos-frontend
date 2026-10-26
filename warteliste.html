@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: #1C2430; }
+  .w { max-width: 520px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 44px; max-width: 140px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: #fff; font-size: 14px; min-height: 44px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 27px; margin: 4px 0 8px; line-height: 1.25; }
+  .date { color: var(--brass); font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .info { white-space: pre-line; font-size: 15px; line-height: 1.55; }
+  .offer { border-color: var(--brass); }
+  .offer .l { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--brass); font-weight: 700; margin-bottom: 4px; }
+  label.t { display: block; font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
+  input[type=email], input[type=text] { width: 100%; border: 1px solid #B9B3A6; border-radius: 10px; padding: 12px; font: inherit; font-size: 16px; background: #fff; min-height: 48px; }
+  input:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 14px; line-height: 1.45; cursor: pointer; }
+  .consent input { width: 22px; height: 22px; flex-shrink: 0; margin-top: 1px; accent-color: #1C2430; }
+  button.send { width: 100%; margin-top: 16px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; min-height: 48px; }
+  button.send:disabled { opacity: .55; }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; line-height: 1.45; }
+  .ok { background: #E4EFE8; color: #2F5E46; } .err { background: #F5E1DE; color: #8A2F27; }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.45; }
+  footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: center; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel" dir="auto">…</div><select class="lang" id="lang" aria-label="Language / Sprache"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture · <a href="rechtliches.html">Impressum &amp; Datenschutz</a></footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { loading: "Lädt …", invalid: "Diese Warteliste ist nicht (mehr) aktiv.", opening: "Eröffnung am {date}", offer: "Für die Warteliste", name: "Ihr Name (freiwillig)", email: "E-Mail-Adresse",
+    consent: "Ja, ich möchte per E-Mail über die Eröffnung und das Angebot informiert werden. Diese Einwilligung kann ich jederzeit über den Abmeldelink in jeder Mail widerrufen.",
+    send: "Auf die Warteliste", checkMail: "Fast geschafft! Bitte bestätigen Sie Ihre Adresse über den Link in der E-Mail, die wir Ihnen gerade geschickt haben. Erst dann stehen Sie auf der Liste.",
+    mailFailed: "Die Bestätigungsmail konnte gerade nicht verschickt werden. Bitte versuchen Sie es später erneut.", confirmed: "Danke! Ihre Adresse ist bestätigt. Sie erfahren als Erste von der Eröffnung.",
+    already: "Ihre Adresse ist bereits bestätigt – Sie stehen auf der Warteliste.", unsubscribed: "Sie wurden abgemeldet und erhalten keine weiteren Mails zur Eröffnung.",
+    needConsent: "Bitte stimmen Sie der Info-Mail zu.", badEmail: "Bitte eine gültige E-Mail-Adresse angeben.", error: "Etwas ist schiefgelaufen. Bitte später erneut versuchen.",
+    privacy: "Wir verwenden Ihre Adresse nur für diese Information und geben sie nicht weiter. Unbestätigte Einträge löschen wir nach 30 Tagen." },
+  en: { loading: "Loading …", invalid: "This waiting list is not (or no longer) active.", opening: "Opening on {date}", offer: "For the waiting list", name: "Your name (optional)", email: "Email address",
+    consent: "Yes, I would like to be informed by email about the opening and the offer. I can withdraw this consent at any time using the unsubscribe link in every email.",
+    send: "Join the waiting list", checkMail: "Almost done! Please confirm your address via the link in the email we have just sent you. Only then will you be on the list.",
+    mailFailed: "The confirmation email could not be sent right now. Please try again later.", confirmed: "Thank you! Your address is confirmed. You will be among the first to hear about the opening.",
+    already: "Your address is already confirmed – you are on the waiting list.", unsubscribed: "You have been unsubscribed and will not receive any further emails about the opening.",
+    needConsent: "Please agree to receive the information email.", badEmail: "Please enter a valid email address.", error: "Something went wrong. Please try again later.",
+    privacy: "We use your address only for this information and do not pass it on. Unconfirmed entries are deleted after 30 days." },
+  fr: { loading: "Chargement …", invalid: "Cette liste d’attente n’est pas (ou plus) active.", opening: "Ouverture le {date}", offer: "Pour la liste d’attente", name: "Votre nom (facultatif)", email: "Adresse e-mail",
+    consent: "Oui, je souhaite être informé(e) par e-mail de l’ouverture et de l’offre. Je peux retirer ce consentement à tout moment via le lien de désinscription présent dans chaque e-mail.",
+    send: "M’inscrire sur la liste d’attente", checkMail: "Presque terminé ! Veuillez confirmer votre adresse via le lien de l’e-mail que nous venons de vous envoyer. Ce n’est qu’ensuite que vous figurerez sur la liste.",
+    mailFailed: "L’e-mail de confirmation n’a pas pu être envoyé pour le moment. Veuillez réessayer plus tard.", confirmed: "Merci ! Votre adresse est confirmée. Vous serez parmi les premiers informés de l’ouverture.",
+    already: "Votre adresse est déjà confirmée – vous êtes sur la liste d’attente.", unsubscribed: "Vous avez été désinscrit(e) et ne recevrez plus d’e-mails concernant l’ouverture.",
+    needConsent: "Veuillez accepter de recevoir l’e-mail d’information.", badEmail: "Veuillez saisir une adresse e-mail valide.", error: "Une erreur s’est produite. Veuillez réessayer plus tard.",
+    privacy: "Nous utilisons votre adresse uniquement pour cette information et ne la transmettons pas. Les inscriptions non confirmées sont supprimées après 30 jours." },
+  it: { loading: "Caricamento …", invalid: "Questa lista d’attesa non è (più) attiva.", opening: "Apertura il {date}", offer: "Per la lista d’attesa", name: "Il suo nome (facoltativo)", email: "Indirizzo e-mail",
+    consent: "Sì, desidero essere informato/a via e-mail sull’apertura e sull’offerta. Posso revocare questo consenso in qualsiasi momento tramite il link di disiscrizione presente in ogni e-mail.",
+    send: "Iscrivermi alla lista d’attesa", checkMail: "Quasi fatto! Confermi il suo indirizzo tramite il link nell’e-mail che le abbiamo appena inviato. Solo così sarà nella lista.",
+    mailFailed: "Non è stato possibile inviare l’e-mail di conferma. Riprovi più tardi.", confirmed: "Grazie! Il suo indirizzo è confermato. Sarà tra i primi a sapere dell’apertura.",
+    already: "Il suo indirizzo è già confermato: è nella lista d’attesa.", unsubscribed: "La sua iscrizione è stata annullata e non riceverà altre e-mail sull’apertura.",
+    needConsent: "Acconsenta a ricevere l’e-mail informativa.", badEmail: "Inserisca un indirizzo e-mail valido.", error: "Qualcosa è andato storto. Riprovi più tardi.",
+    privacy: "Usiamo il suo indirizzo solo per questa informazione e non lo cediamo a terzi. Le iscrizioni non confermate vengono cancellate dopo 30 giorni." },
+  es: { loading: "Cargando …", invalid: "Esta lista de espera no está (o ya no está) activa.", opening: "Apertura el {date}", offer: "Para la lista de espera", name: "Su nombre (opcional)", email: "Correo electrónico",
+    consent: "Sí, deseo recibir información por correo electrónico sobre la apertura y la oferta. Puedo retirar este consentimiento en cualquier momento con el enlace para darse de baja incluido en cada correo.",
+    send: "Apuntarme a la lista de espera", checkMail: "¡Casi listo! Confirme su dirección con el enlace del correo que acabamos de enviarle. Solo entonces estará en la lista.",
+    mailFailed: "No se ha podido enviar el correo de confirmación. Inténtelo de nuevo más tarde.", confirmed: "¡Gracias! Su dirección está confirmada. Será de los primeros en conocer la apertura.",
+    already: "Su dirección ya está confirmada: está en la lista de espera.", unsubscribed: "Se ha dado de baja y no recibirá más correos sobre la apertura.",
+    needConsent: "Acepte recibir el correo informativo.", badEmail: "Introduzca una dirección de correo válida.", error: "Algo ha salido mal. Inténtelo de nuevo más tarde.",
+    privacy: "Usamos su dirección solo para esta información y no la cedemos. Las inscripciones sin confirmar se eliminan a los 30 días." },
+  pt: { loading: "A carregar …", invalid: "Esta lista de espera não está (ou já não está) ativa.", opening: "Abertura a {date}", offer: "Para a lista de espera", name: "O seu nome (opcional)", email: "Endereço de e-mail",
+    consent: "Sim, quero ser informado/a por e-mail sobre a abertura e a oferta. Posso retirar este consentimento a qualquer momento através da ligação de cancelamento em cada e-mail.",
+    send: "Entrar na lista de espera", checkMail: "Quase pronto! Confirme o seu endereço através da ligação no e-mail que acabámos de lhe enviar. Só então ficará na lista.",
+    mailFailed: "Não foi possível enviar o e-mail de confirmação. Tente novamente mais tarde.", confirmed: "Obrigado! O seu endereço está confirmado. Será dos primeiros a saber da abertura.",
+    already: "O seu endereço já está confirmado – está na lista de espera.", unsubscribed: "A sua inscrição foi cancelada e não receberá mais e-mails sobre a abertura.",
+    needConsent: "Aceite receber o e-mail informativo.", badEmail: "Indique um endereço de e-mail válido.", error: "Algo correu mal. Tente novamente mais tarde.",
+    privacy: "Usamos o seu endereço apenas para esta informação e não o partilhamos. As inscrições não confirmadas são apagadas após 30 dias." },
+  tr: { loading: "Yükleniyor …", invalid: "Bu bekleme listesi aktif değil (artık).", opening: "Açılış: {date}", offer: "Bekleme listesine özel", name: "Adınız (isteğe bağlı)", email: "E-posta adresi",
+    consent: "Evet, açılış ve teklif hakkında e-posta ile bilgilendirilmek istiyorum. Bu onayı her e-postadaki abonelikten çıkma bağlantısıyla istediğim zaman geri çekebilirim.",
+    send: "Bekleme listesine katıl", checkMail: "Neredeyse bitti! Lütfen size az önce gönderdiğimiz e-postadaki bağlantıyla adresinizi onaylayın. Ancak o zaman listeye eklenirsiniz.",
+    mailFailed: "Onay e-postası şu anda gönderilemedi. Lütfen daha sonra tekrar deneyin.", confirmed: "Teşekkürler! Adresiniz onaylandı. Açılışı ilk duyanlardan olacaksınız.",
+    already: "Adresiniz zaten onaylı – bekleme listesindesiniz.", unsubscribed: "Abonelikten çıktınız; açılışla ilgili başka e-posta almayacaksınız.",
+    needConsent: "Lütfen bilgilendirme e-postasını onaylayın.", badEmail: "Lütfen geçerli bir e-posta adresi girin.", error: "Bir şeyler ters gitti. Lütfen daha sonra tekrar deneyin.",
+    privacy: "Adresinizi yalnızca bu bilgilendirme için kullanır ve kimseyle paylaşmayız. Onaylanmayan kayıtları 30 gün sonra sileriz." },
+  ja: { loading: "読み込み中 …", invalid: "このウェイティングリストは現在受け付けていません。", opening: "開業日：{date}", offer: "ウェイティングリスト特典", name: "お名前（任意）", email: "メールアドレス",
+    consent: "開業と特典に関するお知らせをメールで受け取ります。この同意は、各メールの配信停止リンクからいつでも撤回できます。",
+    send: "ウェイティングリストに登録", checkMail: "あと少しです。先ほどお送りしたメールのリンクからメールアドレスをご確認ください。確認後にリストに登録されます。",
+    mailFailed: "確認メールを送信できませんでした。しばらくしてから再度お試しください。", confirmed: "ありがとうございます。メールアドレスが確認されました。開業のお知らせをいち早くお届けします。",
+    already: "メールアドレスは確認済みです。ウェイティングリストに登録されています。", unsubscribed: "配信を停止しました。開業に関するメールは今後届きません。",
+    needConsent: "お知らせメールの受信に同意してください。", badEmail: "有効なメールアドレスを入力してください。", error: "問題が発生しました。しばらくしてから再度お試しください。",
+    privacy: "メールアドレスはこのお知らせにのみ使用し、第三者に提供しません。未確認の登録は30日後に削除します。" },
+  zh: { loading: "加载中 …", invalid: "此候补名单目前未开放。", opening: "开业日期：{date}", offer: "候补名单专享", name: "您的姓名（选填）", email: "电子邮箱",
+    consent: "是的，我希望通过电子邮件获知开业信息和优惠。我可随时通过每封邮件中的退订链接撤回此同意。",
+    send: "加入候补名单", checkMail: "快完成了！请通过我们刚发送的邮件中的链接确认您的邮箱地址。确认后才会加入名单。",
+    mailFailed: "暂时无法发送确认邮件，请稍后再试。", confirmed: "谢谢！您的邮箱已确认。您将第一时间获知开业消息。",
+    already: "您的邮箱已确认，您已在候补名单中。", unsubscribed: "您已退订，将不再收到有关开业的邮件。",
+    needConsent: "请同意接收通知邮件。", badEmail: "请输入有效的电子邮箱地址。", error: "出现问题，请稍后再试。",
+    privacy: "我们仅将您的邮箱用于此通知，不会转交他人。未确认的登记将在30天后删除。" },
+  ar: { loading: "جارٍ التحميل …", invalid: "قائمة الانتظار هذه غير نشطة (حاليًا).", opening: "الافتتاح في {date}", offer: "لقائمة الانتظار", name: "اسمك (اختياري)", email: "البريد الإلكتروني",
+    consent: "نعم، أرغب في تلقي معلومات عن الافتتاح والعرض عبر البريد الإلكتروني. يمكنني سحب هذه الموافقة في أي وقت عبر رابط إلغاء الاشتراك الموجود في كل رسالة.",
+    send: "الانضمام إلى قائمة الانتظار", checkMail: "اقتربت من الانتهاء! يرجى تأكيد عنوانك عبر الرابط في الرسالة التي أرسلناها إليك للتو. لن تُدرج في القائمة إلا بعد التأكيد.",
+    mailFailed: "تعذّر إرسال رسالة التأكيد حاليًا. يرجى المحاولة لاحقًا.", confirmed: "شكرًا لك! تم تأكيد عنوانك. ستكون من أوائل من يعلمون بالافتتاح.",
+    already: "عنوانك مؤكد بالفعل، وأنت في قائمة الانتظار.", unsubscribed: "تم إلغاء اشتراكك ولن تتلقى رسائل أخرى بشأن الافتتاح.",
+    needConsent: "يرجى الموافقة على تلقي رسالة المعلومات.", badEmail: "يرجى إدخال بريد إلكتروني صالح.", error: "حدث خطأ ما. يرجى المحاولة لاحقًا.",
+    privacy: "نستخدم عنوانك لهذه المعلومات فقط ولا نشاركه مع أحد. نحذف التسجيلات غير المؤكدة بعد 30 يومًا." }
+};
+// Bestätigen/Abmelden erst nach Klick (Link-Scanner in Mailprogrammen lösen so nichts aus)
+var T2 = {
+  de: { confirmQ: "Möchten Sie Ihre E-Mail-Adresse für die Warteliste bestätigen?", confirmBtn: "Adresse bestätigen", unsubQ: "Möchten Sie sich von der Warteliste abmelden?", unsubBtn: "Abmelden" },
+  en: { confirmQ: "Would you like to confirm your email address for the waiting list?", confirmBtn: "Confirm address", unsubQ: "Would you like to leave the waiting list?", unsubBtn: "Unsubscribe" },
+  fr: { confirmQ: "Souhaitez-vous confirmer votre adresse e-mail pour la liste d’attente ?", confirmBtn: "Confirmer l’adresse", unsubQ: "Souhaitez-vous vous désinscrire de la liste d’attente ?", unsubBtn: "Se désinscrire" },
+  it: { confirmQ: "Desidera confermare il suo indirizzo e-mail per la lista d’attesa?", confirmBtn: "Conferma indirizzo", unsubQ: "Desidera cancellarsi dalla lista d’attesa?", unsubBtn: "Annulla iscrizione" },
+  es: { confirmQ: "¿Desea confirmar su dirección de correo para la lista de espera?", confirmBtn: "Confirmar dirección", unsubQ: "¿Desea darse de baja de la lista de espera?", unsubBtn: "Darse de baja" },
+  pt: { confirmQ: "Deseja confirmar o seu endereço de e-mail para a lista de espera?", confirmBtn: "Confirmar endereço", unsubQ: "Deseja sair da lista de espera?", unsubBtn: "Cancelar inscrição" },
+  tr: { confirmQ: "Bekleme listesi için e-posta adresinizi onaylamak istiyor musunuz?", confirmBtn: "Adresi onayla", unsubQ: "Bekleme listesinden çıkmak istiyor musunuz?", unsubBtn: "Abonelikten çık" },
+  ja: { confirmQ: "ウェイティングリストのメールアドレスを確認しますか？", confirmBtn: "メールアドレスを確認する", unsubQ: "ウェイティングリストの登録を解除しますか？", unsubBtn: "配信停止" },
+  zh: { confirmQ: "要确认您用于候补名单的电子邮箱地址吗？", confirmBtn: "确认地址", unsubQ: "要退出候补名单吗？", unsubBtn: "取消订阅" },
+  ar: { confirmQ: "هل تريد تأكيد بريدك الإلكتروني لقائمة الانتظار؟", confirmBtn: "تأكيد العنوان", unsubQ: "هل تريد إلغاء اشتراكك في قائمة الانتظار؟", unsubBtn: "إلغاء الاشتراك" }
+};
+Object.keys(T2).forEach(function (l) { Object.keys(T2[l]).forEach(function (k) { T[l][k] = T2[l][k]; }); });
+var q = new URLSearchParams(location.search), token = q.get("w") || "", ctoken = q.get("confirm") || q.get("unsubscribe") || "", mode = q.get("confirm") ? "confirm" : q.get("unsubscribe") ? "unsubscribe" : "signup", demo = q.get("demo") === "1";
+var state = { info: null, result: null, error: null, busy: false, name: "", email: "", consent: false, sent: null };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick", opening_date: new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10) }, headline: "Wir öffnen im Frühling – seien Sie die Ersten",
+  text: "Neues Haus am See mit 48 Zimmern, Spa und regionaler Küche.\nTragen Sie sich ein, und wir sagen Ihnen als Erstes Bescheid, sobald die Buchung öffnet.", offer: "15 % auf Aufenthalte in den ersten zwei Wochen" };
+function api(path, opt) {
+  if (demo) return Promise.resolve(mode === "signup" ? (opt ? { ok: true, mail_sent: true } : DEMO) : { ok: true, confirmed: !!opt && mode === "confirm", unsubscribed: !!opt && mode === "unsubscribe", done: opt ? mode : undefined, hotel: DEMO.hotel });
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || t("error")); return j; }); });
+}
+function fmtDate(iso) { try { return new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : lang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return iso; } }
+function brand(h) {
+  if (!h) return;
+  $("hotel").textContent = h.name || ""; document.title = h.name || "Ouverture";
+  if (h.logo_data && /^data:image\//.test(h.logo_data)) { $("logo").src = h.logo_data; $("logo").alt = h.name || ""; $("logo").hidden = false; }
+  if (h.brand_color && /^#[0-9a-fA-F]{6}$/.test(h.brand_color)) document.documentElement.style.setProperty("--ink", h.brand_color);
+}
+function focusMsg() { var m = document.querySelector(".msg"); if (m) { m.setAttribute("tabindex", "-1"); m.focus(); } }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app");
+  if (mode !== "signup") {
+    if (state.error) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+    if (!state.result) { a.innerHTML = '<p class="note">' + esc(t("loading")) + "</p>"; return; }
+    var r = state.result, txt = null;
+    if (mode === "unsubscribe" && r.unsubscribed) txt = t("unsubscribed");
+    if (mode === "confirm" && r.confirmed) txt = r.done ? t("confirmed") : t("already");
+    if (txt) { a.innerHTML = '<div class="msg ok" role="status">✓ ' + esc(txt) + "</div>"; return; }
+    a.innerHTML = '<div class="box"><p class="info" style="margin-top:0">' + esc(t(mode === "confirm" ? "confirmQ" : "unsubQ")) + '</p><button class="send" type="button" id="act"' + (state.busy ? " disabled" : "") + ">" + esc(t(mode === "confirm" ? "confirmBtn" : "unsubBtn")) + "</button></div>";
+    $("act").onclick = function () {
+      state.busy = true; render();
+      api("/api/public/waitlist/" + mode + "/" + encodeURIComponent(ctoken), { method: "POST", body: "{}" })
+        .then(function (x) { state.result = x; }).catch(function (e) { state.error = e.message || t("error"); })
+        .then(function () { state.busy = false; render(); focusMsg(); });
+    };
+    return;
+  }
+  var i = state.info;
+  if (state.error && !i) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!i) { a.innerHTML = '<p class="note">' + esc(t("loading")) + "</p>"; return; }
+  var html = (i.headline ? '<h1 dir="auto">' + esc(i.headline) + "</h1>" : '<h1 dir="auto">' + esc(i.hotel.name) + "</h1>")
+    + (i.hotel.opening_date ? '<div class="date">' + esc(t("opening", { date: fmtDate(i.hotel.opening_date) })) + "</div>" : "");
+  if (i.text) html += '<div class="box info" dir="auto">' + esc(i.text) + "</div>";
+  if (i.offer) html += '<div class="box offer"><div class="l">' + esc(t("offer")) + '</div><div class="info" dir="auto">' + esc(i.offer) + "</div></div>";
+  if (state.sent) {
+    html += '<div class="msg ' + (state.sent === "ok" ? "ok" : "err") + '" role="' + (state.sent === "ok" ? "status" : "alert") + '">' + esc(state.sent === "ok" ? "✓ " + t("checkMail") : t("mailFailed")) + "</div>";
+    a.innerHTML = html; return;
+  }
+  html += '<form id="f" class="box" novalidate>'
+    + '<label class="t" for="email" style="margin-top:0">' + esc(t("email")) + ' *</label><input type="email" id="email" required autocomplete="email" inputmode="email" maxlength="200" dir="ltr" value="' + esc(state.email) + '" />'
+    + '<label class="t" for="name">' + esc(t("name")) + '</label><input type="text" id="name" autocomplete="name" maxlength="120" dir="auto" value="' + esc(state.name) + '" />'
+    + '<input class="hp" id="website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />'
+    + '<label class="consent"><input type="checkbox" id="consent" required' + (state.consent ? " checked" : "") + " /><span>" + esc(t("consent")) + "</span></label>"
+    + '<button class="send" type="submit" id="send"' + (state.busy ? " disabled" : "") + ">" + esc(t("send")) + "</button>"
+    + (state.error ? '<div class="msg err" role="alert">' + esc(state.error) + "</div>" : "")
+    + '<p class="note">' + esc(t("privacy")) + "</p></form>";
+  a.innerHTML = html;
+  $("email").oninput = function () { state.email = this.value; };
+  $("name").oninput = function () { state.name = this.value; };
+  $("consent").onchange = function () { state.consent = this.checked; };
+  $("f").onsubmit = function (ev) {
+    ev.preventDefault();
+    state.email = $("email").value.trim(); state.name = $("name").value.trim(); state.consent = $("consent").checked;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(state.email)) { state.error = t("badEmail"); render(); $("email").setAttribute("aria-invalid", "true"); $("email").focus(); return; }
+    if (!state.consent) { state.error = t("needConsent"); render(); $("consent").focus(); return; }
+    state.busy = true; state.error = null; render();
+    api("/api/public/waitlist/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ email: state.email, name: state.name, consent: true, language: lang, website: $("website") ? $("website").value : "" }) })
+      .then(function (r) { state.sent = r && r.mail_sent === false ? "fail" : "ok"; }).catch(function (e) { state.error = e.message; })
+      .then(function () { state.busy = false; render(); focusMsg(); });
+  };
+}
+render();
+var okToken = function (s) { return /^[A-Za-z0-9_-]{20,64}$/.test(s); };
+if (mode === "signup") {
+  if (!okToken(token) && !demo) { state.error = t("invalid"); render(); }
+  else api("/api/public/waitlist/" + encodeURIComponent(token)).then(function (i) { state.info = i; brand(i.hotel); render(); }).catch(function (e) { state.error = e.message || t("invalid"); render(); });
+} else {
+  if (!okToken(ctoken) && !demo) { state.error = t("invalid"); render(); }
+  else api("/api/public/waitlist/" + mode + "/" + encodeURIComponent(ctoken)).then(function (r) { state.result = r; brand(r.hotel); render(); }).catch(function (e) { state.error = e.message || t("error"); render(); });
+}
+</script>
+</body>
+</html>

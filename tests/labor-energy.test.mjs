@@ -85,3 +85,18 @@ test("Lohnarten-Export: Überstunden, Zuschläge, DATEV LODAS", () => {
   assert.match(lodas, /1;01112026;1001;100;1;160,00;/);
   assert.ok(!lodas.includes("Max"), "ohne Personalnummer nicht in LODAS");
 });
+
+test("DATEV LODAS: Kopf, Verarbeitungsschlüssel, Lohnart-Prüfung, ASCII", () => {
+  const lines = [{ pnr: "1001", name: "Ana", la: "100", value: 160 }, { pnr: "1001", name: "Ana", la: "210", value: 12.5 }];
+  const out = payrollDatevLodas(lines, "2026-11", { berater: "1234", mandant: "56", vs: { 210: "2" } });
+  assert.match(out, /Feldtrennzeichen=;\r\nZahlenkomma=,/);
+  assert.match(out, /1;01112026;1001;100;1;160,00;/);
+  assert.match(out, /1;01112026;1001;210;2;12,50;/);
+  assert.throws(() => payrollDatevLodas([{ pnr: "1", la: "12345", value: 1 }], "2026-11", {}), /Lohnart/);
+  assert.throws(() => payrollDatevLodas([{ pnr: "1", la: "A1", value: 1 }], "2026-11", {}), /A1/);
+  assert.deepEqual(payrollDatevProblems([{ pnr: "1", la: "x", value: 1 }, { pnr: "", la: "y", value: 1 }]), ["x"]);
+  const asc = payrollDatevLodas([{ pnr: "Müller-ß", la: "100", value: 1 }], "2026-11", { berater: "Bäcker €" });
+  assert.ok(/^[\x00-\x7F]*$/.test(asc), "nur ASCII");
+  assert.match(asc, /BeraterNr=Baecker EUR/);
+  assert.match(asc, /;Mueller-ss;100;/);
+});

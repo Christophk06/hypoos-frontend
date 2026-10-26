@@ -9,3 +9,7 @@ Disallow: /anreise.html
 Disallow: /countdown.html
 Disallow: /angebot.html
 Disallow: /lieferant.html
+Disallow: /warten.html
+Disallow: /fundsache.html
+Disallow: /warteliste.html
+Disallow: /native/

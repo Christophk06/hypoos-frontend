@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 460px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; min-height: 36px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 16px; line-height: 1.45; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  label.t { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+  .in { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: inherit; font-size: 15px; background: #fff; color: inherit; }
+  button.main { width: 100%; margin-top: 16px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; min-height: 48px; }
+  button.main:disabled { opacity: .5; }
+  button.line { width: 100%; margin-top: 10px; background: #fff; color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 15px; cursor: pointer; min-height: 44px; }
+  .big { font-family: Georgia, serif; font-size: 64px; line-height: 1; margin: 6px 0; }
+  .center { text-align: center; }
+  .called { background: var(--ink); color: #fff; border-radius: 14px; padding: 26px 18px; text-align: center; animation: pulse 1.6s ease-in-out infinite; }
+  .called h1 { color: #fff; font-size: 30px; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(169,131,75,.6); } 50% { box-shadow: 0 0 0 14px rgba(169,131,75,0); } }
+  @media (prefers-reduced-motion: reduce) { .called { animation: none; } }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; }
+  .ok { background: #E4EFE8; color: var(--good); } .err { background: #F5E1DE; color: var(--bad); }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Warteliste", intro: "Tragen Sie sich ein – wir melden uns auf dieser Seite, sobald es so weit ist.", area: "Bereich", name: "Name", party: "Personen", note: "Hinweis (optional, z. B. Kinderstuhl)", join: "Auf die Warteliste", pos: "Ihr Platz in der Warteliste", wait: "Bitte lassen Sie diese Seite geöffnet. Sie aktualisiert sich von selbst.", called: "Sie sind an der Reihe!", calledSub: "Bitte kommen Sie jetzt zum Empfang: {area}.", seated: "Schön, dass Sie da sind. Viel Freude!", cancelled: "Ihr Platz ist nicht mehr aktiv.", cancel: "Platz freigeben", cancelQ: "Platz wirklich freigeben?", again: "Neu eintragen", sound: "Ton bei Aufruf einschalten", soundOn: "Ton ist eingeschaltet.", updated: "Aktualisiert {time}", choose: "Bitte wählen", invalid: "Dieser Code ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…", tab: "Sie sind dran!" },
+  en: { title: "Waiting list", intro: "Add your name – we will let you know on this page as soon as it is your turn.", area: "Area", name: "Name", party: "Guests", note: "Note (optional, e.g. high chair)", join: "Join the waiting list", pos: "Your place in the queue", wait: "Please keep this page open. It updates by itself.", called: "It’s your turn!", calledSub: "Please come to the reception now: {area}.", seated: "Lovely to have you. Enjoy!", cancelled: "Your place is no longer active.", cancel: "Give up my place", cancelQ: "Really give up your place?", again: "Join again", sound: "Turn on sound for the call", soundOn: "Sound is on.", updated: "Updated {time}", choose: "Please choose", invalid: "This code is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…", tab: "It’s your turn!" },
+  fr: { title: "Liste d’attente", intro: "Inscrivez-vous – nous vous prévenons sur cette page dès que c’est votre tour.", area: "Espace", name: "Nom", party: "Personnes", note: "Remarque (facultatif, p. ex. chaise haute)", join: "S’inscrire sur la liste", pos: "Votre place dans la file", wait: "Gardez cette page ouverte. Elle s’actualise toute seule.", called: "C’est votre tour !", calledSub: "Veuillez vous présenter à l’accueil : {area}.", seated: "Ravis de vous accueillir. Bon moment !", cancelled: "Votre place n’est plus active.", cancel: "Libérer ma place", cancelQ: "Vraiment libérer votre place ?", again: "Se réinscrire", sound: "Activer le son pour l’appel", soundOn: "Le son est activé.", updated: "Mis à jour {time}", choose: "Veuillez choisir", invalid: "Ce code n’est pas (ou plus) valable.", error: "Cela n’a pas fonctionné. Veuillez réessayer plus tard.", loading: "Chargement…", tab: "C’est votre tour !" },
+  it: { title: "Lista d’attesa", intro: "Si iscriva – la avvisiamo su questa pagina non appena tocca a lei.", area: "Area", name: "Nome", party: "Persone", note: "Nota (facoltativa, es. seggiolone)", join: "Iscriviti alla lista", pos: "Il suo posto in lista", wait: "Tenga aperta questa pagina. Si aggiorna da sola.", called: "Tocca a lei!", calledSub: "Venga ora all’accoglienza: {area}.", seated: "Felici di averla qui. Buon divertimento!", cancelled: "Il suo posto non è più attivo.", cancel: "Libera il posto", cancelQ: "Liberare davvero il posto?", again: "Iscriviti di nuovo", sound: "Attiva il suono per la chiamata", soundOn: "Il suono è attivo.", updated: "Aggiornato {time}", choose: "Selezioni", invalid: "Questo codice non è (più) valido.", error: "Non è andato a buon fine. Riprovi più tardi.", loading: "Caricamento…", tab: "Tocca a lei!" },
+  es: { title: "Lista de espera", intro: "Apúntese – le avisaremos en esta página en cuanto sea su turno.", area: "Zona", name: "Nombre", party: "Personas", note: "Nota (opcional, p. ej. trona)", join: "Apuntarse a la lista", pos: "Su puesto en la lista", wait: "Mantenga esta página abierta. Se actualiza sola.", called: "¡Es su turno!", calledSub: "Acérquese ahora a la recepción: {area}.", seated: "Nos alegra tenerle aquí. ¡Que lo disfrute!", cancelled: "Su puesto ya no está activo.", cancel: "Liberar mi puesto", cancelQ: "¿Seguro que quiere liberar su puesto?", again: "Apuntarse de nuevo", sound: "Activar sonido para el aviso", soundOn: "El sonido está activado.", updated: "Actualizado {time}", choose: "Seleccione", invalid: "Este código no es (o ya no es) válido.", error: "No ha funcionado. Inténtelo de nuevo más tarde.", loading: "Cargando…", tab: "¡Es su turno!" },
+  pt: { title: "Lista de espera", intro: "Inscreva-se – avisamos nesta página assim que for a sua vez.", area: "Área", name: "Nome", party: "Pessoas", note: "Observação (opcional, p. ex. cadeira de bebé)", join: "Entrar na lista", pos: "O seu lugar na lista", wait: "Mantenha esta página aberta. Atualiza-se sozinha.", called: "É a sua vez!", calledSub: "Dirija-se agora à receção: {area}.", seated: "Que bom tê-lo/a connosco. Aproveite!", cancelled: "O seu lugar já não está ativo.", cancel: "Libertar o meu lugar", cancelQ: "Libertar mesmo o seu lugar?", again: "Inscrever de novo", sound: "Ativar som para a chamada", soundOn: "O som está ativado.", updated: "Atualizado {time}", choose: "Selecione", invalid: "Este código não é (ou já não é) válido.", error: "Não foi possível. Tente novamente mais tarde.", loading: "A carregar…", tab: "É a sua vez!" },
+  tr: { title: "Bekleme listesi", intro: "Adınızı yazın – sıranız geldiğinde bu sayfada size haber veririz.", area: "Bölüm", name: "Ad", party: "Kişi sayısı", note: "Not (isteğe bağlı, ör. mama sandalyesi)", join: "Bekleme listesine katıl", pos: "Sıradaki yeriniz", wait: "Lütfen bu sayfayı açık tutun. Kendiliğinden güncellenir.", called: "Sıra sizde!", calledSub: "Lütfen şimdi karşılamaya gelin: {area}.", seated: "Hoş geldiniz. İyi eğlenceler!", cancelled: "Yeriniz artık aktif değil.", cancel: "Yerimi bırak", cancelQ: "Yerinizi gerçekten bırakmak istiyor musunuz?", again: "Yeniden kaydol", sound: "Çağrı için sesi aç", soundOn: "Ses açık.", updated: "Güncellendi {time}", choose: "Lütfen seçin", invalid: "Bu kod geçerli değil (artık).", error: "Olmadı. Lütfen daha sonra tekrar deneyin.", loading: "Yükleniyor…", tab: "Sıra sizde!" },
+  ja: { title: "順番待ちリスト", intro: "お名前をご登録ください。順番が来たらこのページでお知らせします。", area: "エリア", name: "お名前", party: "人数", note: "備考（任意、例：子ども用椅子）", join: "順番待ちに登録", pos: "現在の順番", wait: "このページを開いたままにしてください。自動で更新されます。", called: "お客様の番です！", calledSub: "受付までお越しください：{area}", seated: "ようこそ。どうぞお楽しみください。", cancelled: "この順番は無効になりました。", cancel: "順番を取り消す", cancelQ: "本当に取り消しますか？", again: "もう一度登録", sound: "呼び出し音をオンにする", soundOn: "音がオンになっています。", updated: "{time} 更新", choose: "選択してください", invalid: "このコードは無効です（期限切れの可能性があります）。", error: "うまくいきませんでした。しばらくしてから再度お試しください。", loading: "読み込み中…", tab: "お客様の番です！" },
+  zh: { title: "候位名单", intro: "请登记，轮到您时我们会在此页面通知您。", area: "区域", name: "姓名", party: "人数", note: "备注（可选，如儿童座椅）", join: "加入候位", pos: "您的候位序号", wait: "请保持此页面打开，它会自动刷新。", called: "轮到您了！", calledSub: "请现在前往接待处：{area}。", seated: "欢迎光临，祝您愉快！", cancelled: "您的候位已失效。", cancel: "放弃候位", cancelQ: "确定放弃候位吗？", again: "重新登记", sound: "开启叫号提示音", soundOn: "提示音已开启。", updated: "更新于 {time}", choose: "请选择", invalid: "此代码无效（或已失效）。", error: "操作失败，请稍后再试。", loading: "加载中…", tab: "轮到您了！" },
+  ar: { title: "قائمة الانتظار", intro: "سجّلوا أسماءكم – سنخبركم في هذه الصفحة عندما يحين دوركم.", area: "القسم", name: "الاسم", party: "عدد الأشخاص", note: "ملاحظة (اختياري، مثل كرسي أطفال)", join: "الانضمام إلى قائمة الانتظار", pos: "ترتيبكم في القائمة", wait: "يرجى إبقاء هذه الصفحة مفتوحة، فهي تتحدث تلقائيًا.", called: "حان دوركم!", calledSub: "يرجى الحضور الآن إلى الاستقبال: {area}.", seated: "سعداء بوجودكم. استمتعوا!", cancelled: "لم يعد مكانكم نشطًا.", cancel: "التخلي عن مكاني", cancelQ: "هل تريدون فعلًا التخلي عن مكانكم؟", again: "التسجيل من جديد", sound: "تشغيل الصوت عند النداء", soundOn: "الصوت مُفعّل.", updated: "آخر تحديث {time}", choose: "يرجى الاختيار", invalid: "هذا الرمز غير صالح (أو لم يعد صالحًا).", error: "لم ينجح ذلك. يرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…", tab: "حان دوركم!" },
+};
+var q = new URLSearchParams(location.search), htoken = q.get("h") || "", areaParam = q.get("a") || "", demo = q.get("demo") === "1";
+var KEY = "ouv_queue_" + htoken.slice(0, 24);
+var state = { hotel: null, areas: [], entry: null, token: q.get("q") || "", error: null, busy: false, form: { area: areaParam, name: "", party: "2", note: "" }, lastStatus: null, updated: null, sound: false };
+try { if (!state.token) state.token = localStorage.getItem(KEY) || ""; } catch (e) {}
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+// Probe ohne Server: ?demo=1 – nach 3 Abrufen wird der Gast aufgerufen
+var demoCalls = 0, demoEntry = null;
+function api(path, opt) {
+  if (demo) {
+    if (/queue-hotel/.test(path) && !opt) return Promise.resolve({ hotel: { name: "Beispielhotel Alpenblick" }, areas: ["Restaurant", "Spa"] });
+    if (/queue-hotel/.test(path)) { var b = JSON.parse(opt.body); demoEntry = { area: b.area, name: b.name, party_size: Number(b.party_size), status: "wartet", position: 3, hotel: { name: "Beispielhotel Alpenblick" } }; return Promise.resolve({ token: "demo-demo-demo-demo-demo" }); }
+    if (/cancel/.test(path)) { if (demoEntry) demoEntry.status = "abgesagt"; return Promise.resolve({ ok: true }); }
+    demoEntry = demoEntry || { area: "Restaurant", name: "Gast", party_size: 2, status: "wartet", position: 3, hotel: { name: "Beispielhotel Alpenblick" } };
+    demoCalls++; if (demoEntry.status === "wartet") { demoEntry.position = Math.max(1, 3 - demoCalls); if (demoCalls >= 3) demoEntry.status = "aufgerufen"; }
+    return Promise.resolve(JSON.parse(JSON.stringify(demoEntry)));
+  }
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || t("error")); e.status = r.status; throw e; } return j; }); });
+}
+function brand(h) {
+  if (!h) return;
+  $("hotel").textContent = h.name || ""; document.title = t("title") + " · " + (h.name || "");
+  if (h.logo_data) { $("logo").src = h.logo_data; $("logo").hidden = false; }
+  if (h.brand_color) document.documentElement.style.setProperty("--ink", h.brand_color);
+}
+// Ton: Browser erlauben ihn erst nach einer Berührung – daher der Knopf
+var audio = null;
+function enableSound() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); state.sound = true; beep(1); } catch (e) {} render(); }
+function beep(n) {
+  if (!audio) return;
+  for (var k = 0; k < (n || 3); k++) { var o = audio.createOscillator(), g = audio.createGain(), at = audio.currentTime + k * 0.45; o.frequency.value = 880; o.connect(g); g.connect(audio.destination); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.4, at + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.35); o.start(at); o.stop(at + 0.4); }
+}
+var blink = null, baseTitle = "";
+function alertGuest() {
+  beep(3); try { if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 600]); } catch (e) {}
+  if (blink) return; baseTitle = document.title; var on = false;
+  blink = setInterval(function () { on = !on; document.title = on ? "🔔 " + t("tab") : baseTitle; }, 1000);
+}
+function stopBlink() { if (blink) { clearInterval(blink); blink = null; document.title = baseTitle || document.title; } }
+document.addEventListener("visibilitychange", function () { if (!document.hidden && state.entry && state.entry.status !== "aufgerufen") stopBlink(); });
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app"), e = state.entry;
+  if (state.error && !state.hotel && !e) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (e) {
+    var h = "";
+    if (e.status === "aufgerufen") h = '<div class="called" role="alert"><h1>' + esc(t("called")) + "</h1><div>" + esc(t("calledSub", { area: e.area })) + "</div></div>";
+    else if (e.status === "wartet") h = '<div class="box center"><div class="sub" style="margin:0">' + esc(t("pos")) + '</div><div class="big">' + esc(e.position || "–") + '</div><div class="sub" style="margin:0">' + esc(e.area) + " · " + esc(e.name) + " · " + esc(e.party_size) + " " + esc(t("party")) + '</div></div><div class="note center">' + esc(t("wait")) + "</div>";
+    else if (e.status === "platziert") h = '<div class="msg ok">✓ ' + esc(t("seated")) + "</div>";
+    else h = '<div class="msg err">' + esc(t("cancelled")) + "</div>";
+    if (e.status === "wartet" || e.status === "aufgerufen") {
+      h += state.sound ? '<div class="note center">🔔 ' + esc(t("soundOn")) + "</div>" : '<button class="line" id="snd">🔔 ' + esc(t("sound")) + "</button>";
+      h += '<button class="line" id="cxl">' + esc(t("cancel")) + "</button>";
+    } else h += '<button class="main" id="again">' + esc(t("again")) + "</button>";
+    if (state.updated) h += '<div class="note center">' + esc(t("updated", { time: state.updated })) + "</div>";
+    if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+    a.innerHTML = h;
+    if ($("snd")) $("snd").onclick = enableSound;
+    if ($("cxl")) $("cxl").onclick = function () { if (!confirm(t("cancelQ"))) return; api("/api/public/queue/" + encodeURIComponent(state.token) + "/cancel", { method: "POST", body: "{}" }).then(poll).catch(function (x) { state.error = x.message; render(); }); };
+    if ($("again")) $("again").onclick = function () { forget(); render(); };
+    return;
+  }
+  if (!state.hotel) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var f = state.form, areas = state.areas, one = areas.length === 1 || areas.indexOf(areaParam) >= 0;
+  if (one && !f.area) f.area = areas.indexOf(areaParam) >= 0 ? areaParam : areas[0];
+  var html = "<h1>" + esc(t("title")) + (one ? " · " + esc(f.area) : "") + '</h1><div class="sub">' + esc(t("intro")) + '</div><div class="box">';
+  if (!one) html += '<label class="t" for="f_area">' + esc(t("area")) + '</label><select class="in" id="f_area"><option value="">' + esc(t("choose")) + "</option>" + areas.map(function (x) { return '<option' + (x === f.area ? " selected" : "") + ">" + esc(x) + "</option>"; }).join("") + "</select>";
+  html += '<label class="t" for="f_name">' + esc(t("name")) + '</label><input class="in" id="f_name" autocomplete="name" maxlength="80" value="' + esc(f.name) + '" />';
+  var opts = ""; for (var n = 1; n <= 30; n++) opts += "<option" + (String(n) === f.party ? " selected" : "") + ">" + n + "</option>";
+  html += '<label class="t" for="f_party">' + esc(t("party")) + '</label><select class="in" id="f_party">' + opts + "</select>";
+  html += '<label class="t" for="f_note">' + esc(t("note")) + '</label><input class="in" id="f_note" maxlength="200" value="' + esc(f.note) + '" /><input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />';
+  html += '<button class="main" id="join"' + (state.busy ? " disabled" : "") + ">" + esc(t("join")) + "</button></div>" + (state.error ? '<div class="msg err" role="alert">' + esc(state.error) + "</div>" : "");
+  a.innerHTML = html;
+  var read = function () { if ($("f_area")) f.area = $("f_area").value; f.name = $("f_name").value; f.party = $("f_party").value; f.note = $("f_note").value; };
+  ["f_area", "f_name", "f_party", "f_note"].forEach(function (id) { if ($(id)) $(id).oninput = $(id).onchange = read; });
+  $("join").onclick = function () {
+    read(); if (!f.area || !f.name.trim()) { state.error = t("choose") + ": " + (!f.area ? t("area") : t("name")); render(); return; }
+    enableSound(); // die Berührung des Knopfes erlaubt den Ton beim Aufruf
+    state.busy = true; state.error = null; render();
+    api("/api/public/queue-hotel/" + encodeURIComponent(htoken), { method: "POST", body: JSON.stringify({ area: f.area, name: f.name, party_size: Number(f.party), note: f.note, website: $("website") ? $("website").value : "" }) })
+      .then(function (r) { if (!r.token) return; remember(r.token); return poll(); }).catch(function (x) { state.error = x.message; }).then(function () { state.busy = false; render(); });
+  };
+}
+function remember(tok) {
+  state.token = tok; try { localStorage.setItem(KEY, tok); } catch (e) {}
+  try { var u = new URL(location.href); u.searchParams.set("q", tok); history.replaceState(null, "", u.toString()); } catch (e) {}
+}
+function forget() {
+  state.token = ""; state.entry = null; state.lastStatus = null; stopBlink();
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  try { var u = new URL(location.href); u.searchParams.delete("q"); history.replaceState(null, "", u.toString()); } catch (e) {}
+  if (!state.hotel) loadHotel();
+}
+function poll() {
+  if (!state.token) return Promise.resolve();
+  return api("/api/public/queue/" + encodeURIComponent(state.token)).then(function (e) {
+    state.entry = e; state.error = null; brand(e.hotel);
+    state.updated = new Date().toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+    if (e.status === "aufgerufen" && state.lastStatus !== "aufgerufen") alertGuest();
+    if (e.status !== "aufgerufen") stopBlink();
+    state.lastStatus = e.status; render();
+  }).catch(function (x) { if (x.status === 404) { forget(); } else state.error = x.message; render(); });
+}
+function loadHotel() {
+  if (!htoken && !demo) { state.error = t("invalid"); render(); return; }
+  api("/api/public/queue-hotel/" + encodeURIComponent(htoken)).then(function (r) { state.hotel = r.hotel; state.areas = r.areas || []; brand(r.hotel); render(); })
+    .catch(function (x) { state.error = x.message || t("invalid"); render(); });
+}
+render();
+if (state.token) poll(); else loadHotel();
+// alle 20 Sekunden nachsehen (im Hintergrund drosselt der Browser selbst)
+setInterval(function () { if (state.token && state.entry && (state.entry.status === "wartet" || state.entry.status === "aufgerufen")) poll(); }, 20000);
+</script>
+</body>
+</html>

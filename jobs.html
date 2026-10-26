@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 620px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: #fff; font-size: 14px; min-height: 44px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  h2 { font-family: Georgia, serif; font-weight: 500; font-size: 19px; margin: 18px 0 8px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 16px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .job { display: block; width: 100%; text-align: start; font: inherit; color: inherit; cursor: pointer; min-height: 44px; }
+  .job b { font-size: 16.5px; }
+  .meta { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+  .desc { white-space: pre-line; font-size: 15px; line-height: 1.55; }
+  label.t { display: block; font-size: 14px; color: var(--ink); font-weight: 600; margin: 14px 0 6px; }
+  input[type=text], input[type=email], input[type=tel], textarea { width: 100%; border: 1px solid #C9C2B3; border-radius: 10px; padding: 11px; font: inherit; font-size: 16px; background: #fff; min-height: 44px; }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+  input[type=file] { font-size: 15px; min-height: 44px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; margin-top: 16px; cursor: pointer; }
+  .check input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--ink); flex: none; }
+  button.send { width: 100%; margin-top: 16px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; min-height: 48px; }
+  button.send:disabled { opacity: .5; }
+  button.link { background: none; border: 0; color: var(--ink); text-decoration: underline; font: inherit; font-size: 14.5px; cursor: pointer; padding: 10px 0; min-height: 44px; }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; }
+  .ok { background: #E4EFE8; color: #2F5F47; } .err { background: #F5E1DE; color: #8A2F27; }
+  .hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { jobs: "Offene Stellen", none: "Gerade sind keine Stellen ausgeschrieben.", apply: "Jetzt bewerben", back: "Alle Stellen", start: "Beginn: {date}", salary: "Gehalt", name: "Vor- und Nachname", email: "E-Mail", phone: "Telefon", contactHint: "E-Mail oder Telefon – damit wir Sie erreichen.", message: "Ein paar Worte zu Ihnen (freiwillig)", cv: "Lebenslauf als PDF (freiwillig, höchstens 3 MB)", cvBad: "Bitte eine PDF-Datei bis 3 MB wählen.", consent: "Ich willige ein, dass {hotel} meine Angaben und Unterlagen zur Bearbeitung meiner Bewerbung speichert und verarbeitet.", consentHint: "Ihre Daten werden nur für dieses Bewerbungsverfahren verwendet und spätestens 6 Monate nach dessen Abschluss gelöscht. Sie können die Einwilligung jederzeit beim Hotel widerrufen.", send: "Bewerbung absenden", sent: "Vielen Dank! Ihre Bewerbung ist eingegangen. Wir melden uns bei Ihnen.", needName: "Bitte Ihren Namen angeben.", needContact: "Bitte E-Mail-Adresse oder Telefonnummer angeben.", needConsent: "Bitte der Verarbeitung Ihrer Daten zustimmen.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…", emp: { Vollzeit: "Vollzeit", Teilzeit: "Teilzeit", Saison: "Saisonstelle", Lehre: "Lehrstelle", Aushilfe: "Aushilfe" } },
+  en: { jobs: "Open positions", none: "There are no open positions at the moment.", apply: "Apply now", back: "All positions", start: "Start: {date}", salary: "Salary", name: "First and last name", email: "Email", phone: "Phone", contactHint: "Email or phone – so we can reach you.", message: "A few words about yourself (optional)", cv: "CV as PDF (optional, max. 3 MB)", cvBad: "Please choose a PDF file of up to 3 MB.", consent: "I agree that {hotel} may store and process my details and documents to handle my application.", consentHint: "Your data will only be used for this application process and deleted no later than 6 months after it ends. You can withdraw your consent at any time by contacting the hotel.", send: "Send application", sent: "Thank you! Your application has been received. We will get back to you.", needName: "Please enter your name.", needContact: "Please enter an email address or phone number.", needConsent: "Please agree to the processing of your data.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…", emp: { Vollzeit: "Full-time", Teilzeit: "Part-time", Saison: "Seasonal", Lehre: "Apprenticeship", Aushilfe: "Temporary help" } },
+  fr: { jobs: "Postes ouverts", none: "Aucun poste n’est ouvert pour le moment.", apply: "Postuler", back: "Tous les postes", start: "Début : {date}", salary: "Salaire", name: "Prénom et nom", email: "E-mail", phone: "Téléphone", contactHint: "E-mail ou téléphone – pour que nous puissions vous joindre.", message: "Quelques mots sur vous (facultatif)", cv: "CV en PDF (facultatif, 3 Mo max.)", cvBad: "Veuillez choisir un fichier PDF de 3 Mo maximum.", consent: "J’accepte que {hotel} enregistre et traite mes données et documents pour le traitement de ma candidature.", consentHint: "Vos données ne servent qu’à cette procédure de recrutement et sont supprimées au plus tard 6 mois après sa clôture. Vous pouvez retirer votre consentement à tout moment auprès de l’hôtel.", send: "Envoyer la candidature", sent: "Merci ! Votre candidature a bien été reçue. Nous reviendrons vers vous.", needName: "Veuillez indiquer votre nom.", needContact: "Veuillez indiquer une adresse e-mail ou un numéro de téléphone.", needConsent: "Veuillez accepter le traitement de vos données.", invalid: "Ce lien n’est pas (ou plus) valable.", error: "Cela n’a pas fonctionné. Veuillez réessayer plus tard.", loading: "Chargement…", emp: { Vollzeit: "Temps plein", Teilzeit: "Temps partiel", Saison: "Saisonnier", Lehre: "Apprentissage", Aushilfe: "Extra" } },
+  it: { jobs: "Posizioni aperte", none: "Al momento non ci sono posizioni aperte.", apply: "Candidati ora", back: "Tutte le posizioni", start: "Inizio: {date}", salary: "Retribuzione", name: "Nome e cognome", email: "E-mail", phone: "Telefono", contactHint: "E-mail o telefono – per poterla contattare.", message: "Qualche parola su di lei (facoltativo)", cv: "CV in PDF (facoltativo, max. 3 MB)", cvBad: "Scelga un file PDF fino a 3 MB.", consent: "Acconsento che {hotel} conservi e tratti i miei dati e documenti per la gestione della mia candidatura.", consentHint: "I suoi dati sono usati solo per questa selezione e cancellati al più tardi 6 mesi dopo la sua conclusione. Può revocare il consenso in qualsiasi momento rivolgendosi all’hotel.", send: "Invia candidatura", sent: "Grazie! La sua candidatura è arrivata. La ricontatteremo.", needName: "Indichi il suo nome.", needContact: "Indichi un indirizzo e-mail o un numero di telefono.", needConsent: "Acconsenta al trattamento dei suoi dati.", invalid: "Questo link non è (più) valido.", error: "Non è andato a buon fine. Riprovi più tardi.", loading: "Caricamento…", emp: { Vollzeit: "Tempo pieno", Teilzeit: "Part-time", Saison: "Stagionale", Lehre: "Apprendistato", Aushilfe: "Aiuto temporaneo" } },
+  es: { jobs: "Puestos abiertos", none: "En este momento no hay puestos abiertos.", apply: "Solicitar ahora", back: "Todos los puestos", start: "Inicio: {date}", salary: "Salario", name: "Nombre y apellidos", email: "Correo electrónico", phone: "Teléfono", contactHint: "Correo o teléfono, para poder contactarle.", message: "Unas palabras sobre usted (opcional)", cv: "CV en PDF (opcional, máx. 3 MB)", cvBad: "Elija un archivo PDF de hasta 3 MB.", consent: "Acepto que {hotel} guarde y trate mis datos y documentos para tramitar mi candidatura.", consentHint: "Sus datos solo se usan para este proceso de selección y se eliminan como muy tarde 6 meses después de su cierre. Puede retirar su consentimiento en cualquier momento dirigiéndose al hotel.", send: "Enviar candidatura", sent: "¡Gracias! Hemos recibido su candidatura. Nos pondremos en contacto con usted.", needName: "Indique su nombre.", needContact: "Indique un correo electrónico o un teléfono.", needConsent: "Acepte el tratamiento de sus datos.", invalid: "Este enlace no es (o ya no es) válido.", error: "No ha funcionado. Inténtelo de nuevo más tarde.", loading: "Cargando…", emp: { Vollzeit: "Jornada completa", Teilzeit: "Media jornada", Saison: "Temporada", Lehre: "Formación profesional", Aushilfe: "Refuerzo temporal" } },
+  pt: { jobs: "Vagas abertas", none: "De momento não há vagas abertas.", apply: "Candidatar-me", back: "Todas as vagas", start: "Início: {date}", salary: "Salário", name: "Nome e apelido", email: "E-mail", phone: "Telefone", contactHint: "E-mail ou telefone – para o podermos contactar.", message: "Algumas palavras sobre si (opcional)", cv: "CV em PDF (opcional, máx. 3 MB)", cvBad: "Escolha um ficheiro PDF até 3 MB.", consent: "Aceito que {hotel} guarde e trate os meus dados e documentos para processar a minha candidatura.", consentHint: "Os seus dados são usados apenas neste processo de recrutamento e apagados, o mais tardar, 6 meses após o seu fim. Pode retirar o consentimento a qualquer momento junto do hotel.", send: "Enviar candidatura", sent: "Obrigado! Recebemos a sua candidatura. Entraremos em contacto.", needName: "Indique o seu nome.", needContact: "Indique um e-mail ou um número de telefone.", needConsent: "Aceite o tratamento dos seus dados.", invalid: "Este link não é (ou já não é) válido.", error: "Não foi possível. Tente novamente mais tarde.", loading: "A carregar…", emp: { Vollzeit: "Tempo inteiro", Teilzeit: "Tempo parcial", Saison: "Sazonal", Lehre: "Aprendizagem", Aushilfe: "Apoio temporário" } },
+  tr: { jobs: "Açık pozisyonlar", none: "Şu anda açık pozisyon yok.", apply: "Hemen başvur", back: "Tüm pozisyonlar", start: "Başlangıç: {date}", salary: "Maaş", name: "Ad ve soyad", email: "E-posta", phone: "Telefon", contactHint: "Size ulaşabilmemiz için e-posta veya telefon.", message: "Kendiniz hakkında birkaç söz (isteğe bağlı)", cv: "PDF olarak özgeçmiş (isteğe bağlı, en fazla 3 MB)", cvBad: "Lütfen en fazla 3 MB’lık bir PDF dosyası seçin.", consent: "{hotel} tarafından bilgilerimin ve belgelerimin başvurumun değerlendirilmesi için saklanmasını ve işlenmesini kabul ediyorum.", consentHint: "Verileriniz yalnızca bu başvuru süreci için kullanılır ve süreç bittikten en geç 6 ay sonra silinir. Onayınızı istediğiniz zaman otele bildirerek geri çekebilirsiniz.", send: "Başvuruyu gönder", sent: "Teşekkürler! Başvurunuz bize ulaştı. Sizinle iletişime geçeceğiz.", needName: "Lütfen adınızı girin.", needContact: "Lütfen e-posta adresi veya telefon numarası girin.", needConsent: "Lütfen verilerinizin işlenmesini onaylayın.", invalid: "Bu bağlantı geçerli değil (artık).", error: "Olmadı. Lütfen daha sonra tekrar deneyin.", loading: "Yükleniyor…", emp: { Vollzeit: "Tam zamanlı", Teilzeit: "Yarı zamanlı", Saison: "Sezonluk", Lehre: "Çıraklık", Aushilfe: "Geçici yardımcı" } },
+  ja: { jobs: "募集中の職種", none: "現在募集中の職種はありません。", apply: "応募する", back: "すべての職種", start: "開始日：{date}", salary: "給与", name: "氏名", email: "メールアドレス", phone: "電話番号", contactHint: "ご連絡のため、メールまたは電話番号をご記入ください。", message: "自己紹介（任意）", cv: "履歴書（PDF、任意、3 MB まで）", cvBad: "3 MB までの PDF ファイルを選択してください。", consent: "応募の選考のために、{hotel} が私の情報と書類を保存・処理することに同意します。", consentHint: "データはこの選考にのみ使用され、選考終了後遅くとも 6 か月以内に削除されます。同意はいつでもホテルに連絡して撤回できます。", send: "応募を送信", sent: "ありがとうございます。応募を受け付けました。追ってご連絡します。", needName: "お名前を入力してください。", needContact: "メールアドレスまたは電話番号を入力してください。", needConsent: "データの処理に同意してください。", invalid: "このリンクは無効です（期限切れの可能性があります）。", error: "送信できませんでした。しばらくしてから再度お試しください。", loading: "読み込み中…", emp: { Vollzeit: "正社員（フルタイム）", Teilzeit: "パートタイム", Saison: "季節雇用", Lehre: "見習い", Aushilfe: "臨時スタッフ" } },
+  zh: { jobs: "招聘职位", none: "目前没有招聘职位。", apply: "立即申请", back: "全部职位", start: "入职时间：{date}", salary: "薪资", name: "姓名", email: "电子邮箱", phone: "电话", contactHint: "请留下邮箱或电话，方便我们联系您。", message: "简单介绍一下自己（可选）", cv: "PDF 简历（可选，最大 3 MB）", cvBad: "请选择不超过 3 MB 的 PDF 文件。", consent: "我同意 {hotel} 为处理我的求职申请而保存和处理我的信息与材料。", consentHint: "您的数据仅用于本次招聘，最迟在招聘结束后 6 个月内删除。您可随时联系酒店撤回同意。", send: "提交申请", sent: "谢谢！我们已收到您的申请，会尽快与您联系。", needName: "请填写您的姓名。", needContact: "请填写电子邮箱或电话号码。", needConsent: "请同意处理您的数据。", invalid: "此链接无效（或已失效）。", error: "提交失败，请稍后再试。", loading: "加载中…", emp: { Vollzeit: "全职", Teilzeit: "兼职", Saison: "季节性", Lehre: "学徒", Aushilfe: "临时工" } },
+  ar: { jobs: "الوظائف الشاغرة", none: "لا توجد وظائف شاغرة حاليًا.", apply: "قدّم الآن", back: "كل الوظائف", start: "تاريخ البدء: {date}", salary: "الراتب", name: "الاسم الكامل", email: "البريد الإلكتروني", phone: "الهاتف", contactHint: "البريد الإلكتروني أو الهاتف، لكي نتمكن من التواصل معك.", message: "بضع كلمات عنك (اختياري)", cv: "السيرة الذاتية بصيغة PDF (اختياري، حتى 3 ميغابايت)", cvBad: "يرجى اختيار ملف PDF حتى 3 ميغابايت.", consent: "أوافق على أن يحفظ {hotel} بياناتي ومستنداتي ويعالجها لدراسة طلبي.", consentHint: "تُستخدم بياناتك لهذا التوظيف فقط وتُحذف في موعد أقصاه 6 أشهر بعد انتهائه. يمكنك سحب موافقتك في أي وقت بالتواصل مع الفندق.", send: "إرسال الطلب", sent: "شكرًا لك! وصلنا طلبك وسنتواصل معك.", needName: "يرجى إدخال اسمك.", needContact: "يرجى إدخال بريد إلكتروني أو رقم هاتف.", needConsent: "يرجى الموافقة على معالجة بياناتك.", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", error: "لم ينجح ذلك. يرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…", emp: { Vollzeit: "دوام كامل", Teilzeit: "دوام جزئي", Saison: "موسمي", Lehre: "تدريب مهني", Aushilfe: "مساعدة مؤقتة" } },
+};
+var q = new URLSearchParams(location.search), hotelId = q.get("h") || "", token = q.get("p") || "", demo = q.get("demo") === "1";
+var state = { data: null, open: null, sent: false, error: null, formError: null, busy: false, f: { name: "", email: "", phone: "", message: "", consent: false }, cv: null, cvName: "" };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return String(s).replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick", city: "Innsbruck" }, postings: [
+  { token: "demo-token-rezeption-0001", title: "Rezeptionist:in (m/w/d)", employment: "Vollzeit", start_date: new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10), salary_note: "ab 2.300 € brutto, Überzahlung je nach Erfahrung", description: "Wir eröffnen im Frühjahr und suchen Gastgeber:innen mit Herz.\n\nDeine Aufgaben\n- Check-in und Check-out\n- Gästewünsche erfüllen\n\nWas wir bieten\n- ein neues Haus und ein junges Team" },
+  { token: "demo-token-housekeeping-02", title: "Zimmermädchen / Roomboy (m/w/d)", employment: "Saison", start_date: null, salary_note: "", description: "Sauberkeit ist dein Ding? Dann komm zu uns." } ] };
+function api(path, opt) {
+  if (demo) return Promise.resolve(opt ? { ok: true } : (token ? { hotel: DEMO.hotel, postings: DEMO.postings.slice(0, 1) } : DEMO));
+  return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || t("error")); return j; }); });
+}
+function fmtDate(iso) { try { return new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : lang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return iso; } }
+function meta(p) { return [(T[lang] || T.en).emp[p.employment] || p.employment, p.start_date ? t("start", { date: fmtDate(p.start_date) }) : ""].filter(Boolean).join(" · "); }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app"), d = state.data;
+  if (state.error && !d) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!d) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var list = d.postings || [];
+  if (list.length === 1 && token) state.open = list[0].token;
+  var p = list.filter(function (x) { return x.token === state.open; })[0];
+  if (!p) {
+    var html = "<h1>" + esc(t("jobs")) + "</h1>" + (d.hotel.city ? '<div class="sub">' + esc(d.hotel.name) + " · " + esc(d.hotel.city) + "</div>" : "");
+    if (!list.length) html += '<div class="box">' + esc(t("none")) + "</div>";
+    list.forEach(function (x) { html += '<button type="button" class="box job" data-t="' + esc(x.token) + '"><b dir="auto">' + esc(x.title) + '</b><div class="meta">' + esc(meta(x)) + "</div></button>"; });
+    a.innerHTML = html;
+    [].forEach.call(a.querySelectorAll("[data-t]"), function (b) { b.onclick = function () { state.open = b.getAttribute("data-t"); state.sent = false; state.formError = null; render(); window.scrollTo(0, 0); }; });
+    return;
+  }
+  var h = (list.length > 1 || hotelId ? '<button type="button" class="link" id="back">← ' + esc(t("back")) + "</button>" : "") + '<h1 dir="auto">' + esc(p.title) + '</h1><div class="sub">' + esc(meta(p)) + "</div>";
+  if (p.description) h += '<div class="box desc" dir="auto">' + esc(p.description) + "</div>";
+  if (p.salary_note) h += '<div class="box"><b>' + esc(t("salary")) + ':</b> <span dir="auto">' + esc(p.salary_note) + "</span></div>";
+  if (state.sent) { h += '<div class="msg ok" role="status">✓ ' + esc(t("sent")) + "</div>"; a.innerHTML = h; bindBack(); return; }
+  var f = state.f;
+  h += "<h2>" + esc(t("apply")) + "</h2><form id=\"form\" novalidate>"
+    + '<label class="t" for="name">' + esc(t("name")) + ' *</label><input type="text" id="name" autocomplete="name" maxlength="120" required value="' + esc(f.name) + '" />'
+    + '<label class="t" for="email">' + esc(t("email")) + '</label><input type="email" id="email" autocomplete="email" maxlength="200" value="' + esc(f.email) + '" aria-describedby="chint" />'
+    + '<label class="t" for="phone">' + esc(t("phone")) + '</label><input type="tel" id="phone" autocomplete="tel" maxlength="60" value="' + esc(f.phone) + '" aria-describedby="chint" />'
+    + '<div class="note" id="chint">' + esc(t("contactHint")) + "</div>"
+    + '<label class="t" for="message">' + esc(t("message")) + '</label><textarea id="message" maxlength="2000" dir="auto">' + esc(f.message) + "</textarea>"
+    + '<label class="t" for="cv">' + esc(t("cv")) + '</label><input type="file" id="cv" accept="application/pdf,.pdf" />' + (state.cvName ? '<div class="note">✓ ' + esc(state.cvName) + "</div>" : "")
+    + '<input class="hp" id="website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />'
+    + '<label class="check"><input type="checkbox" id="consent"' + (f.consent ? " checked" : "") + ' aria-labelledby="cText" aria-describedby="cHint" /><span id="cText">' + esc(t("consent", { hotel: d.hotel.name })) + " *</span></label>"
+    + '<div class="note" id="cHint">' + esc(t("consentHint")) + "</div>"
+    + '<button type="submit" class="send" id="send"' + (state.busy ? " disabled" : "") + ">" + esc(state.busy ? "…" : t("send")) + "</button>"
+    + (state.formError ? '<div class="msg err" role="alert">' + esc(state.formError) + "</div>" : "") + "</form>";
+  a.innerHTML = h; bindBack();
+  ["name", "email", "phone", "message"].forEach(function (k) { $(k).oninput = function () { state.f[k] = this.value; }; });
+  $("consent").onchange = function () { state.f.consent = this.checked; };
+  $("cv").onchange = function () {
+    var file = this.files && this.files[0]; state.cv = null; state.cvName = "";
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024 || !/pdf$/i.test(file.type || file.name)) { state.formError = t("cvBad"); this.value = ""; render(); return; }
+    var r = new FileReader(); r.onload = function () { state.cv = String(r.result).replace(/^data:[^;]*;/, "data:application/pdf;"); state.cvName = file.name; state.formError = null; render(); }; r.readAsDataURL(file);
+  };
+  $("form").onsubmit = function (e) {
+    e.preventDefault();
+    var err = !f.name.trim() ? [t("needName"), "name"] : !f.email.trim() && !f.phone.trim() ? [t("needContact"), "email"] : !f.consent ? [t("needConsent"), "consent"] : null;
+    if (err) { state.formError = err[0]; render(); $(err[1]).focus(); return; }
+    state.busy = true; state.formError = null; render();
+    api("/api/public/jobs/" + encodeURIComponent(p.token) + "/apply", { method: "POST", body: JSON.stringify({ name: f.name, email: f.email, phone: f.phone, message: f.message, cv_data: state.cv, consent: true, lang: lang, website: $("website") ? $("website").value : "" }) })
+      .then(function () { state.sent = true; state.cv = null; state.cvName = ""; state.f = { name: "", email: "", phone: "", message: "", consent: false }; })
+      .catch(function (e) { state.formError = e.message; })
+      .then(function () { state.busy = false; render(); var m = document.querySelector(".msg"); if (m) m.scrollIntoView({ block: "center" }); });
+  };
+}
+function bindBack() { if ($("back")) $("back").onclick = function () { state.open = null; render(); }; }
+function brand(h) {
+  $("hotel").textContent = h.name; document.title = h.name;
+  if (h.logo_data) { $("logo").src = h.logo_data; $("logo").alt = h.name; $("logo").hidden = false; }
+  if (h.brand_color) document.documentElement.style.setProperty("--ink", h.brand_color);
+}
+render();
+var path = token ? "/api/public/jobs/" + encodeURIComponent(token) : hotelId ? "/api/public/jobs/hotel/" + encodeURIComponent(hotelId) : null;
+if (!path && !demo) { state.error = t("invalid"); render(); }
+else api(path || "").then(function (d) { state.data = d; brand(d.hotel); render(); }).catch(function (e) { state.error = e.message || t("invalid"); render(); });
+</script>
+</body>
+</html>

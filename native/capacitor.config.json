@@ -1,0 +1,19 @@
+{
+  "appId": "app.ouverture.hotel",
+  "appName": "Ouverture",
+  "webDir": "www",
+  "server": {
+    "url": "https://hypoos-frontend.onrender.com/index.html",
+    "androidScheme": "https",
+    "errorPath": "offline.html"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#F6F4EF"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

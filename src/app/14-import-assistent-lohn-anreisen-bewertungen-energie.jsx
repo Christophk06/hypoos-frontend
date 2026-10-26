@@ -213,7 +213,7 @@ function PayrollExportCard({hotel, api, rows, month, onHotel, onClose}){
   const download = async () => {
     if(!(await save())) return;
     const name = (tf("Lohnarten")+" "+hotel.name+" "+month).replace(/[\\/:*?"<>|]+/g,"");
-    if(s.format==="datev") downloadText(payrollDatevLodas(lines, month, s), name+".txt", "text/plain;charset=windows-1252");
+    if(s.format==="datev") { let txt; try { txt = payrollDatevLodas(lines, month, s); } catch(e){ setMsg({ok:false,text:e.message}); return; } downloadText(txt, name+".txt", "text/plain;charset=windows-1252"); }
     else downloadText(payrollLinesCsv(lines, month, [tf("Personalnummer"), tf("Name"), tf("Lohnart"), tf("Menge"), tf("Zeitraum")]), name+".csv", "text/csv;charset=utf-8");
   };
   return (
@@ -336,7 +336,7 @@ function GuestMailSettings({hotel, api, onHotel}){
     </Card>
   );
 }
-function ArrivalsView({hotel, api, role, onHotel}){
+function ArrivalsView({hotel, hotels, api, role, onHotel}){
   const [list,setList] = useState(null); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
   const [form,setForm] = useState(null);
   const lead = canManageDept("Rezeption & Empfang");
@@ -384,6 +384,8 @@ function ArrivalsView({hotel, api, role, onHotel}){
                     {(g.extras||[]).length>0 && <div style={{fontSize:12.5,marginTop:3}}>{(g.extras||[]).map(x=><Pill key={x} color={BRASS} bg={BRASS_SOFT}>{extraName(x)}</Pill>)}</div>}
                     {g.guest_note && <div style={{fontSize:13,marginTop:4,background:PAPER,borderRadius:6,padding:"6px 8px"}} data-no-i18n="">„{g.guest_note}“</div>}
                     {g.profile && <GuestProfileBadge profile={g.profile} />}
+                    {g.profile && <GuestProfileOrigin profile={g.profile} hotels={hotels||[]} hotelId={hotel.id} />}
+                    <GsRegistrationPanel guest={g} hotel={hotel} api={api} />
                     {g.vip!==undefined && <FirstImpressionCheck guest={g} api={api} onSaved={(x)=>setList(l=>(l||[]).map(y=>y.id===x.id?{...y,...x}:y))} />}
                   </div>
                   {lead && <div style={{whiteSpace:"nowrap"}}>

@@ -26,6 +26,8 @@
   .price { color: var(--muted); font-size: 14px; }
   input[type=time], textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 11px; font: inherit; font-size: 15px; background: #fff; }
   textarea { min-height: 90px; resize: vertical; }
+  .in { width: 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: inherit; font-size: 15px; background: #fff; color: inherit; }
+  .lnk { background: none; border: 0; color: var(--ink); text-decoration: underline; font: inherit; font-size: 14px; min-height: 44px; padding: 0; cursor: pointer; }
   label.t { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
   button.send { width: 100%; margin-top: 14px; background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; }
   button.send:disabled { opacity: .5; }
@@ -57,8 +59,70 @@ var T = {
   zh: { remember: "为以后的入住保存我的偏好", rememberHint: "自愿。下次预订时酒店可看到您的偏好。您可随时在前台撤回同意。", prefs: "我们应记住什么？（例如安静的房间、不要羽绒枕）", hello: "欢迎您，{name}！", arrival: "{date} 抵达 · {time} 起可办理入住", eta: "您大约几点到达？", extras: "需要加订什么吗？", note: "需求或备注（如过敏、婴儿床）", send: "提交", saved: "谢谢！我们已收到您的信息，期待您的光临。", change: "修改信息", payNote: "费用在酒店现场支付。如有需要，酒店会确认加订项目。", invalid: "此链接无效（或已失效）。", error: "提交失败，请稍后再试。", loading: "加载中…" },
   ar: { remember: "احفظ تفضيلاتي للإقامات القادمة", rememberHint: "اختياري. سيرى الفندق تفضيلاتك عند الحجز القادم. يمكنك سحب موافقتك في الاستقبال في أي وقت.", prefs: "ماذا نتذكر؟ (مثل غرفة هادئة، بدون وسادة ريش)", hello: "أهلًا بكم، {name}!", arrival: "الوصول بتاريخ {date} · تسجيل الوصول من الساعة {time}", eta: "متى تصلون تقريبًا؟", extras: "هل ترغبون في إضافة شيء؟", note: "طلبات أو ملاحظات (مثل الحساسية، سرير أطفال)", send: "إرسال", saved: "شكرًا! استلمنا بياناتكم ونتطلع إلى استقبالكم.", change: "تعديل البيانات", payNote: "يتم الدفع في الفندق. يؤكد الفندق الإضافات عند الحاجة.", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", error: "لم ينجح ذلك. يرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…" },
 };
+// Meldeschein und Angebote per E-Mail (Paket 040)
+var T2 = {
+  de: { regTitle: "Meldeschein", regWhy: "Gesetzliche Meldepflicht: Beherbergungsbetriebe müssen diese Angaben erheben (Österreich: Meldegesetz, Deutschland: Bundesmeldegesetz). Sie werden nur dafür verwendet und nach Ablauf der gesetzlichen Frist gelöscht.", birth: "Geburtsdatum", nat: "Staatsangehörigkeit", street: "Straße und Hausnummer", zip: "PLZ", city: "Ort", country: "Wohnsitzland", idType: "Ausweisart", idNo: "Ausweisnummer", idKeep: "Gespeichert: {hint}. Leer lassen, um sie zu behalten.", passport: "Reisepass", idcard: "Personalausweis", licence: "Führerschein", other: "Sonstiges", comp: "Mitreisende", compAdd: "+ Mitreisende Person", compName: "Name", remove: "Entfernen", regDone: "Meldeschein bereits ausgefüllt – Sie können die Angaben hier ändern.", choose: "Bitte wählen", mkt: "Ich möchte gelegentlich Angebote per E-Mail erhalten", mktHint: "Freiwillig. Sie bekommen zuerst eine E-Mail zur Bestätigung. Abmelden geht jederzeit über den Link in jeder E-Mail.", bday: "Geburtstag für einen Gruß (freiwillig)", day: "Tag", month: "Monat" },
+  en: { regTitle: "Registration form", regWhy: "Legal registration requirement: accommodation providers must collect these details (Austria: Registration Act, Germany: Federal Registration Act). They are used only for this purpose and deleted after the statutory period.", birth: "Date of birth", nat: "Nationality", street: "Street and number", zip: "Postcode", city: "City", country: "Country of residence", idType: "ID document", idNo: "Document number", idKeep: "Saved: {hint}. Leave empty to keep it.", passport: "Passport", idcard: "ID card", licence: "Driving licence", other: "Other", comp: "Travelling companions", compAdd: "+ Add companion", compName: "Name", remove: "Remove", regDone: "Registration already completed – you can change the details here.", choose: "Please choose", mkt: "I would like to receive occasional offers by email", mktHint: "Optional. You will first receive an email to confirm. You can unsubscribe at any time via the link in every email.", bday: "Birthday for a greeting (optional)", day: "Day", month: "Month" },
+  fr: { regTitle: "Fiche de police", regWhy: "Obligation légale de déclaration : les hébergeurs doivent recueillir ces informations (Autriche : loi sur la déclaration de résidence, Allemagne : loi fédérale sur la déclaration). Elles servent uniquement à cela et sont supprimées après le délai légal.", birth: "Date de naissance", nat: "Nationalité", street: "Rue et numéro", zip: "Code postal", city: "Ville", country: "Pays de résidence", idType: "Pièce d’identité", idNo: "Numéro du document", idKeep: "Enregistré : {hint}. Laisser vide pour le conserver.", passport: "Passeport", idcard: "Carte d’identité", licence: "Permis de conduire", other: "Autre", comp: "Personnes accompagnantes", compAdd: "+ Ajouter une personne", compName: "Nom", remove: "Supprimer", regDone: "Fiche déjà remplie – vous pouvez modifier les informations ici.", choose: "Veuillez choisir", mkt: "Je souhaite recevoir de temps en temps des offres par e-mail", mktHint: "Facultatif. Vous recevrez d’abord un e-mail de confirmation. Désinscription possible à tout moment via le lien de chaque e-mail.", bday: "Anniversaire pour un message (facultatif)", day: "Jour", month: "Mois" },
+  it: { regTitle: "Scheda di notifica", regWhy: "Obbligo di notifica previsto dalla legge: le strutture ricettive devono raccogliere questi dati (Austria: legge sulla notifica, Germania: legge federale sulla notifica). Vengono usati solo a tale scopo e cancellati alla scadenza del termine di legge.", birth: "Data di nascita", nat: "Cittadinanza", street: "Via e numero civico", zip: "CAP", city: "Città", country: "Paese di residenza", idType: "Documento d’identità", idNo: "Numero del documento", idKeep: "Salvato: {hint}. Lasci vuoto per mantenerlo.", passport: "Passaporto", idcard: "Carta d’identità", licence: "Patente di guida", other: "Altro", comp: "Accompagnatori", compAdd: "+ Aggiungi accompagnatore", compName: "Nome", remove: "Rimuovi", regDone: "Scheda già compilata – può modificare i dati qui.", choose: "Selezioni", mkt: "Desidero ricevere occasionalmente offerte via e-mail", mktHint: "Facoltativo. Riceverà prima un’e-mail di conferma. Può annullare l’iscrizione in qualsiasi momento tramite il link in ogni e-mail.", bday: "Compleanno per un saluto (facoltativo)", day: "Giorno", month: "Mese" },
+  es: { regTitle: "Parte de viajero", regWhy: "Obligación legal de registro: los alojamientos deben recoger estos datos (Austria: Ley de Empadronamiento, Alemania: Ley Federal de Empadronamiento). Solo se usan para ello y se eliminan tras el plazo legal.", birth: "Fecha de nacimiento", nat: "Nacionalidad", street: "Calle y número", zip: "Código postal", city: "Ciudad", country: "País de residencia", idType: "Documento de identidad", idNo: "Número de documento", idKeep: "Guardado: {hint}. Déjelo vacío para conservarlo.", passport: "Pasaporte", idcard: "Documento nacional de identidad", licence: "Permiso de conducir", other: "Otro", comp: "Acompañantes", compAdd: "+ Añadir acompañante", compName: "Nombre", remove: "Quitar", regDone: "Registro ya completado – puede cambiar los datos aquí.", choose: "Seleccione", mkt: "Deseo recibir ofertas ocasionales por correo electrónico", mktHint: "Opcional. Primero recibirá un correo de confirmación. Puede darse de baja en cualquier momento con el enlace de cada correo.", bday: "Cumpleaños para una felicitación (opcional)", day: "Día", month: "Mes" },
+  pt: { regTitle: "Boletim de alojamento", regWhy: "Obrigação legal de registo: os alojamentos têm de recolher estes dados (Áustria: Lei do Registo, Alemanha: Lei Federal do Registo). São usados apenas para este fim e eliminados após o prazo legal.", birth: "Data de nascimento", nat: "Nacionalidade", street: "Rua e número", zip: "Código postal", city: "Localidade", country: "País de residência", idType: "Documento de identificação", idNo: "Número do documento", idKeep: "Guardado: {hint}. Deixe vazio para manter.", passport: "Passaporte", idcard: "Cartão de cidadão", licence: "Carta de condução", other: "Outro", comp: "Acompanhantes", compAdd: "+ Adicionar acompanhante", compName: "Nome", remove: "Remover", regDone: "Boletim já preenchido – pode alterar os dados aqui.", choose: "Selecione", mkt: "Quero receber ofertas ocasionais por e-mail", mktHint: "Opcional. Primeiro receberá um e-mail de confirmação. Pode cancelar a qualquer momento através do link em cada e-mail.", bday: "Aniversário para uma saudação (opcional)", day: "Dia", month: "Mês" },
+  tr: { regTitle: "Konaklama bildirim formu", regWhy: "Yasal bildirim yükümlülüğü: konaklama işletmeleri bu bilgileri toplamak zorundadır (Avusturya: Bildirim Kanunu, Almanya: Federal Bildirim Kanunu). Yalnızca bu amaçla kullanılır ve yasal süre sonunda silinir.", birth: "Doğum tarihi", nat: "Uyruk", street: "Sokak ve numara", zip: "Posta kodu", city: "Şehir", country: "İkamet ülkesi", idType: "Kimlik belgesi", idNo: "Belge numarası", idKeep: "Kayıtlı: {hint}. Korumak için boş bırakın.", passport: "Pasaport", idcard: "Kimlik kartı", licence: "Ehliyet", other: "Diğer", comp: "Birlikte seyahat edenler", compAdd: "+ Kişi ekle", compName: "Ad", remove: "Kaldır", regDone: "Form zaten dolduruldu – bilgileri burada değiştirebilirsiniz.", choose: "Lütfen seçin", mkt: "Ara sıra e-posta ile teklif almak istiyorum", mktHint: "İsteğe bağlı. Önce onay için bir e-posta alırsınız. Her e-postadaki bağlantıyla istediğiniz zaman abonelikten çıkabilirsiniz.", bday: "Tebrik için doğum günü (isteğe bağlı)", day: "Gün", month: "Ay" },
+  ja: { regTitle: "宿泊者登録票", regWhy: "法律上の届出義務：宿泊施設はこれらの情報を収集する必要があります（オーストリア：住民登録法、ドイツ：連邦住民登録法）。この目的にのみ使用し、法定期間の経過後に削除します。", birth: "生年月日", nat: "国籍", street: "番地・通り", zip: "郵便番号", city: "市区町村", country: "居住国", idType: "身分証明書の種類", idNo: "証明書番号", idKeep: "保存済み：{hint}。変更しない場合は空欄のままにしてください。", passport: "パスポート", idcard: "身分証明書", licence: "運転免許証", other: "その他", comp: "同行者", compAdd: "+ 同行者を追加", compName: "氏名", remove: "削除", regDone: "登録票は記入済みです。ここで内容を変更できます。", choose: "選択してください", mkt: "ときどきメールでご案内を受け取りたい", mktHint: "任意です。まず確認メールが届きます。各メールのリンクからいつでも配信停止できます。", bday: "お祝いメッセージ用の誕生日（任意）", day: "日", month: "月" },
+  zh: { regTitle: "住宿登记表", regWhy: "法定登记义务：住宿经营者必须收集这些信息（奥地利：《登记法》，德国：《联邦登记法》）。仅用于此目的，并在法定期限届满后删除。", birth: "出生日期", nat: "国籍", street: "街道和门牌号", zip: "邮编", city: "城市", country: "居住国", idType: "证件类型", idNo: "证件号码", idKeep: "已保存：{hint}。留空即保留。", passport: "护照", idcard: "身份证", licence: "驾驶证", other: "其他", comp: "同行人员", compAdd: "+ 添加同行人员", compName: "姓名", remove: "删除", regDone: "登记表已填写，您可以在此修改信息。", choose: "请选择", mkt: "我希望不定期通过电子邮件接收优惠信息", mktHint: "自愿。您会先收到一封确认邮件。可随时通过每封邮件中的链接退订。", bday: "生日（用于祝福，自愿）", day: "日", month: "月" },
+  ar: { regTitle: "استمارة تسجيل النزيل", regWhy: "التزام قانوني بالتسجيل: يجب على منشآت الإقامة جمع هذه البيانات (النمسا: قانون التسجيل، ألمانيا: قانون التسجيل الاتحادي). تُستخدم لهذا الغرض فقط وتُحذف بعد انتهاء المدة القانونية.", birth: "تاريخ الميلاد", nat: "الجنسية", street: "الشارع ورقم المبنى", zip: "الرمز البريدي", city: "المدينة", country: "بلد الإقامة", idType: "نوع وثيقة الهوية", idNo: "رقم الوثيقة", idKeep: "محفوظ: {hint}. اتركه فارغًا للإبقاء عليه.", passport: "جواز سفر", idcard: "بطاقة هوية", licence: "رخصة قيادة", other: "أخرى", comp: "المرافقون", compAdd: "+ إضافة مرافق", compName: "الاسم", remove: "إزالة", regDone: "تم ملء الاستمارة مسبقًا – يمكنك تعديل البيانات هنا.", choose: "يرجى الاختيار", mkt: "أرغب في تلقي عروض من حين لآخر عبر البريد الإلكتروني", mktHint: "اختياري. ستصلك أولًا رسالة للتأكيد. يمكنك إلغاء الاشتراك في أي وقت عبر الرابط في كل رسالة.", bday: "تاريخ الميلاد للتهنئة (اختياري)", day: "اليوم", month: "الشهر" },
+};
+Object.keys(T2).forEach(function (l) { for (var k in T2[l]) T[l][k] = T2[l][k]; });
+var COUNTRIES = "AT DE CH IT NL FR GB US CZ PL HU SK SI BE DK SE ES RO HR LI LU AD AE AF AG AL AM AO AR AU AZ BA BB BD BF BG BH BI BJ BN BO BR BS BT BW BY BZ CA CD CF CG CI CL CM CN CO CR CU CV CY DJ DM DO DZ EC EE EG ER ET FI FJ FM GA GD GE GH GM GN GQ GR GT GW GY HN HT ID IE IL IN IQ IR IS JM JO JP KE KG KH KI KM KN KP KR KW KZ LA LB LC LK LR LS LT LV LY MA MC MD ME MG MH MK ML MM MN MR MT MU MV MW MX MY MZ NA NE NG NI NO NP NR NZ OM PA PE PG PH PK PS PT PW PY QA RS RU RW SA SB SC SD SG SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TV TW TZ UA UG UY UZ VA VC VE VN VU WS XK YE ZA ZM ZW".split(" ");
+var ID_TYPES = [["Reisepass", "passport"], ["Personalausweis", "idcard"], ["Führerschein", "licence"], ["Sonstiges", "other"]];
+function countryOptions(sel) {
+  var dn = null; try { dn = new Intl.DisplayNames([lang], { type: "region" }); } catch (e) {}
+  var name = function (c) { try { return (dn && dn.of(c)) || c; } catch (e) { return c; } };
+  var top = COUNTRIES.slice(0, 21), rest = COUNTRIES.slice(21).sort(function (a, b) { return name(a).localeCompare(name(b), lang); });
+  var o = function (c) { return '<option value="' + c + '"' + (c === sel ? " selected" : "") + ">" + esc(name(c)) + "</option>"; };
+  return '<option value="">' + esc(t("choose")) + "</option>" + top.map(o).join("") + '<option disabled>──────</option>' + rest.map(o).join("");
+}
+function regHtml(i) {
+  var r = state.reg, h = '<div class="box" style="margin-top:14px"><b style="font-family:Georgia,serif;font-size:17px">' + esc(t("regTitle")) + '</b><div class="note">' + esc(t("regWhy")) + "</div>";
+  if (i.registration.done) h += '<div class="note" style="color:var(--good)">✓ ' + esc(t("regDone")) + "</div>";
+  var f = function (id, label, inner) { return '<label class="t" for="' + id + '">' + esc(label) + "</label>" + inner; };
+  var inp = function (id, val, type, ac, max) { return '<input class="in" id="' + id + '" type="' + (type || "text") + '" value="' + esc(val || "") + '"' + (ac ? ' autocomplete="' + ac + '"' : "") + ' maxlength="' + (max || 160) + '" />'; };
+  h += f("r_birth", t("birth"), inp("r_birth", r.birth_date, "date", "bday"));
+  h += f("r_nat", t("nat"), '<select class="in" id="r_nat">' + countryOptions(r.nationality) + "</select>");
+  h += f("r_street", t("street"), inp("r_street", r.street, "text", "street-address"));
+  h += '<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><div>' + f("r_zip", t("zip"), inp("r_zip", r.zip, "text", "postal-code", 20)) + "</div><div>" + f("r_city", t("city"), inp("r_city", r.city, "text", "address-level2", 100)) + "</div></div>";
+  h += f("r_country", t("country"), '<select class="in" id="r_country">' + countryOptions(r.address_country) + "</select>");
+  if (i.registration.require_id) {
+    h += f("r_idtype", t("idType"), '<select class="in" id="r_idtype"><option value="">' + esc(t("choose")) + "</option>" + ID_TYPES.map(function (x) { return '<option value="' + x[0] + '"' + (r.id_doc_type === x[0] ? " selected" : "") + ">" + esc(t(x[1])) + "</option>"; }).join("") + "</select>");
+    h += f("r_idno", t("idNo"), inp("r_idno", r.id_doc_number, "text", "off", 40)) + (i.registration.data && i.registration.data.id_doc_hint ? '<div class="note">' + esc(t("idKeep", { hint: i.registration.data.id_doc_hint })) + "</div>" : "");
+  }
+  h += '<label class="t">' + esc(t("comp")) + "</label>";
+  r.companions.forEach(function (c, k) {
+    h += '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">' + inp("c_name_" + k, c.name, "text", "off") .replace('class="in"', 'class="in" aria-label="' + esc(t("compName")) + '" placeholder="' + esc(t("compName")) + '"')
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">' + inp("c_birth_" + k, c.birth_date, "date").replace('class="in"', 'class="in" aria-label="' + esc(t("birth")) + '"')
+      + '<select class="in" id="c_nat_' + k + '" aria-label="' + esc(t("nat")) + '">' + countryOptions(c.nationality) + "</select></div>"
+      + '<button type="button" class="lnk" data-rm="' + k + '">' + esc(t("remove")) + "</button></div>";
+  });
+  if (r.companions.length < 12) h += '<button type="button" class="lnk" id="c_add">' + esc(t("compAdd")) + "</button>";
+  return h + "</div>";
+}
+function readReg() {
+  var r = state.reg, v = function (id) { return $(id) ? $(id).value : ""; };
+  if (!$("r_birth")) return;
+  r.birth_date = v("r_birth"); r.nationality = v("r_nat"); r.street = v("r_street"); r.zip = v("r_zip"); r.city = v("r_city"); r.address_country = v("r_country");
+  if ($("r_idtype")) { r.id_doc_type = v("r_idtype"); r.id_doc_number = v("r_idno"); }
+  r.companions = r.companions.map(function (c, k) { return { name: v("c_name_" + k), birth_date: v("c_birth_" + k), nationality: v("c_nat_" + k) }; });
+}
+function mktHtml() {
+  var h = '<label class="extra" style="margin-top:14px"><input type="checkbox" id="mkt"' + (state.mkt ? " checked" : "") + " /><b>" + esc(t("mkt")) + '</b></label><div class="note">' + esc(t("mktHint")) + "</div>";
+  if (state.mkt) {
+    var opt = function (n, sel) { var s = '<option value="">–</option>'; for (var x = 1; x <= n; x++) { var p = (x < 10 ? "0" : "") + x; s += '<option value="' + p + '"' + (p === sel ? " selected" : "") + ">" + x + "</option>"; } return s; };
+    h += '<label class="t">' + esc(t("bday")) + '</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><select class="in" id="bd_d" aria-label="' + esc(t("day")) + '">' + opt(31, state.bdD) + '</select><select class="in" id="bd_m" aria-label="' + esc(t("month")) + '">' + opt(12, state.bdM) + "</select></div>";
+  }
+  return h;
+}
 var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
-var state = { info: null, extras: [], eta: "", note: "", sent: false, error: null, busy: false };
+var state = { info: null, extras: [], eta: "", note: "", sent: false, error: null, busy: false, reg: { companions: [] }, mkt: false, bdD: "", bdM: "" };
 var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
 var $ = function (id) { return document.getElementById(id); };
 function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
@@ -67,7 +131,7 @@ LANGS.forEach(function (l) { var o = document.createElement("option"); o.value =
 $("lang").value = lang;
 $("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
 var DEMO = { hotel: { name: "Beispielhotel Alpenblick", currency: "EUR" }, guest: { name: "Familie Weber", arrival_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) }, checkin_time: "15:00",
-  info: "Parkplätze in der Tiefgarage, Einfahrt Seestraße 4.", extras: [{ id: "x0", name: "Frühstück", price: 24 }, { id: "x1", name: "Parkplatz in der Garage", price: 18 }, { id: "x2", name: "Später Check-out bis 14 Uhr", price: 35 }], chosen: [], eta: null, note: null, answered: false };
+  info: "Parkplätze in der Tiefgarage, Einfahrt Seestraße 4.", extras: [{ id: "x0", name: "Frühstück", price: 24 }, { id: "x1", name: "Parkplatz in der Garage", price: 18 }, { id: "x2", name: "Später Check-out bis 14 Uhr", price: 35 }], chosen: [], eta: null, note: null, answered: false, registration: { enabled: true, require_id: true, done: false, data: {} }, marketing: true };
 function api(path, opt) {
   if (demo) return Promise.resolve(opt ? { ok: true } : DEMO);
   return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || t("error")); return j; }); });
@@ -75,6 +139,7 @@ function api(path, opt) {
 function fmtDate(iso) { try { return new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "en" ? "en-GB" : lang, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }); } catch (e) { return iso; } }
 function money(p, cur) { try { return new Intl.NumberFormat(lang, { style: "currency", currency: cur || "EUR" }).format(p); } catch (e) { return p + " " + cur; } }
 function render() {
+  if (!state.skipRead) readReg(); state.skipRead = false;
   document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   var a = $("app"), i = state.info;
   if (state.error && !i) { a.innerHTML = '<div class="msg err">' + esc(state.error) + "</div>"; return; }
@@ -91,9 +156,11 @@ function render() {
     html += '</div><div class="note">' + esc(t("payNote")) + "</div>";
   }
   html += '<label class="t" for="note">' + esc(t("note")) + '</label><textarea id="note" maxlength="1000">' + esc(state.note) + '</textarea><input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />';
+  if (i.registration && i.registration.enabled) html += regHtml(i);
   // Vorlieben für künftige Aufenthalte – nur mit ausdrücklicher Einwilligung
   html += '<label class="extra" style="margin-top:14px"><input type="checkbox" id="remember"' + (state.remember ? " checked" : "") + ' /><b>' + esc(t("remember")) + '</b></label><div class="note">' + esc(t("rememberHint")) + "</div>";
   if (state.remember) html += '<label class="t" for="prefs">' + esc(t("prefs")) + '</label><textarea id="prefs" maxlength="1000" dir="auto">' + esc(state.prefs || "") + "</textarea>";
+  if (i.marketing) html += mktHtml();
   html += '<button class="send" id="send"' + (state.busy ? " disabled" : "") + ">" + esc(t("send")) + "</button>" + (state.error ? '<div class="msg err">' + esc(state.error) + "</div>" : "");
   a.innerHTML = html;
   [].forEach.call(a.querySelectorAll("[data-x]"), function (c) { c.onchange = function () { var id = c.getAttribute("data-x"); state.extras = state.extras.filter(function (x) { return x !== id; }); if (c.checked) state.extras.push(id); }; });
@@ -101,9 +168,14 @@ function render() {
   $("note").oninput = function () { state.note = this.value; };
   $("remember").onchange = function () { state.remember = this.checked; render(); };
   if ($("prefs")) $("prefs").oninput = function () { state.prefs = this.value; };
+  if ($("c_add")) $("c_add").onclick = function () { readReg(); state.reg.companions.push({ name: "", birth_date: "", nationality: "" }); state.skipRead = true; render(); };
+  [].forEach.call(a.querySelectorAll("[data-rm]"), function (b) { b.onclick = function () { readReg(); state.reg.companions.splice(Number(b.getAttribute("data-rm")), 1); state.skipRead = true; render(); }; });
+  if ($("mkt")) $("mkt").onchange = function () { readReg(); state.mkt = this.checked; render(); };
+  if ($("bd_d")) { $("bd_d").onchange = function () { state.bdD = this.value; }; $("bd_m").onchange = function () { state.bdM = this.value; }; }
   $("send").onclick = function () {
-    state.busy = true; state.error = null; render();
-    api("/api/public/arrival/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ eta: state.eta, extras: state.extras, note: state.note, remember: !!state.remember, preferences: state.prefs || "", website: $("website") ? $("website").value : "" }) })
+    readReg(); state.busy = true; state.error = null; render();
+    var reg = i.registration && i.registration.enabled ? state.reg : undefined;
+    api("/api/public/arrival/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ eta: state.eta, extras: state.extras, note: state.note, remember: !!state.remember, preferences: state.prefs || "", registration: reg, marketing: !!(i.marketing && state.mkt), birthday: state.mkt && state.bdD && state.bdM ? state.bdM + "-" + state.bdD : "", website: $("website") ? $("website").value : "" }) })
       .then(function () { state.sent = true; }).catch(function (e) { state.error = e.message; }).then(function () { state.busy = false; render(); });
   };
 }
@@ -115,7 +187,8 @@ function brand(h) {
 render();
 if (!token && !demo) { state.error = t("invalid"); render(); }
 else api("/api/public/arrival/" + encodeURIComponent(token)).then(function (i) {
-  state.info = i; state.extras = (i.chosen || []).slice(); state.eta = i.eta || ""; state.note = i.note || ""; state.sent = !!i.answered;
+  state.info = i; state.extras = (i.chosen || []).slice(); state.skipRead = true;
+  if (i.registration && i.registration.enabled) { var d = i.registration.data || {}; state.reg = { birth_date: d.birth_date || "", nationality: d.nationality || "", street: d.street || "", zip: d.zip || "", city: d.city || "", address_country: d.address_country || "", id_doc_type: d.id_doc_type || "", id_doc_number: "", companions: (d.companions || []).map(function (c) { return { name: c.name || "", birth_date: c.birth_date || "", nationality: c.nationality || "" }; }) }; } state.eta = i.eta || ""; state.note = i.note || ""; state.sent = !!i.answered;
   var chosenLang = null; try { chosenLang = localStorage.getItem("ouv_guest_lang"); } catch (e) {}
   if (i.guest.language && T[i.guest.language] && !chosenLang) { lang = i.guest.language; $("lang").value = lang; }
   brand(i.hotel); render();

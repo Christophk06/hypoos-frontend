@@ -105,7 +105,7 @@ function StaffDocsView({orgId, api, members}){
   const pickFile = (file) => { if(!file) return; if(file.size > 2000000) return setMsg({ok:false,text:tf("Bitte PDF oder Foto unter 2 MB.")});
     if(/^image\//.test(file.type)) compressImage(file, 1600, 0.75).then(d=>setForm(f=>({...f,file_data:d}))).catch(e=>setMsg({ok:false,text:e.message}));
     else { const r = new FileReader(); r.onload = () => setForm(f=>({...f,file_data:r.result})); r.readAsDataURL(file); } };
-  const open = async (d) => { try { const x = await api("/api/staff-documents/"+d.id+"/file"); const b = await (await fetch(x.file_data)).blob(); const url = URL.createObjectURL(b); const w = window.open(url, "_blank", "noopener"); if(!w){ const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.click(); } setTimeout(()=>URL.revokeObjectURL(url), 60000); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  const open = async (d) => { try { const x = await api("/api/staff-documents/"+d.id+"/file"); const b = await safeFileBlob(x.file_data); const url = URL.createObjectURL(b); const w = window.open(url, "_blank", "noopener"); if(!w){ const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.click(); } setTimeout(()=>URL.revokeObjectURL(url), 60000); } catch(e){ setMsg({ok:false,text:e.message}); } };
   const del = async (d) => { if(!window.confirm(tf("Dokument löschen?"))) return; try { await api("/api/staff-documents/"+d.id,"DELETE"); load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
   const shown = (list||[]).filter(d=>!q.trim() || (nameOf(d)+" "+d.kind+" "+(d.title||"")).toLowerCase().includes(q.trim().toLowerCase()));
   return (

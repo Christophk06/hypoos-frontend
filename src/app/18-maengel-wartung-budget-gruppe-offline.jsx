@@ -21,7 +21,7 @@ function SnagReportButton({hotel, api, contractors, members, me}){
   return (
     <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
       <button style={smallBtn} disabled={busy} onClick={run}>{busy?"…":<React.Fragment><Icon n="filetext" /> {tf("Abnahmeprotokoll (PDF)")}</React.Fragment>}</button>
-      {contractors.length>0 && <select className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}} value={firm} onChange={e=>setFirm(e.target.value)}><option value="">{tf("Alle Firmen")}</option>{contractors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>}
+      {contractors.length>0 && <select className="input" aria-label={tf("Firma")} style={{width:"auto",padding:"5px 8px",fontSize:12.5}} value={firm} onChange={e=>setFirm(e.target.value)}><option value="">{tf("Alle Firmen")}</option>{contractors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>}
     </div>
   );
 }
@@ -87,7 +87,7 @@ function RevenueEditor({hotel, api, from, to, onSaved}){
   };
   return (
     <Card style={{marginBottom:14}}>
-      <div style={{fontWeight:700,marginBottom:4}}>{tf("Belegung und Logis-Umsatz je Tag")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Belegung und Logis-Umsatz je Tag")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Kommt aus dem PMS oder hier von Hand: belegte Zimmer und Logis-Umsatz (ohne Frühstück und Extras). Daraus entstehen Auslastung, Durchschnittspreis und RevPAR.")}</div>
       <div style={{overflowX:"auto"}}>
         <table style={{borderCollapse:"collapse",fontSize:12.5}}>
@@ -132,7 +132,7 @@ function SignAckDialog({training, me, api, onDone, onClose}){
       <div className="field-label">{tf("Unterschrift (mit Finger oder Maus)")}</div>
       <SignaturePad onChange={setSig} />
       <div style={{display:"flex",gap:8,marginTop:8}}><button className="btn-primary" disabled={busy || !name.trim() || !sig} onClick={submit}>{busy?"…":tf("Bestätigen")}</button><button style={linkBtn} onClick={onClose}>{tf("Abbrechen")}</button></div>
-      {msg && <div style={{color:BAD,fontSize:13,marginTop:6}}>{msg}</div>}
+      {msg && <ErrorText style={{marginTop:6}}>{msg}</ErrorText>}
     </Overlay>
   );
 }
@@ -185,7 +185,7 @@ function GroupView({orgId, api, hotels, onPick}){
   ];
   return (
     <div>
-      {msg && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{msg}</div>}
+      {msg && <ErrorText style={{marginBottom:10}}>{msg}</ErrorText>}
       <div className="stack" style={{display:"flex",gap:14,marginBottom:14}}>
         <StatTile label={tf("Hotels")} value={rows.length} />
         <StatTile label={tf("Im Dienst")} value={sum("on_duty")} />
@@ -218,7 +218,7 @@ function OfflineBadge(){
   },[]);
   if(online && !n) return null;
   return (
-    <div className="no-print" style={{position:"fixed",bottom:76,insetInlineStart:"50%",transform:"translateX(-50%)",zIndex:150,background:online?BRASS:INK,color:"#fff",borderRadius:999,padding:"7px 14px",fontSize:12.5,boxShadow:"0 6px 18px rgba(0,0,0,.2)",display:"flex",gap:8,alignItems:"center"}}>
+    <div className="no-print" role="status" style={{position:"fixed",bottom:76,insetInlineStart:"50%",transform:"translateX(-50%)",zIndex:150,background:INK,color:"#fff",borderRadius:999,padding:"7px 14px",fontSize:12.5,boxShadow:"0 6px 18px rgba(0,0,0,.2)",display:"flex",gap:8,alignItems:"center"}}>
       {online ? "⟳ "+tf("{0} Einträge werden gesendet …", n) : <React.Fragment><Icon n="bolt" /> {n ? tf("Offline – {0} Einträge warten und werden automatisch gesendet.", n) : tf("Offline – Sie sehen den zuletzt geladenen Stand.")}</React.Fragment>}
       {online && n>0 && <button style={{background:"transparent",border:"1px solid #fff",color:"#fff",borderRadius:999,padding:"2px 9px",fontSize:12,cursor:"pointer"}} onClick={()=>flushOfflineQueue()}>{tf("Jetzt senden")}</button>}
     </div>

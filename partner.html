@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture – Partner</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; --warn:#8A5F1F; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 720px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .brand { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: #fff; font-size: 14px; min-height: 44px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  h2 { font-family: Georgia, serif; font-weight: 500; font-size: 19px; margin: 22px 0 8px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 16px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .stat .l { font-size: 13px; color: var(--muted); } .stat .v { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .linkrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .linkrow code { flex: 1; min-width: 200px; word-break: break-all; font-size: 14px; background: var(--paper); border-radius: 8px; padding: 10px; }
+  button.copy { background: var(--ink); color: #fff; border: 0; border-radius: 10px; padding: 12px 16px; font-size: 15px; font-weight: 600; cursor: pointer; min-height: 44px; }
+  button:focus-visible, select:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th { text-align: start; color: var(--muted); font-size: 12.5px; font-weight: 600; padding: 6px; }
+  td { padding: 8px 6px; border-top: 1px solid var(--border); }
+  .r { text-align: end; } .open { color: var(--warn); font-weight: 600; } .okc { color: var(--good); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14.5px; }
+  .row:first-child { border-top: 0; } .row b { flex: 1; min-width: 160px; }
+  .tag { font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 3px 9px; background: var(--paper); color: var(--muted); }
+  .tag.ok { background: #E4EFE8; color: #2F5F47; }
+  .msg { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 15px; }
+  .err { background: #F5E1DE; color: #8A2F27; } .warnbox { background: #F5E9D5; color: #5E4214; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .scroll { overflow-x: auto; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><div class="brand">Ouverture</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Partner-Übersicht", hotels: "Vermittelte Hotels", totalOpen: "Provision offen", totalPaid: "Bereits ausgezahlt", rate: "Ihre Provision: {p} % der bezahlten Abo-Beträge (netto, ohne Steuer).", link: "Ihr Werbelink", copy: "Link kopieren", copied: "Kopiert.", copyFail: "Kopieren nicht möglich – bitte den Link markieren.", linkHint: "Wer sich innerhalb von 14 Tagen nach dem Klick registriert, wird Ihnen zugeordnet.", orgs: "Vermittelte Organisationen", noOrgs: "Noch keine Organisation über Ihren Link.", active: "Zahlend", trial: "Testphase", inactive: "Nicht aktiv", since: "seit {date}", months: "Provision je Monat", month: "Monat", commission: "Provision", paid: "Ausgezahlt", open: "Offen", noMonths: "Noch keine bezahlten Rechnungen.", payouts: "Auszahlungen", noPayouts: "Noch keine Auszahlungen.", paidOn: "ausgezahlt am {date}", estimate: "Schätzung: etwa {amount} Provision je Monat aus laufenden Abos, für die noch keine Zahlung vorliegt – kein abgerechneter Betrag.", paused: "Ihre Partnerschaft ist pausiert. Neue Anmeldungen über Ihren Link werden derzeit nicht zugeordnet.", private: "Diese Seite ist persönlich. Bitte den Link nicht weitergeben.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…" },
+  en: { title: "Partner overview", hotels: "Hotels referred", totalOpen: "Commission outstanding", totalPaid: "Already paid out", rate: "Your commission: {p} % of paid subscription amounts (net, excluding tax).", link: "Your referral link", copy: "Copy link", copied: "Copied.", copyFail: "Copying is not possible – please select the link.", linkHint: "Anyone who signs up within 14 days of clicking is assigned to you.", orgs: "Referred organisations", noOrgs: "No organisation has signed up through your link yet.", active: "Paying", trial: "Trial", inactive: "Not active", since: "since {date}", months: "Commission per month", month: "Month", commission: "Commission", paid: "Paid out", open: "Outstanding", noMonths: "No paid invoices yet.", payouts: "Payouts", noPayouts: "No payouts yet.", paidOn: "paid on {date}", estimate: "Estimate: about {amount} commission per month from running subscriptions with no payment recorded yet – not a billed amount.", paused: "Your partnership is paused. New sign-ups through your link are currently not assigned.", private: "This page is personal. Please do not share the link.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…" },
+  fr: { title: "Aperçu partenaire", hotels: "Hôtels apportés", totalOpen: "Commission due", totalPaid: "Déjà versé", rate: "Votre commission : {p} % des montants d’abonnement payés (net, hors taxes).", link: "Votre lien de recommandation", copy: "Copier le lien", copied: "Copié.", copyFail: "Copie impossible – veuillez sélectionner le lien.", linkHint: "Toute inscription dans les 14 jours suivant le clic vous est attribuée.", orgs: "Organisations apportées", noOrgs: "Aucune organisation inscrite via votre lien pour le moment.", active: "Payant", trial: "Essai", inactive: "Inactif", since: "depuis le {date}", months: "Commission par mois", month: "Mois", commission: "Commission", paid: "Versé", open: "Dû", noMonths: "Aucune facture payée pour le moment.", payouts: "Versements", noPayouts: "Aucun versement pour le moment.", paidOn: "versé le {date}", estimate: "Estimation : environ {amount} de commission par mois pour des abonnements en cours sans paiement enregistré – montant non facturé.", paused: "Votre partenariat est en pause. Les nouvelles inscriptions via votre lien ne sont pas attribuées pour le moment.", private: "Cette page est personnelle. Merci de ne pas partager le lien.", invalid: "Ce lien n’est pas (ou plus) valable.", error: "Cela n’a pas fonctionné. Veuillez réessayer plus tard.", loading: "Chargement…" },
+  it: { title: "Panoramica partner", hotels: "Hotel segnalati", totalOpen: "Provvigione da pagare", totalPaid: "Già pagato", rate: "La sua provvigione: {p} % degli importi di abbonamento pagati (netto, senza imposte).", link: "Il suo link di segnalazione", copy: "Copia link", copied: "Copiato.", copyFail: "Impossibile copiare – selezioni il link.", linkHint: "Chi si registra entro 14 giorni dal clic viene assegnato a lei.", orgs: "Organizzazioni segnalate", noOrgs: "Ancora nessuna organizzazione tramite il suo link.", active: "Pagante", trial: "Prova", inactive: "Non attiva", since: "dal {date}", months: "Provvigione per mese", month: "Mese", commission: "Provvigione", paid: "Pagato", open: "Da pagare", noMonths: "Ancora nessuna fattura pagata.", payouts: "Pagamenti", noPayouts: "Ancora nessun pagamento.", paidOn: "pagato il {date}", estimate: "Stima: circa {amount} di provvigione al mese da abbonamenti attivi senza pagamento registrato – importo non fatturato.", paused: "La sua partnership è in pausa. Le nuove registrazioni tramite il suo link al momento non vengono assegnate.", private: "Questa pagina è personale. Non condivida il link.", invalid: "Questo link non è (più) valido.", error: "Non è andato a buon fine. Riprovi più tardi.", loading: "Caricamento…" },
+  es: { title: "Resumen de socio", hotels: "Hoteles recomendados", totalOpen: "Comisión pendiente", totalPaid: "Ya pagado", rate: "Su comisión: {p} % de los importes de suscripción pagados (neto, sin impuestos).", link: "Su enlace de recomendación", copy: "Copiar enlace", copied: "Copiado.", copyFail: "No se puede copiar: seleccione el enlace.", linkHint: "Quien se registre en los 14 días siguientes al clic se le asigna a usted.", orgs: "Organizaciones recomendadas", noOrgs: "Aún no hay organizaciones a través de su enlace.", active: "De pago", trial: "Prueba", inactive: "No activa", since: "desde el {date}", months: "Comisión por mes", month: "Mes", commission: "Comisión", paid: "Pagado", open: "Pendiente", noMonths: "Aún no hay facturas pagadas.", payouts: "Pagos", noPayouts: "Aún no hay pagos.", paidOn: "pagado el {date}", estimate: "Estimación: unos {amount} de comisión al mes de suscripciones activas sin pago registrado; no es un importe facturado.", paused: "Su colaboración está en pausa. Los nuevos registros a través de su enlace no se asignan por ahora.", private: "Esta página es personal. No comparta el enlace.", invalid: "Este enlace no es (o ya no es) válido.", error: "No ha funcionado. Inténtelo de nuevo más tarde.", loading: "Cargando…" },
+  pt: { title: "Resumo do parceiro", hotels: "Hotéis indicados", totalOpen: "Comissão em aberto", totalPaid: "Já pago", rate: "A sua comissão: {p} % dos valores de subscrição pagos (líquido, sem impostos).", link: "O seu link de indicação", copy: "Copiar link", copied: "Copiado.", copyFail: "Não é possível copiar – selecione o link.", linkHint: "Quem se registar até 14 dias após o clique fica atribuído a si.", orgs: "Organizações indicadas", noOrgs: "Ainda nenhuma organização através do seu link.", active: "Pagante", trial: "Teste", inactive: "Inativa", since: "desde {date}", months: "Comissão por mês", month: "Mês", commission: "Comissão", paid: "Pago", open: "Em aberto", noMonths: "Ainda não há faturas pagas.", payouts: "Pagamentos", noPayouts: "Ainda não há pagamentos.", paidOn: "pago em {date}", estimate: "Estimativa: cerca de {amount} de comissão por mês de subscrições ativas sem pagamento registado – não é um valor faturado.", paused: "A sua parceria está em pausa. Novos registos através do seu link não são atribuídos de momento.", private: "Esta página é pessoal. Não partilhe o link.", invalid: "Este link não é (ou já não é) válido.", error: "Não foi possível. Tente novamente mais tarde.", loading: "A carregar…" },
+  tr: { title: "Ortak özeti", hotels: "Yönlendirilen oteller", totalOpen: "Açık komisyon", totalPaid: "Ödenmiş", rate: "Komisyonunuz: ödenen abonelik tutarlarının %{p}’i (net, vergi hariç).", link: "Tavsiye bağlantınız", copy: "Bağlantıyı kopyala", copied: "Kopyalandı.", copyFail: "Kopyalanamıyor – lütfen bağlantıyı seçin.", linkHint: "Tıkladıktan sonraki 14 gün içinde kaydolan herkes size atanır.", orgs: "Yönlendirilen kuruluşlar", noOrgs: "Bağlantınız üzerinden henüz kuruluş yok.", active: "Ödeme yapıyor", trial: "Deneme", inactive: "Aktif değil", since: "{date} tarihinden beri", months: "Aylık komisyon", month: "Ay", commission: "Komisyon", paid: "Ödendi", open: "Açık", noMonths: "Henüz ödenmiş fatura yok.", payouts: "Ödemeler", noPayouts: "Henüz ödeme yok.", paidOn: "{date} tarihinde ödendi", estimate: "Tahmin: henüz ödeme kaydı olmayan aktif aboneliklerden ayda yaklaşık {amount} komisyon – faturalandırılmış tutar değildir.", paused: "Ortaklığınız duraklatıldı. Bağlantınız üzerinden yeni kayıtlar şu anda atanmıyor.", private: "Bu sayfa kişiseldir. Lütfen bağlantıyı paylaşmayın.", invalid: "Bu bağlantı geçerli değil (artık).", error: "Olmadı. Lütfen daha sonra tekrar deneyin.", loading: "Yükleniyor…" },
+  ja: { title: "パートナー概要", hotels: "紹介したホテル", totalOpen: "未払いの報酬", totalPaid: "支払済み", rate: "報酬：支払われたサブスクリプション金額（税抜）の {p} %。", link: "紹介リンク", copy: "リンクをコピー", copied: "コピーしました。", copyFail: "コピーできません。リンクを選択してください。", linkHint: "クリックから 14 日以内に登録した方があなたに紐づけられます。", orgs: "紹介した組織", noOrgs: "リンク経由の組織はまだありません。", active: "有料", trial: "試用中", inactive: "非アクティブ", since: "{date} から", months: "月別の報酬", month: "月", commission: "報酬", paid: "支払済み", open: "未払い", noMonths: "支払済みの請求書はまだありません。", payouts: "支払い", noPayouts: "支払いはまだありません。", paidOn: "{date} 支払済み", estimate: "見積もり：支払い記録のない有効なサブスクリプションから月あたり約 {amount} の報酬（請求済みの金額ではありません）。", paused: "パートナーシップは一時停止中です。現在、リンク経由の新規登録は紐づけられません。", private: "このページは個人用です。リンクを共有しないでください。", invalid: "このリンクは無効です（期限切れの可能性があります）。", error: "うまくいきませんでした。しばらくしてから再度お試しください。", loading: "読み込み中…" },
+  zh: { title: "合作伙伴概览", hotels: "推荐的酒店", totalOpen: "待付佣金", totalPaid: "已支付", rate: "您的佣金：已付订阅金额（不含税净额）的 {p}%。", link: "您的推荐链接", copy: "复制链接", copied: "已复制。", copyFail: "无法复制，请手动选中链接。", linkHint: "点击后 14 天内注册的客户都会归属于您。", orgs: "推荐的机构", noOrgs: "目前还没有通过您的链接注册的机构。", active: "付费中", trial: "试用中", inactive: "未激活", since: "自 {date} 起", months: "每月佣金", month: "月份", commission: "佣金", paid: "已支付", open: "待付", noMonths: "暂无已付款的账单。", payouts: "付款记录", noPayouts: "暂无付款。", paidOn: "于 {date} 支付", estimate: "估算：来自尚无付款记录的有效订阅，每月约 {amount} 佣金——并非已结算金额。", paused: "您的合作已暂停。目前通过您的链接注册的新客户不会归属于您。", private: "此页面为个人专用，请勿分享链接。", invalid: "此链接无效（或已失效）。", error: "操作失败，请稍后再试。", loading: "加载中…" },
+  ar: { title: "نظرة عامة للشريك", hotels: "الفنادق المُحالة", totalOpen: "العمولة المستحقة", totalPaid: "المدفوع حتى الآن", rate: "عمولتك: {p} % من مبالغ الاشتراك المدفوعة (صافية، دون الضريبة).", link: "رابط الإحالة الخاص بك", copy: "نسخ الرابط", copied: "تم النسخ.", copyFail: "تعذّر النسخ – يرجى تحديد الرابط.", linkHint: "كل من يسجّل خلال 14 يومًا من النقر يُنسب إليك.", orgs: "المؤسسات المُحالة", noOrgs: "لا توجد مؤسسات عبر رابطك حتى الآن.", active: "مشترك مدفوع", trial: "فترة تجريبية", inactive: "غير نشط", since: "منذ {date}", months: "العمولة حسب الشهر", month: "الشهر", commission: "العمولة", paid: "مدفوع", open: "مستحق", noMonths: "لا توجد فواتير مدفوعة بعد.", payouts: "الدفعات", noPayouts: "لا توجد دفعات بعد.", paidOn: "دُفع في {date}", estimate: "تقدير: نحو {amount} عمولة شهريًا من اشتراكات جارية لم تُسجَّل لها دفعة بعد – ليس مبلغًا مُفوترًا.", paused: "شراكتك متوقفة مؤقتًا. لا تُنسب التسجيلات الجديدة عبر رابطك حاليًا.", private: "هذه الصفحة شخصية. يرجى عدم مشاركة الرابط.", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", error: "لم ينجح ذلك. يرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…" },
+};
+var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
+var state = { data: null, error: null, copyMsg: null };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return String(s).replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function loc() { return lang === "en" ? "en-GB" : lang; }
+function money(n, cur) { try { return new Intl.NumberFormat(loc(), { style: "currency", currency: cur || "EUR" }).format(Number(n) || 0); } catch (e) { return (Number(n) || 0).toFixed(2) + " " + (cur || "EUR"); } }
+function fmtDate(iso) { try { return new Date(String(iso).length <= 10 ? iso + "T12:00:00Z" : iso).toLocaleDateString(loc(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return iso; } }
+function fmtMonth(p) { try { return new Date(p + "-15T12:00:00Z").toLocaleDateString(loc(), { month: "long", year: "numeric", timeZone: "UTC" }); } catch (e) { return p; } }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+var DEMO = { partner: { name: "Beispiel Beratung", company: "Beispiel Hotelberatung GmbH", code: "BEISPIEL", commission_percent: 20, status: "aktiv" },
+  link: "https://hypoos-frontend.onrender.com/landing.html?partner=BEISPIEL", hotels: 2,
+  organizations: [{ name: "Hotel Alpenblick", since: new Date(Date.now() - 80 * 86400000).toISOString(), active: true, trial: false }, { name: "Stadthotel am Markt", since: new Date(Date.now() - 6 * 86400000).toISOString(), active: false, trial: true }],
+  months: [{ period: new Date().toISOString().slice(0, 7), currency: "EUR", commission: 49.8, paid: 0, open: 49.8 }, { period: new Date(Date.now() - 31 * 86400000).toISOString().slice(0, 7), currency: "EUR", commission: 49.8, paid: 49.8, open: 0 }],
+  payouts: [{ period: new Date(Date.now() - 31 * 86400000).toISOString().slice(0, 7), amount: 49.8, currency: "EUR", paid_at: new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10) }],
+  estimate: { monthly_commission_eur: 0 } };
+function api(path) {
+  if (demo) return Promise.resolve(DEMO);
+  return fetch(API + path, { headers: { "Accept-Language": lang } }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || t("error")); return j; }); });
+}
+function sumBy(list, k) { var m = {}; (list || []).forEach(function (x) { m[x.currency] = (m[x.currency] || 0) + (Number(x[k]) || 0); }); return m; }
+function moneyMap(m) { var keys = Object.keys(m); return keys.length ? keys.map(function (c) { return esc(money(m[c], c)); }).join("<br>") : esc(money(0, "EUR")); }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.title = "Ouverture – " + t("title");
+  var a = $("app"), d = state.data;
+  if (state.error && !d) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!d) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var p = d.partner, h = "<h1>" + esc(t("title")) + '</h1><div class="sub" dir="auto">' + esc(p.name) + (p.company ? " · " + esc(p.company) : "") + "</div>";
+  if (p.status !== "aktiv") h += '<div class="msg warnbox" role="status">' + esc(t("paused")) + "</div>";
+  h += '<div class="stats"><div class="box stat"><div class="l">' + esc(t("hotels")) + '</div><div class="v">' + esc(d.hotels) + "</div></div>"
+    + '<div class="box stat"><div class="l">' + esc(t("totalOpen")) + '</div><div class="v">' + moneyMap(sumBy(d.months, "open")) + "</div></div>"
+    + '<div class="box stat"><div class="l">' + esc(t("totalPaid")) + '</div><div class="v">' + moneyMap(sumBy(d.payouts, "amount")) + "</div></div></div>";
+  h += '<div class="note">' + esc(t("rate", { p: String(p.commission_percent).replace(".", lang === "en" || lang === "ja" || lang === "zh" ? "." : ",") })) + "</div>";
+  h += "<h2>" + esc(t("link")) + '</h2><div class="box"><div class="linkrow"><code id="plink" dir="ltr">' + esc(d.link) + '</code><button type="button" class="copy" id="copy">' + esc(t("copy")) + "</button></div>"
+    + '<div class="note">' + esc(t("linkHint")) + "</div>" + (state.copyMsg ? '<div class="note" role="status">' + esc(state.copyMsg) + "</div>" : "") + "</div>";
+  h += "<h2>" + esc(t("months")) + "</h2>";
+  if (!d.months.length) h += '<div class="box">' + esc(t("noMonths")) + "</div>";
+  else {
+    h += '<div class="box scroll"><table><thead><tr><th scope="col">' + esc(t("month")) + '</th><th scope="col" class="r">' + esc(t("commission")) + '</th><th scope="col" class="r">' + esc(t("paid")) + '</th><th scope="col" class="r">' + esc(t("open")) + "</th></tr></thead><tbody>";
+    d.months.forEach(function (m) { h += "<tr><td>" + esc(fmtMonth(m.period)) + '</td><td class="r">' + esc(money(m.commission, m.currency)) + '</td><td class="r">' + esc(money(m.paid, m.currency)) + '</td><td class="r ' + (m.open > 0 ? "open" : "okc") + '">' + esc(money(m.open, m.currency)) + "</td></tr>"; });
+    h += "</tbody></table></div>";
+  }
+  if (d.estimate && d.estimate.monthly_commission_eur > 0) h += '<div class="msg warnbox">' + esc(t("estimate", { amount: money(d.estimate.monthly_commission_eur, "EUR") })) + "</div>";
+  h += "<h2>" + esc(t("orgs")) + '</h2><div class="box">';
+  if (!d.organizations.length) h += esc(t("noOrgs"));
+  d.organizations.forEach(function (o) { h += '<div class="row"><b dir="auto">' + esc(o.name) + '</b><span class="note" style="margin:0">' + esc(t("since", { date: fmtDate(o.since) })) + '</span><span class="tag' + (o.active ? " ok" : "") + '">' + esc(o.active ? t("active") : o.trial ? t("trial") : t("inactive")) + "</span></div>"; });
+  h += "</div><h2>" + esc(t("payouts")) + '</h2><div class="box">';
+  if (!d.payouts.length) h += esc(t("noPayouts"));
+  d.payouts.forEach(function (x) { h += '<div class="row"><b>' + esc(fmtMonth(x.period)) + "</b><span>" + esc(money(x.amount, x.currency)) + '</span><span class="note" style="margin:0">' + esc(x.paid_at ? t("paidOn", { date: fmtDate(x.paid_at) }) : "") + "</span></div>"; });
+  h += '</div><div class="note">' + esc(t("private")) + "</div>";
+  a.innerHTML = h;
+  $("copy").onclick = function () {
+    var done = function (ok) { state.copyMsg = ok ? t("copied") : t("copyFail"); render(); $("copy").focus(); };
+    try { navigator.clipboard.writeText(d.link).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+  };
+}
+render();
+if (!demo && !/^[A-Za-z0-9_-]{20,64}$/.test(token)) { state.error = t("invalid"); render(); }
+else api("/api/public/partner/" + encodeURIComponent(token)).then(function (d) { state.data = d; render(); }).catch(function (e) { state.error = e.message || t("invalid"); render(); });
+</script>
+</body>
+</html>

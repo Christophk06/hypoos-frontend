@@ -120,8 +120,8 @@ function OpEquipmentView({hotel, api}){
               <b style={{minWidth:60}} data-no-i18n="">{r.number}</b>
               <span style={{flex:1,minWidth:120,fontSize:12.5,color:INK_MUTED}} data-no-i18n="">{[r.room_type, r.floor?translateString("Etage")+" "+r.floor:null].filter(Boolean).join(" · ")}</span>
               <span style={{fontSize:12.5}}>{tf("Geliefert")} {r.delivered}/{r.need} · {tf("Montiert")} {r.installed}/{r.need}</span>
-              {r.ready ? <Pill color={GOOD} bg={GOOD_SOFT}>{tf("verkaufsfertig")}</Pill>
-                : r.complete && !r.inspection ? <Pill color={WARN} bg={WARN_SOFT}>{tf("Abnahme fehlt")}</Pill>
+              {r.ready ? <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("verkaufsfertig")}</Pill>
+                : r.complete && !r.inspection ? <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("Abnahme fehlt")}</Pill>
                 : r.complete && r.inspection && !r.inspection.passed ? <Pill color={BAD} bg={BAD_SOFT}>{tf("Abnahme nicht bestanden")}</Pill> : null}
             </button>
             {open===r.id && <OpRoomEquipment room={r} onSave={saveRoom} />}
@@ -196,6 +196,7 @@ function opAwardHtml(hotel, r, quotes, budget, decidedBy){
 function OpQuotesView({hotel, api, members, me}){
   const [list,setList] = useState(null); const [suppliers,setSuppliers] = useState([]); const [budget,setBudget] = useState([]); const [msg,setMsg] = useState(null);
   const [form,setForm] = useState(null); const [open,setOpen] = useState(null); const [qf,setQf] = useState(null); const [decide,setDecide] = useState(null); const [busy,setBusy] = useState(false); const [showAll,setShowAll] = useState(false);
+  const decideRef = useDialog(()=>setDecide(null), !!decide);
   const money = moneyOf(hotel);
   const load = useCallback(()=>api("/api/hotels/"+hotel.id+"/quote-requests").then(setList).catch(e=>{ setMsg({ok:false,text:e.message}); setList([]); }),[api, hotel.id]);
   useEffect(()=>{ load();
@@ -233,15 +234,15 @@ function OpQuotesView({hotel, api, members, me}){
           <button style={{all:"unset",cursor:"pointer",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",width:"100%",minHeight:44}} aria-expanded={open===r.id} onClick={()=>setOpen(open===r.id?null:r.id)}>
             <b style={{flex:1}} data-no-i18n="">{r.title}</b>
             <span style={{fontSize:12.5,color:INK_MUTED}}>{translateString(r.department)} · {tf("{0} Angebote", qs.length)}</span>
-            <Pill color={r.status==="entschieden"?GOOD:r.status==="verworfen"?INK_MUTED:WARN} bg={r.status==="entschieden"?GOOD_SOFT:r.status==="verworfen"?PAPER:WARN_SOFT}>{tf(r.status)}</Pill>
+            <Pill color={r.status==="entschieden"?GOOD_TEXT:r.status==="verworfen"?INK_MUTED:WARN_TEXT} bg={r.status==="entschieden"?GOOD_SOFT:r.status==="verworfen"?PAPER:WARN_SOFT}>{tf(r.status)}</Pill>
           </button>
           {open===r.id && <div style={{marginTop:10}}>
             {bi && <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Budgetposten")}: <span data-no-i18n="">{bi.title}</span> · {tf("Plan")} {money(bi.planned)} · {tf("beauftragt")} {money(bi.committed)}</div>}
             {qs.length>0 && <div style={{overflowX:"auto"}}><table style={{borderCollapse:"collapse",fontSize:13.5,minWidth:"100%"}}>
               <tbody>
                 <tr><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Lieferant")}</th>{qs.map(q=><td key={q.id} style={{padding:6,fontWeight:700,minWidth:130,background:q.id===r.decided_quote_id?GOOD_SOFT:undefined}} data-no-i18n="">{q.supplier_name||"–"}</td>)}</tr>
-                <tr style={{borderTop:`1px solid ${BORDER}`}}><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Betrag")}</th>{qs.map(q=><td key={q.id} style={{padding:6}}>{fmtAmt(q)} {qs.length>1 && Number(q.amount)===minA && <Pill color={GOOD} bg={GOOD_SOFT}>{tf("günstigstes")}</Pill>}</td>)}</tr>
-                <tr style={{borderTop:`1px solid ${BORDER}`}}><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Lieferzeit")}</th>{qs.map(q=><td key={q.id} style={{padding:6}}>{q.delivery_days==null?"–":tf("{0} Tage", q.delivery_days)} {withDays.length>1 && q.delivery_days===minD && <Pill color={BRASS} bg={BRASS_SOFT}>{tf("schnellstes")}</Pill>}</td>)}</tr>
+                <tr style={{borderTop:`1px solid ${BORDER}`}}><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Betrag")}</th>{qs.map(q=><td key={q.id} style={{padding:6}}>{fmtAmt(q)} {qs.length>1 && Number(q.amount)===minA && <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("günstigstes")}</Pill>}</td>)}</tr>
+                <tr style={{borderTop:`1px solid ${BORDER}`}}><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Lieferzeit")}</th>{qs.map(q=><td key={q.id} style={{padding:6}}>{q.delivery_days==null?"–":tf("{0} Tage", q.delivery_days)} {withDays.length>1 && q.delivery_days===minD && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>{tf("schnellstes")}</Pill>}</td>)}</tr>
                 <tr style={{borderTop:`1px solid ${BORDER}`}}><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Gültig bis")}</th>{qs.map(q=><td key={q.id} style={{padding:6,color:q.valid_until&&q.valid_until<todayIso()?BAD:undefined}}>{q.valid_until?fmtDate(q.valid_until):"–"}</td>)}</tr>
                 <tr style={{borderTop:`1px solid ${BORDER}`}}><th scope="row" style={{textAlign:"start",padding:6,color:INK_MUTED,fontSize:12}}>{tf("Notiz")}</th>{qs.map(q=><td key={q.id} style={{padding:6,fontSize:12.5}} data-no-i18n="">{q.note||""}</td>)}</tr>
                 <tr style={{borderTop:`1px solid ${BORDER}`}}><td />{qs.map(q=><td key={q.id} style={{padding:6}}>
@@ -277,10 +278,10 @@ function OpQuotesView({hotel, api, members, me}){
             </div>}
           </div>}
         </Card>); })}
-      {decide && <div role="dialog" aria-modal="true" aria-label={tf("Entscheidung")} style={{position:"fixed",inset:0,background:"rgba(28,36,48,.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,zIndex:50}}>
+      {decide && <div ref={decideRef} role="dialog" aria-modal="true" aria-labelledby="decide-title" tabIndex={-1} style={{outline:"none",position:"fixed",inset:0,background:"rgba(28,36,48,.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,zIndex:50}}>
         <Card style={{maxWidth:480,width:"100%"}}>
-          <b>{tf("Entscheidung")}: <span data-no-i18n="">{decide.quote.supplier_name}</span> · {fmtAmt(decide.quote)}</b>
-          {decide.quote.amount > Math.min(...decide.request.quotes.map(q=>Number(q.amount))) && <div style={{fontSize:12.5,color:WARN,marginTop:6}}>{tf("Nicht das günstigste Angebot – bitte begründen, warum.")}</div>}
+          <h2 id="decide-title" className="ui-h" style={{fontWeight:700}}>{tf("Entscheidung")}: <span data-no-i18n="">{decide.quote.supplier_name}</span> · {fmtAmt(decide.quote)}</h2>
+          {decide.quote.amount > Math.min(...decide.request.quotes.map(q=>Number(q.amount))) && <div style={{fontSize:12.5,color:WARN_TEXT,marginTop:6}}>{tf("Nicht das günstigste Angebot – bitte begründen, warum.")}</div>}
           <Field label={tf("Begründung")}><textarea className="input" rows={4} maxLength={2000} value={decide.reason} onChange={e=>setDecide({...decide,reason:e.target.value})} /></Field>
           {decide.request.budget_item_id ? <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Der Betrag wird beim verknüpften Budgetposten als beauftragt vorgemerkt.")}</div>
             : <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,minHeight:44,cursor:"pointer",marginBottom:6}}><input type="checkbox" checked={decide.create} onChange={e=>setDecide({...decide,create:e.target.checked})} /> {tf("Neuen Budgetposten anlegen (Plan und beauftragt = Betrag)")}</label>}
@@ -328,8 +329,8 @@ function OpPayablesView({hotel, api}){
         <div style={{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap"}}>
           <b style={{flex:1,minWidth:150}} data-no-i18n="">{x.supplier_name||"–"}{x.invoice_number ? <span style={{fontWeight:400,color:INK_MUTED}}> · {x.invoice_number}</span> : null}</b>
           <b>{fmtAmt(x)}</b>
-          {!x.paid_at && days!=null && (days<0 ? <Pill color={BAD} bg={BAD_SOFT}>{tf("{0} Tage überfällig", -days)}</Pill> : days<=7 ? <Pill color={WARN} bg={WARN_SOFT}>{days===0?tf("heute fällig"):tf("fällig in {0} Tagen", days)}</Pill> : null)}
-          {x.paid_at && <Pill color={GOOD} bg={GOOD_SOFT}>{tf("bezahlt")} {fmtDate(x.paid_at)}</Pill>}
+          {!x.paid_at && days!=null && (days<0 ? <Pill color={BAD} bg={BAD_SOFT}>{tf("{0} Tage überfällig", -days)}</Pill> : days<=7 ? <Pill color={WARN_TEXT} bg={WARN_SOFT}>{days===0?tf("heute fällig"):tf("fällig in {0} Tagen", days)}</Pill> : null)}
+          {x.paid_at && <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("bezahlt")} {fmtDate(x.paid_at)}</Pill>}
         </div>
         <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{x.invoice_date ? tf("Rechnung vom {0}", fmtDate(x.invoice_date))+" · " : ""}{x.due_on ? tf("fällig am {0}", fmtDate(x.due_on)) : tf("ohne Fälligkeit")}</div>
         {!x.paid_at && sk>0 && <div style={{fontSize:12.5,color:GOOD,marginTop:2,fontWeight:600}}>{tf("Bis {0} zahlen = {1} sparen", fmtDay(x.skonto_until,{day:"2-digit",month:"2-digit"}), money(sk))}</div>}
@@ -403,7 +404,7 @@ function OpWaitlistView({hotel, api}){
   if(d===null) return <div style={{color:INK_MUTED}}>{tf("Lädt …")}</div>;
   if(d===false) return opMsg(msg);
   const run = async (fn, ok) => { setBusy(true); setMsg(null); try { const r = await fn(); if(ok) setMsg({ok:true,text:typeof ok==="function"?ok(r):ok}); load(); return true; } catch(e){ setMsg({ok:false,text:e.message}); return false; } finally { setBusy(false); } };
-  const stateOf = (s) => s.unsubscribed_at ? [INK_MUTED,PAPER,tf("abgemeldet")] : s.notified_at ? [GOOD,GOOD_SOFT,tf("benachrichtigt")] : s.confirmed_at ? [GOOD,GOOD_SOFT,tf("bestätigt")] : [WARN,WARN_SOFT,tf("unbestätigt")];
+  const stateOf = (s) => s.unsubscribed_at ? [INK_MUTED,PAPER,tf("abgemeldet")] : s.notified_at ? [GOOD_TEXT,GOOD_SOFT,tf("benachrichtigt")] : s.confirmed_at ? [GOOD_TEXT,GOOD_SOFT,tf("bestätigt")] : [WARN_TEXT,WARN_SOFT,tf("unbestätigt")];
   const confirmed = d.signups.filter(s=>s.confirmed_at && !s.unsubscribed_at), waiting = confirmed.filter(s=>!s.notified_at);
   const csv = () => opCsv([[tf("E-Mail"),tf("Name"),tf("Sprache"),tf("Eingetragen"),tf("Bestätigt"),tf("Benachrichtigt"),tf("Abgemeldet")]].concat(d.signups.map(s=>[s.email,s.name||"",s.language||"",s.created_at.slice(0,10),(s.confirmed_at||"").slice(0,10),(s.notified_at||"").slice(0,10),(s.unsubscribed_at||"").slice(0,10)])), safeFile(translateString("Warteliste")+" "+hotel.name+" "+todayIso())+".csv");
   return (
@@ -543,7 +544,7 @@ function opHolidays(hotel, from, to){
   return out;
 }
 const opCountryName = (c) => { try { return new Intl.DisplayNames([UI_LANG||"de"],{type:"region"}).of(c) || c; } catch(e){ return c; } };
-const OP_IMPACT = {niedrig:[INK_MUTED,PAPER], mittel:[WARN,WARN_SOFT], hoch:[BAD,BAD_SOFT]};
+const OP_IMPACT = {niedrig:[INK_MUTED,PAPER], mittel:[WARN_TEXT,WARN_SOFT], hoch:[BAD,BAD_SOFT]};
 function CityEventsCard({hotel, api}){
   const [list,setList] = useState(null);
   useEffect(()=>{ api("/api/hotels/"+hotel.id+"/city-events").then(l=>setList(Array.isArray(l)?l:[])).catch(()=>setList(false)); },[api, hotel.id]);

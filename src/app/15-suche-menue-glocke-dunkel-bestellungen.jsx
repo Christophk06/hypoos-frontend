@@ -11,6 +11,7 @@ function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, h
     if(extra.rooms===null){ const base = "/api/hotels/"+hotel.id;
       Promise.all([api(base+"/rooms").catch(()=>[]), api(base+"/documents").catch(()=>[]), api(base+"/events").catch(()=>[])]).then(([rooms,docs,events])=>setExtra({rooms:rooms||[], docs:docs||[], events:Array.isArray(events)?events:[]})); }
   },[open]);
+  useEffect(()=>{ if(!open) return; const el = document.getElementById("search-opt-"+sel); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest"}); },[sel, open]);
   if(!open) return null;
   const norm = (s) => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
   const words = norm(q).split(/\s+/).filter(Boolean);
@@ -38,22 +39,25 @@ function SearchPalette({open, onClose, nav, tasks, milestones, risks, members, h
   return (
     <div className="no-print" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(20,24,31,0.45)",zIndex:200,display:"flex",justifyContent:"center",alignItems:"flex-start",padding:"10vh 14px 14px"}}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={tf("Suchen")} tabIndex={-1} onClick={e=>e.stopPropagation()} style={{outline:"none",background:CARD,width:"100%",maxWidth:560,borderRadius:12,boxShadow:"0 20px 60px rgba(0,0,0,0.25)",overflow:"hidden",border:`1px solid ${BORDER}`}}>
-        <input ref={inputRef} className="input" style={{border:"none",borderBottom:`1px solid ${BORDER}`,borderRadius:0,fontSize:16,padding:"14px 16px",background:CARD}} placeholder={tf("Suchen: Aufgabe, Zimmer, Person, Dokument, Bereich …")} value={q} onChange={e=>{ setQ(e.target.value); setSel(0); }} onKeyDown={onKey} />
-        <div style={{maxHeight:"60vh",overflowY:"auto",padding:"6px 0"}}>
-          {flat.length===0 && <div style={{padding:"14px 16px",fontSize:13,color:INK_MUTED}}>{tf("Nichts gefunden.")}</div>}
-          {groups.filter(([,items])=>items.length).map(([g,items])=>(
-            <div key={g}>
-              <div style={{fontSize:11,fontWeight:700,color:INK_MUTED,textTransform:"uppercase",letterSpacing:0.6,padding:"8px 16px 4px"}}>{g}</div>
+        <input ref={inputRef} className="input" role="combobox" aria-expanded={flat.length>0} aria-controls="search-list" aria-autocomplete="list"
+          aria-activedescendant={flat.length ? "search-opt-"+Math.min(sel, flat.length-1) : undefined} aria-label={tf("Suchen")}
+          style={{border:"none",borderBottom:`1px solid ${BORDER}`,borderRadius:0,fontSize:16,padding:"14px 16px",background:CARD}} placeholder={tf("Suchen: Aufgabe, Zimmer, Person, Dokument, Bereich …")} value={q} onChange={e=>{ setQ(e.target.value); setSel(0); }} onKeyDown={onKey} />
+        <div className="sr-only" aria-live="polite" aria-atomic="true">{words.length ? (flat.length ? tf("{0} Treffer", flat.length) : tf("Nichts gefunden.")) : ""}</div>
+        <div id="search-list" role="listbox" aria-label={tf("Suchergebnisse")} style={{maxHeight:"60vh",overflowY:"auto",padding:"6px 0"}}>
+          {flat.length===0 && <div role="presentation" style={{padding:"14px 16px",fontSize:13,color:INK_MUTED}}>{tf("Nichts gefunden.")}</div>}
+          {groups.filter(([,items])=>items.length).map(([g,items],gi)=>(
+            <div key={g} role="group" aria-labelledby={"search-grp-"+gi}>
+              <div id={"search-grp-"+gi} role="presentation" style={{fontSize:11.5,fontWeight:700,color:INK_MUTED,textTransform:"uppercase",letterSpacing:0.6,padding:"8px 16px 4px"}}>{g}</div>
               {items.map((it)=>{ idx++; const i = idx; return (
-                <div key={i} onMouseEnter={()=>setSel(i)} onClick={()=>choose(it)} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 16px",cursor:"pointer",background:sel===i?BRASS_SOFT:"transparent"}}>
-                  <span style={{width:20,textAlign:"center"}}><Icon n={it.icon} /></span>
+                <div key={i} id={"search-opt-"+i} role="option" aria-selected={sel===i} onMouseEnter={()=>setSel(i)} onClick={()=>choose(it)} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 16px",cursor:"pointer",background:sel===i?BRASS_SOFT:"transparent"}}>
+                  <span aria-hidden="true" style={{width:20,textAlign:"center"}}><Icon n={it.icon} /></span>
                   <span style={{flex:1,minWidth:0}}><span style={{fontSize:14}} data-no-i18n="">{it.label}</span>{it.sub && <span style={{fontSize:12,color:INK_MUTED}} data-no-i18n=""> · {it.sub}</span>}</span>
-                  {sel===i && <span style={{fontSize:11,color:INK_MUTED}}>↵</span>}
+                  {sel===i && <span aria-hidden="true" style={{fontSize:11.5,color:INK_MUTED}}>↵</span>}
                 </div>); })}
             </div>
           ))}
         </div>
-        <div style={{fontSize:11,color:INK_MUTED,padding:"7px 16px",borderTop:`1px solid ${BORDER}`}}>{tf("↑↓ auswählen · ↵ öffnen · Esc schließen")}</div>
+        <div style={{fontSize:11.5,color:INK_MUTED,padding:"7px 16px",borderTop:`1px solid ${BORDER}`}}>{tf("↑↓ auswählen · ↵ öffnen · Esc schließen")}</div>
       </div>
     </div>
   );
@@ -72,20 +76,22 @@ function SideNav({nav, tab, onOpen, accent}){
   const [auto,setAuto] = useState(()=>{ try { return window.localStorage.getItem(LS_NAV_COLLAPSED)===null; } catch(e){ return false; } });
   const [favs,setFavs] = useStoredList(LS_NAV_FAVS);
   const favItems = favs.map(k=>nav.find(n=>n.key===k)).filter(Boolean);
-  const item = (n, fav) => (
-    <div key={(fav?"f-":"")+n.key} className="nav-item nav-row" aria-current={n.key===tab ? "page" : undefined} {...pressable(()=>onOpen(n.key))} style={{padding:"8px 10px 8px 12px",cursor:"pointer",marginBottom:2,fontSize:13.5,display:"flex",alignItems:"center",gap:6,
-      borderInlineStart:"2px solid "+(tab===n.key?accent:"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent",color:tab===n.key?"#fff":"rgba(255,255,255,0.72)"}}>
-      <span style={{flex:1}}>{n.label}</span>
-      <button className="nav-star" title={favs.includes(n.key)?tf("Aus Favoriten entfernen"):tf("Zu Favoriten")} aria-label={tf("Favorit")}
-        onClick={e=>{ e.stopPropagation(); setFavs(favs.includes(n.key) ? favs.filter(k=>k!==n.key) : [...favs, n.key]); }}
-        style={{background:"none",border:"none",padding:0,cursor:"pointer",fontSize:12,color:favs.includes(n.key)?accent:"rgba(255,255,255,0.35)"}}>{favs.includes(n.key)?"★":"☆"}</button>
+  // Menüpunkt und Stern sind Geschwister (keine verschachtelten Bedienelemente)
+  const item = (n, fav) => { const isFav = favs.includes(n.key); return (
+    <div key={(fav?"f-":"")+n.key} className="nav-row" style={{marginBottom:2,display:"flex",alignItems:"center",
+      borderInlineStart:"2px solid "+(tab===n.key?accent:"transparent"),background:tab===n.key?"rgba(201,166,107,0.08)":"transparent"}}>
+      <div className="nav-item" aria-current={n.key===tab ? "page" : undefined} {...pressable(()=>onOpen(n.key))}
+        style={{flex:1,minWidth:0,padding:"8px 4px 8px 12px",cursor:"pointer",fontSize:13.5,color:tab===n.key?"#fff":"rgba(255,255,255,0.72)"}}>{n.label}</div>
+      <button type="button" className="nav-star" aria-pressed={isFav} aria-label={tf("{0} zu Favoriten", n.label)} title={isFav?tf("Aus Favoriten entfernen"):tf("Zu Favoriten")}
+        onClick={()=>setFavs(isFav ? favs.filter(k=>k!==n.key) : [...favs, n.key])}
+        style={{background:"none",border:"none",padding:0,minWidth:24,minHeight:24,marginInlineEnd:4,display:"inline-flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13,color:isFav?accent:"rgba(255,255,255,0.6)"}}><span aria-hidden="true">{isFav?"★":"☆"}</span></button>
     </div>
-  );
+  ); };
   const sections = []; nav.forEach(n=>{ const s = n.section || ""; let g = sections.find(x=>x.name===s); if(!g){ g = {name:s, items:[]}; sections.push(g); } g.items.push(n); });
   return (
     <div className="sidenav">
       {favItems.length>0 && <div className="sidenav-favs" style={{marginBottom:6}}>
-        <div style={{fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.38)",margin:"6px 0 4px 12px"}}>★ {tf("Favoriten")}</div>
+        <div style={{fontSize:11.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.6)",margin:"6px 0 4px 12px"}}><span aria-hidden="true">★ </span>{tf("Favoriten")}</div>
         {favItems.map(n=>item(n, true))}
       </div>}
       {sections.map(g=>{
@@ -95,8 +101,8 @@ function SideNav({nav, tab, onOpen, accent}){
             {g.name && <button className="nav-section" aria-expanded={!closed} onClick={()=>{
                 const now = auto ? sections.filter(x=>x.name && !x.items.some(n=>n.key===tab)).map(x=>x.name) : collapsed;
                 setAuto(false); setCollapsed(closed ? now.filter(x=>x!==g.name) : [...now, g.name]); }}
-              style={{display:"flex",alignItems:"center",gap:6,width:"100%",background:"none",border:"none",cursor:"pointer",fontSize:10.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.45)",margin:"14px 0 4px",padding:"0 0 0 12px",textAlign:"start"}}>
-              <span style={{flex:1}}>{g.name}</span><span style={{fontSize:10}}>{closed?"▸":"▾"}</span></button>}
+              style={{display:"flex",alignItems:"center",gap:6,width:"100%",minHeight:32,background:"none",border:"none",cursor:"pointer",fontSize:11.5,letterSpacing:0.8,textTransform:"uppercase",color:"rgba(255,255,255,0.6)",margin:"8px 0 2px",padding:"0 0 0 12px",textAlign:"start"}}>
+              <span style={{flex:1}}>{g.name}</span><span aria-hidden="true" style={{fontSize:11.5}}>{closed?"▸":"▾"}</span></button>}
             {g.items.filter(n=>!closed || n.key===tab).map(n=>item(n, false))}
           </div>
         );
@@ -120,7 +126,7 @@ function NotificationBell({api, onOpen}){
     <div style={{position:"relative"}}>
       <button onClick={()=>{ setOpen(!open); if(!open) load(); }} title={tf("Benachrichtigungen")} aria-label={tf("Benachrichtigungen")}
         style={{position:"relative",background:open?BRASS_SOFT:"none",border:`1px solid ${BORDER}`,borderRadius:6,padding:"5px 10px",fontSize:15,cursor:"pointer",lineHeight:1}}>
-        <Icon n="bell" />{data.unread>0 && <span style={{position:"absolute",top:-6,insetInlineEnd:-6,background:BAD,color:"#fff",borderRadius:999,fontSize:10.5,fontWeight:700,padding:"1px 5px",minWidth:16}} data-no-i18n="">{data.unread>99?"99+":data.unread}</span>}
+        <Icon n="bell" />{data.unread>0 && <span style={{position:"absolute",top:-6,insetInlineEnd:-6,background:BAD,color:"#fff",borderRadius:999,fontSize:11.5,fontWeight:700,padding:"1px 5px",minWidth:16}} data-no-i18n="">{data.unread>99?"99+":data.unread}</span>}
       </button>
       {open && <div className="no-print" style={{position:"absolute",top:"calc(100% + 6px)",insetInlineEnd:0,width:340,maxWidth:"86vw",background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,boxShadow:"0 14px 40px rgba(0,0,0,0.18)",zIndex:120}}>
         <div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${BORDER}`}}>
@@ -169,7 +175,7 @@ function ThemeCard(){
   const set = (m) => { setMode(m); try { window.localStorage.setItem(LS_THEME, m); } catch(e){} applyTheme(m); };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}><Icon n="moon" /> {tf("Darstellung")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}><Icon n="moon" /> {tf("Darstellung")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Dunkel schont die Augen in der Nachtschicht. „Automatisch“ folgt der Einstellung des Geräts.")}</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {[["auto","Automatisch"],["light","Hell"],["dark","Dunkel"]].map(([k,l])=><button key={k} onClick={()=>set(k)} style={{border:`1px solid ${mode===k?INK:BORDER}`,background:mode===k?INK:CARD,color:mode===k?"#fff":INK,borderRadius:999,padding:"6px 14px",fontSize:13,cursor:"pointer"}}>{tf(l)}</button>)}
@@ -230,13 +236,13 @@ function AuditView({orgId, api, hotel}){
   return (
     <Card style={{marginTop:18}}>
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}><Icon n="clock" /> {tf("Änderungsverlauf")}</div>
-        <select className="input" style={{width:"auto"}} value={table} onChange={e=>setTable(e.target.value)}>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="clock" /> {tf("Änderungsverlauf")}</h2>
+        <select className="input" aria-label={tf("Bereich")} style={{width:"auto"}} value={table} onChange={e=>setTable(e.target.value)}>
           <option value="">{tf("Alles")}</option>{Object.entries(AUDIT_TABLES).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}
         </select>
       </div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Wer hat was wann geändert – die letzten Einträge der Organisation. Nur Admins sehen den Verlauf.")}</div>
-      {err && <div style={{color:BAD,fontSize:13}}>{err}</div>}
+      {err && <ErrorText>{err}</ErrorText>}
       {list===null ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Lädt…")}</div> : list.length===0 ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Noch keine Einträge.")}</div> :
         <div style={{maxHeight:460,overflowY:"auto"}}>{list.map(r=>(
           <div key={r.id} style={{padding:"7px 0",borderTop:`1px solid ${BORDER}`,fontSize:13}}>
@@ -249,7 +255,7 @@ function AuditView({orgId, api, hotel}){
 }
 
 // ------------------------------------------------------------ Lieferanten und Bestellungen (im Lager)
-const PO_STATUS = {"Entwurf":[INK_MUTED,PAPER], "Bestellt":[BRASS,BRASS_SOFT], "Geliefert":[GOOD,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
+const PO_STATUS = {"Entwurf":[INK_MUTED,PAPER], "Bestellt":[BRASS_TEXT,BRASS_SOFT], "Geliefert":[GOOD_TEXT,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
 function OrdersPanel({hotel, api, onStockChanged}){
   const [open,setOpen] = useState(false);
   const [sup,setSup] = useState([]); const [sugg,setSugg] = useState([]); const [orders,setOrders] = useState([]);
@@ -280,7 +286,7 @@ function OrdersPanel({hotel, api, onStockChanged}){
               </div>
               {items.map(i=><div key={i.stock_item_id} style={{display:"flex",gap:8,alignItems:"center",fontSize:13,padding:"3px 0",flexWrap:"wrap"}}>
                 <span style={{flex:1}} data-no-i18n="">{i.name}</span><span data-no-i18n="">{i.quantity} {i.unit}</span>
-                <select className="input" style={{width:"auto",padding:"3px 6px",fontSize:12}} value={i.supplier_id||""} onChange={e=>setItemSup(i, e.target.value||null)}>
+                <select className="input" aria-label={tf("Lieferant")} style={{width:"auto",padding:"3px 6px",fontSize:12}} value={i.supplier_id||""} onChange={e=>setItemSup(i, e.target.value||null)}>
                   <option value="">{tf("Lieferant wählen")}</option>{sup.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
               </div>)}
             </div>
@@ -293,7 +299,7 @@ function OrdersPanel({hotel, api, onStockChanged}){
               <Pill color={c} bg={bg}>{tf(o.status)}</Pill><b data-no-i18n="">{o.supplier_name || tf("Ohne Lieferant")}</b>
               <span style={{color:INK_MUTED}}>{fmtDateTime(o.sent_at || o.created_at)}</span><span style={{flex:1}} />
               {o.status==="Entwurf" && o.supplier_email && <button className="btn-primary" style={{padding:"5px 10px",fontSize:12}} disabled={busy} onClick={()=>run(()=>api("/api/purchase-orders/"+o.id+"/send","POST",{}), tf("Bestellung per E-Mail verschickt."))}>{tf("Per E-Mail senden")}</button>}
-              {o.status==="Entwurf" && !o.supplier_email && <span style={{fontSize:12,color:WARN}}>{tf("Lieferant ohne E-Mail")}</span>}
+              {o.status==="Entwurf" && !o.supplier_email && <span style={{fontSize:12,color:WARN_TEXT}}>{tf("Lieferant ohne E-Mail")}</span>}
               {o.status==="Bestellt" && <button style={smallBtn} disabled={busy} onClick={()=>run(async()=>{ await api("/api/purchase-orders/"+o.id,"PATCH",{status:"Geliefert"}); if(onStockChanged) onStockChanged(); }, tf("Geliefert – Bestand wurde erhöht."))}>{tf("Geliefert")}</button>}
               {o.status==="Entwurf" && <button style={linkBtn} onClick={()=>{ if(window.confirm(tf("Bestellung löschen?"))) run(()=>api("/api/purchase-orders/"+o.id,"DELETE")); }}>✕</button>}
             </div>
@@ -301,7 +307,7 @@ function OrdersPanel({hotel, api, onStockChanged}){
             {o.supplier_status && o.status!=="Entwurf" && <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:4,fontSize:12.5}}>
               {o.supplier_status==="offen"
                 ? <span style={{color:INK_MUTED}}>{tf("Lieferant hat noch nicht geantwortet.")}</span>
-                : <Pill color={o.supplier_status==="abgelehnt"?BAD:GOOD} bg={o.supplier_status==="abgelehnt"?BAD_SOFT:GOOD_SOFT}>{tf({"bestätigt":"Vom Lieferanten bestätigt","abgelehnt":"Vom Lieferanten abgelehnt","geliefert":"Laut Lieferant geliefert"}[o.supplier_status]||o.supplier_status)}</Pill>}
+                : <Pill color={o.supplier_status==="abgelehnt"?BAD:GOOD_TEXT} bg={o.supplier_status==="abgelehnt"?BAD_SOFT:GOOD_SOFT}>{tf({"bestätigt":"Vom Lieferanten bestätigt","abgelehnt":"Vom Lieferanten abgelehnt","geliefert":"Laut Lieferant geliefert"}[o.supplier_status]||o.supplier_status)}</Pill>}
               {o.supplier_delivery_date && <span>{tf("Liefertermin {0}", fmtDate(o.supplier_delivery_date))}</span>}
               {o.supplier_note && <span style={{color:INK_MUTED}} data-no-i18n="">„{o.supplier_note}“</span>}
               <button style={linkBtn} onClick={async()=>{ try { const r = await api("/api/purchase-orders/"+o.id+"/supplier-link","POST",{}); try { await navigator.clipboard.writeText(r.url); } catch(e){} window.prompt(tf("Link für den Lieferanten (kopiert):"), r.url); } catch(e){ alert(e.message); } }}>{tf("Link für den Lieferanten")}</button>

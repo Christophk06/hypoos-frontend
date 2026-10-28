@@ -86,7 +86,7 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
 
   return (
     <div>
-      {n && <div style={{color:n.ok?GOOD:WARN,fontSize:13.5,marginBottom:14}}>{n.text}</div>}
+      {n && <div style={{color:n.ok?GOOD:WARN_TEXT,fontSize:13.5,marginBottom:14}}>{n.text}</div>}
       {isAdmin && <ReferralCard orgId={orgId} api={api} />}
       <Card style={{marginBottom:18}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"center"}}>
@@ -102,7 +102,7 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
             </button>
           )}
         </div>
-        {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+        {error && <ErrorText style={{marginTop:10}}>{error}</ErrorText>}
         {!isAdmin && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>Nur Admins der Organisation können das Abo ändern.</div>}
         {!billing.stripe_enabled && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:10}}>Die Online-Bezahlung wird gerade eingerichtet.{CONTACT_EMAIL ? <span> Für ein Abo schreib an <a href={"mailto:"+CONTACT_EMAIL}>{CONTACT_EMAIL}</a>.</span> : null}</div>}
       </Card>
@@ -131,7 +131,7 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
             <Card key={p.key} style={{display:"flex",flexDirection:"column",borderColor:current?BRASS:BORDER}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{fontWeight:700,fontSize:16}}>{p.name}</div>
-                {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
+                {current && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>Aktuell</Pill>}
               </div>
               <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,margin:"8px 0 2px"}}>{planPrice(p, cur, period)}</div>
               <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>{period==="year" ? tf("pro Jahr zzgl. USt., 12 Monate Laufzeit") : "pro Monat zzgl. USt., monatlich kündbar"}</div>
@@ -145,7 +145,7 @@ function BillingView({billing, orgId, api, isAdmin, notice, onReload, hotel}){
           );
         })}
         <Card style={{display:"flex",flexDirection:"column"}}>
-          <div style={{fontWeight:700,fontSize:16}}>Enterprise</div>
+          <h2 className="ui-h" style={{fontWeight:700,fontSize:16}}>Enterprise</h2>
           <div style={{fontFamily:"Fraunces, serif",fontSize:22,fontWeight:600,margin:"8px 0 2px"}}>auf Anfrage</div>
           <div style={{fontSize:12,color:INK_MUTED,marginBottom:10}}>Jahresvertrag</div>
           <ul style={{margin:"0 0 14px",paddingLeft:18,fontSize:13.5,lineHeight:1.6,flex:1}}>
@@ -191,7 +191,7 @@ function OperationsPlans({billing, cur, period, hotel, isAdmin, paid, busy, go})
             </tbody>
           </table>
           <div>
-            {current && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
+            {current && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>Aktuell</Pill>}
             <div style={{fontSize:13.5,margin:"6px 0 12px"}}>
               {tiers.length>0 && <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Weitere Hotels: je 20 % günstiger als die Stufe des größten Hauses.")}</div>}
               {mine ? (period==="year" ? tf("Für {0} Zimmer gilt {1}: {2} pro Jahr zzgl. USt. (2 Monate gratis).", rooms, mine.name, price(mine)) : tf("Für {0} Zimmer gilt {1}: {2} pro Monat zzgl. USt., monatlich kündbar.", rooms, mine.name, price(mine))) : tf("Trag unter „Hotel bearbeiten“ die Zimmerzahl ein – danach richtet sich der Preis.")}
@@ -235,7 +235,7 @@ function BillingExtras({billing, orgId, api, isAdmin, hotel, cur, onReload}){
 
       {opsPlan && (
         <Card style={card}>
-          <div style={{fontWeight:700,marginBottom:4}}>{tf("Weiteres Hotel hinzubuchen")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Weiteres Hotel hinzubuchen")}</h2>
           <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Im Betriebs-Tarif kostet jedes weitere Hotel 20 % weniger. Gebucht: {0} weitere Hotels.", billing.extra_hotels||0)}</div>
           {isAdmin && live && <button className="btn-primary" disabled={!!busy} onClick={()=>run("extra", ()=>api("/api/organizations/"+orgId+"/billing/extra-hotel","POST",{}), tf("Ein weiteres Hotel ist gebucht. Du kannst es jetzt anlegen."))}>{busy==="extra" ? tf("Speichert…") : tf("Hotel hinzubuchen")}</button>}
         </Card>
@@ -243,8 +243,8 @@ function BillingExtras({billing, orgId, api, isAdmin, hotel, cur, onReload}){
 
       <Card style={card}>
         <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",alignItems:"baseline"}}>
-          <div style={{fontWeight:700}}>{tf("KI-Paket")}</div>
-          {ki && <Pill color={BRASS} bg={BRASS_SOFT}>Aktuell</Pill>}
+          <h2 className="ui-h" style={{fontWeight:700}}>{tf("KI-Paket")}</h2>
+          {ki && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>Aktuell</Pill>}
         </div>
         <div style={{fontSize:13,color:INK_MUTED,margin:"4px 0 10px"}}>{tf("Fünfmal so viele KI-Lageberichte, Bewertungs-Auswertungen und Übersetzungen wie im Tarif enthalten. {0} pro Monat zzgl. USt., monatlich kündbar.", priceOf(kiOffer) || fmtPrice(49,"EUR"))}</div>
         {isAdmin && live && (ki
@@ -254,9 +254,9 @@ function BillingExtras({billing, orgId, api, isAdmin, hotel, cur, onReload}){
       </Card>
 
       <Card style={card}>
-        <div style={{fontWeight:700,marginBottom:4}}>{tf("Saisonpause")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Saisonpause")}</h2>
         <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Für Saisonhotels: In den markierten Monaten wird nichts abgebucht. Alle Daten bleiben lesbar, Änderungen sind in dieser Zeit gesperrt. Gilt für Monatsabos.")}</div>
-        {billing.paused && <div style={{fontSize:13,color:WARN,marginBottom:8}}>{tf("Saisonpause aktiv – Ouverture ist im Nur-Lesen-Modus.")}</div>}
+        {billing.paused && <div style={{fontSize:13,color:WARN_TEXT,marginBottom:8}}>{tf("Saisonpause aktiv – Ouverture ist im Nur-Lesen-Modus.")}</div>}
         <div role="group" aria-label={tf("Schließmonate")} style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
           {Array.from({length:12},(_,i)=>i+1).map(m=>{ const on = months.includes(m); return (
             <button key={m} type="button" aria-pressed={on} disabled={!isAdmin} onClick={()=>setMonths(on ? months.filter(x=>x!==m) : [...months, m].sort((a,b)=>a-b))}
@@ -267,7 +267,7 @@ function BillingExtras({billing, orgId, api, isAdmin, hotel, cur, onReload}){
       </Card>
 
       <Card style={card}>
-        <div style={{fontWeight:700,marginBottom:4}}>{tf("Vorlagen-Pakete")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Vorlagen-Pakete")}</h2>
         <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Fertige Aufgaben und Checklisten für besondere Vorhaben – einmal kaufen, in jedes Hotel der Organisation übernehmen.")}</div>
         {packs===null ? <div style={{fontSize:13,color:INK_MUTED}}>…</div> : (
           <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:12}}>
@@ -296,7 +296,7 @@ const WORK_KINDS = ["Früh","Spät","Nacht","Zwischen"];
 const SHIFT_TIMES = {"Früh":["06:00","14:30"],"Spät":["14:00","22:30"],"Nacht":["22:00","06:30"],"Zwischen":["10:00","18:30"]};
 const SHIFT_STYLE = {
   "Früh":{bg:"#F1E8D8",fg:"#7A5B2B"}, "Spät":{bg:"#F5E1D0",fg:"#8A4B1E"}, "Nacht":{bg:"#DCE1EA",fg:"#1C2430"},
-  "Zwischen":{bg:"#E4EFE8",fg:"#3F7A5C"}, "Frei":{bg:"#F6F4EF",fg:"#6B7280"}, "Urlaub":{bg:"#E6EEF7",fg:"#2F5D8A"}, "Krank":{bg:"#F5E1DE",fg:"#A23B32"},
+  "Zwischen":{bg:"#E4EFE8",fg:"#3F7A5C"}, "Frei":{bg:"#F6F4EF",fg:"#626976"}, "Urlaub":{bg:"#E6EEF7",fg:"#2F5D8A"}, "Krank":{bg:"#F5E1DE",fg:"#A23B32"},
 };
-const REQUEST_STATUS_STYLE = {"Offen":{color:WARN,bg:WARN_SOFT}, "Genehmigt":{color:GOOD,bg:GOOD_SOFT}, "Abgelehnt":{color:BAD,bg:BAD_SOFT}, "Zurückgezogen":{color:INK_MUTED,bg:PAPER}};
+const REQUEST_STATUS_STYLE = {"Offen":{color:WARN_TEXT,bg:WARN_SOFT}, "Genehmigt":{color:GOOD_TEXT,bg:GOOD_SOFT}, "Abgelehnt":{color:BAD,bg:BAD_SOFT}, "Zurückgezogen":{color:INK_MUTED,bg:PAPER}};
 

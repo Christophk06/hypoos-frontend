@@ -20,7 +20,7 @@ function TipSplitCard({hotel, api, month, members}){
         <select className="input" style={{width:"auto"}} value={dept} onChange={e=>setDept(e.target.value)} aria-label={tf("Abteilung")}><option value="">{tf("Alle Abteilungen")}</option>{DEPARTMENTS.map(x=><option key={x} value={x}>{translateString(x)}</option>)}</select>
         <button style={smallBtn} disabled={busy} onClick={run}>{busy ? tf("Rechnet…") : tf("Berechnen")}</button>
       </div>
-      {msg && <div style={{color:BAD,fontSize:13,marginTop:8}}>{msg}</div>}
+      {msg && <ErrorText style={{marginTop:8}}>{msg}</ErrorText>}
       {d && <div style={{marginTop:10,fontSize:13.5}}>
         <div style={{marginBottom:6}}>{tf("Trinkgeld gesamt")}: <b>{money(d.total)}</b> · {tf("Stunden gesamt")}: <b>{fmtHours(d.hours)}</b></div>
         {d.shares.length===0 ? <div style={{color:INK_MUTED}}>{tf("Keine gestempelten Stunden in diesem Monat.")}</div>
@@ -43,16 +43,16 @@ function TrainingPlanCard({trainings, members}){
     if(!needs(t, m)) return null;
     const last = (t.acks||[]).filter(a=>a.user_id===m.user_id).map(a=>a.acked_at).sort().pop();
     if(!last) return ["fehlt", BAD, BAD_SOFT, null];
-    if(!t.valid_months) return ["ok", GOOD, GOOD_SOFT, null];
+    if(!t.valid_months) return ["ok", GOOD_TEXT, GOOD_SOFT, null];
     const until = isoMonthsAhead(last.slice(0,10), t.valid_months);
-    return until < today ? ["abgelaufen", BAD, BAD_SOFT, until] : until <= soon ? ["bald fällig", WARN, WARN_SOFT, until] : ["ok", GOOD, GOOD_SOFT, until];
+    return until < today ? ["abgelaufen", BAD, BAD_SOFT, until] : until <= soon ? ["bald fällig", WARN, WARN_SOFT, until] : ["ok", GOOD_TEXT, GOOD_SOFT, until];
   };
   const open_count = people.reduce((n,m)=>n+(trainings||[]).filter(t=>{ const s = status(t,m); return s && s[0]!=="ok"; }).length,0);
   if(!(trainings||[]).length) return null;
   return (
     <Card style={{marginBottom:14,borderColor:open_count?WARN:BORDER}}>
       <div {...pressable(()=>setOpen(!open))} aria-expanded={open} style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}}>
-        <div style={{flex:1}}><b><Icon n="clipboard" /> {tf("Pflichtplan")}</b> <span style={{fontSize:12.5,color:open_count?WARN:INK_MUTED}}>· {open_count ? tf("{0} offene Unterweisungen", open_count) : tf("alle aktuell")}</span></div>
+        <div style={{flex:1}}><b><Icon n="clipboard" /> {tf("Pflichtplan")}</b> <span style={{fontSize:12.5,color:open_count?WARN_TEXT:INK_MUTED}}>· {open_count ? tf("{0} offene Unterweisungen", open_count) : tf("alle aktuell")}</span></div>
         <span style={{color:INK_MUTED}}>{open ? "▴" : "▾"}</span>
       </div>
       {open && <div style={{overflowX:"auto",marginTop:10}}><table style={{borderCollapse:"collapse",fontSize:12.5,minWidth:400}}>

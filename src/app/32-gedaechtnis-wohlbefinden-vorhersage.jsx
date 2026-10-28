@@ -14,7 +14,7 @@ function HotelMemoryView({hotel, api}){
         <button className="btn-primary" type="submit" disabled={busy || !q.trim()}>{busy ? tf("Denkt nach…") : tf("Fragen")}</button>
       </form>
       {list.length===0 && <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>{MEMORY_EXAMPLES.map(x=><button key={x} style={{...btnLine,fontSize:12.5,padding:"6px 10px"}} onClick={()=>ask(tf(x))}>{tf(x)}</button>)}</div>}
-      {msg && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{msg}</div>}
+      {msg && <ErrorText style={{marginBottom:10}}>{msg}</ErrorText>}
       <div aria-live="polite">{list.map((r,i)=>(
         <Card key={i} style={{marginBottom:10,borderColor:r.unsicher?WARN:BORDER}}>
           <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:6}} data-no-i18n=""><Icon n="search" /> {r.q}</div>
@@ -36,14 +36,14 @@ function WellbeingCard({hotel, api, members}){
   return (
     <Card style={{marginTop:14,borderColor:flagged.length?WARN:BORDER}}>
       <div {...pressable(()=>setOpen(!open))} aria-expanded={open} style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}}>
-        <div style={{flex:1}}><b><Icon n="users" /> {tf("Belastung im Team")}</b> <span style={{fontSize:12.5,color:flagged.length?WARN:INK_MUTED}}>· {flagged.length ? tf("{0} Personen mit hoher Belastung", flagged.length) : tf("keine Auffälligkeiten")}</span>
+        <div style={{flex:1}}><b><Icon n="users" /> {tf("Belastung im Team")}</b> <span style={{fontSize:12.5,color:flagged.length?WARN_TEXT:INK_MUTED}}>· {flagged.length ? tf("{0} Personen mit hoher Belastung", flagged.length) : tf("keine Auffälligkeiten")}</span>
           <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Erkennt Muster, bevor jemand ausfällt oder kündigt – aus Dienstplan und Stempelzeiten der letzten 8 Wochen.")}</div></div>
         <span style={{color:INK_MUTED}}>{open ? "▴" : "▾"}</span>
       </div>
       {open && <div style={{marginTop:10}}>
         {flagged.length===0 && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Niemand fällt gerade auf.")}</div>}
         {flagged.map(p=><div key={p.user_id} style={{padding:"7px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
-          <b data-no-i18n="">{nameOf(p.user_id)}</b> <span style={{color:WARN}}>– {p.flags.map(f=>tf(WELL_FLAGS[f])).join(", ")}</span>
+          <b data-no-i18n="">{nameOf(p.user_id)}</b> <span style={{color:WARN_TEXT}}>– {p.flags.map(f=>tf(WELL_FLAGS[f])).join(", ")}</span>
           <div style={{fontSize:12,color:INK_MUTED}}>{tf("{0} Nachtdienste · längste Serie {1} Tage · {2} Wochenenden · {3}× eingesprungen · {4} h in 4 Wochen", p.nights, p.max_streak, p.weekends_worked, p.jumped_in, fmtHours(p.hours_4w))}</div>
         </div>)}
         <div style={{fontSize:11.5,color:INK_MUTED,marginTop:6}}>{tf("Vorschlag: freie Wochenenden einplanen, Nachtdienste verteilen, Einspringen ausgleichen. Die Übersicht ist nur für die Leitung sichtbar.")}</div>
@@ -64,7 +64,7 @@ function AssetRiskCard({hotel, api}){
       <div style={{fontSize:12.5,color:INK_MUTED,margin:"2px 0 8px"}}>{tf("Diese Geräte verhalten sich wie vor einem Ausfall: häufige Meldungen, überfällige Prüfung oder hohes Alter. Lieber jetzt warten lassen.")}</div>
       {list.map(a=><div key={a.asset_id} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,flexWrap:"wrap"}}>
         <b style={{minWidth:160}} data-no-i18n="">{a.name}{a.location ? " · "+a.location : ""}</b>
-        <span style={{flex:1,color:WARN}}>{a.reasons.map(r=>tf(RISK_REASON[r.code], r.n!=null ? r.n : r.date ? fmtDate(r.date) : "")).join(" · ")}</span>
+        <span style={{flex:1,color:WARN_TEXT}}>{a.reasons.map(r=>tf(RISK_REASON[r.code], r.n!=null ? r.n : r.date ? fmtDate(r.date) : "")).join(" · ")}</span>
       </div>)}
     </Card>
   );
@@ -74,5 +74,5 @@ function AssetRiskCard({hotel, api}){
 function SpeakMsg({text}){
   if(!canSpeak() || !text) return null;
   const go = () => { const s = window.speechSynthesis; s.cancel(); const u = new window.SpeechSynthesisUtterance(text); u.lang = SPEECH_LANG[UI_LANG] || "de-DE"; s.speak(u); };
-  return <button onClick={go} aria-label={tf("Vorlesen")} title={tf("Vorlesen")} style={{...linkBtn,fontSize:10.5,padding:"0 0 0 6px"}}><Icon n="speaker" /></button>;
+  return <button onClick={go} aria-label={tf("Vorlesen")} title={tf("Vorlesen")} style={{...linkBtn,fontSize:11.5,padding:"0 0 0 6px"}}><Icon n="speaker" /></button>;
 }

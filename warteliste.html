@@ -8,7 +8,7 @@
 <title>Ouverture</title>
 <link rel="icon" href="icon-192.png" />
 <style>
-  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; }
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --bad:#A23B32; }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: #1C2430; }
   .w { max-width: 520px; margin: 0 auto; padding: 22px 16px 40px; }
@@ -40,7 +40,12 @@
 <body>
 <div class="w">
   <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel" dir="auto">…</div><select class="lang" id="lang" aria-label="Language / Sprache"></select></header>
-  <main id="app" aria-live="polite"></main>
+  <main id="app"></main>
+  <div id="live" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></div>
+<script>
+(function () { var app = document.getElementById("app"), live = document.getElementById("live"), last = "";
+  new MutationObserver(function () { var m = app.querySelector("[data-live]"); var txt = m ? m.textContent : ""; if (txt !== last) { last = txt; live.textContent = txt; } }).observe(app, { childList: true, subtree: true }); })();
+</script>
   <footer>Ouverture · <a href="rechtliches.html">Impressum &amp; Datenschutz</a></footer>
 </div>
 <script>
@@ -164,7 +169,7 @@ function render() {
     var r = state.result, txt = null;
     if (mode === "unsubscribe" && r.unsubscribed) txt = t("unsubscribed");
     if (mode === "confirm" && r.confirmed) txt = r.done ? t("confirmed") : t("already");
-    if (txt) { a.innerHTML = '<div class="msg ok" role="status">✓ ' + esc(txt) + "</div>"; return; }
+    if (txt) { a.innerHTML = '<div class="msg ok" data-live="1">✓ ' + esc(txt) + "</div>"; return; }
     a.innerHTML = '<div class="box"><p class="info" style="margin-top:0">' + esc(t(mode === "confirm" ? "confirmQ" : "unsubQ")) + '</p><button class="send" type="button" id="act"' + (state.busy ? " disabled" : "") + ">" + esc(t(mode === "confirm" ? "confirmBtn" : "unsubBtn")) + "</button></div>";
     $("act").onclick = function () {
       state.busy = true; render();
@@ -182,7 +187,7 @@ function render() {
   if (i.text) html += '<div class="box info" dir="auto">' + esc(i.text) + "</div>";
   if (i.offer) html += '<div class="box offer"><div class="l">' + esc(t("offer")) + '</div><div class="info" dir="auto">' + esc(i.offer) + "</div></div>";
   if (state.sent) {
-    html += '<div class="msg ' + (state.sent === "ok" ? "ok" : "err") + '" role="' + (state.sent === "ok" ? "status" : "alert") + '">' + esc(state.sent === "ok" ? "✓ " + t("checkMail") : t("mailFailed")) + "</div>";
+    html += '<div class="msg ' + (state.sent === "ok" ? "ok" : "err") + '" ' + (state.sent === "ok" ? 'data-live="1"' : 'role="alert"') + '>' + esc(state.sent === "ok" ? "✓ " + t("checkMail") : t("mailFailed")) + "</div>";
     a.innerHTML = html; return;
   }
   html += '<form id="f" class="box" novalidate>'

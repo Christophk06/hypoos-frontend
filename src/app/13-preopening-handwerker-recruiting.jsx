@@ -13,14 +13,14 @@ function CriticalPathCard({hotel, tasks}){
       <div style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer"}} {...pressable(()=>setOpen(!open))} aria-expanded={open}>
         <div style={{fontWeight:700,flex:1}}><Icon n="route" /> {tf("Kritischer Pfad")}</div>
         {p.conflicts.length>0 && <Pill color={BAD} bg={BAD_SOFT}>{tf("{0} Konflikte", p.conflicts.length)}</Pill>}
-        <Pill color={WARN} bg={WARN_SOFT}>{tf("{0} kritisch", crit.length)}</Pill>
+        <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("{0} kritisch", crit.length)}</Pill>
         <span style={{color:INK_MUTED}}>{open?"▴":"▾"}</span>
       </div>
       {open && (
         <div style={{marginTop:10,fontSize:13.5}}>
           {p.conflicts.map((c,i)=><div key={i} style={{color:BAD,marginBottom:4}}><Icon n="alert" /> {tf("„{0}“ beginnt {1} Tage vor dem Ende von „{2}“.", byId[c.task].title, c.days, byId[c.pred].title)}</div>)}
           {crit.length>0 && <div style={{marginTop:6}}><div className="field-label">{tf("Ohne Puffer – jede Verspätung verschiebt die Kette")}</div>
-            {crit.map(t=><div key={t.id} style={{padding:"3px 0"}} data-no-i18n="">{fmtDate(t.due_date)} · {t.title} <span style={{color:p.slack[t.id]<0?BAD:WARN}}>({p.slack[t.id]>0?"+":""}{p.slack[t.id]} {tf("Tage Puffer")})</span></div>)}</div>}
+            {crit.map(t=><div key={t.id} style={{padding:"3px 0"}} data-no-i18n="">{fmtDate(t.due_date)} · {t.title} <span style={{color:p.slack[t.id]<0?BAD:WARN_TEXT}}>({p.slack[t.id]>0?"+":""}{p.slack[t.id]} {tf("Tage Puffer")})</span></div>)}</div>}
           <div style={{marginTop:10,background:PAPER,borderRadius:6,padding:"8px 10px"}}>
             <div className="field-label">{tf("Was wäre, wenn …")}</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
@@ -62,7 +62,7 @@ function ContractorsCard({hotel, api}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-        <div style={{fontWeight:700,flex:1}}><Icon n="hammer" /> {tf("Handwerker und Firmen")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="hammer" /> {tf("Handwerker und Firmen")}</h2>
         {!form && <button style={smallBtn} onClick={()=>setForm({name:"", trade:"", email:""})}>{tf("+ Firma")}</button>}
       </div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Jede Firma bekommt einen eigenen Link ohne Anmeldung. Dort sieht sie nur ihre Mängel und meldet sie als behoben – ihr nehmt sie dann ab.")}</div>
@@ -89,7 +89,7 @@ function ContractorsCard({hotel, api}){
 
 // ------------------------------------------------------------ Bestellliste (OS&E)
 const PROC_STATUS = ["geplant","bestellt","geliefert","montiert"];
-const PROC_STYLE = {geplant:{color:INK_MUTED,bg:PAPER}, bestellt:{color:"#2D5B87",bg:"#E3ECF5"}, geliefert:{color:GOOD,bg:GOOD_SOFT}, montiert:{color:GOOD,bg:GOOD_SOFT}};
+const PROC_STYLE = {geplant:{color:INK_MUTED,bg:PAPER}, bestellt:{color:"#2D5B87",bg:"#E3ECF5"}, geliefert:{color:GOOD_TEXT,bg:GOOD_SOFT}, montiert:{color:GOOD_TEXT,bg:GOOD_SOFT}};
 function ProcurementView({hotel, api, role, myDepts}){
   const [list,setList] = useState(null);
   const [filter,setFilter] = useState("");
@@ -113,7 +113,7 @@ function ProcurementView({hotel, api, role, myDepts}){
     <div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
-        <select className="input" style={{width:"auto"}} value={filter} onChange={e=>setFilter(e.target.value)}><option value="">{tf("Alle Abteilungen")}</option>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>
+        <select className="input" aria-label={tf("Nach Abteilung filtern")} style={{width:"auto"}} value={filter} onChange={e=>setFilter(e.target.value)}><option value="">{tf("Alle Abteilungen")}</option>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>
         <span style={{flex:1,fontSize:13,color:INK_MUTED}}>{tf("{0} Positionen · Summe {1}", shown.length, fmtEur(total))}</span>
         {role!=="viewer" && role!=="member" && !form && <button className="btn-primary" onClick={()=>setForm({name:"", department:DEPARTMENTS.find(canEdit)||DEPARTMENTS[0], quantity:"1", unit:"Stück", supplier:"", unit_price:"", status:"geplant", order_by:"", delivery_date:"", note:""})}>{tf("+ Position")}</button>}
       </div>
@@ -146,7 +146,7 @@ function ProcurementView({hotel, api, role, myDepts}){
                 <td style={{padding:"9px 8px",whiteSpace:"nowrap"}} data-no-i18n="">{Number(i.quantity).toLocaleString(UI_LOCALE)} {i.unit}</td>
                 <td style={{padding:"9px 8px",whiteSpace:"nowrap",textAlign:"end"}} data-no-i18n="">{i.unit_price!=null ? fmtEur(Number(i.unit_price)*Number(i.quantity)) : "–"}</td>
                 <td style={{padding:"9px 8px",fontSize:12,color:INK_MUTED,whiteSpace:"nowrap"}} data-no-i18n="">{i.order_by ? <React.Fragment><Icon n="clock" /> {fmtDate(i.order_by)}</React.Fragment> : ""}{i.delivery_date ? <div><Icon n="truck" /> {fmtDate(i.delivery_date)}</div> : ""}</td>
-                <td style={{padding:"9px 8px"}}>{canEdit(i.department) ? <select className="input" style={{width:"auto",padding:"4px 8px",fontSize:12.5,background:st.bg,color:st.color}} value={i.status} onChange={e=>run(()=>api("/api/procurement/"+i.id,"PATCH",{status:e.target.value}))}>{PROC_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select> : <Pill color={st.color} bg={st.bg}>{i.status}</Pill>}</td>
+                <td style={{padding:"9px 8px"}}>{canEdit(i.department) ? <select className="input" aria-label={tf("Status von „{0}“", i.name)} style={{width:"auto",padding:"4px 8px",fontSize:12.5,background:st.bg,color:st.color}} value={i.status} onChange={e=>run(()=>api("/api/procurement/"+i.id,"PATCH",{status:e.target.value}))}>{PROC_STATUS.map(s=><option key={s} value={s}>{s}</option>)}</select> : <Pill color={st.color} bg={st.bg}>{i.status}</Pill>}</td>
                 <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{canEdit(i.department) && <React.Fragment><button style={linkBtn} onClick={()=>setForm({...i, unit_price:i.unit_price??"", order_by:i.order_by||"", delivery_date:i.delivery_date||""})}>{tf("Bearbeiten")}</button><button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Position löschen?"))) run(()=>api("/api/procurement/"+i.id,"DELETE")); }}>✕</button></React.Fragment>}</td>
               </tr>); })}
           </tbody>
@@ -158,7 +158,7 @@ function ProcurementView({hotel, api, role, myDepts}){
 
 // ------------------------------------------------------------ Recruiting und Personalkosten (Personal)
 const STAGES = ["Eingegangen","Gespräch","Angebot","Zusage","Absage"];
-const STAGE_STYLE = {Eingegangen:{color:INK_MUTED,bg:PAPER}, Gespräch:{color:"#2D5B87",bg:"#E3ECF5"}, Angebot:{color:WARN,bg:WARN_SOFT}, Zusage:{color:GOOD,bg:GOOD_SOFT}, Absage:{color:BAD,bg:BAD_SOFT}};
+const STAGE_STYLE = {Eingegangen:{color:INK_MUTED,bg:PAPER}, Gespräch:{color:"#2D5B87",bg:"#E3ECF5"}, Angebot:{color:WARN_TEXT,bg:WARN_SOFT}, Zusage:{color:GOOD_TEXT,bg:GOOD_SOFT}, Absage:{color:BAD,bg:BAD_SOFT}};
 function CandidatesPanel({hotel, api, position, onChanged}){
   const [list,setList] = useState(null);
   const [form,setForm] = useState(null);
@@ -169,12 +169,12 @@ function CandidatesPanel({hotel, api, position, onChanged}){
   if(list===null) return <div style={{fontSize:12.5,color:INK_MUTED}}>…</div>;
   return (
     <div style={{background:PAPER,borderRadius:6,padding:"8px 10px"}}>
-      {msg && <div style={{color:BAD,fontSize:12.5}}>{msg.text}</div>}
+      {msg && <ErrorText style={{fontSize:12.5}}>{msg.text}</ErrorText>}
       {list.length===0 && !form && <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Noch keine Bewerbungen.")}</div>}
       {list.map(c=>(
         <div key={c.id} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",flexWrap:"wrap",fontSize:13}}>
           <b style={{flex:1,minWidth:120}} data-no-i18n="">{c.name}<span style={{fontWeight:400,color:INK_MUTED}}>{c.email ? " · "+c.email : ""}{c.phone ? " · "+c.phone : ""}</span></b>
-          <select className="input" style={{width:"auto",padding:"3px 8px",fontSize:12.5,background:STAGE_STYLE[c.stage].bg,color:STAGE_STYLE[c.stage].color}} value={c.stage} onChange={e=>run(()=>api("/api/candidates/"+c.id,"PATCH",{stage:e.target.value}))}>{STAGES.map(s=><option key={s} value={s}>{s}</option>)}</select>
+          <select className="input" aria-label={tf("Status von „{0}“", c.name)} style={{width:"auto",padding:"3px 8px",fontSize:12.5,background:STAGE_STYLE[c.stage].bg,color:STAGE_STYLE[c.stage].color}} value={c.stage} onChange={e=>run(()=>api("/api/candidates/"+c.id,"PATCH",{stage:e.target.value}))}>{STAGES.map(s=><option key={s} value={s}>{s}</option>)}</select>
           <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Bewerbung löschen?"))) run(()=>api("/api/candidates/"+c.id,"DELETE")); }}>✕</button>
         </div>
       ))}
@@ -201,7 +201,7 @@ function CostRampCard({hotel, positions}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"baseline",flexWrap:"wrap",marginBottom:10}}>
-        <div style={{fontWeight:700,flex:1}}><Icon n="trend" /> {tf("Personalkosten-Hochlauf")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="trend" /> {tf("Personalkosten-Hochlauf")}</h2>
         <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("bis zur Eröffnung: {0}", fmtEur(sumBefore))}</span>
       </div>
       <div style={{display:"flex",gap:6,alignItems:"flex-end",height:130}}>
@@ -209,7 +209,7 @@ function CostRampCard({hotel, positions}){
           <div key={m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
             <div style={{fontSize:10,color:INK_MUTED}} data-no-i18n="">{vals[i] ? Math.round(vals[i]/1000)+"k" : ""}</div>
             <div style={{width:"100%",height:Math.max(2,vals[i]/max*100),background:m===opening.slice(0,7)?BRASS:"#C9D6E3",borderRadius:"3px 3px 0 0"}} />
-            <div style={{fontSize:10.5,color:m===opening.slice(0,7)?BRASS:INK_MUTED,fontWeight:m===opening.slice(0,7)?700:400}} data-no-i18n="">{new Date(m+"-15T00:00:00Z").toLocaleDateString(UI_LOCALE,{month:"short"})}</div>
+            <div style={{fontSize:10.5,color:m===opening.slice(0,7)?BRASS_TEXT:INK_MUTED,fontWeight:m===opening.slice(0,7)?700:400}} data-no-i18n="">{new Date(m+"-15T00:00:00Z").toLocaleDateString(UI_LOCALE,{month:"short"})}</div>
           </div>
         ))}
       </div>
@@ -220,7 +220,7 @@ function CostRampCard({hotel, positions}){
 
 // ------------------------------------------------------------ Genehmigungen und Abnahmen
 const PERMIT_STATUS = ["offen","beantragt","erteilt","abgelehnt"];
-const PERMIT_STYLE = {offen:{color:WARN,bg:WARN_SOFT}, beantragt:{color:"#2D5B87",bg:"#E3ECF5"}, erteilt:{color:GOOD,bg:GOOD_SOFT}, abgelehnt:{color:BAD,bg:BAD_SOFT}};
+const PERMIT_STYLE = {offen:{color:WARN_TEXT,bg:WARN_SOFT}, beantragt:{color:"#2D5B87",bg:"#E3ECF5"}, erteilt:{color:GOOD_TEXT,bg:GOOD_SOFT}, abgelehnt:{color:BAD,bg:BAD_SOFT}};
 const PERMIT_SUGGESTIONS = ["Betriebsanlagengenehmigung","Brandschutzabnahme","Lebensmittelrechtliche Registrierung","Aufzugsabnahme","Gewerbeanmeldung","Schankkonzession","Trinkwasser- und Legionellenprüfung","Elektro-Abnahme (E-Check)"];
 function PermitsView({hotel, api, role}){
   const lead = role==="admin" || role==="manager";
@@ -234,7 +234,7 @@ function PermitsView({hotel, api, role}){
   if(list===null) return <div style={{color:INK_MUTED}}>…</div>;
   const today = todayIso();
   const flag = (p) => (p.status==="offen"||p.status==="beantragt") && p.due_date && p.due_date < today ? {t:tf("Frist überschritten"), c:BAD}
-    : (p.status==="offen"||p.status==="beantragt") && p.due_date && p.due_date <= addDaysIso(today,14) ? {t:tf("Frist in {0} Tagen", Math.round((new Date(p.due_date)-new Date(today))/86400000)), c:WARN}
+    : (p.status==="offen"||p.status==="beantragt") && p.due_date && p.due_date <= addDaysIso(today,14) ? {t:tf("Frist in {0} Tagen", Math.round((new Date(p.due_date)-new Date(today))/86400000)), c:WARN_TEXT}
     : p.status==="erteilt" && p.valid_until && p.valid_until <= addDaysIso(today,30) ? {t:p.valid_until<today ? tf("abgelaufen") : tf("läuft bald ab"), c:p.valid_until<today?BAD:WARN} : null;
   const save = () => run(async()=>{ const {id, ...b} = form; if(id) await api("/api/permits/"+id,"PATCH",b); else await api(base+"/permits","POST",b); setForm(null); });
   const used = new Set(list.map(p=>p.title));
@@ -296,10 +296,10 @@ function FeedbackByDept({hotel, api}){
   }).catch(()=>setRows({months:[], list:[]})); },[hotel.id]);
   if(!rows || !rows.list.length) return null;
   const avg = (c) => c.n ? (c.sum/c.n) : null;
-  const tone = (v) => v==null ? INK_MUTED : v>=4.2 ? GOOD : v>=3.5 ? INK : v>=2.8 ? WARN : BAD;
+  const tone = (v) => v==null ? INK_MUTED : v>=4.2 ? GOOD : v>=3.5 ? INK : v>=2.8 ? WARN_TEXT : BAD;
   return (
     <Card style={{marginBottom:14,overflowX:"auto"}}>
-      <div style={{fontWeight:700,marginBottom:4}}>{tf("Je Abteilung")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Je Abteilung")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Durchschnitt der Gäste-Bewertungen (1–5) je Monat. Lob = 4–5 Sterne, Kritik = 1–2 Sterne.")}</div>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5,minWidth:560}}>
         <thead><tr style={{color:INK_MUTED,fontSize:12}}><th style={{textAlign:"start",padding:6}}>{tf("Abteilung")}</th>
@@ -328,9 +328,9 @@ function FeedbackView({hotel, api, me, role}){
   const stars = (v) => v==null ? "–" : "★".repeat(Math.round(v)) + "☆".repeat(5-Math.round(v));
   return (
     <div>
-      {msg && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
+      {msg && <ErrorText style={{marginBottom:10}}>{msg.text}</ErrorText>}
       <Card style={{marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:4}}>{tf("Gäste bewerten per QR-Code")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Gäste bewerten per QR-Code")}</h2>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Ideal im Probebetrieb und danach: Aufsteller an der Rezeption, Karte im Zimmer oder Link in der Abreise-Mail. Gäste bewerten Zimmer, Sauberkeit, Service, Frühstück und Check-in – in ihrer Sprache.")}</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           {(role==="admin"||role==="manager") && <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} onClick={async()=>{ const u = link || await getLink(); if(u) printQrCards([{label:hotel.name, url:u.startsWith("http")?u:location.origin+location.pathname.replace(/[^/]*$/,"")+u, text:"Wie war Ihr Aufenthalt? · How was your stay? · Com’è stato il soggiorno?"}], tf("Gäste-Feedback")); }}>{tf("QR-Aufsteller drucken")}</button>}

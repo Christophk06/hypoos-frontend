@@ -115,10 +115,10 @@ function KeysView({hotel, api, members}){
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Wer hat welchen Schlüssel, welche Generalkarte, welchen Transponder? Ausgabe und Rückgabe mit Zeitpunkt – auch für Fremdfirmen.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       {keys && keys.length>0 && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
         <Pill color={INK} bg={BRASS_SOFT}>{tf("{0} im Bestand", active.length)}</Pill>
-        <Pill color={WARN} bg={WARN_SOFT}>{tf("{0} ausgegeben", out.length)}</Pill>
+        <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("{0} ausgegeben", out.length)}</Pill>
         {overdue.length>0 && <Pill color={BAD} bg={BAD_SOFT}>{tf("{0} überfällig", overdue.length)}</Pill>}
       </div>}
       {!form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm({name:"", kind:"Schlüssel", code:"", note:""})}>{tf("Schlüssel oder Karte anlegen")}</button>}
@@ -181,7 +181,7 @@ function UniformsView({hotel, api, members}){
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Ausgegebene Dienstkleidung je Person mit Größe – beim Austritt sehen Sie sofort, was zurückkommen muss.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       {!form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm(empty)}>{tf("Kleidung ausgeben")}</button>}
       {form && <Card style={{marginBottom:16,borderColor:BRASS}}>
         <HolderField members={members} value={form} onChange={(v)=>setForm({...form, ...v})} />
@@ -230,7 +230,7 @@ function PulseCard({orgId, api, hotel, myDepts}){
       </div>
       {(myDepts||[]).length>1 && <Field label={tf("Abteilung (optional)")}><select className="input" value={dept} onChange={e=>setDept(e.target.value)}><option value="">–</option>{myDepts.map(d=><option key={d} value={d}>{translateString(d)}</option>)}</select></Field>}
       <Field label={tf("Was sollte besser werden? (optional)")}><textarea className="input" rows={2} maxLength={1000} value={comment} onChange={e=>setComment(e.target.value)} /></Field>
-      {msg && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{msg}</div>}
+      {msg && <ErrorText style={{marginBottom:8}}>{msg}</ErrorText>}
       <button className="btn-primary" disabled={!score} onClick={send}>{tf("Anonym absenden")}</button>
     </Card>
   );
@@ -250,7 +250,7 @@ function PulseView({orgId, api, hotel, myDepts}){
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Einmal im Monat fragt Ouverture alle im Team anonym, wie es ihnen geht (1 bis 5). Namen werden nicht gespeichert; Werte erscheinen erst ab 5 Antworten, Abteilungen nur, wenn niemand erkennbar ist.")}</div>
       <PulseCard orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />
-      {msg && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{msg}</div>}
+      {msg && <ErrorText style={{marginBottom:10}}>{msg}</ErrorText>}
       {rows && total.length>0 && <Card style={{padding:0,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5,minWidth:460}}>
         <thead><tr style={{color:INK_MUTED,fontSize:12}}><th style={{padding:10,textAlign:"start"}}>{tf("Monat")}</th><th style={{textAlign:"start"}}>{tf("Durchschnitt")}</th><th style={{textAlign:"end",paddingInlineEnd:10}}>{tf("Antworten")}</th></tr></thead>
         <tbody>{total.map(r=>(

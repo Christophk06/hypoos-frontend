@@ -22,13 +22,13 @@ function AssetsView({hotel, api}){
   };
   const inspected = async (a) => { try { await api("/api/assets/"+a.id,"PATCH",{last_inspection:todayIso(), next_inspection: a.inspection_interval_months ? isoMonthsAhead(todayIso(), a.inspection_interval_months) : a.next_inspection}); load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
   const today = todayIso(), soon = isoMonthsAhead(today, 1);
-  const state = (a) => a.next_inspection && a.next_inspection < today ? [BAD,BAD_SOFT,tf("Prüfung überfällig")] : a.next_inspection && a.next_inspection <= soon ? [WARN,WARN_SOFT,tf("Prüfung bald fällig")] : a.warranty_until && a.warranty_until >= today && a.warranty_until <= soon ? [WARN,WARN_SOFT,tf("Garantie endet bald")] : null;
+  const state = (a) => a.next_inspection && a.next_inspection < today ? [BAD,BAD_SOFT,tf("Prüfung überfällig")] : a.next_inspection && a.next_inspection <= soon ? [WARN_TEXT,WARN_SOFT,tf("Prüfung bald fällig")] : a.warranty_until && a.warranty_until >= today && a.warranty_until <= soon ? [WARN_TEXT,WARN_SOFT,tf("Garantie endet bald")] : null;
   const F = (k, label, props) => <Field label={tf(label)}><input className="input" value={form[k]??""} onChange={e=>setForm({...form,[k]:e.target.value})} {...(props||{})} /></Field>;
   return (
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Geräte und Anlagen mit Garantie, Seriennummer und Prüfterminen. Ouverture zeigt, was bald geprüft werden muss.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       {!form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm(empty)}>{tf("Gerät anlegen")}</button>}
       {form && <Card style={{marginBottom:16,borderColor:BRASS}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:"0 10px"}}>
@@ -118,12 +118,12 @@ function PatrolsView({hotel, api}){
           </div>); })}
       </Card>}
       {scans && scans.length>0 && <Card>
-        <div style={{fontWeight:700,marginBottom:8}}>{tf("Letzte Kontrollen (30 Tage)")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>{tf("Letzte Kontrollen (30 Tage)")}</h2>
         {scans.slice(0,100).map(s=><div key={s.id} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,flexWrap:"wrap"}}>
           <div style={{minWidth:130,color:INK_MUTED}}>{fmtDateTime(s.scanned_at)}</div>
           <div style={{flex:1}} data-no-i18n="">{pointName(s.point_id)}{s.temperature!=null ? " · "+s.temperature+" °C" : ""}{s.note ? " – "+s.note : ""}</div>
           {(s.has_photo || s.has_signature) && <button style={linkBtn} onClick={()=>api("/api/patrol-scans/"+s.id+"/proof").then(setProof).catch(e=>setMsg({ok:false,text:e.message}))}>{tf("Nachweis")}</button>}
-          {s.ok ? <Pill color={GOOD} bg={GOOD_SOFT}>{tf("in Ordnung")}</Pill> : <Pill color={BAD} bg={BAD_SOFT}>{tf("Problem")}</Pill>}
+          {s.ok ? <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("in Ordnung")}</Pill> : <Pill color={BAD} bg={BAD_SOFT}>{tf("Problem")}</Pill>}
         </div>)}
       </Card>}
       {proof && <Overlay onClose={()=>setProof(null)} width={560} label={tf("Nachweis")}>
@@ -145,7 +145,7 @@ function PatrolScanDialog({api, token, onClose}){
   return (
     <Overlay onClose={onClose} width={460} label={tf("Kontrollgang bestätigen")}>
       <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,marginBottom:6}}>{tf("Kontrollgang bestätigen")}</div>
-      {error && <div style={{color:BAD,fontSize:13.5,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{fontSize:13.5,marginBottom:10}}>{error}</ErrorText>}
       {point && !done && <div>
         <div style={{fontSize:15,marginBottom:12}}><b data-no-i18n="">{point.name}</b><div style={{fontSize:12.5,color:INK_MUTED}}>{tf(PATROL_KIND_LABEL[point.kind]||point.kind)}{point.hotels ? " · " : ""}<span data-no-i18n="">{point.hotels ? point.hotels.name : ""}</span></div></div>
         <div role="radiogroup" style={{display:"flex",gap:8,marginBottom:12}}>
@@ -204,7 +204,7 @@ function InstructionsView({hotel, api}){
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Schritt für Schritt mit Fotos – zum Beispiel „So wird das Bett gemacht“ oder „Kaffeemaschine reinigen“. Texte in anderen Sprachen übersetzt Ouverture beim Lesen.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       {!form && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14,alignItems:"center"}}>
         {canWrite && <button className="btn-primary" onClick={()=>setForm({title:"", department:DEPARTMENTS.find(d=>canManageDept(d)), steps:[{text:""}]})}>{tf("Anweisung anlegen")}</button>}
         <select className="input" style={{width:"auto"}} value={dept} onChange={e=>setDept(e.target.value)} aria-label={tf("Abteilung")}><option value="">{tf("Alle Abteilungen")}</option>{DEPARTMENTS.map(d=><option key={d} value={d}>{translateString(d)}</option>)}</select>
@@ -216,7 +216,7 @@ function InstructionsView({hotel, api}){
         </div>
         {form.steps.map((st,i)=>(
           <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
-            <div style={{fontFamily:"Fraunces, serif",fontSize:20,color:BRASS,minWidth:24}} data-no-i18n="">{i+1}</div>
+            <div style={{fontFamily:"Fraunces, serif",fontSize:20,color:BRASS_TEXT,minWidth:24}} data-no-i18n="">{i+1}</div>
             <div style={{flex:1}}>
               <textarea className="input" rows={2} value={st.text} onChange={e=>setStep(i,"text",e.target.value)} aria-label={tf("Schritt {0}", i+1)} />
               <div style={{display:"flex",gap:10,alignItems:"center",marginTop:6,flexWrap:"wrap"}}>
@@ -244,7 +244,7 @@ function InstructionsView({hotel, api}){
           {open===w.id && <div style={{marginTop:12}} data-steps={w.id}>
             {canSpeak() && <div style={{marginBottom:8}}><SpeakButton target={w.id} /></div>}
             {(w.steps||[]).map((st,i)=><div key={i} style={{display:"flex",gap:12,padding:"10px 0",borderTop:`1px solid ${BORDER}`}}>
-              <div style={{fontFamily:"Fraunces, serif",fontSize:22,color:BRASS,minWidth:26}} data-no-i18n="">{i+1}</div>
+              <div style={{fontFamily:"Fraunces, serif",fontSize:22,color:BRASS_TEXT,minWidth:26}} data-no-i18n="">{i+1}</div>
               <div style={{flex:1}}><div className="speak-step" style={{fontSize:14.5,whiteSpace:"pre-wrap"}}>{st.text}</div>{st.photo_data && <img src={st.photo_data} alt="" style={{maxWidth:"100%",maxHeight:320,borderRadius:8,marginTop:8}} />}</div>
             </div>)}
             {canManageDept(w.department) && <div style={{display:"flex",gap:8,marginTop:8}}>
@@ -330,7 +330,7 @@ function LeaveCard({orgId, api, members, me, canManage}){
       </div>
       {open && <div style={{marginTop:10,overflowX:"auto"}}>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Verbraucht zählt jeden Tag mit einer Schicht „Urlaub“ im Dienstplan.")}</div>
-        {msg && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{msg.text}</div>}
+        {msg && <ErrorText style={{marginBottom:8}}>{msg.text}</ErrorText>}
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5,minWidth:520}}>
           <thead><tr style={{color:INK_MUTED,fontSize:12}}><th style={{textAlign:"start",padding:6}}>{tf("Name")}</th><th>{tf("Anspruch")}</th><th>{tf("Übertrag")}</th><th>{tf("Verbraucht")}</th><th>{tf("Rest")}</th></tr></thead>
           <tbody>{people.map(m=>(
@@ -427,9 +427,9 @@ function DayInfoCell({info, date}){
   const ev = (info.events||[]).filter(e=>e.event_date===date);
   if(!w && !notes.length && !ev.length) return null;
   return (
-    <div style={{fontSize:10.5,fontWeight:500,lineHeight:1.35,marginTop:2}}>
+    <div style={{fontSize:11.5,fontWeight:500,lineHeight:1.35,marginTop:2}}>
       {w && <div title={tf(WEATHER_LABEL[w.group]||"")+(w.rain ? " · "+w.rain+" mm" : "")} aria-label={tf(WEATHER_LABEL[w.group]||"")+", "+w.tmin+"–"+w.tmax+" °C"+(w.rain>=1 ? ", "+Math.round(w.rain)+" mm" : "")} style={{color:INK_MUTED,fontSize:11.5}}><Icon n={WEATHER_ICON[w.group]||""} /> {w.tmin}–{w.tmax}°{w.rain>=1 ? " · "+Math.round(w.rain)+" mm" : ""}</div>}
-      {notes.map(n=><div key={n.id} style={{color:BRASS}} title={n.note||""}>◆ {n.title}</div>)}
+      {notes.map(n=><div key={n.id} style={{color:BRASS_TEXT}} title={n.note||""}>◆ {n.title}</div>)}
       {ev.map(e=><div key={e.id} style={{color:INK}} title={e.guests ? tf("{0} Personen", e.guests) : ""}>♦ {e.title}{e.guests ? " ("+e.guests+")" : ""}</div>)}
     </div>
   );
@@ -446,7 +446,7 @@ function CalendarNotesCard({hotel, api, info, onChanged}){
         <span style={{color:INK_MUTED}}>{open ? "▴" : "▾"}</span>
       </div>
       {open && <div style={{marginTop:10}}>
-        {msg && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{msg}</div>}
+        {msg && <ErrorText style={{marginBottom:8}}>{msg}</ErrorText>}
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
           <Field label={tf("Titel")}><input className="input" value={f.title} onChange={e=>setF({...f,title:e.target.value})} placeholder={tf("z. B. Interalpin Messe")} /></Field>
           <Field label={tf("Art")}><select className="input" value={f.kind} onChange={e=>setF({...f,kind:e.target.value})}>{["Messe","Veranstaltung","Feiertag","Schulferien","Sonstiges"].map(k=><option key={k} value={k}>{tf(k)}</option>)}</select></Field>
@@ -479,7 +479,7 @@ function StaffingAdviceCard({hotel, api, from}){
           <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Prüft die Woche gegen Belegung, An- und Abreisen, Veranstaltungen, Wetter, Hinweise und Besetzungsregeln – und schlägt Anpassungen je Abteilung vor.")}</div></div>
         <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={busy} onClick={run}>{busy ? tf("Wird eingeschätzt…") : a ? tf("Neu einschätzen") : tf("Woche einschätzen")}</button>
       </div>
-      {msg && <div style={{color:BAD,fontSize:13,marginTop:8}}>{msg}</div>}
+      {msg && <ErrorText style={{marginTop:8}}>{msg}</ErrorText>}
       {a && <div style={{marginTop:10}}>
         <div style={{fontSize:13.5,lineHeight:1.5,marginBottom:8}} data-no-i18n="">{a.zusammenfassung}</div>
         {a.tage.map(d=>(

@@ -1,7 +1,7 @@
 // ------------------------------------------------------------ Zimmerstatus
 const ROOM_STATUS = ["Schmutzig","In Reinigung","Sauber","Kontrolliert","Außer Betrieb"];
 const ROOM_OCC = ["Unbelegt","Belegt","Abreise","Anreise"];
-const ROOM_STYLE = {"Schmutzig":{bg:BAD_SOFT,fg:BAD}, "In Reinigung":{bg:WARN_SOFT,fg:WARN}, "Sauber":{bg:"#E3ECF5",fg:"#2D5B87"}, "Kontrolliert":{bg:GOOD_SOFT,fg:GOOD}, "Außer Betrieb":{bg:"#E5E7EB",fg:"#4B5563"}};
+const ROOM_STYLE = {"Schmutzig":{bg:BAD_SOFT,fg:BAD}, "In Reinigung":{bg:WARN_SOFT,fg:WARN_TEXT}, "Sauber":{bg:"#E3ECF5",fg:"#2D5B87"}, "Kontrolliert":{bg:GOOD_SOFT,fg:GOOD_TEXT}, "Außer Betrieb":{bg:"#E5E7EB",fg:"#4B5563"}};
 const roomLocation = (n) => tf("Zimmer {0}", n);
 
 function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
@@ -15,6 +15,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
   const [floor,setFloor] = useState("");
   const [mine,setMine] = useState(false);
   const [sel,setSel] = useState(null);
+  const sheetRef = useDialog(()=>setSel(null), !!(sel && rooms && rooms.some(r=>r.id===sel)));
   const [numbers,setNumbers] = useState("");
   const [rtype,setRtype] = useState("");
   const [msg,setMsg] = useState(null);
@@ -60,7 +61,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
       {role==="admin" && <GuestInfoCard hotel={hotel} api={api} onHotel={onHotel} />}
       {canSetup && (
         <Card style={{marginBottom:14,borderColor:rooms.length?BORDER:BRASS}}>
-          <div style={{fontWeight:700,marginBottom:4}}>{rooms.length ? tf("Zimmer hinzufügen") : tf("Zimmer anlegen")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{rooms.length ? tf("Zimmer hinzufügen") : tf("Zimmer anlegen")}</h2>
           {!rooms.length && <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Zimmernummern einzeln oder als Bereich eingeben – das Stockwerk wird aus der Nummer erkannt.")}</div>}
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <input className="input" style={{flex:2,minWidth:200}} value={numbers} onChange={e=>setNumbers(e.target.value)} placeholder={tf("z. B. 101-120, 201-220, Suite 1")} />
@@ -74,7 +75,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>{ROOM_STATUS.map(k=>chip(k, ROOM_STYLE[k]))}</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:12}}>
             {ROOM_OCC.slice(1).map(k=>chip(k, null))}
-            {floors.length>1 && <select className="input" style={{width:"auto",padding:"5px 8px"}} value={floor} onChange={e=>setFloor(e.target.value)}><option value="">{tf("Alle Stockwerke")}</option>{floors.map(f=><option key={f} value={f}>{tf("Stock {0}", f)}</option>)}</select>}
+            {floors.length>1 && <select className="input" aria-label={tf("Stockwerk")} style={{width:"auto",padding:"5px 8px"}} value={floor} onChange={e=>setFloor(e.target.value)}><option value="">{tf("Alle Stockwerke")}</option>{floors.map(f=><option key={f} value={f}>{tf("Stock {0}", f)}</option>)}</select>}
             <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:5,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={mine} onChange={e=>setMine(e.target.checked)} /> {tf("Nur meine Zimmer")}</label>
             <span style={{flex:1}}></span>
             {canManageDept("Housekeeping") && <RoomAssignCard hotel={hotel} api={api} members={members} onDone={load} />}
@@ -87,10 +88,10 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
             {shown.map(r=>{ const st = ROOM_STYLE[r.status] || ROOM_STYLE["Schmutzig"]; const tk = ticketsFor(r.number).length; return (
               <button key={r.id} onClick={()=>setSel(r.id)} style={{background:st.bg,color:st.fg,border:`1px solid ${sel===r.id?INK:st.fg+"40"}`,borderRadius:8,padding:"8px 6px",cursor:"pointer",textAlign:"center",position:"relative",minHeight:70}}>
                 <div style={{fontSize:18,fontWeight:700,fontFamily:"Fraunces, serif"}} data-no-i18n="">{r.number}</div>
-                <div style={{fontSize:10.5,lineHeight:1.2,marginTop:2}}>{r.status}</div>
-                {r.occupancy!=="Unbelegt" && <div style={{fontSize:10,lineHeight:1.2,color:INK,opacity:.7}}>{r.occupancy}</div>}
-                {r.assigned_to && <div data-no-i18n="" style={{position:"absolute",top:4,insetInlineStart:5,fontSize:9.5,fontWeight:700,color:INK,opacity:.65}}>{memberLabel(members, me, r.assigned_to).slice(0,3).toUpperCase()}</div>}
-                {(r.note || tk>0) && <div style={{position:"absolute",top:4,insetInlineEnd:5,fontSize:10,fontWeight:700,color:tk?BAD:INK}}>{tk ? <Icon n="wrench" /> : "✎"}</div>}
+                <div style={{fontSize:11.5,lineHeight:1.2,marginTop:2}}>{r.status}</div>
+                {r.occupancy!=="Unbelegt" && <div style={{fontSize:11.5,lineHeight:1.2,color:INK,opacity:.7}}>{r.occupancy}</div>}
+                {r.assigned_to && <div data-no-i18n="" style={{position:"absolute",top:4,insetInlineStart:5,fontSize:11.5,fontWeight:700,color:INK,opacity:.65}}>{memberLabel(members, me, r.assigned_to).slice(0,3).toUpperCase()}</div>}
+                {(r.note || tk>0) && <div style={{position:"absolute",top:4,insetInlineEnd:5,fontSize:11.5,fontWeight:700,color:tk?BAD:INK}}>{tk ? <Icon n="wrench" /> : "✎"}</div>}
               </button>
             ); })}
           </div>
@@ -98,10 +99,10 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
       )}
       {cur && (
         <div className="no-print" style={{position:"fixed",insetInlineStart:0,insetInlineEnd:0,bottom:0,zIndex:60,display:"flex",justifyContent:"center",pointerEvents:"none"}}>
-          <div style={{background:"#fff",borderTop:`3px solid ${(ROOM_STYLE[cur.status]||{}).fg||BRASS}`,boxShadow:"0 -12px 40px rgba(28,36,48,.22)",borderRadius:"12px 12px 0 0",padding:"14px 16px 18px",width:"100%",maxWidth:620,maxHeight:"75vh",overflowY:"auto",pointerEvents:"auto"}}>
+          <div ref={sheetRef} role="dialog" aria-label={tf("Zimmer {0}", cur.number)} tabIndex={-1} style={{outline:"none",background:"#fff",borderTop:`3px solid ${(ROOM_STYLE[cur.status]||{}).fg||BRASS}`,boxShadow:"0 -12px 40px rgba(28,36,48,.22)",borderRadius:"12px 12px 0 0",padding:"14px 16px 18px",width:"100%",maxWidth:620,maxHeight:"75vh",overflowY:"auto",pointerEvents:"auto"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-              <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,flex:1}}>{roomLocation(cur.number)}<span style={{fontSize:13,color:INK_MUTED,fontFamily:"Inter, sans-serif",fontWeight:400}} data-no-i18n="">{cur.room_type ? " · "+cur.room_type : ""}</span></div>
-              <button style={{...linkBtn,fontSize:20}} onClick={()=>setSel(null)} aria-label={tf("Schließen")}>✕</button>
+              <h2 className="ui-h" style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,flex:1}}>{roomLocation(cur.number)}<span style={{fontSize:13,color:INK_MUTED,fontFamily:"Inter, sans-serif",fontWeight:400}} data-no-i18n="">{cur.room_type ? " · "+cur.room_type : ""}</span></h2>
+              <button style={{...linkBtn,fontSize:20}} onClick={()=>setSel(null)} aria-label={tf("Schließen")}><span aria-hidden="true">✕</span></button>
             </div>
             <div className="field-label">{tf("Status")}</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
@@ -136,7 +137,7 @@ function RoomsView({hotel, api, me, members, role, myDepts, onReport, onHotel}){
 
 // ------------------------------------------------------------ Technik-Meldungen
 const TICKET_STATUS = ["Offen","In Arbeit","Prüfen","Erledigt"];
-const TICKET_STYLE = {"Offen":{color:WARN,bg:WARN_SOFT}, "In Arbeit":{color:"#2D5B87",bg:"#E3ECF5"}, "Prüfen":{color:"#6B4BA1",bg:"#EEE7F7"}, "Erledigt":{color:GOOD,bg:GOOD_SOFT}};
+const TICKET_STYLE = {"Offen":{color:WARN_TEXT,bg:WARN_SOFT}, "In Arbeit":{color:"#2D5B87",bg:"#E3ECF5"}, "Prüfen":{color:"#6B4BA1",bg:"#EEE7F7"}, "Erledigt":{color:GOOD_TEXT,bg:GOOD_SOFT}};
 const TICKET_DEPTS = ["Technik","IT & Systeme","Housekeeping","Sicherheit","Food & Beverage","Rezeption & Empfang"];
 
 function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefillUsed}){
@@ -201,7 +202,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
       {role!=="viewer" && !form && <button className="btn-primary" style={{marginBottom:14,padding:"11px 18px"}} onClick={()=>setForm(emptyForm(""))}>{section==="wishes" ? <React.Fragment><Icon n="concierge" /> {tf("Gästewunsch erfassen")}</React.Fragment> : section==="snags" ? <React.Fragment><Icon n="hammer" /> {tf("Baumangel erfassen")}</React.Fragment> : <React.Fragment><Icon n="wrench" /> {tf("Mangel melden")}</React.Fragment>}</button>}
       {form && (
         <Card style={{marginBottom:16,borderColor:BRASS}}>
-          <div style={{fontWeight:700,marginBottom:10}}>{form.kind==="Gästewunsch" ? tf("Gästewunsch erfassen") : form.kind==="Baumangel" ? tf("Baumangel erfassen") : tf("Mangel melden")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>{form.kind==="Gästewunsch" ? tf("Gästewunsch erfassen") : form.kind==="Baumangel" ? tf("Baumangel erfassen") : tf("Mangel melden")}</h2>
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
             <label style={{flex:1,minWidth:150}}><div className="field-label">{tf("Wo?")}</div><input className="input" value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder={form.kind==="Gästewunsch" ? tf("z. B. Zimmer 305") : tf("z. B. Zimmer 214, Lobby, Küche")} /></label>
             <label style={{flex:2,minWidth:200}}><div className="field-label">{form.kind==="Gästewunsch" ? tf("Was wünscht der Gast?") : tf("Was ist kaputt?")}</div><input className="input" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder={form.kind==="Gästewunsch" ? tf("z. B. Extra-Handtücher, Babybett, Wecker 6 Uhr") : tf("z. B. Licht im Bad flackert")} /></label>
@@ -235,7 +236,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
           <Card key={t.id} style={{marginBottom:10,padding:"12px 14px",borderInlineStart:t.priority==="Dringend" && t.status!=="Erledigt" ? `4px solid ${BAD}` : undefined}}>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
               {t.priority==="Dringend" && <Pill color={BAD} bg={BAD_SOFT}>Dringend</Pill>}
-              {t.kind==="Wartung" && <Pill color={BRASS} bg={BRASS_SOFT}>Wartung</Pill>}
+              {t.kind==="Wartung" && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>Wartung</Pill>}
               {t.via_guest && <Pill color="#6B4BA1" bg="#EEE7F7"><Icon n="concierge" /> {tf("Gast")}</Pill>}
               <Pill color={st.color} bg={st.bg}>{t.status}</Pill>
               {t.due_on && t.status!=="Erledigt" && <Pill color={t.due_on<todayIso()?BAD:INK_MUTED} bg={t.due_on<todayIso()?BAD_SOFT:PAPER}>{tf("Frist {0}", fmtDate(t.due_on))}</Pill>}
@@ -256,7 +257,7 @@ function TicketsView({hotel, api, me, members, role, myDepts, prefill, onPrefill
               {canWork(t) && t.status==="Prüfen" && <button style={smallBtn} onClick={()=>run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"Offen"}))}>{tf("Zurück an die Firma")}</button>}
               {canWork(t) && t.status==="Erledigt" && <button style={smallBtn} onClick={()=>run(()=>api("/api/tickets/"+t.id,"PATCH",{status:"Offen"}))}>{tf("Wieder öffnen")}</button>}
               {canWork(t) && t.status!=="Erledigt" && (
-                <select className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}} value={t.assignee_id||""} onChange={e=>run(()=>api("/api/tickets/"+t.id,"PATCH",{assignee_id:e.target.value||null}))}>
+                <select className="input" aria-label={tf("Zuständig")} style={{width:"auto",padding:"5px 8px",fontSize:12.5}} value={t.assignee_id||""} onChange={e=>run(()=>api("/api/tickets/"+t.id,"PATCH",{assignee_id:e.target.value||null}))}>
                   <option value="">{tf("Niemand zugewiesen")}</option>
                   {members.filter(m=>m.role!=="viewer" && ((m.departments||[]).includes(t.department) || m.user_id===t.assignee_id || m.role==="admin")).map(m=><option key={m.user_id} value={m.user_id}>{shortName(m.email)}</option>)}
                 </select>
@@ -313,7 +314,7 @@ function PushCard({api}){
   const act = async (fn, ok) => { setBusy(true); setMsg(null); try { await fn(); if(ok) setMsg({ok:true,text:ok}); } catch(e){ setMsg({ok:false,text:e.message}); } setBusy(false); };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}>{tf("Benachrichtigungen aufs Handy")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Benachrichtigungen aufs Handy")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Neuer Dienstplan, geänderte Schicht, entschiedener Antrag, neue Technik-Meldung oder ein wichtiger Eintrag im Übergabebuch – direkt als Nachricht auf diesem Gerät.")}</div>
       {!p.ready ? <div style={{fontSize:13,color:INK_MUTED}}>…</div>
         : window.OUVERTURE_DEMO ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("In der Live-Demo nicht verfügbar.")}</div>
@@ -328,7 +329,7 @@ function PushCard({api}){
         ) : (
           <div>
             <button className="btn-primary" disabled={busy} onClick={()=>act(p.enable, tf("Benachrichtigungen sind eingeschaltet."))}>{tf("Benachrichtigungen einschalten")}</button>
-            {p.perm==="denied" && <div style={{fontSize:12.5,color:WARN,marginTop:8}}>{tf("Benachrichtigungen sind im Browser blockiert. Bitte in den Einstellungen des Browsers erlauben.")}</div>}
+            {p.perm==="denied" && <div style={{fontSize:12.5,color:WARN_TEXT,marginTop:8}}>{tf("Benachrichtigungen sind im Browser blockiert. Bitte in den Einstellungen des Browsers erlauben.")}</div>}
           </div>
         )}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}

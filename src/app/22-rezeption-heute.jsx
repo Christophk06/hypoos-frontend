@@ -33,7 +33,7 @@ function FrontDeskView({hotel, api, onOpen}){
   );
   const list = (title, items, render, empty) => (
     <Card style={{marginBottom:0}}>
-      <div style={{fontWeight:700,marginBottom:8}}>{title} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({items.length})</span></div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>{title} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({items.length})</span></h2>
       {items.length===0 ? <div style={{fontSize:13.5,color:INK_MUTED}}>{empty}</div> :
         <div style={{maxHeight:320,overflowY:"auto"}}>{items.map(render)}</div>}
     </Card>
@@ -50,13 +50,13 @@ function FrontDeskView({hotel, api, onOpen}){
         {tile(tf("Anreisen"), d.arrivals.length || arrivingRooms.length, null, "arrivals")}
         {tile(tf("Abreisen"), d.departures.length || d.rooms.filter(r=>r.occupancy==="Abreise").length, null, "rooms")}
         {tile(tf("Zimmer bezugsfertig"), ready.length+" / "+d.rooms.length, GOOD, "rooms")}
-        {tile(tf("Anreisezimmer noch nicht fertig"), notReady.length, notReady.length ? WARN : GOOD, "rooms")}
+        {tile(tf("Anreisezimmer noch nicht fertig"), notReady.length, notReady.length ? WARN_TEXT : GOOD, "rooms")}
         {tile(tf("Offene Meldungen"), d.tickets.length, urgent.length ? BAD : INK, "tickets")}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))",gap:14}}>
         {d.arrivals.length>0 || !arrivingRooms.length
           ? list(tf("Anreisen heute"), d.arrivals, a=>row(a.id, a.guest_name, [a.room_type, a.eta && tf("Ankunft {0}", a.eta)].filter(Boolean).join(" · "),
-              (a.extras||[]).length || a.guest_note ? <Pill color={BRASS} bg={BRASS_SOFT}>{tf("Wünsche")}</Pill> : null), tf("Keine Anreisen erfasst."))
+              (a.extras||[]).length || a.guest_note ? <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>{tf("Wünsche")}</Pill> : null), tf("Keine Anreisen erfasst."))
           : list(tf("Anreisen heute"), arrivingRooms, r=>row(r.id, roomLocation(r.number), [r.room_type, translateString(r.status)].filter(Boolean).join(" · ")), "")}
         {list(tf("Anreisezimmer noch nicht fertig"), notReady, r=>row(r.id, roomLocation(r.number), translateString(r.status)), tf("Alle Anreisezimmer sind fertig."))}
         {list(tf("Dringende Meldungen"), urgent, t=>row(t.id, t.title, [t.location, translateString(t.department||"")].filter(Boolean).join(" · ")), tf("Keine dringenden Meldungen."))}

@@ -152,10 +152,10 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 
   return (
     <div>
-      {!isAdmin && error && <div style={{color:BAD,fontSize:13,marginBottom:14}}>{error}</div>}
+      {!isAdmin && error && <ErrorText style={{marginBottom:14}}>{error}</ErrorText>}
       {isAdmin && <OrgRenameCard orgId={orgId} orgName={orgName} api={api} onRenamed={onRenamed} />}
       {isAdmin && <Card style={{marginBottom:18}}>
-        <div style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>Teammitglied einladen</h2>
         <div className="stack" style={{display:"flex",gap:10}}>
           <input className="input" placeholder="E-Mail-Adresse" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&invite()} />
           <select className="input" style={{width:190}} value={role} onChange={e=>setRole(e.target.value)}>
@@ -176,8 +176,8 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
               : tf("Mitarbeitende sehen nur Aufgaben und Dienstplan der markierten Abteilungen.")}</div>
           </div>
         )}
-        {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
-        {inviteMsg && <div style={{color:inviteMsg.ok?GOOD:WARN,fontSize:13,marginTop:10}}>{inviteMsg.text}</div>}
+        {error && <ErrorText style={{marginTop:10}}>{error}</ErrorText>}
+        {inviteMsg && <div style={{color:inviteMsg.ok?GOOD:WARN_TEXT,fontSize:13,marginTop:10}}>{inviteMsg.text}</div>}
         <div style={{fontSize:12,color:INK_MUTED,marginTop:10}}>
           Die Person bekommt den Einladungslink per E-Mail. Sie muss sich damit registrieren oder anmelden,
           dann gehört sie automatisch zu deiner Organisation. Kommt keine Mail an, kannst du den Link unten auch kopieren und selbst weitergeben.
@@ -190,7 +190,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 
       {isAdmin && <RightsOverview members={members} />}
       <Card style={{marginBottom:18,padding:0}}>
-        <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Mitglieder</div>
+        <h2 className="ui-h" style={{fontWeight:700,padding:"14px 16px 6px"}}>Mitglieder</h2>
         <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
           {members.filter(m=>ACCESS.role!=="member" || m.role==="admin" || (me && m.user_id===me.id)
               || (m.departments||[]).some(d=>(ACCESS.depts||[]).includes(d))).map(m=>{
@@ -202,12 +202,12 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
                   {ROLES_WITH_DEPTS.includes(m.role) && (isAdmin
                     ? <div style={{marginTop:8}}><DeptChips value={m.departments} onChange={list=>changeDepts(m, list)} /></div>
                     : <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{(m.departments||[]).length ? (m.departments||[]).map((d,i)=><React.Fragment key={d}>{i>0 && ", "}<span>{d}</span></React.Fragment>) : <span>Keine Abteilung</span>}</div>)}
-                  {isAdmin && m.role==="member" && (m.departments||[]).length===0 && <div style={{fontSize:12,color:WARN,marginTop:4}}>Ohne Abteilung sieht diese Person nur Aufgaben, die ihr direkt zugewiesen sind.</div>}
+                  {isAdmin && m.role==="member" && (m.departments||[]).length===0 && <div style={{fontSize:12,color:WARN_TEXT,marginTop:4}}>Ohne Abteilung sieht diese Person nur Aufgaben, die ihr direkt zugewiesen sind.</div>}
                   {isAdmin && m.role==="manager" && <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{(m.departments||[]).length ? tf("Leitet nur die markierten Abteilungen.") : tf("Ohne Abteilung: leitet alle Abteilungen (z. B. Direktion).")}</div>}
                 </td>
                 <td style={{padding:12,color:INK_MUTED}}>
                   {isAdmin && !isMe
-                    ? <select className="input" style={{width:200,padding:"5px 8px",fontSize:13}} value={m.role} onChange={e=>changeRole(m, e.target.value)}>
+                    ? <select className="input" aria-label={tf("Rolle")} style={{width:200,padding:"5px 8px",fontSize:13}} value={m.role} onChange={e=>changeRole(m, e.target.value)}>
                         {Object.entries(ROLE_LABELS).map(([k,l])=><option key={k} value={k}>{l}</option>)}
                       </select>
                     : (ROLE_LABELS[m.role] || m.role)}
@@ -226,7 +226,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 
       {isAdmin && (
         <Card style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:6}}>Standardsprache der Organisation</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>Standardsprache der Organisation</h2>
           <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>Gilt für E-Mails, die Pre-Opening-Vorlage, den KI-Lagebericht und für alle Mitglieder ohne eigene Sprachauswahl.</div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}} data-no-i18n="">
             {LANGS.map(([k,l])=>(
@@ -239,7 +239,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
 
       {invites.filter(i=>i.status==="ausstehend").length > 0 && (
         <Card style={{padding:0}}>
-          <div style={{fontWeight:700,padding:"14px 16px 6px"}}>Ausstehende Einladungen</div>
+          <h2 className="ui-h" style={{fontWeight:700,padding:"14px 16px 6px"}}>Ausstehende Einladungen</h2>
           <table className="resp-table" style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
             {invites.filter(i=>i.status==="ausstehend").map(i=>(
               <tr key={i.id} style={{borderTop:`1px solid ${BORDER}`}}>
@@ -262,7 +262,7 @@ function TeamView({orgId, api, inviteLinkBase, orgName, onRenamed, me, orgLangua
       )}
 
       <Card style={{marginTop:18,borderColor:BAD_SOFT}}>
-        <div style={{fontWeight:700,marginBottom:6,color:BAD}}>Gefahrenzone</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6,color:BAD}}>Gefahrenzone</h2>
         {!isAdmin && (
           <div>
             <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>Wenn du die Organisation verlässt, verlierst du den Zugriff auf alle ihre Hotels.</div>
@@ -317,14 +317,17 @@ function navForAll(role, hasBilling, myDepts){
   const housekeeping = (myDepts||[]).includes("Housekeeping");
   const memberExtra = [N("myself","Meine Unterlagen","Betrieb"), N("network","Aushilfs-Börse","Betrieb"), N("apprentices","Berichtsheft","Betrieb"), ...(reception || fnb ? [N("cash","Kassenbuch","Betrieb"), N("queue","Warteliste Gäste","Betrieb")] : []), ...(housekeeping ? [N("laundry","Wäscherei","Betrieb")] : []), ...(housekeeping || reception ? [N("minibar","Minibar","Betrieb")] : []), N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), ...(technik ? [N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb")] : []), ...(reception ? [N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb")] : []), ...(technik ? [N("energy","Energie","Betrieb")] : []), N("events","Veranstaltungen","Betrieb")];
   if(role==="member") return [N("dashboard","Start"), N("mine","Meine Aufgaben"), N("tasks","Aufgaben","Projekt"), N("timeline","Zeitstrahl","Projekt"),
-    ...ops, ...memberExtra, N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"), N("account","Konto","Allgemein")];
+    ...ops, ...memberExtra, N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"), N("wishes","Wünsche & Ideen","Allgemein"), N("account","Konto","Allgemein")];
   return [
     N("dashboard","Dashboard"), N("group","Hotelgruppe"), N("mine","Meine Aufgaben"), N("kpis","Kennzahlen"), N("memory","Hotel-Gedächtnis"),
     N("tasks","Aufgaben","Projekt"), N("milestones","Meilensteine","Projekt"), N("timeline","Zeitstrahl","Projekt"),
     N("risks","Risiken","Projekt"), N("simulator","Probebetrieb","Projekt"), N("equipment","Erstausstattung","Projekt"), N("quotes","Angebotsvergleich","Projekt"), N("waitlist","Eröffnungs-Warteliste","Projekt"), N("budget","Budget","Projekt"), N("staff","Personal","Projekt"), N("procurement","Bestellungen","Projekt"),
     ...ops, N("academy","Akademie","Betrieb"), N("instructions","Arbeitsanweisungen","Betrieb"), N("assets","Gerätebuch","Betrieb"), N("patrols","Kontrollgänge","Betrieb"), N("tourismtax","Ortstaxe","Betrieb"), N("sick","Krankmeldungen","Betrieb"), N("cash","Kassenbuch","Betrieb"), N("keys","Schlüssel & Karten","Betrieb"), N("uniforms","Dienstkleidung","Betrieb"), N("pulse","Mitarbeiter-Umfrage","Betrieb"), N("staffdocs","Mitarbeiter-Dokumente","Betrieb"), N("housing","Personalunterkünfte","Betrieb"), N("recruiting","Stellen & Bewerbungen","Betrieb"), N("probation","Probezeit","Betrieb"), N("firstaid","Ersthelfer & Sicherheit","Betrieb"), N("payables","Eingangsrechnungen","Betrieb"), N("pos","Kassenumsätze","Betrieb"), N("queue","Warteliste Gäste","Betrieb"), N("cityevents","Ereignisse in der Stadt","Betrieb"), N("accessibility","Barrierefreiheit","Betrieb"), N("network","Aushilfs-Börse","Betrieb"), N("apprentices","Lehrlinge","Betrieb"), N("sustainability","Nachhaltigkeit","Betrieb"), N("season","Saison-Übergabe","Allgemein"), N("laundry","Wäscherei","Betrieb"), N("minibar","Minibar","Betrieb"), N("breakfast","Frühstücksplanung","Betrieb"), N("frontdesk","Rezeption heute","Betrieb"), N("arrivals","Anreisen","Betrieb"), N("guestchat","Gäste-Chat","Betrieb"), N("events","Veranstaltungen","Betrieb"), N("invoices","Rechnungen","Betrieb"), N("letters","Briefe & Vorlagen","Betrieb"), N("feedback","Gäste-Feedback","Betrieb"), N("reviews","Bewertungen","Betrieb"), N("energy","Energie","Betrieb"),
     N("emergency","Notfall","Allgemein"), N("permits","Genehmigungen","Allgemein"), N("docs","Dokumente","Allgemein"), N("team","Team","Allgemein"), N("help","Hilfe","Allgemein"),
+    N("wishes","Wünsche & Ideen","Allgemein"),
+    ...(role==="admin" ? [N("integrations","Schnittstellen","Allgemein")] : []),
     ...(role==="admin" && hasBilling ? [N("billing","Abo","Allgemein")] : []),
+    ...(PLATFORM_ADMIN ? [N("platform","Plattform","Allgemein")] : []),
     N("account","Konto","Allgemein"),
   ];
 }

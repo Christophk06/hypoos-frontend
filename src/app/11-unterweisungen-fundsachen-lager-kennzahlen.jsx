@@ -48,7 +48,7 @@ function TrainingsView({orgId, api, me, members, role, myDepts, hotel}){
             <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",cursor:"pointer"}} onClick={()=>setOpen(open===t.id?null:t.id)}>
               <div style={{flex:1,minWidth:200}}><div style={{fontWeight:700}} data-no-i18n="">{t.title}</div>
                 <div style={{fontSize:12,color:INK_MUTED}}>{t.departments.length ? t.departments.map((d,i)=><span key={d}>{i?", ":""}<span>{d}</span></span>) : tf("Alle")}{t.valid_months ? " · "+tf("alle {0} Monate", t.valid_months) : ""}</div></div>
-              {applies && <Pill color={st.state==="ok"?GOOD:WARN} bg={st.state==="ok"?GOOD_SOFT:WARN_SOFT}>{st.state==="ok" ? tf("bestätigt") : st.state==="abgelaufen" ? tf("erneuern") : tf("offen")}</Pill>}
+              {applies && <Pill color={st.state==="ok"?GOOD_TEXT:WARN_TEXT} bg={st.state==="ok"?GOOD_SOFT:WARN_SOFT}>{st.state==="ok" ? tf("bestätigt") : st.state==="abgelaufen" ? tf("erneuern") : tf("offen")}</Pill>}
               {lead && <span style={{fontSize:12.5,fontWeight:600,color:okCount===target.length?GOOD:INK_MUTED}} data-no-i18n="">{okCount}/{target.length}</span>}
             </div>
             {open===t.id && (
@@ -79,7 +79,7 @@ function TrainingsView({orgId, api, me, members, role, myDepts, hotel}){
 }
 
 // ------------------------------------------------------------ Fundsachen
-const LF_STYLE = {"Aufbewahrt":{color:WARN,bg:WARN_SOFT}, "Zurückgegeben":{color:GOOD,bg:GOOD_SOFT}, "Entsorgt":{color:INK_MUTED,bg:PAPER}};
+const LF_STYLE = {"Aufbewahrt":{color:WARN_TEXT,bg:WARN_SOFT}, "Zurückgegeben":{color:GOOD_TEXT,bg:GOOD_SOFT}, "Entsorgt":{color:INK_MUTED,bg:PAPER}};
 function LostFoundView({hotel, api, me, members, role}){
   const [list,setList] = useState(null);
   const [filter,setFilter] = useState("open");
@@ -129,7 +129,7 @@ function LostFoundView({hotel, api, me, members, role}){
             <span style={{fontSize:12,color:INK_MUTED}} data-no-i18n="">{[x.location, fmtDate(x.found_on), memberLabel(members, me, x.found_by)].filter(Boolean).join(" · ")}</span>
             <span style={{flex:1}}></span>
             {x.status==="Aufbewahrt" && x.keep_until && x.keep_until<todayIso() ? <span style={{fontSize:12,color:BAD}}>{tf("Frist abgelaufen ({0})", fmtDate(x.keep_until))}</span>
-              : x.status==="Aufbewahrt" && days(x.found_on)>=90 && <span style={{fontSize:12,color:WARN}}>{tf("seit {0} Tagen", days(x.found_on))}</span>}
+              : x.status==="Aufbewahrt" && days(x.found_on)>=90 && <span style={{fontSize:12,color:WARN_TEXT}}>{tf("seit {0} Tagen", days(x.found_on))}</span>}
           </div>
           {(x.guest_name || x.guest_contact) && <div style={{fontSize:12.5,color:INK_SOFT,marginTop:2}}>{tf("Gast")}: <span data-no-i18n="">{[x.guest_name, x.guest_contact].filter(Boolean).join(" · ")}</span>{x.notified_at ? " · ✉ "+tf("benachrichtigt am {0}", fmtDate(x.notified_at)) : ""}</div>}
           {x.storage && <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>{tf("Aufbewahrt in")}: <span data-no-i18n="">{x.storage}</span></div>}
@@ -242,7 +242,7 @@ function KpiView({hotel, api}){
         {lead && <button style={smallBtn} onClick={()=>setRev(!rev)}>{rev ? tf("Fertig") : "✎ "+tf("Belegung und Umsatz eintragen")}</button>}
       </div>
       {rev && <RevenueEditor hotel={hotel} api={api} from={from} to={to} onSaved={()=>setTick(t=>t+1)} />}
-      {msg && <div style={{color:BAD,fontSize:13}}>{msg.text}</div>}
+      {msg && <ErrorText>{msg.text}</ErrorText>}
       {!k ? <div style={{color:INK_MUTED}}>…</div> : (
         <React.Fragment>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))",gap:12,marginBottom:14}}>
@@ -260,7 +260,7 @@ function KpiView({hotel, api}){
           </div>
           {k.departments.length>0 && (
             <Card>
-              <div style={{fontWeight:700,marginBottom:6}}>{tf("Stunden je Abteilung")}</div>
+              <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Stunden je Abteilung")}</h2>
               {k.departments.map(d=>(
                 <div key={d.department} style={{display:"flex",gap:10,alignItems:"center",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
                   <span style={{flex:1}}>{d.department}</span>

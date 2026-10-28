@@ -102,7 +102,7 @@ function GuestOrdersCard({hotel, api}){
             <b>{tf("Zimmer")} <span data-no-i18n="">{o.room||"–"}</span></b>
             <span data-no-i18n="" style={{flex:1}}>{o.title}</span>
             <b>{o.price!=null ? money(o.price) : ""}</b>
-            <Pill color={o.status==="bestätigt"?GOOD:WARN} bg={o.status==="bestätigt"?GOOD_SOFT:WARN_SOFT}>{o.status==="bestätigt" ? tf("bestätigt") : tf("offen")}</Pill>
+            <Pill color={o.status==="bestätigt"?GOOD_TEXT:WARN_TEXT} bg={o.status==="bestätigt"?GOOD_SOFT:WARN_SOFT}>{o.status==="bestätigt" ? tf("bestätigt") : tf("offen")}</Pill>
             {o.simulation && <Pill color={INK_MUTED} bg={PAPER}>{tf("Probe")}</Pill>}
           </div>
           <div style={{fontSize:12.5,color:INK_MUTED,marginTop:2}}>
@@ -418,7 +418,7 @@ function NetworkView({hotel, api, me, myDepts}){
   const run = async (fn, ok) => { setMsg(null); try { await fn(); if(ok) setMsg({ok:true,text:ok}); } catch(e){ setMsg({ok:false,text:e.message}); } };
   const isOwn = (j) => j.own!==undefined ? !!j.own : (j.hotel_id===hotel.id || (!!hotel.organization_id && j.organization_id===hotel.organization_id));
   const loadApps = (j) => api("/api/network-jobs/"+j.id+"/applications").then(l=>setApps(a=>({...a,[j.id]:l}))).catch(e=>setMsg({ok:false,text:e.message}));
-  const stColor = (s) => s==="angenommen" ? [GOOD,GOOD_SOFT] : s==="abgelehnt" ? [BAD,BAD_SOFT] : [WARN,WARN_SOFT];
+  const stColor = (s) => s==="angenommen" ? [GOOD_TEXT,GOOD_SOFT] : s==="abgelehnt" ? [BAD,BAD_SOFT] : [WARN_TEXT,WARN_SOFT];
   const leadDepts = DEPARTMENTS.filter(d=>canManageDept(d));
   return (
     <div>
@@ -476,7 +476,7 @@ function NetworkView({hotel, api, me, myDepts}){
             <span style={{fontSize:13}}>{tf(j.department)}</span>
             <span style={{flex:1}} />
             {j.status!=="offen" && <Pill color={INK_MUTED} bg={PAPER}>{tf(j.status)}</Pill>}
-            {own && <Pill color={BRASS} bg={BRASS_SOFT}>{tf("Eigener Einsatz")}</Pill>}
+            {own && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>{tf("Eigener Einsatz")}</Pill>}
           </div>
           <div style={{fontSize:13.5,marginTop:4}}>{fmtDay(j.job_date,{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"})}{j.start_time ? " · "+j.start_time.slice(0,5)+(j.end_time?"–"+j.end_time.slice(0,5):"") : ""}{j.city ? <span data-no-i18n=""> · {j.city}</span> : null}</div>
           {j.pay_note && <div style={{fontSize:13}} data-no-i18n="">{tf("Bezahlung")}: {j.pay_note}</div>}
@@ -617,7 +617,7 @@ function GoogleReviewsSync({hotel, api, onHotel, onDone}){
     <Card style={{marginBottom:14}}>
       <b>{tf("Bewertungen von Google abholen")}</b>
       <div style={{fontSize:12.5,color:INK_MUTED,margin:"4px 0 10px"}}>
-        {tf("Dafür braucht Ouverture die Place-ID deines Hotels. Du findest sie mit dem „Place ID Finder“ von Google:")} <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" style={{color:BRASS}}>developers.google.com/maps/documentation/places/web-service/place-id</a>
+        {tf("Dafür braucht Ouverture die Place-ID deines Hotels. Du findest sie mit dem „Place ID Finder“ von Google:")} <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" style={{color:BRASS_TEXT}}>developers.google.com/maps/documentation/places/web-service/place-id</a>
       </div>
       {gtMsg(msg)}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>

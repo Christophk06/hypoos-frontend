@@ -36,9 +36,9 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
 
   const Kpi = ({label, value, sub, color}) => (
     <div style={{flex:1,border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 10px"}}>
-      <div style={{fontSize:10.5,color:INK_MUTED,fontWeight:600}}>{label}</div>
+      <div style={{fontSize:11.5,color:INK_MUTED,fontWeight:600}}>{label}</div>
       <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,color:color||INK}}>{value}</div>
-      {sub && <div style={{fontSize:10.5,color:INK_MUTED}}>{sub}</div>}
+      {sub && <div style={{fontSize:11.5,color:INK_MUTED}}>{sub}</div>}
     </div>
   );
   const None = ({children}) => <div style={{color:INK_MUTED}}>{children}</div>;
@@ -69,9 +69,9 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
 
         <div className="avoid-break" style={{display:"flex",gap:16,marginTop:16,alignItems:"stretch"}}>
           <div style={{border:`1px solid ${BORDER}`,borderRadius:8,padding:"10px 16px",textAlign:"center",minWidth:120}}>
-            <div style={{fontSize:10.5,color:INK_MUTED,fontWeight:600}}>IM ZEITPLAN</div>
+            <div style={{fontSize:11.5,color:INK_MUTED,fontWeight:600}}>IM ZEITPLAN</div>
             <div style={{fontFamily:"Fraunces, serif",fontSize:40,fontWeight:600,color:scoreColor(r.overall),lineHeight:1.1}}>{r.overall}%</div>
-            {r.progressPct!=null && <div style={{fontSize:10.5,color:INK_MUTED,marginTop:2}}>{tf("{0} % aller Aufgaben erledigt", r.progressPct)}</div>}
+            {r.progressPct!=null && <div style={{fontSize:11.5,color:INK_MUTED,marginTop:2}}>{tf("{0} % aller Aufgaben erledigt", r.progressPct)}</div>}
           </div>
           <div style={{flex:1}}>
             {Object.entries(r.deptScores||{}).sort((a,b)=>a[1]-b[1]).map(([d,s])=>(
@@ -97,7 +97,7 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
             <h2 style={{display:"flex",alignItems:"center",gap:8}}>
               Einschätzung
               <span style={{fontFamily:"Inter, sans-serif",fontSize:11,fontWeight:700,color:(AMPEL[aiReport.content.ampel]||AMPEL["gelb"]).color}}>● {(AMPEL[aiReport.content.ampel]||AMPEL["gelb"]).label}</span>
-              <span style={{fontFamily:"Inter, sans-serif",fontSize:10.5,fontWeight:400,color:INK_MUTED,marginLeft:"auto"}}>{tf("KI-Lagebericht vom {0}", fmtDateTime(aiReport.created_at))}</span>
+              <span style={{fontFamily:"Inter, sans-serif",fontSize:11.5,fontWeight:400,color:INK_MUTED,marginLeft:"auto"}}>{tf("KI-Lagebericht vom {0}", fmtDateTime(aiReport.created_at))}</span>
             </h2>
             <AiReportBody content={aiReport.content} full />
           </React.Fragment>
@@ -128,7 +128,7 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
         {topRisks.length===0 ? <None>Keine Risiken erfasst.</None> : (
           <table><thead><tr><th>Risiko</th><th>Abteilung</th><th>Score</th><th>Gegenmaßnahme</th></tr></thead><tbody>
             {topRisks.map(x=>(
-              <tr key={x.id} className="avoid-break"><td>{x.title}</td><td>{x.department}</td><td style={{fontWeight:700,color:x.probability*x.impact>=16?BAD:x.probability*x.impact>=9?WARN:INK}}>{x.probability*x.impact}</td><td>{x.mitigation || <span style={{color:BAD}}>keine festgelegt</span>}</td></tr>
+              <tr key={x.id} className="avoid-break"><td>{x.title}</td><td>{x.department}</td><td style={{fontWeight:700,color:x.probability*x.impact>=16?BAD:x.probability*x.impact>=9?WARN_TEXT:INK}}>{x.probability*x.impact}</td><td>{x.mitigation || <span style={{color:BAD}}>keine festgelegt</span>}</td></tr>
             ))}
           </tbody></table>
         )}
@@ -161,7 +161,7 @@ function ReportView({hotel, orgName, me, readiness, tasks, milestones, risks, bu
           </div>
         </div>
 
-        <div style={{marginTop:18,paddingTop:6,borderTop:`1px solid ${BORDER}`,fontSize:10,color:INK_MUTED,display:"flex",justifyContent:"space-between"}}>
+        <div style={{marginTop:18,paddingTop:6,borderTop:`1px solid ${BORDER}`,fontSize:11.5,color:INK_MUTED,display:"flex",justifyContent:"space-between"}}>
           <span>Erstellt mit Ouverture</span><span>{new Date().toLocaleString(UI_LOCALE)}</span>
         </div>
       </div>
@@ -358,8 +358,8 @@ function TimelineView({hotel, tasks, milestones}){
 
       <div className="no-print" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12,fontSize:12.5,color:INK_MUTED}}>
         {seg("all", tf("Gesamt"))}{seg("3m", tf("3 Monate"))}{seg("6w", tf("6 Wochen"))}
-        <span style={{marginInlineStart:10}}><span style={{color:GOOD}}>●</span> erledigt</span><span><span style={{color:BRASS}}>●</span> {tf("noch offen")}</span>
-        <span><span style={{color:WARN}}>●</span> blockiert</span><span><span style={{color:BAD}}>●</span> überfällig</span><span>◆ Meilenstein</span>
+        <span style={{marginInlineStart:10}}><span style={{color:GOOD}}>●</span> erledigt</span><span><span style={{color:BRASS_TEXT}}>●</span> {tf("noch offen")}</span>
+        <span><span style={{color:WARN_TEXT}}>●</span> blockiert</span><span><span style={{color:BAD}}>●</span> überfällig</span><span>◆ Meilenstein</span>
         <label style={{marginInlineStart:"auto",display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={showLabels} onChange={e=>setLabelsPref(e.target.checked)} /> {tf("Titel anzeigen")}</label>
         <label style={{display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> nur offene Aufgaben</label>
       </div>
@@ -392,7 +392,7 @@ function TimelineView({hotel, tasks, milestones}){
               <Row key={d} label={translateString(d)} height={Math.max(44, 16 + lay.lanes*LANE_H)} sub={
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <div style={{flex:1,height:4,background:PAPER,borderRadius:3,overflow:"hidden"}}><div style={{width:pct+"%",height:"100%",background:pct>=80?GOOD:BRASS}} /></div>
-                  <span style={{fontSize:10.5,color:lateN?BAD:INK_MUTED,whiteSpace:"nowrap"}} data-no-i18n="">{done}/{all.length}{lateN ? " · "+tf("{0} überfällig", lateN) : ""}</span>
+                  <span style={{fontSize:11.5,color:lateN?BAD:INK_MUTED,whiteSpace:"nowrap"}} data-no-i18n="">{done}/{all.length}{lateN ? " · "+tf("{0} überfällig", lateN) : ""}</span>
                 </div>}>
                 {lay.placed.map(({t,lane})=><Dot key={t.id} t={t} lane={lane} />)}
               </Row>
@@ -424,7 +424,7 @@ function TimelineView({hotel, tasks, milestones}){
       )}
 
       <Card>
-        <div style={{fontWeight:700,marginBottom:6}}>{tf("Was steht an")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Was steht an")}</h2>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Überfälliges und alles, was in den nächsten 3 Wochen fällig ist.")}</div>
         {agendaGroups.length===0 && <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("In den nächsten 3 Wochen ist nichts fällig.")}</div>}
         {agendaGroups.map(g=>(
@@ -451,11 +451,11 @@ function TimelineView({hotel, tasks, milestones}){
 
 /* ------------------------------ KI-Lagebericht ------------------------------ */
 const AMPEL = {
-  "grün": {color:GOOD, bg:GOOD_SOFT, label:"Im Plan"},
-  "gelb": {color:WARN, bg:WARN_SOFT, label:"Verzug – aufholbar"},
+  "grün": {color:GOOD_TEXT, bg:GOOD_SOFT, label:"Im Plan"},
+  "gelb": {color:WARN_TEXT, bg:WARN_SOFT, label:"Verzug – aufholbar"},
   "rot":  {color:BAD,  bg:BAD_SOFT,  label:"Eröffnung gefährdet"},
 };
-const URGENCY_COLOR = {"sofort":BAD, "diese Woche":WARN, "diesen Monat":INK_MUTED};
+const URGENCY_COLOR = {"sofort":BAD, "diese Woche":WARN_TEXT, "diesen Monat":INK_MUTED};
 
 // Inhalt eines Lageberichts – im Dashboard und im druckbaren Statusbericht.
 function AiReportBody({content, full}){
@@ -523,7 +523,7 @@ function AiReportCard({hotel, api, ai, onChange, readOnly}){
         Die KI wertet Aufgaben, Meilensteine, Risiken, Budget und Personal aus und schreibt eine Einschätzung für Geschäftsführung und Eigentümer – mit Ampel, Handlungsbedarf und nächsten Schritten.
       </div>}
       {busy && <div style={{fontSize:13,color:INK_MUTED}}>Die KI analysiert den Projektstand. Das dauert meist 20–60 Sekunden …</div>}
-      {error && <div style={{color:BAD,fontSize:13}}>{error}</div>}
+      {error && <ErrorText>{error}</ErrorText>}
       {report && !busy && (
         <div style={{fontSize:13.5}}>
           <AiReportBody content={report.content} full={full} />

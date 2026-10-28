@@ -30,7 +30,7 @@ function AutomationsCard({hotel, api, onHotel}){
           <input type="checkbox" checked readOnly disabled style={{marginTop:3}} />
           <span><b style={{fontSize:13.5}}>{tf("Unter Mindestbestand → Nachbestellung")}</b><div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Immer aktiv: Fällt ein Lagerartikel unter den Mindestbestand, wird der Einkauf benachrichtigt.")}</div></span>
         </div>
-        {msg && <div style={{color:BAD,fontSize:13}}>{msg}</div>}
+        {msg && <ErrorText>{msg}</ErrorText>}
       </div>}
     </Card>
   );
@@ -65,7 +65,7 @@ function InspectionDialog({room, hotel, api, onHotel, onClose, onDone}){
           <div key={i} style={{padding:"8px 0",borderTop:`1px solid ${BORDER}`}}>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <span style={{flex:1,fontSize:13.5}}>{tf(x.label)}</span>
-              <button aria-pressed={x.ok} onClick={()=>set(i,"ok",true)} style={{...smallBtn,background:x.ok?GOOD_SOFT:"#fff",borderColor:x.ok?GOOD:BORDER,color:x.ok?GOOD:INK}}>✓</button>
+              <button aria-pressed={x.ok} onClick={()=>set(i,"ok",true)} style={{...smallBtn,background:x.ok?GOOD_SOFT:"#fff",borderColor:x.ok?GOOD:BORDER,color:x.ok?GOOD_TEXT:INK}}>✓</button>
               <button aria-pressed={!x.ok} onClick={()=>set(i,"ok",false)} style={{...smallBtn,background:!x.ok?BAD_SOFT:"#fff",borderColor:!x.ok?BAD:BORDER,color:!x.ok?BAD:INK}}>✕</button>
             </div>
             {!x.ok && <div style={{display:"flex",gap:6,marginTop:6,alignItems:"center",flexWrap:"wrap"}}>
@@ -77,7 +77,7 @@ function InspectionDialog({room, hotel, api, onHotel, onClose, onDone}){
           </div>))}
         <Field label={tf("Bemerkung (optional)")}><input className="input" value={note} maxLength={1000} onChange={e=>setNote(e.target.value)} /></Field>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{items.every(x=>x.ok) ? tf("Bestanden – das Zimmer wird auf „Kontrolliert“ gesetzt.") : tf("Nicht bestanden – das Zimmer geht zurück auf „Schmutzig“, jeder Mangel wird eine Meldung an Housekeeping.")}</div>
-        {msg && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{msg}</div>}
+        {msg && <ErrorText style={{marginBottom:8}}>{msg}</ErrorText>}
         <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={busy} onClick={save}>{busy ? tf("Speichert…") : tf("Abnahme speichern")}</button><button style={btnLine} onClick={onClose}>{tf("Abbrechen")}</button></div>
         {hist && hist.length>0 && <div style={{marginTop:14}}>
           <div className="field-label">{tf("Letzte Abnahmen")}</div>
@@ -98,7 +98,7 @@ function StaffDocsView({orgId, api, members}){
   useEffect(()=>{ load(); },[orgId]);
   const nameOf = (d) => d.user_id ? (((members||[]).find(m=>m.user_id===d.user_id)||{}).email||"").split("@")[0] || tf("Teammitglied") : (d.person_name||"–");
   const today = todayIso(), soon = isoMonthsAhead(today, 1);
-  const state = (d) => !d.valid_until ? null : d.valid_until < today ? [BAD,BAD_SOFT,tf("abgelaufen")] : d.valid_until <= soon ? [WARN,WARN_SOFT,tf("läuft bald ab")] : null;
+  const state = (d) => !d.valid_until ? null : d.valid_until < today ? [BAD,BAD_SOFT,tf("abgelaufen")] : d.valid_until <= soon ? [WARN_TEXT,WARN_SOFT,tf("läuft bald ab")] : null;
   const save = async () => { setMsg(null);
     try { const body = {...form, user_id: form.user_id || null}; if(form.id) await api("/api/staff-documents/"+form.id,"PATCH",body); else await api("/api/organizations/"+orgId+"/staff-documents","POST",body); setForm(null); load(); }
     catch(e){ setMsg({ok:false,text:e.message}); } };

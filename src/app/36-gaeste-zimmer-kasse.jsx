@@ -66,7 +66,7 @@ function GsRegistrationPanel({guest, hotel, api}){
   };
   return (
     <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:6}}>
-      <Pill color={done?GOOD:WARN} bg={done?GOOD_SOFT:WARN_SOFT}>{done ? "✓ "+tf("Meldeschein ausgefüllt") : tf("Meldeschein offen")}</Pill>
+      <Pill color={done?GOOD_TEXT:WARN_TEXT} bg={done?GOOD_SOFT:WARN_SOFT}>{done ? "✓ "+tf("Meldeschein ausgefüllt") : tf("Meldeschein offen")}</Pill>
       <button style={gsBtn} disabled={busy} onClick={pdf}><Icon n="printer" /> {busy ? "…" : done ? tf("Gästeblatt (PDF)") : tf("Leeres Gästeblatt (PDF)")}</button>
       {gsMsg(msg)}
     </div>
@@ -123,7 +123,7 @@ function GuestProfileOrigin({profile, hotels, hotelId}){
 }
 
 // ------------------------------------------------------------ 2. Gäste-Warteliste Restaurant/Spa
-const GS_Q_STATUS = {wartet:["wartet",WARN,WARN_SOFT], aufgerufen:["aufgerufen",BRASS,BRASS_SOFT], platziert:["platziert",GOOD,GOOD_SOFT], abgesagt:["abgesagt",INK_MUTED,"#EEF0F2"]};
+const GS_Q_STATUS = {wartet:["wartet",WARN_TEXT,WARN_SOFT], aufgerufen:["aufgerufen",BRASS_TEXT,BRASS_SOFT], platziert:["platziert",GOOD_TEXT,GOOD_SOFT], abgesagt:["abgesagt",INK_MUTED,"#EEF0F2"]};
 const gsQueueUrl = (token, area) => { const u = new URL("warten.html", location.href); u.search = ""; u.searchParams.set("h", token); if(area) u.searchParams.set("a", area); return u.toString(); };
 function GsQueueView({hotel, api, role, onHotel}){
   const qs = hotel.queue_settings || {};
@@ -254,7 +254,7 @@ function GsLostFoundShippingSettings({hotel, api, onHotel}){
     </GsFold>
   );
 }
-const GS_SHIP = {angefragt:["Angefragt",WARN,WARN_SOFT], bezahlt:["Bezahlt",BRASS,BRASS_SOFT], versendet:["Versendet",GOOD,GOOD_SOFT]};
+const GS_SHIP = {angefragt:["Angefragt",WARN_TEXT,WARN_SOFT], bezahlt:["Bezahlt",BRASS_TEXT,BRASS_SOFT], versendet:["Versendet",GOOD_TEXT,GOOD_SOFT]};
 function LostFoundShippingPanel({item, api, hotel, onChange}){
   const [x,setX] = useState(null); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
   const [form,setForm] = useState({email:/@/.test(item.guest_contact||"") ? item.guest_contact : "", language:"de", show_photo:false});
@@ -328,7 +328,7 @@ function GsFloorPlanCard({hotel, api, role, onHotel}){
       </div>
       {gsMsg(msg)}
       {plan && <>
-        {!plan.status_live && <div style={{fontSize:12.5,color:WARN,marginBottom:8}}>{tf("Für spätere Tage ist der Zimmerstatus noch nicht bekannt – alle Zimmer außer „Außer Betrieb“ gelten als frei.")}</div>}
+        {!plan.status_live && <div style={{fontSize:12.5,color:WARN_TEXT,marginBottom:8}}>{tf("Für spätere Tage ist der Zimmerstatus noch nicht bekannt – alle Zimmer außer „Außer Betrieb“ gelten als frei.")}</div>}
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
           {plan.floors.map(f=>{ const empty = plan.empty_floors.includes(f.floor); return <span key={f.floor} style={{border:`1px solid ${empty?GOOD:BORDER}`,background:empty?GOOD_SOFT:"#fff",borderRadius:8,padding:"6px 10px",fontSize:12.5}}><b>{tf("Etage {0}", f.floor)}</b> · {f.used}/{f.rooms}{empty ? " · "+tf("leer") : ""}</span>; })}
         </div>
@@ -342,11 +342,11 @@ function GsFloorPlanCard({hotel, api, role, onHotel}){
         {plan.assignments.length===0 && plan.unassigned.length===0 && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Keine Anreisen an diesem Tag.")}</div>}
         {plan.assignments.map(a=>(
           <div key={a.arrival_id} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
-            <span style={{flex:1,minWidth:150}}><span data-no-i18n="">{a.guest_name}</span>{a.vip && <> <Pill color={BRASS} bg={BRASS_SOFT}>VIP</Pill></>}{a.room_type ? <span style={{color:INK_MUTED,fontSize:12}} data-no-i18n=""> · {a.room_type}</span> : null}</span>
+            <span style={{flex:1,minWidth:150}}><span data-no-i18n="">{a.guest_name}</span>{a.vip && <> <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>VIP</Pill></>}{a.room_type ? <span style={{color:INK_MUTED,fontSize:12}} data-no-i18n=""> · {a.room_type}</span> : null}</span>
             <input className="input" style={{width:90}} aria-label={tf("Zimmer für {0}", a.guest_name)} value={edit[a.arrival_id]!==undefined ? edit[a.arrival_id] : a.assigned_room} onChange={e=>setEdit({...edit,[a.arrival_id]:e.target.value})} />
             <span style={{fontSize:12,color:INK_MUTED,minWidth:70}}>{tf("Etage {0}", a.floor)}</span>
             {a.kept && <Pill color={INK_MUTED} bg={PAPER}>{tf("schon zugewiesen")}</Pill>}
-            {a.needs_cleaning && <Pill color={WARN} bg={WARN_SOFT}>{tf("noch reinigen")}</Pill>}
+            {a.needs_cleaning && <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("noch reinigen")}</Pill>}
           </div>))}
         {plan.unassigned.length>0 && <div style={{fontSize:13,color:BAD,marginTop:8}}>{tf("Kein passendes freies Zimmer")}: <span data-no-i18n="">{plan.unassigned.map(u=>u.guest_name+(u.room_type?" ("+u.room_type+")":"")).join(", ")}</span></div>}
         {plan.assignments.length>0 && canManageDept("Rezeption & Empfang") && <button className="btn-primary" style={{...gsMain,marginTop:10}} disabled={busy} onClick={apply}>{busy ? "…" : tf("Vorschlag übernehmen")}</button>}
@@ -372,7 +372,7 @@ function CleaningOrderCard({hotel, api}){
   useEffect(()=>{ load(); },[load]);
   if(list===false) return gsMsg(msg);
   const shown = (list||[]).slice(0, all ? 500 : 12);
-  const PRIO = [[BAD,BAD_SOFT],[WARN,WARN_SOFT],[INK_MUTED,PAPER],[INK_MUTED,"#EEF0F2"]];
+  const PRIO = [[BAD,BAD_SOFT],[WARN_TEXT,WARN_SOFT],[INK_MUTED,PAPER],[INK_MUTED,"#EEF0F2"]];
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -437,7 +437,7 @@ function RoomHistoryView({room, api, hotel, onClose}){
               <span style={{flex:1}}>
                 <span style={{color:INK_MUTED}}>{tf(GS_HIST[x.kind][1])}: </span>
                 {x.kind==="status" ? tf(x.title) : x.kind==="abnahme" ? <>{x.passed ? <span style={{color:GOOD}}>✓ {tf("bestanden")}</span> : <span style={{color:BAD}}>✗ {tf("nicht bestanden")}</span>}{x.title ? <span data-no-i18n=""> · {x.title}</span> : null}</> : <span data-no-i18n="">{x.title}</span>}
-                {x.kind==="minibar" && <span> · {money(x.amount)} {x.billed ? "" : <Pill color={WARN} bg={WARN_SOFT}>{tf("nicht abgerechnet")}</Pill>}</span>}
+                {x.kind==="minibar" && <span> · {money(x.amount)} {x.billed ? "" : <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("nicht abgerechnet")}</Pill>}</span>}
                 {(x.kind==="meldung"||x.kind==="fundsache") && x.status && <span style={{color:INK_MUTED}}> · {tf(x.status)}</span>}
                 {x.priority==="Dringend" && <> <Pill color={BAD} bg={BAD_SOFT}>{tf("Dringend")}</Pill></>}
               </span>
@@ -555,7 +555,7 @@ function GsPosView({hotel, api, role, onHotel}){
         <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>{tf("Die Kasse schickt nach dem Tagesabschluss die Tagesumsätze an Ouverture. Der Schlüssel wird nur einmal angezeigt; gespeichert ist nur eine Prüfsumme.")}</div>
         <button className="btn-primary" style={gsMain} onClick={newToken}>{ps.token_hash ? tf("Neuen Schlüssel erzeugen") : tf("Schlüssel erzeugen")}</button>
         {token && <div style={{marginTop:10}}>
-          <div style={{fontSize:13,color:WARN,marginBottom:6}}>{tf("Jetzt kopieren – der Schlüssel wird nicht noch einmal angezeigt.")}</div>
+          <div style={{fontSize:13,color:WARN_TEXT,marginBottom:6}}>{tf("Jetzt kopieren – der Schlüssel wird nicht noch einmal angezeigt.")}</div>
           <textarea className="input" readOnly rows={12} aria-label={tf("Anleitung für die Kassen-Firma")} value={gsPosGuide(token.endpoint)} style={{fontFamily:"monospace",fontSize:12}} data-no-i18n="" />
           <button style={gsBtn} onClick={()=>gsCopy(gsPosGuide(token.endpoint), setMsg)}>{tf("Anleitung kopieren")}</button>
         </div>}

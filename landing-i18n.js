@@ -1,5 +1,7 @@
 /* Zusätzliche Texte der Landingpage (ergänzt die Wörterbücher aus i18n.js).
    Muss nach i18n.js und vor dem Seiteninhalt geladen werden. */
+// Partner-Werbelink (?partner=CODE): Code 60 Tage merken; die App ordnet ihn nach Anlage der Organisation zu (Migration 041)
+(function(){ try { var pc = new URLSearchParams(window.location.search).get("partner"); if (pc && /^[A-Za-z0-9]{6,12}$/.test(pc)) window.localStorage.setItem("ouv_partner_v1", JSON.stringify({ code: pc.toUpperCase(), at: Date.now() })); } catch (e) {} })();
 (function(){
   const L = {
     en: {

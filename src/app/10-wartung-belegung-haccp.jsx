@@ -45,7 +45,7 @@ function MaintenancePlans({hotel, api, role, myDepts, members, me}){
               <div style={{fontWeight:600}} data-no-i18n="">{p.title}{p.location ? " · "+p.location : ""}</div>
               <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("alle {0} {1}", p.interval_value, translateString(p.interval_unit))} · <span>{p.department}</span></div>
             </div>
-            <span style={{fontSize:12.5,fontWeight:600,color:p.next_due<=today?BAD:p.next_due<=addDaysIso(today,7)?WARN:INK_MUTED}}>{tf("fällig {0}", fmtDate(p.next_due))}</span>
+            <span style={{fontSize:12.5,fontWeight:600,color:p.next_due<=today?BAD:p.next_due<=addDaysIso(today,7)?WARN_TEXT:INK_MUTED}}>{tf("fällig {0}", fmtDate(p.next_due))}</span>
             {canManageDept(p.department) && <button style={smallBtn} onClick={()=>run(()=>api("/api/maintenance-plans/"+p.id+"/run","POST",{}), tf("Meldung angelegt."))}>{tf("Jetzt anlegen")}</button>}
             {canManageDept(p.department) && <button style={linkBtn} onClick={()=>run(()=>api("/api/maintenance-plans/"+p.id,"PATCH",{active:!p.active}))}>{p.active ? tf("Pausieren") : tf("Fortsetzen")}</button>}
             <MaintProofButton hotel={hotel} api={api} plan={p} members={members} me={me} />
@@ -98,7 +98,7 @@ function RosterDemand({hotel, api, dept, week, days, shifts, onApplied}){
   return (
     <Card className="no-print" style={{marginBottom:18}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}>{tf("Belegung und Personalbedarf")} · <span>{dept}</span></div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}>{tf("Belegung und Personalbedarf")} · <span>{dept}</span></h2>
         <button style={smallBtn} onClick={()=>setEdit(!edit)}>{edit ? tf("Fertig") : tf("Bearbeiten")}</button>
         <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={busy} onClick={()=>suggest(false)}>{busy ? "…" : <React.Fragment><Icon n="sparkle" /> {tf("Plan-Vorschlag")}</React.Fragment>}</button>
       </div>
@@ -172,7 +172,7 @@ function TempView({hotel, api, me, members, role, myDepts}){
   return (
     <Card style={{marginBottom:14}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}><Icon n="thermo" /> {tf("Temperaturen (HACCP)")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="thermo" /> {tf("Temperaturen (HACCP)")}</h2>
         {points.length>0 && <HaccpPdfButton hotel={hotel} api={api} members={members} me={me} />}
         {points.length>0 && <button style={smallBtn} onClick={exportMonth}>{tf("Nachweis als Excel")}</button>}
         {canSetup && !form && <button style={smallBtn} onClick={()=>setForm({name:"", min_c:"0", max_c:"4", department:"Food & Beverage"})}>{tf("+ Messpunkt")}</button>}
@@ -193,7 +193,7 @@ function TempView({hotel, api, me, members, role, myDepts}){
         <div key={p.id} style={{borderTop:`1px solid ${BORDER}`,padding:"9px 0"}}>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <div style={{flex:1,minWidth:150}}><b data-no-i18n="">{p.name}</b> <span style={{fontSize:12,color:INK_MUTED}} dir="ltr" data-no-i18n="">{p.min_c??"…"} – {p.max_c??"…"} °C</span>
-              <div style={{fontSize:12,color:last?(last.out_of_range?BAD:todayDone?GOOD:WARN):WARN}} data-no-i18n="">{last ? (todayDone?"✓ ":"")+Number(last.value_c)+" °C · "+fmtDateTime(last.taken_at)+" · "+memberLabel(members, me, last.taken_by) : tf("Heute noch nicht gemessen")}</div></div>
+              <div style={{fontSize:12,color:last?(last.out_of_range?BAD:todayDone?GOOD:WARN_TEXT):WARN_TEXT}} data-no-i18n="">{last ? (todayDone?"✓ ":"")+Number(last.value_c)+" °C · "+fmtDateTime(last.taken_at)+" · "+memberLabel(members, me, last.taken_by) : tf("Heute noch nicht gemessen")}</div></div>
             {role!=="viewer" && visible.includes(p.department) && <React.Fragment>
               <input className="input" inputMode="decimal" style={{width:80,borderColor:bad?BAD:undefined}} placeholder="°C" value={vals[p.id]||""} onChange={e=>setVals({...vals,[p.id]:e.target.value})} />
               <button className="btn-primary" style={{padding:"7px 12px"}} disabled={!vals[p.id] || (bad && !(acts[p.id]||"").trim())} onClick={()=>save(p)}>{tf("Eintragen")}</button>

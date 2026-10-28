@@ -1,5 +1,5 @@
 // ------------------------------------------------------------ Veranstaltungen und Bankett
-const EVENT_STATUS = {"Anfrage":[INK_MUTED,PAPER], "Option":[WARN,WARN_SOFT], "Fix":[GOOD,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
+const EVENT_STATUS = {"Anfrage":[INK_MUTED,PAPER], "Option":[WARN_TEXT,WARN_SOFT], "Fix":[GOOD_TEXT,GOOD_SOFT], "Storniert":[BAD,BAD_SOFT]};
 // ------------------------------------------------------------ Function Sheet als gestaltetes PDF (Drucken, Herunterladen, Teilen)
 const FS_CSS = `
   .fs{font-family:Inter,Arial,sans-serif;color:#1C2430;font-size:12.5px;line-height:1.45;width:182mm;background:#fff}
@@ -215,12 +215,12 @@ function EventStaffHint({hotel, api, days}){
   if(!events.length) return null;
   return (
     <Card style={{marginBottom:12,padding:"12px 16px",borderColor:BRASS}}>
-      <div style={{fontWeight:700,marginBottom:4}}><Icon n="glass" /> {tf("Veranstaltungen in dieser Woche")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}><Icon n="glass" /> {tf("Veranstaltungen in dieser Woche")}</h2>
       <div style={{fontSize:12,color:INK_MUTED,marginBottom:6}}>{tf("Zusätzlicher Personalbedarf als Richtwert: eine Servicekraft je 15 Gäste, eine Küchenkraft je 30 Gäste.")}</div>
       {events.map(e=>{ const s = eventStaff(e); return (
         <div key={e.id} style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:13,padding:"4px 0",borderTop:`1px solid ${BORDER}`}}>
           <b style={{minWidth:90}}>{fmtDay(e.event_date)}</b><span style={{flex:1}} data-no-i18n="">{e.title}{e.start_time?" · "+e.start_time.slice(0,5):""}{e.guests?" · "+tf("{0} Personen", e.guests):""}</span>
-          {s ? <span style={{color:BRASS,fontWeight:600}}>{tf("+{0} Service · +{1} Küche", s.service, s.kitchen)}</span> : <span style={{color:INK_MUTED}}>{tf("Personenzahl fehlt")}</span>}
+          {s ? <span style={{color:BRASS_TEXT,fontWeight:600}}>{tf("+{0} Service · +{1} Küche", s.service, s.kitchen)}</span> : <span style={{color:INK_MUTED}}>{tf("Personenzahl fehlt")}</span>}
         </div>); })}
     </Card>
   );
@@ -232,7 +232,7 @@ function SpacesManager({hotel, api, spaces, onChanged}){
   const run = async (fn) => { setMsg(null); try { await fn(); onChanged(); } catch(e){ setMsg({ok:false,text:e.message}); } };
   return (
     <Card style={{marginBottom:14}}>
-      <div style={{fontWeight:700,marginBottom:6}}>{tf("Räume für Veranstaltungen")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Räume für Veranstaltungen")}</h2>
       {spaces.map(s=><div key={s.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,padding:"5px 0",borderTop:`1px solid ${BORDER}`}}>
         <b style={{flex:1}} data-no-i18n="">{s.name}</b><span style={{color:INK_MUTED}}>{s.capacity?tf("bis {0} Personen", s.capacity):""}</span>
         <button style={linkBtn} onClick={()=>{ if(window.confirm(tf("Raum löschen? Veranstaltungen bleiben erhalten."))) run(()=>api("/api/event-spaces/"+s.id,"DELETE")); }}>✕</button></div>)}
@@ -241,7 +241,7 @@ function SpacesManager({hotel, api, spaces, onChanged}){
         <Field label={tf("Personen (max.)")}><input className="input" type="number" min="0" style={{width:110}} value={cap} onChange={e=>setCap(e.target.value)} /></Field>
         <button className="btn-primary" style={{marginBottom:14}} disabled={!name.trim()} onClick={()=>run(async()=>{ await api("/api/hotels/"+hotel.id+"/event-spaces","POST",{name, capacity:cap}); setName(""); setCap(""); })}>{tf("Hinzufügen")}</button>
       </div>
-      {msg && <div style={{color:BAD,fontSize:13}}>{msg.text}</div>}
+      {msg && <ErrorText>{msg.text}</ErrorText>}
     </Card>
   );
 }
@@ -267,7 +267,7 @@ function RoomCalendar({events, spaces, onOpen}){
         <button style={smallBtn} onClick={()=>setWeek(mondayOfIso(todayIso()))}>{tf("Heute")}</button>
       </div>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5,minWidth:760}}>
-        <thead><tr><th style={{textAlign:"start",padding:"6px 10px",fontSize:11.5,color:INK_MUTED}}>{tf("Raum")}</th>{days.map(d=><th key={d} style={{textAlign:"start",padding:"6px 6px",fontSize:11.5,color:d===todayIso()?BRASS:INK_MUTED}}>{fmtDay(d)}</th>)}</tr></thead>
+        <thead><tr><th style={{textAlign:"start",padding:"6px 10px",fontSize:11.5,color:INK_MUTED}}>{tf("Raum")}</th>{days.map(d=><th key={d} style={{textAlign:"start",padding:"6px 6px",fontSize:11.5,color:d===todayIso()?BRASS_TEXT:INK_MUTED}}>{fmtDay(d)}</th>)}</tr></thead>
         <tbody>{rows.map(sp=>(
           <tr key={sp.id||"none"} style={{borderTop:`1px solid ${BORDER}`}}>
             <td style={{padding:"8px 10px",fontWeight:700,verticalAlign:"top",whiteSpace:"nowrap"}} data-no-i18n="">{sp.name}</td>
@@ -290,7 +290,7 @@ function offerSum(items, guests){
   const lines = (items||[]).map(i=>{ const qty = i.per_person ? Number(guests)||0 : Number(String(i.qty??0).replace(",","."))||0; return {...i, qtyEff:qty, total:Math.round(qty*(Number(String(i.unit_price??0).replace(",","."))||0)*100)/100}; });
   return {lines, total: Math.round(lines.reduce((s,l)=>s+l.total,0)*100)/100};
 }
-const OFFER_STATUS = {"keins":[INK_MUTED,PAPER,"Kein Angebot"], "offen":[BRASS,BRASS_SOFT,"Angebot offen"], "angenommen":[GOOD,GOOD_SOFT,"Angebot angenommen"], "abgelehnt":[BAD,BAD_SOFT,"Angebot abgelehnt"]};
+const OFFER_STATUS = {"keins":[INK_MUTED,PAPER,"Kein Angebot"], "offen":[BRASS_TEXT,BRASS_SOFT,"Angebot offen"], "angenommen":[GOOD_TEXT,GOOD_SOFT,"Angebot angenommen"], "abgelehnt":[BAD,BAD_SOFT,"Angebot abgelehnt"]};
 function OfferEditor({form, setForm}){
   const items = form.offer_items || [];
   const set = (i, k, v) => setForm({...form, offer_items: items.map((x,j)=>j===i?{...x,[k]:v}:x)});
@@ -406,7 +406,7 @@ function EventsView({hotel, api, role}){
         {list && list.length>0 && <button style={smallBtn} onClick={async()=>{ try { await sheetPdf(weekSheetHtml(list, hotel, todayIso()), (translateString("Veranstaltungen")+" "+todayIso()+".pdf")); } catch(e){ setMsg({ok:false,text:e.message}); } }}><Icon n="filetext" /> {tf("Wochen-Übersicht (PDF)")}</button>}
       </div>
       {picker && !form && <Card style={{marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:4}}>{tf("Womit beginnen?")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Womit beginnen?")}</h2>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Vorlagen füllen Menü, Aufbau, Technik und den Ablauf mit Aufgaben je Abteilung vor – alles lässt sich danach anpassen.")}</div>
         {mine.length>0 && <React.Fragment>
           <div className="field-label"><Icon n="star" /> {tf("Eigene Vorlagen")}</div>

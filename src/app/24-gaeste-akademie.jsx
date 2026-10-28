@@ -67,7 +67,7 @@ function AcademyView({hotel, api, me, members}){
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Kurze Lerneinheiten mit Quiz – ideal für neue Mitarbeitende. Wer das Quiz besteht, bekommt einen Nachweis. Verbindliche Pflicht-Unterweisungen mit Unterschrift bleiben unter „Unterweisungen“.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       {canWrite && !form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm({title:"", description:"", department:"", pass_percent:80, lessons:[{title:"", text:""}], quiz:[{question:"", optionsText:"", correct:0}]})}>{tf("Kurs anlegen")}</button>}
       {form && <CourseEditor form={form} setForm={setForm} onSave={save} onCancel={()=>setForm(null)} onError={(t)=>setMsg({ok:false,text:t})} />}
       {courses && courses.filter(c=>c.active || canWrite).length===0 && !form && <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch keine Kurse.")}</div>}
@@ -77,7 +77,7 @@ function AcademyView({hotel, api, me, members}){
           <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
             <div style={{flex:1,minWidth:200}}><b>{c.title}</b><div style={{fontSize:12.5,color:INK_MUTED}}>{c.department ? translateString(c.department)+" · " : ""}{tf("{0} Lektionen, {1} Fragen", (c.lessons||[]).length, (c.quiz||[]).length)}{!c.active ? " · "+tf("inaktiv") : ""}</div>
               {c.description && <div style={{fontSize:13.5,marginTop:4}}>{c.description}</div>}</div>
-            {best && <Pill color={best.passed?GOOD:WARN} bg={best.passed?GOOD_SOFT:WARN_SOFT}>{best.passed ? tf("Bestanden ({0} %)", best.score) : tf("{0} % – noch nicht bestanden", best.score)}</Pill>}
+            {best && <Pill color={best.passed?GOOD_TEXT:WARN_TEXT} bg={best.passed?GOOD_SOFT:WARN_SOFT}>{best.passed ? tf("Bestanden ({0} %)", best.score) : tf("{0} % – noch nicht bestanden", best.score)}</Pill>}
             {c.active && <button className="btn-primary" onClick={()=>setPlay(c)}>{best ? tf("Wiederholen") : tf("Starten")}</button>}
             {canWrite && <button style={linkBtn} onClick={()=>setForm({...c, quiz:(c.quiz||[]).map(q=>({question:q.question, optionsText:(q.options||[]).join("\n"), correct:q.correct}))})}>{tf("Bearbeiten")}</button>}
             {canWrite && done.length>0 && <button style={linkBtn} onClick={()=>setShowRes(showRes===c.id?null:c.id)} aria-expanded={showRes===c.id}>{tf("Ergebnisse ({0})", done.length)}</button>}
@@ -155,11 +155,11 @@ function CoursePlayer({course, api, onClose}){
               {(q.options||[]).map((o,j)=><label key={j} style={{display:"flex",gap:10,alignItems:"center",padding:"8px 10px",border:`1px solid ${answers[i]===j?INK:BORDER}`,borderRadius:8,marginBottom:6,cursor:"pointer",minHeight:44}}>
                 <input type="radio" name={"q"+i} checked={answers[i]===j} onChange={()=>setAnswers(answers.map((a,k)=>k===i?j:a))} /> <span>{o}</span></label>)}
             </fieldset>))}
-          {error && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{error}</div>}
+          {error && <ErrorText style={{marginBottom:8}}>{error}</ErrorText>}
           <button className="btn-primary" disabled={busy || answers.some(a=>a<0)} onClick={submit}>{busy ? tf("Prüft…") : tf("Antworten abgeben")}</button>
         </div>}
         {result && <div style={{marginTop:10}}>
-          <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,color:result.passed?GOOD:WARN}}>{result.passed ? tf("Bestanden – {0} %", result.score) : tf("{0} % – leider noch nicht bestanden", result.score)}</div>
+          <div style={{fontFamily:"Fraunces, serif",fontSize:26,fontWeight:600,color:result.passed?GOOD:WARN_TEXT}}>{result.passed ? tf("Bestanden – {0} %", result.score) : tf("{0} % – leider noch nicht bestanden", result.score)}</div>
           <div style={{fontSize:14,margin:"6px 0 12px"}}>{tf("{0} von {1} Fragen richtig.", result.right, result.total)}</div>
           {result.wrong && result.wrong.length>0 && <div style={{fontSize:13.5,marginBottom:12}}>{tf("Noch einmal ansehen:")} {result.wrong.map(i=>quiz[i] && quiz[i].question).filter(Boolean).join(" · ")}</div>}
           <div style={{display:"flex",gap:8}}>{!result.passed && <button className="btn-primary" onClick={()=>{ setResult(null); setStep(0); setAnswers(quiz.map(()=>-1)); }}>{tf("Noch einmal")}</button>}<button style={btnLine} onClick={onClose}>{tf("Fertig")}</button></div>

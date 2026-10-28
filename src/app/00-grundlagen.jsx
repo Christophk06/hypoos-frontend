@@ -2,7 +2,9 @@ const { useState, useEffect, useCallback } = React;
 
 const INK="#1C2430", INK_SOFT="#2A3444", PAPER="#F6F4EF", CARD="#FFFFFF", BORDER="#E4DFD3";
 const BRASS="#A9834B", BRASS_SOFT="#F1E8D8", GOOD="#3F7A5C", GOOD_SOFT="#E4EFE8";
-const WARN="#B9822E", WARN_SOFT="#F5E9D5", BAD="#A23B32", BAD_SOFT="#F5E1DE", INK_MUTED="#6B7280";
+const WARN="#B9822E", WARN_SOFT="#F5E9D5", BAD="#A23B32", BAD_SOFT="#F5E1DE", INK_MUTED="#626976";
+// Dunklere Varianten für Text (mind. 4,5:1 auf PAPER, CARD, BRASS_SOFT, WARN_SOFT, GOOD_SOFT); Flächen und Rahmen behalten WARN/BRASS
+const WARN_TEXT="#8A5F14", BRASS_TEXT="#7E5F2C", GOOD_TEXT="#2F6B4E";
 
 // Dialoge: Fokus bleibt im Dialog (Tab/Umschalt+Tab), Esc schließt, danach Fokus zurück zum Auslöser
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -35,6 +37,7 @@ const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Tec
 // Eigene Rolle und Abteilungen in der gewählten Organisation (setzt App bei jedem Anzeigen).
 // Die Datenbank erzwingt die Rechte; die Oberfläche blendet nur aus, was nicht geht.
 let ACCESS = {role:"admin", depts:[]};
+let PLATFORM_ADMIN = false; // Betreiber von Ouverture (Partner, Wunschliste, Nutzung) – setzt die App nach Prüfung beim Server
 const isLeadRole = () => ACCESS.role==="admin" || ACCESS.role==="manager";
 // Abteilungen, in denen man Einträge anlegen darf
 // Abteilungsleitung mit zugeordneten Abteilungen: nur diese; ohne Zuordnung (z. B. Direktion): alle
@@ -66,10 +69,28 @@ const DEFAULT_CONFIG = {
 
 
 function fmtDate(d){ return d ? new Date(d).toLocaleDateString(UI_LOCALE,{day:"2-digit",month:"short",year:"numeric"}) : "—"; }
+// Beim Bereichswechsel den Fokus auf den Hauptbereich (#inhalt, tabIndex -1) setzen, damit Tastatur und
+// Screenreader im neuen Bereich weitermachen. Nicht beim ersten Laden und nicht, solange ein Dialog den Fokus hat.
+function FocusMainOnChange({tabKey}){
+  const first = React.useRef(true);
+  useEffect(()=>{
+    if(first.current){ first.current = false; return; }
+    const m = document.getElementById("inhalt"); if(!m) return;
+    const a = document.activeElement;
+    if(a && a.closest && a.closest('[role="dialog"]')) return;
+    m.focus({preventScroll:true});
+  },[tabKey]);
+  return null;
+}
+// Fehlermeldung, die Screenreader sofort vorlesen (role="alert")
+function ErrorText({children, style, id}){
+  if(!children) return null;
+  return <div role="alert" id={id} style={{color:BAD,fontSize:13,...style}}>{children}</div>;
+}
 function priorityColor(p){
   if(p==="Kritisch") return {color:BAD,bg:BAD_SOFT};
-  if(p==="Hoch") return {color:WARN,bg:WARN_SOFT};
-  if(p==="Mittel") return {color:BRASS,bg:BRASS_SOFT};
+  if(p==="Hoch") return {color:WARN_TEXT,bg:WARN_SOFT};
+  if(p==="Mittel") return {color:BRASS_TEXT,bg:BRASS_SOFT};
   return {color:INK_MUTED,bg:PAPER};
 }
 
@@ -102,7 +123,7 @@ class ErrorBoundary extends React.Component {
     return (
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
         <Card style={{maxWidth:420,width:"100%",textAlign:"center"}}>
-          <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Da ist etwas schiefgelaufen</div>
+          <h2 className="ui-h" style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Da ist etwas schiefgelaufen</h2>
           <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:16}}>Der Fehler wurde automatisch gemeldet. Deine Daten sind gespeichert – bitte die Seite neu laden.</div>
           <button className="btn-primary" onClick={()=>window.location.reload()}>Seite neu laden</button>
         </Card>
@@ -249,12 +270,12 @@ function MfaPrompt({cfg, token, factorId, onDone, onCancel}){
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
       <Card style={{maxWidth:400,width:"100%"}}>
-        <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,marginBottom:6}}>{tf("Bestätigungscode")}</div>
+        <h2 className="ui-h" style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,marginBottom:6}}>{tf("Bestätigungscode")}</h2>
         <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:14}}>{tf("Bitte den 6-stelligen Code aus deiner Authenticator-App eingeben.")}</div>
         <input className="input" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} aria-label={tf("Bestätigungscode")}
           onChange={e=>setCode(e.target.value.replace(/[^0-9]/g,""))} onKeyDown={e=>{ if(e.key==="Enter" && code.length===6) send(); }}
           style={{fontSize:24,letterSpacing:6,textAlign:"center",marginBottom:12}} />
-        {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+        {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
         <button className="btn-primary" style={{width:"100%"}} disabled={busy || code.length!==6} onClick={send}>{busy ? tf("Prüft…") : tf("Anmelden")}</button>
         {onCancel && <button style={{...linkBtn,marginTop:10}} onClick={onCancel}>{tf("Abbrechen")}</button>}
       </Card>

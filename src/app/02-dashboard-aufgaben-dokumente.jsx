@@ -8,7 +8,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
   const staffPct = need>0 ? Math.round(have/need*100) : 0;
   const overdue = tasks.filter(t=>t.due_date && new Date(t.due_date) < new Date() && t.status!=="Abgeschlossen" && t.priority==="Kritisch");
   const topRisks = [...risks].sort((a,b)=>b.probability*b.impact - a.probability*a.impact).slice(0,4);
-  const color = readiness.overall>=80?GOOD:readiness.overall>=60?WARN:BAD;
+  const color = readiness.overall>=80?GOOD_TEXT:readiness.overall>=60?WARN_TEXT:BAD;
   return (
     <div>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:18,marginBottom:18}}>
@@ -28,7 +28,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
           </div>
         </Card>
         <Card>
-          <div style={{fontWeight:700,marginBottom:8}}>Bereitschaft je Abteilung</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>Bereitschaft je Abteilung</h2>
           {Object.entries(readiness.deptScores||{}).map(([dept,score])=>(
             <div key={dept} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0"}}>
               <div className="dept-label" style={{width:150,fontSize:13}}>{dept}</div>
@@ -43,7 +43,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
       {lead && <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18,marginBottom:18}}>
         <div {...pressable(()=>onOpen("budget"))} style={{cursor:"pointer"}}>
           <Card>
-            <div style={{fontWeight:700,marginBottom:8}}>Budget</div>
+            <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>Budget</h2>
             {budget.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Posten – hier anlegen →</div> : (
               <React.Fragment>
                 <div style={{fontSize:13.5,marginBottom:8}}>{tf("{0} von {1} ausgegeben", fmtEur(actual), fmtEur(planned))}</div>
@@ -58,7 +58,7 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
         </div>
         <div {...pressable(()=>onOpen("staff"))} style={{cursor:"pointer"}}>
           <Card>
-            <div style={{fontWeight:700,marginBottom:8}}>Personal</div>
+            <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>Personal</h2>
             {staff.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Noch keine Stellen – hier anlegen →</div> : (
               <React.Fragment>
                 <div style={{fontSize:13.5,marginBottom:8}}>{tf("{0} von {1} Personen eingestellt · {2} offen", have, need, need-have)}</div>
@@ -73,12 +73,12 @@ function DashboardView({readiness, tasks, risks, budget, staff, onOpen, lead=tru
       </div>}
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:18}}>
         <Card>
-          <div style={{fontWeight:700,marginBottom:10}}>Überfällige kritische Aufgaben</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>Überfällige kritische Aufgaben</h2>
           {overdue.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>Keine.</div> :
             overdue.map(t=><div key={t.id} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>{t.title} <span style={{color:INK_MUTED}}>· {t.department}</span></div>)}
         </Card>
         {lead && <Card>
-          <div style={{fontWeight:700,marginBottom:10}}>Höchste Risiken</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>Höchste Risiken</h2>
           {topRisks.map(r=><div key={r.id} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>{r.title} <span style={{color:INK_MUTED}}>· {tf("Score {0}", r.probability*r.impact)}</span></div>)}
         </Card>}
       </div>
@@ -115,7 +115,7 @@ function TemplatePanel({callHotel, refresh, onClose}){
   return (
     <Card style={{marginBottom:16,borderColor:BRASS}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-        <div style={{fontWeight:700,marginBottom:6}}>Vorlage: Standard-Eröffnungsplanung</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>Vorlage: Standard-Eröffnungsplanung</h2>
         {onClose && <button style={linkBtn} onClick={onClose}>Schließen</button>}
       </div>
       <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>
@@ -125,7 +125,7 @@ function TemplatePanel({callHotel, refresh, onClose}){
       {!result && <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,marginBottom:12,flexWrap:"wrap"}}><span>{tf("Art des Hotels")}:</span>
         <select className="input" style={{width:"auto"}} value={hotelType} onChange={e=>setHotelType(e.target.value)}>{HOTEL_TYPE_OPTIONS.map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select>
         <span style={{color:INK_MUTED,fontSize:12}}>{tf("ergänzt passende Aufgaben, z. B. Spa und Pool beim Resort")}</span></label>}
-      {error && <div style={{color:BAD,fontSize:13}}>{error}</div>}
+      {error && <ErrorText>{error}</ErrorText>}
       {result && <div style={{color:GOOD,fontSize:13}}>{result}</div>}
       {!preview && !error && !result && <div style={{fontSize:13,color:INK_MUTED}}>Wird geprüft…</div>}
       {preview && total===0 && <div style={{fontSize:13}}>Die Vorlage ist bereits vollständig angewendet.</div>}
@@ -218,14 +218,14 @@ function ImportPanel({callHotel, refresh, onClose}){
   return (
     <Card style={{marginBottom:16,borderColor:BRASS}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-        <div style={{fontWeight:700,marginBottom:6}}>Aufgaben aus Excel oder CSV importieren</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>Aufgaben aus Excel oder CSV importieren</h2>
         <button style={linkBtn} onClick={onClose}>Schließen</button>
       </div>
       <div style={{fontSize:13,color:INK_MUTED,marginBottom:12}}>
         Erste Tabelle der Datei, eine Aufgabe pro Zeile. Spalten wie „Aufgabe“, „Abteilung“, „Priorität“, „Status“, „Fällig“ und „Zuständig“ werden automatisch erkannt – auch auf Englisch.
       </div>
       <input type="file" accept=".xlsx,.xls,.csv,.ods" onChange={e=>readFile(e.target.files[0])} style={{fontSize:13,marginBottom:10}} />
-      {error && <div style={{color:BAD,fontSize:13,marginTop:6}}>{error}</div>}
+      {error && <ErrorText style={{marginTop:6}}>{error}</ErrorText>}
       {result && <div style={{color:GOOD,fontSize:13,marginTop:6}}>{result}</div>}
       {sheet && (
         <div style={{marginTop:8}}>
@@ -283,7 +283,7 @@ function MyTasksView({orgId, api, hotelId, refresh}){
         <StatTile label="ÜBERFÄLLIG" value={overdue} color={overdue>0?BAD:INK} sub={tf("Termin schon vorbei")} />
         <StatTile label="ERLEDIGT" value={done.length} color={GOOD} />
       </div>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:12}}>{error}</ErrorText>}
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
         <label style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}>
           <input type="checkbox" checked={showDone} onChange={e=>setShowDone(e.target.checked)} /> Erledigte anzeigen
@@ -301,7 +301,7 @@ function MyTasksView({orgId, api, hotelId, refresh}){
                 <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.hotel_name} · {t.department}</div></td>
                 <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
                 <td style={{padding:12}}>
-                  <select value={t.status} onChange={e=>updateStatus(t,e.target.value)} className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(st=><option key={st}>{st}</option>)}</select>
+                  <select value={t.status} onChange={e=>updateStatus(t,e.target.value)} className="input" aria-label={tf("Status von „{0}“", t.title)} style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(st=><option key={st}>{st}</option>)}</select>
                 </td>
                 <td style={{padding:12,whiteSpace:"nowrap",color:late?BAD:INK_MUTED,fontWeight:late?600:400}}>{fmtDate(t.due_date)}{late ? " · überfällig" : ""}</td>
               </tr>
@@ -316,7 +316,7 @@ function MyTasksView({orgId, api, hotelId, refresh}){
 // Auswahl eines Teammitglieds als Zuständige/n.
 function AssigneeSelect({value, onChange, members}){
   return (
-    <select className="input" value={value||""} onChange={e=>onChange(e.target.value)} title="Zuständig im Team">
+    <select className="input" value={value||""} onChange={e=>onChange(e.target.value)} title={tf("Zuständig im Team")} aria-label={tf("Zuständig im Team")}>
       <option value="">— niemand aus dem Team —</option>
       {members.map(m=><option key={m.user_id} value={m.user_id}>{m.email}</option>)}
     </select>
@@ -445,7 +445,7 @@ function DocumentsPanel({hotel, api, upload, me, taskId, compact, onChanged}){
         <button className="btn-primary" onClick={()=>inputRef.current.click()} disabled={!!busy} style={compact?{padding:"6px 12px",fontSize:12.5}:{}}>{compact?"Datei anhängen":"Dateien hochladen"}</button>
         <span style={{fontSize:12,color:INK_MUTED}}>{busy || "oder hierher ziehen · max. 25 MB je Datei"}</span>
       </div>
-      {error && <div style={{color:BAD,fontSize:12.5,marginBottom:8}}>{error}</div>}
+      {error && <ErrorText style={{fontSize:12.5,marginBottom:8}}>{error}</ErrorText>}
       {docs===null && !error && <div style={{fontSize:12.5,color:INK_MUTED}}>Lädt…</div>}
       {docs && docs.length===0 && <div style={{fontSize:12.5,color:INK_MUTED}}>{taskId ? "Keine Anhänge." : "Noch keine Dokumente."}</div>}
       {docs && docs.length>0 && (
@@ -505,7 +505,7 @@ function TaskActivity({taskId, api, me, onChanged, docCtx}){
           style={{resize:"vertical",fontSize:13.5,background:"#fff"}} />
         <button className="btn-primary" onClick={send} disabled={busy||!text.trim()}>{busy?"…":"Senden"}</button>
       </div>
-      {error && <div style={{color:BAD,fontSize:12.5,marginTop:6}}>{error}</div>}
+      {error && <ErrorText style={{fontSize:12.5,marginTop:6}}>{error}</ErrorText>}
       <div style={{display:"flex",justifyContent:"flex-end",margin:"8px 0 4px"}}>
         <label style={{fontSize:12,color:INK_MUTED,display:"flex",gap:5,alignItems:"center",cursor:"pointer"}}>
           <input type="checkbox" checked={showHistory} onChange={e=>setShowHistory(e.target.checked)} /> Änderungsverlauf anzeigen
@@ -543,7 +543,13 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
   const [editId,setEditId]=useState(null); const [edit,setEdit]=useState(null);
   const [error,setError]=useState("");
   const run = async (fn) => { setError(""); try { await fn(); refresh(); } catch(e){ setError(e.message); } };
-  const add = () => { if(!draft.title) return; run(async()=>{ await callHotel("/tasks","POST",draft); setShowForm(false); setDraft({...draft,title:""}); }); };
+  const [titleErr,setTitleErr]=useState("");
+  const titleRef = React.useRef(null);
+  const add = () => {
+    if(!draft.title.trim()){ setTitleErr(tf("Bitte einen Titel für die Aufgabe eingeben.")); if(titleRef.current) titleRef.current.focus(); return; }
+    setTitleErr("");
+    run(async()=>{ await callHotel("/tasks","POST",draft); setShowForm(false); setDraft({...draft,title:""}); });
+  };
   const updateStatus = (id,status) => run(()=>callId("tasks",id,"PATCH",{status}));
   const [origDue,setOrigDue]=useState("");
   const [showTemplate,setShowTemplate]=useState(false);
@@ -578,20 +584,22 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
         {ACCESS.role==="admin" && <button onClick={()=>setShowTemplate(!showTemplate)} style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"9px 14px",fontSize:13.5,cursor:"pointer",marginRight:8}}>Aus Vorlage ergänzen</button>}
         {editableDepts().length>0 && <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Aufgabe</button>}
       </div>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:12}}>{error}</ErrorText>}
       {showImport && <ImportPanel callHotel={callHotel} refresh={refresh} onClose={()=>setShowImport(false)} />}
       {ACCESS.role==="admin" && (showTemplate || (tasks.length===0 && !showImport)) && <TemplatePanel callHotel={callHotel} refresh={()=>{ setShowTemplate(true); refresh(); }} onClose={tasks.length>0 ? ()=>setShowTemplate(false) : null} />}
       {showForm && (
         <Card style={{marginBottom:16}}>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
-            <input className="input" placeholder="Titel" value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} />
-            <select className="input" value={draft.department} onChange={e=>setDraft({...draft,department:e.target.value})}>{deptOptions(draft.department).map(d=><option key={d}>{d}</option>)}</select>
-            <select className="input" value={draft.priority} onChange={e=>setDraft({...draft,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
+            <input ref={titleRef} className="input" placeholder={tf("Titel")} aria-label={tf("Titel")} aria-required="true" aria-invalid={titleErr ? "true" : undefined} aria-describedby={titleErr ? "task-title-err" : undefined}
+              value={draft.title} onChange={e=>{ setDraft({...draft,title:e.target.value}); if(titleErr && e.target.value.trim()) setTitleErr(""); }} onKeyDown={e=>{ if(e.key==="Enter") add(); }} />
+            <select className="input" aria-label={tf("Abteilung")} value={draft.department} onChange={e=>setDraft({...draft,department:e.target.value})}>{deptOptions(draft.department).map(d=><option key={d}>{d}</option>)}</select>
+            <select className="input" aria-label={tf("Priorität")} value={draft.priority} onChange={e=>setDraft({...draft,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
           </div>
+          {titleErr && <ErrorText id="task-title-err" style={{marginBottom:10}}>{titleErr}</ErrorText>}
           <div className="stack" style={{display:"flex",gap:10}}>
-            <input type="date" className="input" value={draft.due_date} onChange={e=>setDraft({...draft,due_date:e.target.value})} />
+            <input type="date" className="input" aria-label={tf("Fällig am")} value={draft.due_date} onChange={e=>setDraft({...draft,due_date:e.target.value})} />
             <AssigneeSelect value={draft.assignee_id} onChange={v=>setDraft({...draft,assignee_id:v})} members={members} />
-            <input className="input" placeholder="Extern / Sonstige" value={draft.owner} onChange={e=>setDraft({...draft,owner:e.target.value})} />
+            <input className="input" placeholder={tf("Extern / Sonstige")} aria-label={tf("Extern / Sonstige")} value={draft.owner} onChange={e=>setDraft({...draft,owner:e.target.value})} />
             <button className="btn-primary" onClick={add}>Speichern</button>
           </div>
         </Card>
@@ -599,20 +607,20 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
       {tasks.length>0 && (
         <Card style={{marginBottom:12,padding:14}}>
           <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 1.2fr 1fr",gap:10,marginBottom:10}}>
-            <input className="input" placeholder="Suchen: Titel, Zuständige, Externe …" value={filters.q} onChange={e=>setFilter("q",e.target.value)} />
-            <select className="input" value={filters.department} onChange={e=>setFilter("department",e.target.value)}>
+            <input className="input" type="search" placeholder="Suchen: Titel, Zuständige, Externe …" aria-label={tf("Aufgaben durchsuchen")} value={filters.q} onChange={e=>setFilter("q",e.target.value)} />
+            <select className="input" aria-label={tf("Nach Abteilung filtern")} value={filters.department} onChange={e=>setFilter("department",e.target.value)}>
               <option value="">Alle Abteilungen</option>{DEPARTMENTS.map(d=><option key={d}>{d}</option>)}
             </select>
-            <select className="input" value={filters.status} onChange={e=>setFilter("status",e.target.value)}>
+            <select className="input" aria-label={tf("Nach Status filtern")} value={filters.status} onChange={e=>setFilter("status",e.target.value)}>
               <option value="">Alle Status</option><option value="open">Alle offenen</option>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}
             </select>
-            <select className="input" value={filters.sort} onChange={e=>setFilter("sort",e.target.value)} title="Sortierung">
+            <select className="input" value={filters.sort} onChange={e=>setFilter("sort",e.target.value)} title={tf("Sortierung")} aria-label={tf("Sortierung")}>
               <option value="due">Nach Termin</option><option value="priority">Nach Priorität</option><option value="department">Nach Abteilung</option>
             </select>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             {chip("mine","Nur meine")}{chip("overdue","Überfällig")}{chip("unassigned","Ohne Zuständigkeit")}
-            <span style={{marginLeft:"auto",fontSize:12.5,color:INK_MUTED}}>
+            <span style={{marginLeft:"auto",fontSize:12.5,color:INK_MUTED}} aria-live="polite">
               {tf("{0} von {1} Aufgaben", visible.length, tasks.length)}
               {filtersActive && <button style={{...linkBtn,textDecoration:"underline"}} onClick={resetFilters}>Filter zurücksetzen</button>}
             </span>
@@ -626,15 +634,15 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
             <tr key={t.id} style={{borderTop:`1px solid ${BORDER}`,background:PAPER}}>
               <td colSpan={5} style={{padding:12}}>
                 <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
-                  <input className="input" value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})} />
-                  <select className="input" value={edit.department} onChange={e=>setEdit({...edit,department:e.target.value})}>{deptOptions(edit.department).map(d=><option key={d}>{d}</option>)}</select>
-                  <select className="input" value={edit.priority} onChange={e=>setEdit({...edit,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
+                  <input className="input" aria-label={tf("Titel")} value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})} />
+                  <select className="input" aria-label={tf("Abteilung")} value={edit.department} onChange={e=>setEdit({...edit,department:e.target.value})}>{deptOptions(edit.department).map(d=><option key={d}>{d}</option>)}</select>
+                  <select className="input" aria-label={tf("Priorität")} value={edit.priority} onChange={e=>setEdit({...edit,priority:e.target.value})}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</select>
                 </div>
                 <div className="stack" style={{display:"flex",gap:10,alignItems:"center"}}>
-                  <input type="date" className="input" value={edit.due_date} onChange={e=>setEdit({...edit,due_date:e.target.value})} />
+                  <input type="date" className="input" aria-label={tf("Fällig am")} value={edit.due_date} onChange={e=>setEdit({...edit,due_date:e.target.value})} />
                   <AssigneeSelect value={edit.assignee_id} onChange={v=>setEdit({...edit,assignee_id:v})} members={members} />
-                  <input className="input" placeholder="Extern / Sonstige" value={edit.owner} onChange={e=>setEdit({...edit,owner:e.target.value})} />
-                  <input className="input" type="number" min="1" max="365" style={{width:110}} title={tf("Dauer (Tage)")} placeholder={tf("Dauer (Tage)")} value={edit.duration_days} onChange={e=>setEdit({...edit,duration_days:e.target.value})} />
+                  <input className="input" placeholder={tf("Extern / Sonstige")} aria-label={tf("Extern / Sonstige")} value={edit.owner} onChange={e=>setEdit({...edit,owner:e.target.value})} />
+                  <input className="input" type="number" min="1" max="365" style={{width:110}} title={tf("Dauer (Tage)")} aria-label={tf("Dauer (Tage)")} placeholder={tf("Dauer (Tage)")} value={edit.duration_days} onChange={e=>setEdit({...edit,duration_days:e.target.value})} />
                   <button className="btn-primary" onClick={saveEdit}>Speichern</button>
                   <button style={linkBtn} onClick={()=>setEditId(null)}>Abbrechen</button>
                 </div>
@@ -644,12 +652,12 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
           ) : (
             <React.Fragment key={t.id}>
             <tr style={{borderTop:`1px solid ${BORDER}`}}>
-              <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.assignee_id ? <span style={{color:t.assignee_id===(me&&me.id)?BRASS:INK_MUTED,fontWeight:t.assignee_id===(me&&me.id)?600:400}}> · {t.assignee_id===(me&&me.id) ? "Du" : (memberEmail(members,t.assignee_id)||"Teammitglied")}</span> : ""}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div>
+              <td style={{padding:12}}>{t.title}<div style={{fontSize:11.5,color:INK_MUTED}}>{t.department}{t.assignee_id ? <span style={{color:t.assignee_id===(me&&me.id)?BRASS_TEXT:INK_MUTED,fontWeight:t.assignee_id===(me&&me.id)?600:400}}> · {t.assignee_id===(me&&me.id) ? "Du" : (memberEmail(members,t.assignee_id)||"Teammitglied")}</span> : ""}{t.owner ? " · "+t.owner : ""}{offsetLabel(t.opening_offset_days)}</div>
                 {conflictOf(t.id).map((c,i)=><div key={i} style={{fontSize:11.5,color:BAD,fontWeight:600}}><Icon n="alert" /> {tf("beginnt {0} Tage vor dem Ende von „{1}“", c.days, (tasks.find(x=>x.id===c.pred)||{}).title)}</div>)}
-                {plan.critical[t.id] && !conflictOf(t.id).length && <div style={{fontSize:11.5,color:WARN,fontWeight:600}}><Icon n="route" /> {tf("kritisch – kein Puffer")}</div>}</td>
+                {plan.critical[t.id] && !conflictOf(t.id).length && <div style={{fontSize:11.5,color:WARN_TEXT,fontWeight:600}}><Icon n="route" /> {tf("kritisch – kein Puffer")}</div>}</td>
               <td style={{padding:12}}><Pill {...priorityColor(t.priority)}>{t.priority}</Pill></td>
               <td style={{padding:12}}>
-                <select value={t.status} onChange={e=>updateStatus(t.id,e.target.value)} className="input" style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
+                <select value={t.status} onChange={e=>updateStatus(t.id,e.target.value)} className="input" aria-label={tf("Status von „{0}“", t.title)} style={{width:"auto",padding:"5px 8px",fontSize:12.5}}>{TASK_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
               </td>
               <td style={{padding:12,color:INK_MUTED}}>{fmtDate(t.due_date)}</td>
               <td style={{padding:12,whiteSpace:"nowrap"}}>
@@ -657,7 +665,7 @@ function TasksView({tasks, callHotel, callId, refresh, members, me, api, docCtx}
                   <Icon n="chat" /> {t.comment_count||0}{t.document_count ? <React.Fragment>{"  "}<Icon n="clip" /> {t.document_count}</React.Fragment> : ""}
                 </button>
                 <button style={linkBtn} onClick={()=>startEdit(t)}>Bearbeiten</button>
-                {canManageDept(t.department) && <button style={linkBtn} onClick={()=>remove(t)} title="Löschen">✕</button>}
+                {canManageDept(t.department) && <button style={linkBtn} onClick={()=>remove(t)} title={tf("Löschen")} aria-label={tf("Aufgabe „{0}“ löschen", t.title)}><span aria-hidden="true">✕</span></button>}
               </td>
             </tr>
             {openActivity===t.id && (

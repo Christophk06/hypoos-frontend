@@ -40,7 +40,7 @@ function ServiceButton({api, orgId, hotel, tab, nav, onOpen}){
       {!open && <button ref={fabRef} className="feedback-fab" aria-haspopup="dialog" onClick={()=>{ setOpen(true); setMode("chat"); }}><Icon n="sparkle" /> {tf("Hilfe 24/7")}</button>}
       {open && <div className="service-panel" role="dialog" aria-modal="false" aria-label={tf("KI-Service")} style={{background:CARD,border:`1px solid ${BORDER}`}}>
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",borderBottom:`1px solid ${BORDER}`}}>
-          <Icon n="sparkle" size={18} style={{color:BRASS}} />
+          <Icon n="sparkle" size={18} style={{color:BRASS_TEXT}} />
           <div style={{flex:1}}><b>{mode==="chat" ? tf("KI-Service") : tf("Problem melden")}</b><div style={{fontSize:11.5,color:INK_MUTED}}>{mode==="chat" ? tf("Antwortet rund um die Uhr auf Fragen zur Bedienung") : tf("Geht direkt an das Support-Team")}</div></div>
           {mode==="chat" && msgs.length>0 && <button style={linkBtn} onClick={()=>{ setMsgs([]); setErr(""); }}>{tf("Neu")}</button>}
           <button style={linkBtn} aria-label={tf("Schließen")} onClick={()=>setOpen(false)}>✕</button>

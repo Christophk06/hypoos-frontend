@@ -19,7 +19,7 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
           <button className="btn-primary" onClick={add}>+</button>
         </div>
       </Card>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:12}}>{error}</ErrorText>}
       {[...milestones].sort((a,b)=>new Date(a.date)-new Date(b.date)).map(m=> editId===m.id ? (
         <Card key={m.id} style={{marginBottom:10,background:PAPER}}>
           <div className="stack" style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -34,7 +34,7 @@ function MilestonesView({milestones, callHotel, callId, refresh}){
         <Card key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:10,flexWrap:"wrap"}}>
           <div><div style={{fontWeight:600}}>{m.title}</div><div style={{fontSize:12.5,color:INK_MUTED}}>{fmtDate(m.date)} · {m.criticality}{offsetLabel(m.opening_offset_days)}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <select value={m.status} onChange={e=>updateStatus(m.id,e.target.value)} className="input" style={{width:"auto",padding:"6px 9px",fontSize:12.5}}>{MILESTONE_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
+            <select value={m.status} onChange={e=>updateStatus(m.id,e.target.value)} className="input" aria-label={tf("Status von „{0}“", m.title)} style={{width:"auto",padding:"6px 9px",fontSize:12.5}}>{MILESTONE_STATUSES.map(s=><option key={s}>{s}</option>)}</select>
             <button style={linkBtn} onClick={()=>startEdit(m)}>Bearbeiten</button>
             <button style={linkBtn} onClick={()=>remove(m)} title="Löschen">✕</button>
           </div>
@@ -77,7 +77,7 @@ function RisksView({risks, callHotel, callId, refresh}){
         <RiskFields value={draft} onChange={setDraft} />
         <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}><button className="btn-primary" onClick={add}>+ Risiko</button></div>
       </Card>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:12}}>{error}</ErrorText>}
       {[...risks].sort((a,b)=>b.probability*b.impact - a.probability*a.impact).map(r=> editId===r.id ? (
         <Card key={r.id} style={{marginBottom:10,background:PAPER}}>
           <RiskFields value={edit} onChange={setEdit} />
@@ -137,7 +137,7 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
   };
   return (
     <Card style={{marginBottom:18}}>
-      <div style={{fontWeight:700,marginBottom:10}}>Hotel bearbeiten</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>Hotel bearbeiten</h2>
       <div className="stack" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:10,marginBottom:10}}>
         <input className="input" placeholder="Name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
         <input className="input" placeholder="Stadt" value={form.city} onChange={e=>setForm({...form,city:e.target.value})} />
@@ -204,7 +204,7 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
         <button style={linkBtn} onClick={onCancel}>Abbrechen</button>
         <button className="btn-primary" onClick={save} disabled={saving}>{saving?"Speichert…":"Speichern"}</button>
       </div>
-      {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+      {error && <ErrorText style={{marginTop:10}}>{error}</ErrorText>}
     </Card>
   );
 }
@@ -316,7 +316,7 @@ function BudgetView({items, callHotel, callId, refresh, hotel}){
 
       {depts.length>0 && (
         <Card style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:8}}>Ist vs. Plan je Abteilung</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>Ist vs. Plan je Abteilung</h2>
           {depts.map(d=>{
             const p=plannedByDept[d], a=actualByDept[d]||0, pct = p>0 ? a/p*100 : (a>0?100:0);
             return (
@@ -336,7 +336,7 @@ function BudgetView({items, callHotel, callId, refresh, hotel}){
         {items.length>0 && hotel && <button style={smallBtn} onClick={()=>budgetXlsx(hotel, items).catch(e=>setError(e.message))}>Excel</button>}
         <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Budgetposten</button>
       </div>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:12}}>{error}</ErrorText>}
       {showForm && (
         <Card style={{marginBottom:16}}>
           <BudgetFields value={draft} onChange={setDraft} />
@@ -431,7 +431,7 @@ function StaffView({positions, callHotel, callId, refresh, hotel, api}){
 
       {depts.length>0 && (
         <Card style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:8}}>Besetzung je Abteilung</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>Besetzung je Abteilung</h2>
           {depts.map(d=>{
             const n=needByDept[d], h=haveByDept[d]||0, p=n>0?h/n*100:0;
             return (
@@ -448,7 +448,7 @@ function StaffView({positions, callHotel, callId, refresh, hotel, api}){
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
         <button className="btn-primary" onClick={()=>setShowForm(!showForm)}>+ Stelle</button>
       </div>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:12}}>{error}</ErrorText>}
       {showForm && (
         <Card style={{marginBottom:16}}>
           <StaffFields value={draft} onChange={setDraft} />
@@ -480,7 +480,7 @@ function StaffView({positions, callHotel, callId, refresh, hotel, api}){
                 <button style={{...linkBtn,border:`1px solid ${BORDER}`,borderRadius:6,padding:"2px 9px"}} onClick={()=>step(p,1)} title="Eine Person mehr">+</button>
               </td>
               <td style={{padding:12}}>
-                {p.filled>=p.headcount ? <Pill color={GOOD} bg={GOOD_SOFT}>Besetzt</Pill> : <Pill color={WARN} bg={WARN_SOFT}>{tf("{0} offen", p.headcount-p.filled)}</Pill>}
+                {p.filled>=p.headcount ? <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>Besetzt</Pill> : <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("{0} offen", p.headcount-p.filled)}</Pill>}
               </td>
               <td style={{padding:12,whiteSpace:"nowrap"}}>
                 {api && canManageDept(p.department) && <button style={linkBtn} onClick={()=>setCands(cands===p.id?null:p.id)}>{tf("Bewerbungen")}</button>}
@@ -509,12 +509,12 @@ function OrgRenameCard({orgId, orgName, api, onRenamed}){
   };
   return (
     <Card style={{marginBottom:18}}>
-      <div style={{fontWeight:700,marginBottom:10}}>Organisation</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>Organisation</h2>
       <div className="stack" style={{display:"flex",gap:10}}>
         <input className="input" value={name} onChange={e=>{setName(e.target.value);setMsg("");}} onKeyDown={e=>e.key==="Enter"&&save()} placeholder="Name der Organisation, z. B. Hotelgruppe Wien" />
         <button className="btn-primary" onClick={save} disabled={saving}>{saving?"…":"Umbenennen"}</button>
       </div>
-      {error && <div style={{color:BAD,fontSize:13,marginTop:10}}>{error}</div>}
+      {error && <ErrorText style={{marginTop:10}}>{error}</ErrorText>}
       {msg && <div style={{color:GOOD,fontSize:13,marginTop:10}}>{msg}</div>}
     </Card>
   );

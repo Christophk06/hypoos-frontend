@@ -36,7 +36,7 @@ function LaundryView({hotel, api}){
           <tr key={it.id} style={{borderTop:`1px solid ${BORDER}`}}>
             <td style={{padding:10}}><b data-no-i18n="">{it.name}</b>{it.unit_cost!=null && <div style={{fontSize:12,color:INK_MUTED}}>{money(it.unit_cost)} / {tf("Stück")}</div>}</td>
             <td style={{textAlign:"end"}}>{fmtNum(s.sent,0)}</td><td style={{textAlign:"end"}}>{fmtNum(s.returned,0)}</td>
-            <td style={{textAlign:"end",color:s.damaged?WARN:INK}}>{fmtNum(s.damaged,0)}</td><td style={{textAlign:"end",color:s.missing?BAD:INK,fontWeight:s.missing?700:400}}>{fmtNum(s.missing,0)}</td>
+            <td style={{textAlign:"end",color:s.damaged?WARN_TEXT:INK}}>{fmtNum(s.damaged,0)}</td><td style={{textAlign:"end",color:s.missing?BAD:INK,fontWeight:s.missing?700:400}}>{fmtNum(s.missing,0)}</td>
             <td style={{textAlign:"end",paddingInlineEnd:10,whiteSpace:"nowrap"}}>
               <button style={linkBtn} onClick={()=>setMove({item:it, sent:"", returned:"", damaged:"", note:""})}>{tf("Buchen")}</button>
               {lead && <button style={linkBtn} onClick={()=>setForm({...it, unit_cost:it.unit_cost??"", par_level:it.par_level??""})}>{tf("Bearbeiten")}</button>}
@@ -176,7 +176,7 @@ function HousingView({hotel, api, members}){
     <div>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Zimmer im Personalhaus: wer wohnt wo, seit wann, Kaution und Übergabe. Sehen können das Admins und die Leitung Personal; jede Person sieht ihre eigene Unterkunft.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
-      {err && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{err}</div>}
+      {err && <ErrorText style={{marginBottom:10}}>{err}</ErrorText>}
       {!form && <button className="btn-primary" style={{marginBottom:12}} onClick={()=>setForm({name:"", beds:1, rent_month:"", note:""})}>{tf("Unterkunft anlegen")}</button>}
       {form && <Card style={{marginBottom:12,borderColor:BRASS}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"0 10px"}}>
@@ -192,7 +192,7 @@ function HousingView({hotel, api, members}){
         <Card key={u.id} style={{marginBottom:10}}>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <b style={{flex:1}} data-no-i18n="">{u.name}</b>
-            <Pill color={cur.length>=u.beds?WARN:GOOD} bg={cur.length>=u.beds?WARN_SOFT:GOOD_SOFT}>{tf("{0} von {1} Betten belegt", cur.length, u.beds)}</Pill>
+            <Pill color={cur.length>=u.beds?WARN_TEXT:GOOD_TEXT} bg={cur.length>=u.beds?WARN_SOFT:GOOD_SOFT}>{tf("{0} von {1} Betten belegt", cur.length, u.beds)}</Pill>
             {u.rent_month!=null && <span style={{fontSize:12.5,color:INK_MUTED}}>{money(u.rent_month)} / {tf("Monat")}</span>}
             <button style={linkBtn} onClick={()=>setMove({unit_id:u.id, user_id:"", person_name:"", from_date:today, to_date:"", deposit:"", handover_note:""})}>{tf("Einzug eintragen")}</button>
             <button style={linkBtn} onClick={()=>setForm({...u, rent_month:u.rent_month??"", note:u.note||""})}>{tf("Bearbeiten")}</button>

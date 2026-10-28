@@ -6,7 +6,7 @@ const tmMain = {minHeight:44};
 const tmBtn = {...smallBtn, minHeight:44};
 const tmMsg = (msg) => msg ? <div role={msg.ok?"status":"alert"} style={{color:msg.ok?GOOD:BAD,fontSize:13,margin:"6px 0 10px"}}>{msg.text}</div> : null;
 const tmStages = ["Eingegangen","Gespräch","Angebot","Zusage","Absage"];
-const tmStageColor = {Eingegangen:[INK_MUTED,PAPER], Gespräch:[BRASS,BRASS_SOFT], Angebot:[WARN,WARN_SOFT], Zusage:[GOOD,GOOD_SOFT], Absage:[BAD,BAD_SOFT]};
+const tmStageColor = {Eingegangen:[INK_MUTED,PAPER], Gespräch:[BRASS_TEXT,BRASS_SOFT], Angebot:[WARN_TEXT,WARN_SOFT], Zusage:[GOOD_TEXT,GOOD_SOFT], Absage:[BAD,BAD_SOFT]};
 const tmEmployment = ["Vollzeit","Teilzeit","Saison","Lehre","Aushilfe"];
 const tmName = (members, me, id) => id ? memberLabel(members||[], me, id) : "–";
 const tmIsAT = (hotel) => /^(at|aut|österreich|oesterreich|austria)$/i.test(String((hotel && hotel.country) || "").trim());
@@ -66,7 +66,7 @@ function TmRecruitingView({hotel, api, members, me, orgId}){
         {(postings||[]).map(p=>(
           <div key={p.id} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"10px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
             <span style={{flex:1,minWidth:180}}><b data-no-i18n="">{p.title}</b><div style={{fontSize:12.5,color:INK_MUTED}}>{tf(p.department)} · {tf(p.employment)}{p.start_date ? " · "+tf("ab {0}", fmtDate(p.start_date)) : ""} · {tf("{0} offen", count(p.id))}</div></span>
-            <Pill color={p.status==="Veröffentlicht"?GOOD:p.status==="Geschlossen"?INK_MUTED:WARN} bg={p.status==="Veröffentlicht"?GOOD_SOFT:p.status==="Geschlossen"?PAPER:WARN_SOFT}>{tf(p.status)}</Pill>
+            <Pill color={p.status==="Veröffentlicht"?GOOD_TEXT:p.status==="Geschlossen"?INK_MUTED:WARN_TEXT} bg={p.status==="Veröffentlicht"?GOOD_SOFT:p.status==="Geschlossen"?PAPER:WARN_SOFT}>{tf(p.status)}</Pill>
             <button style={tmBtn} aria-pressed={sel===p.id} onClick={()=>setSel(sel===p.id?"alle":p.id)}>{tf("Bewerbungen")}</button>
             {p.status==="Veröffentlicht" && p.public_token && <button style={tmBtn} onClick={()=>tmCopy(tmPublicUrl("p="+p.public_token), setMsg)}>{tf("Link kopieren")}</button>}
             {canManageDept(p.department) && <button style={tmBtn} onClick={()=>setForm({...p, start_date:p.start_date||"", salary_note:p.salary_note||"", description:p.description||""})}>{tf("Bearbeiten")}</button>}
@@ -191,7 +191,7 @@ function TmReferralCard({hotel, api}){
       await api("/api/hotels/"+hotel.id+"/referrals","POST",{name:form.name, contact:form.contact, note:form.note, agreed:form.agreed, [k==="post"?"posting_id":"position_id"]:id});
       setForm(null); setMsg({ok:true,text:tf("Danke für deine Empfehlung! Die Personalleitung meldet sich bei der Person.")}); load(); }
     catch(e){ setMsg({ok:false,text:e.message}); } setBusy(false); };
-  const st = {"läuft":[WARN,WARN_SOFT], "eingestellt":[GOOD,GOOD_SOFT], "abgesagt":[INK_MUTED,PAPER]};
+  const st = {"läuft":[WARN_TEXT,WARN_SOFT], "eingestellt":[GOOD_TEXT,GOOD_SOFT], "abgesagt":[INK_MUTED,PAPER]};
   const s = (opts && opts.settings) || {};
   return (
     <Card style={{marginBottom:14}}>
@@ -253,7 +253,7 @@ function TmReferralBonusCard({hotel, api, members, me}){
         <div key={c.id} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"8px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
           <span style={{flex:1,minWidth:180}}><span data-no-i18n="">{c.name}</span> <span style={{color:INK_MUTED,fontSize:12.5}}>· <span data-no-i18n="">{c.position}</span> · {tf("empfohlen von {0}", tmName(members, me, c.referred_by))}</span>
             <div style={{fontSize:12,color:INK_MUTED}}>{tf(c.stage)}{c.referral_bonus!=null ? " · "+fmtEur(c.referral_bonus) : ""}{c.due_on ? " · "+tf("fällig am {0}", fmtDate(c.due_on)) : ""}</div></span>
-          {c.referral_paid_at ? <><Pill color={GOOD} bg={GOOD_SOFT}>{tf("ausbezahlt am {0}", fmtDate(c.referral_paid_at))}</Pill><button style={{...linkBtn,minHeight:44}} onClick={()=>paid(c,false)}>{tf("Rückgängig")}</button></>
+          {c.referral_paid_at ? <><Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("ausbezahlt am {0}", fmtDate(c.referral_paid_at))}</Pill><button style={{...linkBtn,minHeight:44}} onClick={()=>paid(c,false)}>{tf("Rückgängig")}</button></>
             : c.stage==="Zusage" && <button style={{...tmBtn,borderColor:c.due_on && c.due_on<=today?GOOD:BORDER}} onClick={()=>paid(c,true)}>{tf("Als ausbezahlt markieren")}</button>}
         </div>))}
     </Card>
@@ -279,7 +279,7 @@ function TmProbationReview({r, api, hotel, name, onSaved}){
       <div style={{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap",fontSize:13.5}}>
         <b data-no-i18n="" style={{flex:1}}>{name}</b>
         <span>{tf("Woche {0}", r.week)} · {fmtDate(r.due_on)}</span>
-        {r.done_at ? <Pill color={GOOD} bg={GOOD_SOFT}>{tf("geführt")}</Pill> : late ? <Pill color={BAD} bg={BAD_SOFT}>{tf("überfällig")}</Pill> : null}
+        {r.done_at ? <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("geführt")}</Pill> : late ? <Pill color={BAD} bg={BAD_SOFT}>{tf("überfällig")}</Pill> : null}
       </div>
       {tmMsg(msg)}
       <textarea className="input" rows={3} maxLength={5000} style={{marginTop:6}} value={notes} onChange={e=>setNotes(e.target.value)} placeholder={tf("Wie läuft die Einarbeitung? Stärken, offene Punkte, Vereinbarungen")} aria-label={tf("Notizen zum Gespräch")} data-no-i18n="" />
@@ -472,7 +472,7 @@ function TmFirstAidView({hotel, api, members, me, orgId}){
             <span style={{flex:1,minWidth:160}}><b data-no-i18n="">{tmName(members, me, q.user_id)}</b> · {tf(q.kind)}{q.note ? <span data-no-i18n="" style={{color:INK_MUTED,fontSize:12.5}}> · {q.note}</span> : null}</span>
             <span style={{fontSize:12.5,color:INK_MUTED}}>{q.valid_until ? tf("gültig bis {0}", fmtDate(q.valid_until)) : tf("ohne Ablaufdatum")}</span>
             {exp && <Pill color={BAD} bg={BAD_SOFT}>{tf("abgelaufen")}</Pill>}
-            {soon && <Pill color={WARN} bg={WARN_SOFT}>{tf("läuft bald ab")}</Pill>}
+            {soon && <Pill color={WARN_TEXT} bg={WARN_SOFT}>{tf("läuft bald ab")}</Pill>}
             {canWrite && <button style={tmBtn} onClick={()=>setForm({...q, valid_until:q.valid_until||"", note:q.note||""})}>{tf("Bearbeiten")}</button>}
             {canWrite && <button style={{...linkBtn,color:BAD,minHeight:44}} onClick={()=>del(q)} aria-label={tf("Nachweis löschen")}>✕</button>}
           </div>); })}
@@ -556,7 +556,7 @@ function TmRoleplayView({hotel, api, me, members}){
           <div key={s.id} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"8px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
             <span style={{flex:1,minWidth:160}} data-no-i18n="">{tmScenarioLabel(s.scenario)}</span>
             <span style={{fontSize:12.5,color:INK_MUTED}}>{fmtDateTime(s.created_at)}</span>
-            {s.score!=null ? <Pill color={s.score>=7?GOOD:s.score>=4?WARN:BAD} bg={s.score>=7?GOOD_SOFT:s.score>=4?WARN_SOFT:BAD_SOFT}>{s.score}/10</Pill> : !s.finished_at && <Pill color={INK_MUTED} bg={PAPER}>{tf("offen")}</Pill>}
+            {s.score!=null ? <Pill color={s.score>=7?GOOD_TEXT:s.score>=4?WARN_TEXT:BAD} bg={s.score>=7?GOOD_SOFT:s.score>=4?WARN_SOFT:BAD_SOFT}>{s.score}/10</Pill> : !s.finished_at && <Pill color={INK_MUTED} bg={PAPER}>{tf("offen")}</Pill>}
             <button style={tmBtn} onClick={()=>openOld(s)}>{s.finished_at ? tf("Ansehen") : tf("Weiterüben")}</button>
           </div>))}
       </Card>}
@@ -567,11 +567,11 @@ function TmRoleplayView({hotel, api, me, members}){
 function TmRoleplayFeedback({f}){
   return (
     <Card style={{borderColor:BRASS}}>
-      <div style={{display:"flex",gap:10,alignItems:"baseline",flexWrap:"wrap"}}><b style={{flex:1}}><Icon n="star" /> {tf("Rückmeldung")}</b><span style={{fontSize:26,fontWeight:700,color:f.punktzahl>=7?GOOD:f.punktzahl>=4?WARN:BAD}}>{f.punktzahl}/10</span></div>
+      <div style={{display:"flex",gap:10,alignItems:"baseline",flexWrap:"wrap"}}><b style={{flex:1}}><Icon n="star" /> {tf("Rückmeldung")}</b><span style={{fontSize:26,fontWeight:700,color:f.punktzahl>=7?GOOD:f.punktzahl>=4?WARN_TEXT:BAD}}>{f.punktzahl}/10</span></div>
       <div data-no-i18n="" style={{fontSize:14,margin:"6px 0 10px"}}>{f.zusammenfassung}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:12,fontSize:13.5}}>
         <div><div style={{fontWeight:700,color:GOOD}}>{tf("Stärken")}</div><ul style={{margin:"4px 0",paddingInlineStart:18}} data-no-i18n="">{(f.staerken||[]).map((x,i)=><li key={i}>{x}</li>)}</ul></div>
-        <div><div style={{fontWeight:700,color:WARN}}>{tf("Verbesserungen")}</div><ul style={{margin:"4px 0",paddingInlineStart:18}} data-no-i18n="">{(f.verbesserungen||[]).map((x,i)=><li key={i}>{x}</li>)}</ul></div>
+        <div><div style={{fontWeight:700,color:WARN_TEXT}}>{tf("Verbesserungen")}</div><ul style={{margin:"4px 0",paddingInlineStart:18}} data-no-i18n="">{(f.verbesserungen||[]).map((x,i)=><li key={i}>{x}</li>)}</ul></div>
       </div>
       {(f.musterformulierungen||[]).length>0 && <div style={{marginTop:10}}><div style={{fontWeight:700,fontSize:13.5}}>{tf("Musterformulierungen")}</div>
         {f.musterformulierungen.map((m,i)=><div key={i} style={{background:PAPER,borderRadius:8,padding:"8px 10px",marginTop:6,fontSize:13.5}} data-no-i18n=""><div style={{fontSize:12,color:INK_MUTED}}>{m.situation}</div>„{m.formulierung}“</div>)}</div>}
@@ -590,7 +590,7 @@ function TmRoleplayTeam({list, members, me}){
         <div key={uid} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"8px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
           <b data-no-i18n="" style={{flex:1,minWidth:140}}>{tmName(members, me, uid)}</b>
           <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("{0} Übungen", rs.length)} · {tf("zuletzt {0}", fmtDate(rs[0].created_at))}</span>
-          <Pill color={BRASS} bg={BRASS_SOFT}>Ø {fmtNum(rs.reduce((a,s)=>a+s.score,0)/rs.length,1)}</Pill>
+          <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>Ø {fmtNum(rs.reduce((a,s)=>a+s.score,0)/rs.length,1)}</Pill>
         </div>))}
     </Card>
   );

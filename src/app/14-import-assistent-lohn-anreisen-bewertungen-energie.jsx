@@ -101,12 +101,12 @@ function SetupWizard({hotel, api, orgId, onHotel, onOpen}){
   return (
     <Card style={{marginBottom:18,borderColor:BRASS}}>
       <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:6}}>
-        <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,flex:1}}>{tf("Willkommen! In fünf Schritten startklar")}</div>
+        <h2 className="ui-h" style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,flex:1}}>{tf("Willkommen! In fünf Schritten startklar")}</h2>
         <button style={linkBtn} onClick={finish}>{tf("Später einrichten")}</button>
       </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
         {steps.map((s,i)=><button key={i} onClick={()=>setStep(i)} style={{border:"none",borderRadius:999,padding:"5px 11px",fontSize:12.5,cursor:"pointer",fontWeight:600,
-          background:i===step?INK:i<step?GOOD_SOFT:PAPER,color:i===step?"#fff":i<step?GOOD:INK_MUTED}}>{i<step?"✓ ":(i+1)+". "}{s}</button>)}
+          background:i===step?INK:i<step?GOOD_SOFT:PAPER,color:i===step?"#fff":i<step?GOOD_TEXT:INK_MUTED}}>{i<step?"✓ ":(i+1)+". "}{s}</button>)}
       </div>
       {step===0 && <div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:"0 14px"}}>
@@ -219,7 +219,7 @@ function PayrollExportCard({hotel, api, rows, month, onHotel, onClose}){
   return (
     <Card style={{marginBottom:14,borderColor:BRASS}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}>{tf("Lohnarten-Export")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}>{tf("Lohnarten-Export")}</h2>
         <button style={linkBtn} onClick={onClose}>{tf("Schließen")}</button>
       </div>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Je Person und Lohnart eine Zeile – zum Einlesen in BMD, DATEV, Sage oder Lexware. Die Nummern stimmst du einmal mit deiner Lohnverrechnung ab; sie bleiben gespeichert.")}</div>
@@ -242,7 +242,7 @@ function PayrollExportCard({hotel, api, rows, month, onHotel, onClose}){
         <button style={smallBtn} onClick={save}>{tf("Nur speichern")}</button>
         <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("{0} Zeilen", lines.length)}{missing ? " · "+tf("{0} Personen ohne Personalnummer", missing) : ""}</span>
       </div>
-      {s.format==="datev" && <div style={{fontSize:12,color:WARN,marginTop:8}}>{tf("Bitte die erste Datei gemeinsam mit der Lohnverrechnung prüfen – Lohnarten und Einstellungen unterscheiden sich je Kanzlei.")}</div>}
+      {s.format==="datev" && <div style={{fontSize:12,color:WARN_TEXT,marginTop:8}}>{tf("Bitte die erste Datei gemeinsam mit der Lohnverrechnung prüfen – Lohnarten und Einstellungen unterscheiden sich je Kanzlei.")}</div>}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
     </Card>
   );
@@ -269,14 +269,14 @@ function LaborAverageCard({hotel, api, dept, members}){
       </div>
       {open && <div style={{marginTop:10}}>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Nach § 9 AZG dürfen es im Schnitt höchstens {0} Stunden pro Woche sein. Gerechnet werden geplante Schichten abzüglich Pausen. Hinweis, keine Rechtsberatung.", rules.avgMax)}</div>
-        {error && <div style={{color:BAD,fontSize:13}}>{error}</div>}
+        {error && <ErrorText>{error}</ErrorText>}
         {!rows && !error && <div style={{fontSize:13,color:INK_MUTED}}>…</div>}
         {rows && !rows.length && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Keine Schichten im Zeitraum.")}</div>}
         {rows && rows.length>0 && <table style={{width:"100%",borderCollapse:"collapse",fontSize:13.5}}><tbody>
           {rows.map(r=><tr key={r.name} style={{borderTop:`1px solid ${BORDER}`}}>
             <td style={{padding:"7px 4px"}} data-no-i18n="">{r.name}</td>
             <td style={{padding:"7px 4px",textAlign:"end",fontWeight:600,color:r.over?BAD:INK}}>{tf("{0} h pro Woche", fmtHours(r.average))}</td>
-            <td style={{padding:"7px 4px",textAlign:"end"}}>{r.over ? <Pill color={BAD} bg={BAD_SOFT}>{tf("über {0} h", r.max)}</Pill> : <Pill color={GOOD} bg={GOOD_SOFT}>{tf("im Rahmen")}</Pill>}</td>
+            <td style={{padding:"7px 4px",textAlign:"end"}}>{r.over ? <Pill color={BAD} bg={BAD_SOFT}>{tf("über {0} h", r.max)}</Pill> : <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("im Rahmen")}</Pill>}</td>
           </tr>)}
         </tbody></table>}
       </div>}
@@ -403,7 +403,7 @@ function ArrivalsView({hotel, hotels, api, role, onHotel}){
 
 // ------------------------------------------------------------ Bewertungen
 const REVIEW_SOURCE_LABELS = {google:"Google", booking:"Booking.com", tripadvisor:"Tripadvisor", holidaycheck:"HolidayCheck", expedia:"Expedia", andere:"Andere"};
-function Stars({value}){ if(value==null) return <span style={{color:INK_MUTED}}>–</span>; const v = Math.round(value*2)/2; return <span style={{color:BRASS,letterSpacing:1}} title={String(value)}>{"★".repeat(Math.floor(v))}{v%1?"½":""}<span style={{color:"#ddd"}}>{"★".repeat(5-Math.ceil(v))}</span></span>; }
+function Stars({value}){ if(value==null) return <span style={{color:INK_MUTED}}>–</span>; const v = Math.round(value*2)/2; return <span style={{color:BRASS_TEXT,letterSpacing:1}} title={String(value)}>{"★".repeat(Math.floor(v))}{v%1?"½":""}<span style={{color:"#ddd"}}>{"★".repeat(5-Math.ceil(v))}</span></span>; }
 function ReviewsView({hotel, api, role}){
   const [data,setData] = useState(null); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState("");
   const [source,setSource] = useState("google"); const [filter,setFilter] = useState("");
@@ -438,7 +438,7 @@ function ReviewsView({hotel, api, role}){
       </Card>}
       <Card style={{marginBottom:14,borderColor:sum?BRASS:BORDER}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:sum?10:0}}>
-          <div style={{fontWeight:700,flex:1}}><Icon n="sparkle" /> {tf("KI-Auswertung")} {data.summary && <span style={{fontWeight:400,fontSize:12.5,color:INK_MUTED}}>· {tf("{0} Bewertungen, Stand {1}", data.summary.review_count, fmtDateTime(data.summary.created_at))}</span>}</div>
+          <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="sparkle" /> {tf("KI-Auswertung")} {data.summary && <span style={{fontWeight:400,fontSize:12.5,color:INK_MUTED}}>· {tf("{0} Bewertungen, Stand {1}", data.summary.review_count, fmtDateTime(data.summary.created_at))}</span>}</h2>
           {lead && data.ai && <button className="btn-primary" style={{padding:"7px 12px",fontSize:12.5}} disabled={!!busy} onClick={summarize}>{busy==="ai" ? tf("Wird ausgewertet…") : sum ? tf("Neu auswerten") : tf("Mit KI auswerten")}</button>}
           {!data.ai && <span style={{fontSize:12.5,color:INK_MUTED}}>{tf("Die KI ist noch nicht eingerichtet.")}</span>}
         </div>
@@ -460,7 +460,7 @@ function ReviewsView({hotel, api, role}){
         </div>}
       </Card>
       {lead && <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
-        <select className="input" style={{width:"auto"}} value={source} onChange={e=>setSource(e.target.value)}>{Object.entries(REVIEW_SOURCE_LABELS).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select>
+        <select className="input" aria-label={tf("Quelle")} style={{width:"auto"}} value={source} onChange={e=>setSource(e.target.value)}>{Object.entries(REVIEW_SOURCE_LABELS).map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select>
         <FileButton primary label={tf("Bewertungen importieren (Excel/CSV)")} busy={busy==="import"} onFile={importFile} title={tf("Spalten z. B. Bewertung, Text, Datum, Autor – wie im Export des Portals")} />
         <span style={{fontSize:12,color:INK_MUTED}}>{tf("Den Export gibt es im Partnerbereich des Portals (z. B. Booking.com Extranet, Google Unternehmensprofil).")}</span>
       </div>}
@@ -485,7 +485,7 @@ function ReviewsView({hotel, api, role}){
 }
 
 // Antwort auf eine Bewertung: KI-Entwurf, bearbeiten, kopieren, als beantwortet markieren
-const REPLY_STATUS = {offen:["Unbeantwortet",WARN,WARN_SOFT], entwurf:["Entwurf",BRASS,BRASS_SOFT], beantwortet:["Beantwortet",GOOD,GOOD_SOFT], ignoriert:["Keine Antwort nötig",INK_MUTED,"#EEF0F2"]};
+const REPLY_STATUS = {offen:["Unbeantwortet",WARN,WARN_SOFT], entwurf:["Entwurf",BRASS,BRASS_SOFT], beantwortet:["Beantwortet",GOOD_TEXT,GOOD_SOFT], ignoriert:["Keine Antwort nötig",INK_MUTED,"#EEF0F2"]};
 function ReviewReply({r, api, ai, onSaved}){
   const [open,setOpen] = useState(false); const [text,setText] = useState(r.reply_draft||""); const [busy,setBusy] = useState(""); const [msg,setMsg] = useState(null);
   useEffect(()=>{ setText(r.reply_draft||""); },[r.reply_draft]);
@@ -500,7 +500,7 @@ function ReviewReply({r, api, ai, onSaved}){
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
         <Pill color={st[1]} bg={st[2]}>{tf(st[0])}</Pill>
         {!open && <button style={{...linkBtn,fontSize:12.5}} onClick={()=>setOpen(true)}>{r.reply_draft ? tf("Antwort ansehen") : tf("Antwort schreiben")}</button>}
-        {ai && !r.reply_draft && <button style={{...linkBtn,fontSize:12.5,color:BRASS}} disabled={!!busy} onClick={draft}><Icon n="sparkle" /> {busy==="ai" ? tf("Wird geschrieben…") : tf("Antwort mit KI entwerfen")}</button>}
+        {ai && !r.reply_draft && <button style={{...linkBtn,fontSize:12.5,color:BRASS_TEXT}} disabled={!!busy} onClick={draft}><Icon n="sparkle" /> {busy==="ai" ? tf("Wird geschrieben…") : tf("Antwort mit KI entwerfen")}</button>}
       </div>
       {open && <div style={{marginTop:8}}>
         <textarea className="input" rows={5} maxLength={3000} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Antwort an den Gast …")} aria-label={tf("Antwort an den Gast …")} autoFocus />
@@ -568,7 +568,7 @@ function EnergyView({hotel, api, role}){
                 <div style={{flex:1}}><div style={{fontWeight:700}} data-no-i18n="">{m.name}</div><div style={{fontSize:12,color:INK_MUTED}}>{tf(m.kind)} · {m.unit}</div></div>
                 {lead && <button style={linkBtn} onClick={()=>setForm({...m, price_per_unit:m.price_per_unit??""})}>{tf("Bearbeiten")}</button>}
               </div>
-              {alerts.map((a,i)=><div key={i} style={{fontSize:12.5,color:a.code==="high"?BAD:WARN,marginBottom:4}}><Icon n="alert" /> {energyAlertText(a, m.unit)}</div>)}
+              {alerts.map((a,i)=><div key={i} style={{fontSize:12.5,color:a.code==="high"?BAD:WARN_TEXT,marginBottom:4}}><Icon n="alert" /> {energyAlertText(a, m.unit)}</div>)}
               <div style={{display:"flex",gap:14,fontSize:12.5,color:INK_MUTED,marginBottom:8,flexWrap:"wrap"}}>
                 <span>{tf("Letzter Stand")}: <b style={{color:INK}} data-no-i18n="">{last ? Number(last.value).toLocaleString(UI_LOCALE)+" "+m.unit : "–"}</b>{last && " ("+fmtDay(last.read_on,{day:"2-digit",month:"2-digit"})+")"}</span>
                 {thisMonth && <span>{tf("Dieser Monat")}: <b style={{color:INK}} data-no-i18n="">{Math.round(thisMonth.used).toLocaleString(UI_LOCALE)} {m.unit}</b>{m.price_per_unit ? " ≈ "+fmtEur(thisMonth.used*m.price_per_unit) : ""}</span>}
@@ -623,7 +623,7 @@ function docExpiryInfo(d){
   if(!d.expires_at) return null;
   const days = Math.round((new Date(d.expires_at+"T12:00:00") - new Date(todayIso()+"T12:00:00"))/86400000);
   if(days<0) return {color:BAD, text:tf("abgelaufen am {0}", fmtDate(d.expires_at))};
-  if(days<=d.remind_days) return {color:WARN, text:tf("läuft ab am {0}", fmtDate(d.expires_at))};
+  if(days<=d.remind_days) return {color:WARN_TEXT, text:tf("läuft ab am {0}", fmtDate(d.expires_at))};
   return {color:INK_MUTED, text:tf("gültig bis {0}", fmtDate(d.expires_at))};
 }
 function DocExpiryEditor({d, api, onSaved, onClose}){
@@ -650,7 +650,7 @@ function CalendarCard({api}){
   const copy = () => { try { navigator.clipboard.writeText(feed.url); setMsg({ok:true,text:tf("Link kopiert.")}); } catch(e){} };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}><Icon n="calendar" /> {tf("Dienstplan im Handy-Kalender")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}><Icon n="calendar" /> {tf("Dienstplan im Handy-Kalender")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Deine veröffentlichten Schichten erscheinen automatisch in Google Kalender, Apple Kalender oder Outlook – und bleiben aktuell. Der Link ist persönlich: bitte nicht weitergeben.")}</div>
       {feed ? <div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
@@ -677,13 +677,39 @@ function useOAuthProviders(config){
   },[]);
   return list;
 }
+// Paket 041: Die Rückkehr mit Tokens im URL-Fragment wird nur angenommen, wenn dieser Tab die Anmeldung gestartet hat
+// (Nonce in sessionStorage, 15 Minuten gültig, einmalig). Siehe 21-app.jsx.
+const SSO_NONCE_KEY = "ouv_sso_nonce";
+function ssoTakeNonce(){
+  try {
+    const v = window.sessionStorage.getItem(SSO_NONCE_KEY); window.sessionStorage.removeItem(SSO_NONCE_KEY);
+    const m = /^([A-Za-z0-9_-]{16,64})\.(\d+)$/.exec(String(v||""));
+    return !!m && Date.now() - Number(m[2]) < 15*60*1000;
+  } catch(e){ return false; }
+}
+function ssoClaims(token){
+  try { return JSON.parse(atob(String(token).split(".")[1].replace(/-/g,"+").replace(/_/g,"/"))) || {}; } catch(e){ return {}; }
+}
 function oauthStart(config, provider){
+  try {
+    const b = new Uint8Array(18); crypto.getRandomValues(b);
+    const nonce = btoa(String.fromCharCode.apply(null, b)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    window.sessionStorage.setItem(SSO_NONCE_KEY, nonce+"."+Date.now());
+  } catch(e){ window.alert(tf("Die Anmeldung mit Google/Microsoft braucht den Sitzungsspeicher des Browsers. Bitte privaten Modus oder Blocker prüfen.")); return; }
   const redirect = window.location.origin + window.location.pathname;
   const extra = provider==="azure" ? "&scopes="+encodeURIComponent("email") : "";
   window.location.href = config.supabaseUrl.replace(/\/$/,"")+"/auth/v1/authorize?provider="+provider+"&redirect_to="+encodeURIComponent(redirect)+extra;
 }
+// Paket 041: window.OUVERTURE_SSO steuert die Knöpfe – false = keine; Liste (z. B. ["google","azure"]) = nur diese,
+// sofern in Supabase eingeschaltet; nicht gesetzt = wie bisher alle in Supabase eingeschalteten Anbieter.
+function ssoAllowed(list){
+  const s = typeof window!=="undefined" ? window.OUVERTURE_SSO : undefined;
+  if(s===false) return [];
+  if(Array.isArray(s)) return list.filter(p=>s.includes(p));
+  return list;
+}
 function OAuthButtons({config}){
-  const list = useOAuthProviders(config);
+  const list = ssoAllowed(useOAuthProviders(config));
   if(!list.length) return null;
   const btn = {width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:10,background:"#fff",border:`1px solid ${BORDER}`,borderRadius:6,padding:"9px 12px",fontSize:13.5,fontWeight:600,cursor:"pointer",marginBottom:8,color:INK};
   return (

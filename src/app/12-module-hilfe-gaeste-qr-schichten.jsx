@@ -26,9 +26,9 @@ function PhaseHint({hotel, api, onHotel}){
   const later = () => { try { window.localStorage.setItem("hpoos_phase_hint_"+hotel.id, "1"); } catch(e){} setHidden(true); };
   return (
     <Card style={{marginBottom:18,borderColor:BRASS}}>
-      <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:4}}>{tf("Das Hotel ist eröffnet")}</div>
+      <h2 className="ui-h" style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,marginBottom:4}}>{tf("Das Hotel ist eröffnet")}</h2>
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Im Betrieb blendet Ouverture die Eröffnungsplanung aus und zeigt auf der Startseite die Kennzahlen des Hauses. Aufgaben, Budget und Berichte bleiben gespeichert und lassen sich jederzeit wieder einblenden.")}</div>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
         <button className="btn-primary" onClick={go} disabled={busy}>{busy ? tf("Speichert…") : tf("In den Betrieb wechseln")}</button>
         <button style={{...linkBtn,fontSize:13.5}} onClick={later}>{tf("Später")}</button>
@@ -198,7 +198,7 @@ function RoomAssignCard({hotel, api, members, onDone}){
       {msg && !open && <span style={{fontSize:12.5,color:msg.ok?GOOD:BAD,marginInlineStart:8}}>{msg.text}</span>}
       {open && (
         <Card style={{marginTop:10,borderColor:BRASS}}>
-          <div style={{fontWeight:700,marginBottom:4}}>{tf("Schmutzige Zimmer fair verteilen")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Schmutzige Zimmer fair verteilen")}</h2>
           <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Abreisen zählen voll, Bleiben halb. Jede Person bekommt einen zusammenhängenden Bereich, damit die Wege kurz bleiben. Heute eingeteilte Personen sind vorausgewählt.")}</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
             {hk.map(m=>{ const on = sel.includes(m.user_id); const l = plan && plan.load[m.user_id]; return (
@@ -256,7 +256,7 @@ function OpenShiftsCard({hotel, api, me, role, myDepts, onChanged, compact, memb
   return (
     <Card style={{marginBottom:14,borderColor:open.length?WARN:BORDER}}>
       <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-        <div style={{fontWeight:700,flex:1}}><Icon n="bell" /> {tf("Offene Schichten")} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({open.length})</span></div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="bell" /> {tf("Offene Schichten")} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({open.length})</span></h2>
         {lead && !form && <button style={smallBtn} onClick={()=>setForm({department:depts.find(canManageDept), shift_date:addDaysIso(todayIso(),1), kind:"Früh", note:""})}>{tf("+ Schicht ausschreiben")}</button>}
       </div>
       {form && (
@@ -299,16 +299,16 @@ function BriefingCard({hotel, api, me, role, myDepts}){
   return (
     <Card style={{marginBottom:14,borderColor:b.read_by_me?BORDER:BRASS}}>
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-        <div style={{fontWeight:700,flex:1}}><Icon n="clipboard" /> {tf("Schichtbriefing")} · <span data-no-i18n="">{fmtDay(b.day,{weekday:"long",day:"2-digit",month:"2-digit"})}</span></div>
-        {depts.length>1 && <select className="input" style={{width:"auto",padding:"4px 8px"}} value={dept} onChange={e=>setDept(e.target.value)}>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>}
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}><Icon n="clipboard" /> {tf("Schichtbriefing")} · <span data-no-i18n="">{fmtDay(b.day,{weekday:"long",day:"2-digit",month:"2-digit"})}</span></h2>
+        {depts.length>1 && <select className="input" aria-label={tf("Abteilung")} style={{width:"auto",padding:"4px 8px"}} value={dept} onChange={e=>setDept(e.target.value)}>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>}
       </div>
       {sec(tf("Heute im Dienst"), b.staff.length ? <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{b.staff.map((s,i)=><span key={i} style={{fontSize:12.5,background:PAPER,borderRadius:999,padding:"2px 9px"}}><b data-no-i18n="">{s.name}</b> · <span>{s.kind}</span></span>)}</div> : <span style={{fontSize:13,color:INK_MUTED}}>{tf("Niemand eingeplant.")}</span>)}
       {b.forecast && sec(tf("Belegung"), <span style={{fontSize:13.5}} data-no-i18n="">{tf("{0} belegt · {1} Anreisen · {2} Abreisen", b.forecast.occupied, b.forecast.arrivals, b.forecast.departures)}</span>)}
       {b.rooms && sec(tf("Zimmer"), <span style={{fontSize:13.5}}>{tf("{0} schmutzig · {1} bereit", b.rooms.dirty, b.rooms.ready)}{b.rooms.out_of_order.length ? <span style={{color:BAD}}> · {tf("Außer Betrieb: {0}", b.rooms.out_of_order.join(", "))}</span> : ""}</span>)}
       {b.logbook.length>0 && sec(tf("Übergabebuch"), b.logbook.map((l,i)=><div key={i} style={{fontSize:13.5,marginBottom:2}}><Pill color={LOG_STYLE[l.kind].color} bg={LOG_STYLE[l.kind].bg}>{l.kind}</Pill> <TrText text={l.body} tr={T.tr} /></div>))}
       {b.tickets_open>0 && sec(tf("Offene Meldungen ({0})", b.tickets_open), b.tickets.map((t,i)=><div key={i} style={{fontSize:13.5}}>{t.priority==="Dringend" && <span style={{color:BAD,fontWeight:700}}>! </span>}<span data-no-i18n="">{t.location ? t.location+" · " : ""}</span><TrText text={t.title} tr={T.tr} /></div>))}
-      {b.haccp_missing.length>0 && sec(tf("HACCP heute noch messen"), <span style={{fontSize:13.5,color:WARN}} data-no-i18n="">{b.haccp_missing.join(", ")}</span>)}
-      {b.open_shifts.length>0 && sec(tf("Offene Schichten"), <span style={{fontSize:13.5,color:WARN}} data-no-i18n="">{b.open_shifts.map(o=>fmtDay(o.shift_date)+" "+translateString(o.kind)).join(" · ")}</span>)}
+      {b.haccp_missing.length>0 && sec(tf("HACCP heute noch messen"), <span style={{fontSize:13.5,color:WARN_TEXT}} data-no-i18n="">{b.haccp_missing.join(", ")}</span>)}
+      {b.open_shifts.length>0 && sec(tf("Offene Schichten"), <span style={{fontSize:13.5,color:WARN_TEXT}} data-no-i18n="">{b.open_shifts.map(o=>fmtDay(o.shift_date)+" "+translateString(o.kind)).join(" · ")}</span>)}
       <div style={{display:"flex",gap:10,alignItems:"center",marginTop:12,flexWrap:"wrap"}}>
         {b.read_by_me ? <span style={{fontSize:12.5,color:GOOD}}>✓ {tf("Gelesen")}</span> : role!=="viewer" && <button className="btn-primary" style={{padding:"6px 14px"}} onClick={()=>api("/api/hotels/"+hotel.id+"/briefing/read","POST",{department:dept}).then(load)}>{tf("Gelesen")}</button>}
         {canManageDept(dept) && <span style={{fontSize:12,color:INK_MUTED}} data-no-i18n="">{tf("Gelesen von: {0}", b.reads.map(r=>r.name).join(", ") || "–")}</span>}
@@ -342,7 +342,7 @@ function OnboardingCard({orgId, api, me, myDepts, members}){
     </div>); };
   return (
     <Card style={{marginBottom:14,borderColor:BRASS}}>
-      <div style={{fontWeight:700,marginBottom:8}}><Icon n="compass" /> {tf("Einarbeitung")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}><Icon n="compass" /> {tf("Einarbeitung")}</h2>
       {mine && <Block o={mine} title={tf("Deine ersten Tage")+(mine.buddy_id ? " · "+tf("Ansprechperson: {0}", memberLabel(members||[], me, mine.buddy_id)) : "")} />}
       {buddyOf.map(o=><Block key={o.user_id} o={o} title={tf("Du begleitest {0}", memberLabel(members||[], me, o.user_id))} />)}
     </Card>
@@ -359,7 +359,7 @@ function OnboardingAdmin({orgId, api, me, members}){
   const staff = members.filter(m=>m.role!=="viewer");
   return (
     <Card style={{marginBottom:18}}>
-      <div style={{fontWeight:700,marginBottom:4}}><Icon n="compass" /> {tf("Einarbeitung neuer Mitarbeitender")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}><Icon n="compass" /> {tf("Einarbeitung neuer Mitarbeitender")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Lege die Punkte für die ersten Tage fest. Wer neu ins Team kommt, bekommt die Liste automatisch auf die Startseite – zusammen mit einer Ansprechperson.")}</div>
       {d.items.map(i=>(
         <div key={i.id} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
@@ -369,7 +369,7 @@ function OnboardingAdmin({orgId, api, me, members}){
       ))}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
         <input className="input" style={{flex:2,minWidth:200}} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("z. B. Schlüssel und Uniform abholen, Rundgang durchs Haus")} />
-        <select className="input" style={{width:"auto"}} value={dept} onChange={e=>setDept(e.target.value)}><option value="">{tf("Alle")}</option>{DEPARTMENTS.map(x=><option key={x} value={x}>{x}</option>)}</select>
+        <select className="input" aria-label={tf("Abteilung")} style={{width:"auto"}} value={dept} onChange={e=>setDept(e.target.value)}><option value="">{tf("Alle")}</option>{DEPARTMENTS.map(x=><option key={x} value={x}>{x}</option>)}</select>
         <button className="btn-primary" disabled={!text.trim()} onClick={()=>run(async()=>{ await api("/api/organizations/"+orgId+"/onboarding/items","POST",{text, department:dept||null, position:d.items.length}); setText(""); })}>{tf("Hinzufügen")}</button>
       </div>
       {d.items.length>0 && (
@@ -381,7 +381,7 @@ function OnboardingAdmin({orgId, api, me, members}){
               {o ? <React.Fragment>
                 <span style={{width:120}}><Bar pct={d.items.length ? n/d.items.length*100 : 0} color={o.completed_at?GOOD:BRASS} /></span>
                 <span style={{fontSize:12,color:INK_MUTED,width:44}} data-no-i18n="">{n}/{d.items.length}</span>
-                <select className="input" style={{width:"auto",padding:"4px 8px",fontSize:12.5}} value={o.buddy_id||""} onChange={e=>run(()=>api("/api/organizations/"+orgId+"/onboarding/"+m.user_id,"PUT",{buddy_id:e.target.value||null, start_date:o.start_date}))}>
+                <select className="input" aria-label={tf("Ansprechperson")} style={{width:"auto",padding:"4px 8px",fontSize:12.5}} value={o.buddy_id||""} onChange={e=>run(()=>api("/api/organizations/"+orgId+"/onboarding/"+m.user_id,"PUT",{buddy_id:e.target.value||null, start_date:o.start_date}))}>
                   <option value="">{tf("Ansprechperson wählen")}</option>{staff.filter(x=>x.user_id!==m.user_id).map(x=><option key={x.user_id} value={x.user_id}>{shortName(x.email)}</option>)}</select>
                 {!o.completed_at ? <button style={linkBtn} onClick={()=>run(()=>api("/api/organizations/"+orgId+"/onboarding/"+m.user_id,"PUT",{buddy_id:o.buddy_id, start_date:o.start_date, completed:true}))}>{tf("Abschließen")}</button> : <span style={{fontSize:12,color:GOOD}}>✓ {tf("abgeschlossen")}</span>}
               </React.Fragment> : <button style={smallBtn} onClick={()=>run(()=>api("/api/organizations/"+orgId+"/onboarding/"+m.user_id,"PUT",{}))}>{tf("Einarbeitung starten")}</button>}

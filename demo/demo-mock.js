@@ -1880,6 +1880,99 @@
         var ce2 = { id: nid("cash"), entry_date: cdate, direction: "ein", category: "Sonstiges", amount: amt, note: note, department: "Food & Beverage", created_by: ME, created_at: nowS(), has_receipt: false }; D.cash.push(ce2); ccr.push({ outlet: s.outlet, id: ce2.id, amount: amt }); });
       return ok({ created: ccr, skipped: csales.length - ccr.length }); }
 
+    /* ===== Paket 041 (Schnittstellen, Wunschliste, Plattform; nur im Speicher; Antworten wie routes-integrations.js / routes-platform.js) ===== */
+    if (p === "/api/platform/me") return ok({ admin: false });
+    if (p === "/api/usage" && m === "POST") return Promise.resolve(new Response(null, { status: 204 }));
+    if (p === "/api/partner-attribution" && m === "POST") return ok({ ok: true, attributed: false });
+
+    if (!D.fr) {
+      D.fr = [
+        { id: "fr-1", title: "DATEV-Export für die Lohnbuchhaltung", description: "Monatliche Stunden und Zuschläge als DATEV-Datei, damit unser Steuerberater nichts abtippen muss.", status: "in Arbeit", vote_count: 23, created_at: nowIso(24 * 40), mine: false, my_vote: true },
+        { id: "fr-2", title: "Schichttausch direkt in der App", description: "Mitarbeitende sollen untereinander tauschen können, die Leitung bestätigt nur.", status: "geplant", vote_count: 17, created_at: nowIso(24 * 31), mine: false, my_vote: false },
+        { id: "fr-3", title: "Dunkler Modus für die Nachtschicht", description: "Die Nachtportiers wünschen sich eine dunkle Oberfläche.", status: "neu", vote_count: 9, created_at: nowIso(24 * 12), mine: true, my_vote: true },
+        { id: "fr-4", title: "Zimmerstatus per QR-Code am Wagen melden", description: "Housekeeping scannt den Code an der Tür und setzt den Status ohne Tippen.", status: "geplant", vote_count: 14, created_at: nowIso(24 * 21), mine: false, my_vote: false },
+        { id: "fr-5", title: "Anbindung an unser Kassensystem", description: "Tagesumsätze sollen automatisch in die Auswertung fließen.", status: "fertig", vote_count: 31, created_at: nowIso(24 * 90), mine: false, my_vote: true },
+        { id: "fr-6", title: "Eigene Farben für das Gästeportal", description: "", status: "abgelehnt", vote_count: 3, created_at: nowIso(24 * 60), mine: false, my_vote: false }];
+      D.ig_keys = [{ id: "ak-1", organization_id: ORG, name: "Kassensystem (Beispiel)", prefix: "DEMO1a2b", scopes: ["read:tickets", "read:rooms"], created_by: "u-admin", created_at: nowIso(24 * 20), last_used_at: nowIso(3), revoked_at: null }];
+      D.ig_hooks = [{ id: "wh-1", organization_id: ORG, hotel_id: null, url: "https://example.com/hooks/ouverture", events: ["ticket.created", "ticket.done", "guest_order.created"], active: true, failure_count: 0, disabled_at: null, created_at: nowIso(24 * 15) }];
+      D.ig_deliv = [
+        { id: "wd-1", webhook_id: "wh-1", event: "guest_order.created", status_code: 200, ok: true, attempt: 1, error: null, created_at: nowIso(2) },
+        { id: "wd-2", webhook_id: "wh-1", event: "ticket.created", status_code: 200, ok: true, attempt: 1, error: null, created_at: nowIso(9) },
+        { id: "wd-3", webhook_id: "wh-1", event: "ticket.created", status_code: 200, ok: true, attempt: 2, error: null, created_at: nowIso(26) },
+        { id: "wd-4", webhook_id: "wh-1", event: "ticket.done", status_code: 503, ok: false, attempt: 1, error: "HTTP 503", created_at: nowIso(26.1) },
+        { id: "wd-5", webhook_id: "wh-1", event: "ticket.done", status_code: 200, ok: true, attempt: 1, error: null, created_at: nowIso(50) }];
+    }
+    var frOut = function (x) { return Object.assign({}, x); };
+    if (p === "/api/feature-requests" && m === "GET") return ok({ items: D.fr.map(frOut), can_create: true });
+    if (p === "/api/feature-requests" && m === "POST") {
+      var ftitle = String(b.title || "").trim().slice(0, 120); if (ftitle.length < 5) return ok({ error: "Bitte einen Titel mit mindestens 5 Zeichen angeben." }, 400);
+      var fnew = { id: nid("fr"), title: ftitle, description: String(b.description || "").trim().slice(0, 2000) || null, status: "neu", vote_count: 0, created_at: new Date().toISOString(), mine: true, my_vote: false };
+      D.fr.push(fnew); return ok(fnew); }
+    if ((mm = p.match(/^\/api\/feature-requests\/([^/]+)\/vote$/)) && (m === "POST" || m === "DELETE")) {
+      var fv = byId(D.fr, mm[1]); if (!fv) return nf();
+      var von = m === "POST"; if (von !== fv.my_vote) { fv.my_vote = von; fv.vote_count = Math.max(0, fv.vote_count + (von ? 1 : -1)); }
+      return ok({ ok: true, my_vote: von }); }
+    if ((mm = p.match(/^\/api\/feature-requests\/([^/]+)$/)) && m === "PATCH") {
+      var fp = byId(D.fr, mm[1]); if (!fp || !fp.mine || fp.status !== "neu") return deny("Ändern lassen sich nur eigene Wünsche, solange sie neu sind.");
+      var ft2 = String(b.title || "").trim().slice(0, 120); if (ft2.length < 5) return ok({ error: "Bitte einen Titel mit mindestens 5 Zeichen angeben." }, 400);
+      fp.title = ft2; fp.description = String(b.description || "").trim().slice(0, 2000) || null; return ok(frOut(fp)); }
+
+    var igAdmin = function () { return ROLE === "admin"; }, IGDENY = "Schnittstellen verwalten nur Admins der Organisation.";
+    var rnd = function (n) { var s = "", c = "abcdefghijklmnopqrstuvwxyz0123456789"; for (var i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)]; return s; };
+    if (p === "/api/organizations/demo-org/api-keys") {
+      if (!igAdmin()) return deny(IGDENY);
+      if (m === "POST") {
+        var kname = String(b.name || "").trim().slice(0, 80); if (!kname) return ok({ error: "Bitte einen Namen angeben (z. B. „Kassensystem“)." }, 400);
+        var kscopes = (b.scopes || []).filter(function (s) { return ["read:tasks", "read:rooms", "read:tickets", "read:arrivals", "write:tickets"].indexOf(s) >= 0; });
+        if (!kscopes.length) return ok({ error: "Bitte mindestens eine Berechtigung wählen." }, 400);
+        var kpre = "DEMO" + rnd(4), krow = { id: nid("ak"), organization_id: ORG, name: kname, prefix: kpre, scopes: kscopes, created_by: ME, created_at: new Date().toISOString(), last_used_at: null, revoked_at: null };
+        D.ig_keys.unshift(krow); return ok(Object.assign({}, krow, { key: "ouv_" + kpre + "_NUR-DEMO-KEIN-ECHTER-SCHLUESSEL" })); }
+      return ok(D.ig_keys); }
+    if ((mm = p.match(/^\/api\/api-keys\/([^/]+)\/revoke$/)) && m === "POST") {
+      if (!igAdmin()) return deny(IGDENY);
+      var kr = byId(D.ig_keys, mm[1]); if (!kr || kr.revoked_at) return ok({ error: "Schlüssel nicht gefunden oder schon widerrufen." }, 404);
+      kr.revoked_at = new Date().toISOString(); return ok(kr); }
+
+    var IG_EV = ["ticket.created", "ticket.done", "task.done", "arrival.answered", "guest_order.created", "review.created", "application.created"];
+    var hookIn = function (bb, base) {
+      var evs = (bb.events || base.events || []).filter(function (e) { return IG_EV.indexOf(e) >= 0; });
+      if (!evs.length) return { error: "Bitte mindestens ein Ereignis wählen." };
+      if (bb.url !== undefined && !/^https:\/\/[^\s/]+/.test(String(bb.url))) return { error: "Nur https-Adressen sind erlaubt." };
+      return { url: bb.url !== undefined ? String(bb.url).trim().slice(0, 500) : base.url, events: evs, hotel_id: bb.hotel_id !== undefined ? (bb.hotel_id ? HID : null) : base.hotel_id }; };
+    if (p === "/api/organizations/demo-org/webhooks") {
+      if (!igAdmin()) return deny(IGDENY);
+      if (m === "POST") {
+        var hn = hookIn(b, { url: "", events: [], hotel_id: null }); if (hn.error) return ok({ error: hn.error }, 400);
+        var hrow = { id: nid("wh"), organization_id: ORG, hotel_id: hn.hotel_id, url: hn.url, events: hn.events, active: true, failure_count: 0, disabled_at: null, created_at: new Date().toISOString() };
+        D.ig_hooks.push(hrow); return ok(Object.assign({}, hrow, { secret: "whsec_DEMO_nur-zur-Ansicht-" + rnd(10) })); }
+      return ok({ webhooks: D.ig_hooks, events: IG_EV }); }
+    if ((mm = p.match(/^\/api\/webhooks\/([^/]+)(\/rotate-secret|\/test|\/deliveries)?$/))) {
+      if (!igAdmin()) return deny(IGDENY);
+      var wh = byId(D.ig_hooks, mm[1]); if (!wh) return nf();
+      if (!mm[2] && m === "PATCH") {
+        var hp2 = Object.assign({}, wh); if (b.url !== undefined || b.events !== undefined || b.hotel_id !== undefined) { var hu = hookIn(b, wh); if (hu.error) return ok({ error: hu.error }, 400); hp2 = Object.assign(hp2, hu); }
+        if (b.active !== undefined) { hp2.active = !!b.active; if (hp2.active) { hp2.failure_count = 0; hp2.disabled_at = null; } }
+        Object.assign(wh, hp2); return ok(wh); }
+      if (!mm[2] && m === "DELETE") { remove(D.ig_hooks, wh.id); D.ig_deliv = D.ig_deliv.filter(function (d) { return d.webhook_id !== wh.id; }); return ok({ ok: true }); }
+      if (mm[2] === "/rotate-secret" && m === "POST") return ok({ id: wh.id, secret: "whsec_DEMO_nur-zur-Ansicht-" + rnd(10) });
+      if (mm[2] === "/test" && m === "POST") {
+        var dl = { id: nid("wd"), webhook_id: wh.id, event: "ping", status_code: 200, ok: true, attempt: 1, error: null, created_at: new Date().toISOString() };
+        D.ig_deliv.unshift(dl); return ok({ ok: true, status_code: 200, attempt: 1, error: null }); }
+      if (mm[2] === "/deliveries" && m === "GET") return ok(D.ig_deliv.filter(function (d) { return d.webhook_id === wh.id; }).sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; })); }
+
+    if (p === H + "/whatsapp") {
+      if (!igAdmin()) return deny(IGDENY);
+      var waOff = { enabled: false, phone_number_id: "", display_number: "", has_verify_token: false, has_access_token: false, has_app_secret: false, webhook_url: "https://demo.invalid/api/public/whatsapp/" + HID, graph_version: "v21.0" };
+      if (m === "GET") return ok(waOff);
+      return ok({ error: "In der Live-Demo nicht verfügbar." }, 400); }
+    if (p === H + "/google-business") {
+      if (!igAdmin()) return deny(IGDENY);
+      if (m === "GET") return ok({ configured: true, connected: false, location_name: "", location_title: "", account_name: "", account_title: "", last_post_at: null });
+      return ok({ ok: true }); }
+    if (p.indexOf(H + "/google-business/") === 0) {
+      if (!igAdmin()) return deny(IGDENY);
+      return ok({ error: "In der Live-Demo nicht verfügbar." }, 400); }
+
     return ok({});
   };
 })();

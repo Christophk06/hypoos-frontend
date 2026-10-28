@@ -88,17 +88,17 @@ function ChatView({hotel, api, me, members, role, myDepts}){
                 {showDay && <div style={{textAlign:"center",fontSize:11.5,color:INK_MUTED,margin:"10px 0 8px"}} data-no-i18n="">{fmtDay(day,{weekday:"long",day:"2-digit",month:"long"})}</div>}
                 <div style={{display:"flex",justifyContent:mine?"flex-end":"flex-start",marginBottom:6}}>
                   <div style={{maxWidth:"78%",background:mine?BRASS_SOFT:PAPER,border:`1px solid ${mine?BRASS+"55":BORDER}`,borderRadius:12,padding:"7px 11px"}}>
-                    {!mine && <div style={{fontSize:11.5,fontWeight:700,color:BRASS,marginBottom:2}} data-no-i18n="">{memberLabel(members, me, m.author_id)}</div>}
+                    {!mine && <div style={{fontSize:11.5,fontWeight:700,color:BRASS_TEXT,marginBottom:2}} data-no-i18n="">{memberLabel(members, me, m.author_id)}</div>}
                     <div style={{fontSize:14,whiteSpace:"pre-wrap",wordBreak:"break-word"}}><TrText text={m.body} tr={T.tr} /></div>
-                    <div style={{fontSize:10.5,color:INK_MUTED,textAlign:"end",marginTop:2}} data-no-i18n="">{fmtClock(m.created_at)}<SpeakMsg text={T.tr(m.body) || m.body} />
-                      {canDelete(m) && <button style={{...linkBtn,fontSize:10.5,padding:"0 0 0 6px"}} onClick={()=>del(m)} title={tf("Löschen")}>✕</button>}</div>
+                    <div style={{fontSize:11.5,color:INK_MUTED,textAlign:"end",marginTop:2}} data-no-i18n="">{fmtClock(m.created_at)}<SpeakMsg text={T.tr(m.body) || m.body} />
+                      {canDelete(m) && <button style={{...linkBtn,fontSize:11.5,padding:"0 0 0 6px"}} onClick={()=>del(m)} title={tf("Löschen")}>✕</button>}</div>
                   </div>
                 </div>
               </React.Fragment>
             );
           })}
         </div>
-        {msg && <div style={{color:BAD,fontSize:13,padding:"0 16px 6px"}}>{msg.text}</div>}
+        {msg && <ErrorText style={{padding:"0 16px 6px"}}>{msg.text}</ErrorText>}
         <div style={{display:"flex",gap:8,padding:10,borderTop:`1px solid ${BORDER}`}}>
           <textarea className="input" rows={1} value={text} onChange={e=>setText(e.target.value)} placeholder={tf("Nachricht an {0} …", channelLabel(channel))}
             onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } }} style={{flex:1,resize:"none",fontFamily:"inherit",minHeight:40,maxHeight:120}} />
@@ -155,7 +155,7 @@ function PmsCard({hotel, api, onSynced}){
               <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:6}}>
                 {[["demo",tf("Mews-Testumgebung")],["production",tf("Produktiv")]].map(([k,l])=><label key={k} style={{fontSize:13,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="radio" checked={form.env===k} onChange={()=>setForm({...form,env:k})} /> {l}</label>)}
               </div>
-              {form.env==="production" && <div style={{fontSize:12.5,color:WARN,marginBottom:6}}>{tf("Für den Produktivbetrieb muss Ouverture von Mews als Partner freigeschaltet sein. Bis dahin bitte die Testumgebung oder den Webhook nutzen.")}</div>}
+              {form.env==="production" && <div style={{fontSize:12.5,color:WARN_TEXT,marginBottom:6}}>{tf("Für den Produktivbetrieb muss Ouverture von Mews als Partner freigeschaltet sein. Bis dahin bitte die Testumgebung oder den Webhook nutzen.")}</div>}
               {form.env==="demo" && chk("use_demo_hotel", tf("Öffentliches Mews-Testhotel verwenden (Beispieldaten, ohne eigenen Schlüssel)"))}
               {!(form.env==="demo" && form.use_demo_hotel) && (
                 <Field label={tf("Access Token aus Mews (Marketplace → Ouverture)")}>
@@ -263,7 +263,7 @@ function useTranslated(api, texts){
 function TrText({text, tr, style}){
   const [orig,setOrig] = useState(false);
   const t = tr(text); const differs = t && t !== text;
-  return <span style={style} data-no-i18n="">{orig || !differs ? text : t}{differs && <button onClick={()=>setOrig(!orig)} style={{...linkBtn,fontSize:10.5,padding:"0 0 0 6px",verticalAlign:"baseline"}} title={orig ? tf("Übersetzung anzeigen") : tf("Original anzeigen")}><Icon n="globe" /></button>}</span>;
+  return <span style={style} data-no-i18n="">{orig || !differs ? text : t}{differs && <button onClick={()=>setOrig(!orig)} style={{...linkBtn,fontSize:11.5,padding:"0 0 0 6px",verticalAlign:"baseline"}} title={orig ? tf("Übersetzung anzeigen") : tf("Original anzeigen")}><Icon n="globe" /></button>}</span>;
 }
 function TranslateToggle({t}){
   if(!t.enabled) return null;

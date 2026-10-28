@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="Ouverture" />
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="i18n.js?v=846c0d7f73"></script>
+<script src="i18n.js?v=dd7c66624d"></script>
 <script src="payroll.js?v=4b310eb355"></script>
 <script src="holidays.js?v=cb6e74aef2"></script>
 <script src="planning.js?v=1e94a23b2d"></script>
@@ -29,7 +29,7 @@
   // Live-Demo ohne Anmeldung (?demo): Daten kommen aus demo/, nichts wird gespeichert
   if (/[?&]demo\b/.test(location.search)) {
     document.write('<script src="demo/data-' + (["de","en","fr","it","es","pt","tr","ja","zh","ar"].indexOf(UI_LANG) >= 0 ? UI_LANG : "en") + '.js?v=95ca8bac72"><\/script>');
-    document.write('<script src="demo/demo-mock.js?v=c849e1f7ee"><\/script>');
+    document.write('<script src="demo/demo-mock.js?v=cf2b0791ea"><\/script>');
   }
   // Als App installierbar: Service Worker (nicht in der Demo)
   if ("serviceWorker" in navigator && !/[?&]demo\b/.test(location.search)) window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
@@ -46,6 +46,16 @@
     button { min-width: 44px; }
     input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
   }
+  /* Maus/Touchpad: Klickziele mindestens 24 px (WCAG 2.5.8) */
+  @media (pointer: fine) {
+    button, [role="button"], select { min-height: 24px; }
+    button { min-width: 24px; }
+  }
+  /* Nur für Screenreader sichtbar */
+  .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+  /* Überschriften (h1/h2) im Aussehen der bisherigen Titel */
+  .ui-h { margin: 0; font-size: inherit; font-weight: inherit; font-family: inherit; line-height: inherit; color: inherit; letter-spacing: inherit; }
+  main:focus:not(:focus-visible) { outline: none; }
   /* Sichtbarer Fokus für Tastatur und Schalterbedienung */
   :focus-visible { outline: 2px solid #A9834B; outline-offset: 2px; }
   .sidebar :focus-visible, .mobile-tabbar :focus-visible, .btn-primary:focus-visible { outline-color: #C9A66B; }
@@ -59,15 +69,21 @@
   .nav-item:hover { color: #fff !important; }
   .login-side { display: flex; }
   @media (max-width: 760px) { .login-side { display: none !important; } }
-  .input { width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #E4DFD3; font-size: 14px; color: #1C2430; background: #F6F4EF; }
-  .field-label { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-bottom: 5px; }
+  .input { width: 100%; padding: 9px 11px; border-radius: 7px; border: 1px solid #8C8676; font-size: 14px; color: #1C2430; background: #F6F4EF; }
+  .field-label { font-size: 12.5px; font-weight: 600; color: #626976; margin-bottom: 5px; }
+  /* Feldrahmen mit mind. 3:1 Kontrast, auch bei direkt gesetztem hellem Rahmen */
+  select, textarea { border-color: #8C8676; }
+  select[style*="rgb(228, 223, 211)"], textarea[style*="rgb(228, 223, 211)"], input:not([type="checkbox"]):not([type="radio"])[style*="rgb(228, 223, 211)"] { border-color: #8C8676 !important; }
+  input[type="checkbox"], input[type="radio"] { accent-color: #1C2430; }
 
   /* ---------- Dunkler Modus: Farben der Oberfläche (auch die direkt an Elementen gesetzten) umstellen ---------- */
   @media screen {
     html[data-theme="dark"] { color-scheme: dark; }
     html[data-theme="dark"] body { background: #12161c; color: #e7e4dc; }
     html[data-theme="dark"] .card { background: #1b212a; border-color: #2d3542; }
-    html[data-theme="dark"] .input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { background: #12161c !important; color: #e7e4dc !important; border-color: #2d3542 !important; }
+    html[data-theme="dark"] .input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { background: #12161c !important; color: #e7e4dc !important; border-color: #6B7686 !important; }
+    html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"])[style*="rgb(228, 223, 211)"], html[data-theme="dark"] select[style*="rgb(228, 223, 211)"], html[data-theme="dark"] textarea[style*="rgb(228, 223, 211)"] { border-color: #6B7686 !important; }
+    html[data-theme="dark"] input[type="checkbox"], html[data-theme="dark"] input[type="radio"] { accent-color: #C9A66B; }
     html[data-theme="dark"] .btn-primary { background: #C9A66B; color: #12161c; }
     html[data-theme="dark"] .btn-primary:hover { background: #d6b47a; }
     html[data-theme="dark"] .field-label { color: #9aa3af; }
@@ -85,12 +101,22 @@
     html[data-theme="dark"] [style*="color: rgb(122, 91, 43)"] { color: #e0c48f !important; }
     html[data-theme="dark"] [style*="color: rgb(138, 75, 30)"] { color: #efb88c !important; }
     html[data-theme="dark"] [style*="color: rgb(63, 122, 92)"] { color: #8fd0ae !important; }
+    html[data-theme="dark"] [style*="color: rgb(47, 107, 78)"] { color: #8fd0ae !important; }
+    html[data-theme="dark"] [style*="background: rgb(227, 236, 245)"] { background: #1f2f42 !important; }
+    html[data-theme="dark"] [style*="color: rgb(45, 91, 135)"] { color: #8fbbe6 !important; }
+    html[data-theme="dark"] [style*="background: rgb(229, 231, 235)"], html[data-theme="dark"] [style*="background: rgb(238, 240, 242)"] { background: #2a3039 !important; }
+    html[data-theme="dark"] [style*="color: rgb(75, 85, 99)"] { color: #b4bcc8 !important; }
+    html[data-theme="dark"] [style*="background: rgb(238, 231, 247)"] { background: #2c2540 !important; }
+    html[data-theme="dark"] [style*="color: rgb(107, 75, 161)"] { color: #c4b0ea !important; }
     html[data-theme="dark"] [style*="color: rgb(47, 93, 138)"] { color: #8fbbe6 !important; }
     html[data-theme="dark"] [style*="color: rgb(162, 59, 50)"] { color: #f08a80 !important; }
     /* Kontrast (WCAG AA) für Zweittext, Warn- und Messingtexte im dunklen Modus */
     html[data-theme="dark"] [style*="color: rgb(107, 114, 128)"] { color: #a3abb7 !important; }
     html[data-theme="dark"] [style*="color: rgb(185, 130, 46)"] { color: #e6b974 !important; }
     html[data-theme="dark"] [style*="color: rgb(169, 131, 75)"] { color: #d9b77e !important; }
+    html[data-theme="dark"] [style*="color: rgb(98, 105, 118)"] { color: #a3abb7 !important; }
+    html[data-theme="dark"] [style*="color: rgb(138, 95, 20)"] { color: #e6b974 !important; }
+    html[data-theme="dark"] [style*="color: rgb(126, 95, 44)"] { color: #d9b77e !important; }
     html[data-theme="dark"] [style*="background: rgb(28, 36, 48)"] { background: #3a4352 !important; }
     html[data-theme="dark"] [style^="color: rgb(28, 36, 48)"], html[data-theme="dark"] [style*="; color: rgb(28, 36, 48)"] { color: #e7e4dc !important; }
     html[data-theme="dark"] [style*="rgb(228, 223, 211)"] { border-color: #2d3542 !important; }
@@ -153,7 +179,7 @@
   .report h2 { font-family: 'Fraunces', serif; font-size: 15px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #E4DFD3; }
   .report table { width: 100%; border-collapse: collapse; }
   .report td, .report th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #F0ECE3; vertical-align: top; }
-  .report th { font-size: 11px; color: #6B7280; font-weight: 600; }
+  .report th { font-size: 11px; color: #626976; font-weight: 600; }
   .report .avoid-break { break-inside: avoid; }
   @page { size: A4; margin: 0; }
   @media print {
@@ -190,7 +216,7 @@
 <body>
 <div id="root"></div>
 
-<script>window.__APP_VERSION="a87e944";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
-<script src="app.js?v=da098df5c3"></script>
+<script>window.__APP_VERSION="4a90bb2";window.__DOCX_SRC="vendor/docx.js?v=a690efce19";window.__LAZY={"event-templates.js":"event-templates.js?v=08eedd9825","doc-templates.js":"doc-templates.js?v=84970721d7"};</script>
+<script src="app.js?v=5bc3900d9c"></script>
 </body>
 </html>

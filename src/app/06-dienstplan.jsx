@@ -94,8 +94,8 @@ function DemoBar({role}){
   return (
     <div className="no-print" style={{border:`1px solid ${BRASS}`,background:BRASS_SOFT,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:13.5}}>
       <b>{tf("Live-Demo")}</b><span style={{flex:"1 1 220px"}}>{tf("Alles ausprobieren – Änderungen werden nicht gespeichert.")}</span>
-      <span style={{color:INK_MUTED}}>{tf("Ansicht als:")}</span>
-      <select className="input" style={{width:"auto",padding:"5px 8px"}} value={role} onChange={e=>go(e.target.value)}>
+      <label htmlFor="demo-role" style={{color:INK_MUTED}}>{tf("Ansicht als:")}</label>
+      <select id="demo-role" className="input" style={{width:"auto",padding:"5px 8px"}} value={role} onChange={e=>go(e.target.value)}>
         <option value="admin">{tf("Admin / Direktion")}</option>
         <option value="manager">{tf("Abteilungsleitung Housekeeping")}</option>
         <option value="member">{tf("Mitarbeitende Housekeeping")}</option>
@@ -148,7 +148,7 @@ function GettingStarted({hotel, api, tasks, members, onOpen}){
   return (
     <Card style={{marginBottom:18,borderColor:BRASS}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}>{tf("Erste Schritte")} <span style={{color:INK_MUTED,fontWeight:400,fontSize:13}} data-no-i18n="">{n}/{steps.length}</span></div>
+        <h2 className="ui-h" style={{fontWeight:700,flex:1}}>{tf("Erste Schritte")} <span style={{color:INK_MUTED,fontWeight:400,fontSize:13}} data-no-i18n="">{n}/{steps.length}</span></h2>
         <button style={linkBtn} onClick={()=>{ setHidden(true); try { window.localStorage.setItem(key,"1"); } catch(e){} }}>{tf("Ausblenden")}</button>
       </div>
       <div style={{height:5,background:PAPER,borderRadius:3,overflow:"hidden",marginBottom:10}}><div style={{width:(n/steps.length*100)+"%",height:"100%",background:BRASS}} /></div>
@@ -347,7 +347,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
   };
   // Verfügbarkeit (nur Personen mit Login)
   const availOf = (row, date) => row.user_id ? avail.find(a=>a.user_id===row.user_id && a.avail_date===date) : null;
-  const AVAIL_STYLE = {"verfügbar":GOOD, "lieber nicht":WARN, "nicht verfügbar":BAD};
+  const AVAIL_STYLE = {"verfügbar":GOOD, "lieber nicht":WARN_TEXT, "nicht verfügbar":BAD};
   // Tageseinteilung: ein freier Text je Person und Tag (Abteilung)
   const dDay = dutyDay && days.includes(dutyDay) ? dutyDay : (days.includes(today) ? today : days[0]);
   const dutyOf = (row, date) => duties.find(x=>x.duty_date===date && x.department===row.dept &&
@@ -507,7 +507,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
       {role!=="viewer" && upcomingMine.length>0 && (
         <Card className="no-print" style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:8}}>Meine Schichten</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>Meine Schichten</h2>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))",gap:8}}>
             {upcomingMine.map(s=>(
               <div key={s.id} style={{border:`1px solid ${s.shift_date===today?BRASS:BORDER}`,borderRadius:6,padding:"8px 10px"}}>
@@ -668,24 +668,25 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
             {" – "}<span>{tf("Abteilung anklicken, um Namen einzutragen, oder unter „Team“ zuordnen.")}</span>
           </div>
         )}
-        {view==="week" && <div style={{overflowX:"auto"}}>
+        {view==="week" && <div style={{overflowX:"auto"}} tabIndex={0} role="region" aria-label={tf("Dienstplan der Woche")}>
           <table style={{width:"100%",minWidth:900,borderCollapse:"collapse",fontSize:13}}>
+            <caption className="sr-only">{tf("Dienstplan der Woche: Schichten je Person und Tag")}</caption>
             <thead>
               <tr>
-                <th style={{textAlign:"start",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`,minWidth:150}}>Name</th>
+                <th scope="col" style={{textAlign:"start",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`,minWidth:150}}>Name</th>
                 {days.map(d=>(
-                  <th key={d} style={{textAlign:"start",padding:"8px 6px",fontSize:12,fontWeight:600,borderTop:`1px solid ${BORDER}`,
-                    color:d===today?BRASS:INK_MUTED,background:d===today?BRASS_SOFT:"transparent"}} data-no-i18n="">{fmtDay(d)}{weekHolidays[d] && <div style={{fontSize:10.5,color:BAD,fontWeight:600}} title={weekHolidays[d]}>★ {weekHolidays[d]}</div>}<DayInfoCell info={dayInfo} date={d} /></th>
+                  <th scope="col" key={d} style={{textAlign:"start",padding:"8px 6px",fontSize:12,fontWeight:600,borderTop:`1px solid ${BORDER}`,
+                    color:d===today?BRASS_TEXT:INK_MUTED,background:d===today?BRASS_SOFT:"transparent"}} data-no-i18n="">{fmtDay(d)}{weekHolidays[d] && <div style={{fontSize:11.5,color:BAD,fontWeight:600}} title={weekHolidays[d]}>★ {weekHolidays[d]}</div>}<DayInfoCell info={dayInfo} date={d} /></th>
                 ))}
-                <th style={{textAlign:"end",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`}} title={tf("Arbeitsstunden in dieser Woche")}>{tf("Std.")}</th>
+                <th scope="col" style={{textAlign:"end",padding:"8px 12px",fontSize:12,color:INK_MUTED,fontWeight:600,borderTop:`1px solid ${BORDER}`}} title={tf("Arbeitsstunden in dieser Woche")}><abbr title={tf("Arbeitsstunden in dieser Woche")} style={{textDecoration:"none"}}>{tf("Std.")}</abbr></th>
               </tr>
             </thead>
             {(dept ? groups : groups.filter(g=>g.rows.length)).map(g=>(
               <tbody key={g.dept}>
                 <tr style={{background:"#F1E8D8"}}>
-                  <td colSpan={9} style={{padding:"7px 12px",fontWeight:700,fontSize:13}}>
+                  <th colSpan={9} scope="rowgroup" style={{padding:"7px 12px",fontWeight:700,fontSize:13,textAlign:"start"}}>
                     <span>{g.dept}</span> <span style={{fontWeight:400,color:INK_MUTED}} data-no-i18n="">· {g.rows.length}</span>
-                  </td>
+                  </th>
                 </tr>
                 {g.rows.length===0 && (
                   <tr><td colSpan={9} style={{padding:"10px 12px",color:INK_MUTED,borderTop:`1px solid ${BORDER}`}}>
@@ -694,10 +695,10 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                 )}
                 {g.rows.map(r=>(
                   <tr key={r.key} style={{borderTop:`1px solid ${BORDER}`}}>
-                    <td style={{padding:"8px 12px",verticalAlign:"top",whiteSpace:"nowrap"}} title={r.title}>
+                    <th scope="row" style={{padding:"8px 12px",verticalAlign:"top",whiteSpace:"nowrap",textAlign:"start",fontWeight:"normal"}} title={r.title}>
                       <span data-no-i18n="" style={{fontWeight:me && r.user_id===me.id ? 700 : 500}}>{r.name}</span>
-                      {!r.user_id && <div style={{fontSize:11,color:INK_MUTED}}>ohne Login</div>}
-                    </td>
+                      {!r.user_id && <div style={{fontSize:11.5,color:INK_MUTED}}>ohne Login</div>}
+                    </th>
                     {days.map((d,di)=>{
                       const list = shiftsFor(r,d);
                       const active = editor && editor.row.key===r.key && editor.date===d;
@@ -706,7 +707,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                         <td key={d} onDragOver={canManage ? (e=>{ e.preventDefault(); setDragOver(r.key+d); }) : undefined} onDragLeave={()=>setDragOver(null)} onDrop={canManage ? (e=>dropShift(e,r,d)) : undefined}
                           style={{position:"relative",padding:"6px 4px",verticalAlign:"top",minWidth:96,outline:dragOver===r.key+d?`2px dashed ${BRASS}`:"none",outlineOffset:-2,background:active?BRASS_SOFT:(d===today?"#FBF8F2":"transparent")}}>
                           {availOf(r,d) && <div title={availOf(r,d).status+(availOf(r,d).note ? " – "+availOf(r,d).note : "")}
-                            style={{fontSize:10.5,color:AVAIL_STYLE[availOf(r,d).status],marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>● <span>{availOf(r,d).status}</span></div>}
+                            style={{fontSize:11.5,color:AVAIL_STYLE[availOf(r,d).status],marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>● <span>{availOf(r,d).status}</span></div>}
                           {list.map(s=><ShiftChip key={s.id} s={s} onClick={canManage ? ()=>openEdit(r,s) : null}
                             draggable={canManage} onDragStart={e=>{ e.dataTransfer.setData("text/plain", JSON.stringify({id:s.id})); e.dataTransfer.effectAllowed = "copyMove"; }} />)}
                           {canManage && list.length===0 && (
@@ -718,7 +719,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                               boxShadow:"0 8px 24px rgba(0,0,0,0.14)",padding:6,display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,width:200}}>
                               {SHIFT_KINDS.map(k=>{ const st = SHIFT_STYLE[k]; return (
                                 <button key={k} onClick={()=>quickAdd(r,d,k)} style={{border:"none",background:st.bg,color:st.fg,borderRadius:4,padding:"6px 4px",fontSize:12,fontWeight:700,cursor:"pointer",lineHeight:1.2}}>
-                                  {k}{timesFor(r.dept,k) && <div data-no-i18n="" dir="ltr" style={{fontWeight:400,fontSize:10.5}}>{timesFor(r.dept,k)[0]}–{timesFor(r.dept,k)[1]}</div>}
+                                  {k}{timesFor(r.dept,k) && <div data-no-i18n="" dir="ltr" style={{fontWeight:400,fontSize:11.5}}>{timesFor(r.dept,k)[0]}–{timesFor(r.dept,k)[1]}</div>}
                                 </button>
                               ); })}
                               <button onClick={()=>{ setQuick(null); openNew(r,d); }} style={{border:`1px solid ${BORDER}`,background:"#fff",borderRadius:4,padding:"6px 4px",fontSize:12,cursor:"pointer"}}>{tf("Andere Zeit …")}</button>
@@ -731,7 +732,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                       {(()=>{ const h = weekHours(r), t = targetOf(r), w = canManage ? warningsFor(r) : []; return (
                         <React.Fragment>
                           <div data-no-i18n="">{h ? fmtHours(h) : "–"}{t!=null && <span> / {fmtHours(t)}</span>}</div>
-                          {t!=null && h-t!==0 && <div data-no-i18n="" style={{fontSize:11,color:h>t?WARN:INK_MUTED}}>{h>t?"+":""}{fmtHours(h-t)}</div>}
+                          {t!=null && h-t!==0 && <div data-no-i18n="" style={{fontSize:11,color:h>t?WARN_TEXT:INK_MUTED}}>{h>t?"+":""}{fmtHours(h-t)}</div>}
                           {w.length>0 && <div title={w.join("\n")} style={{color:BAD,fontSize:11,cursor:"help"}}><Icon n="alert" /> <span>{tf("Arbeitszeit")}</span></div>}
                           {canManage && <button className="no-print" onClick={()=>setTarget(r)} style={{...linkBtn,fontSize:11,padding:0}}>{tf("Soll")}</button>}
                         </React.Fragment>
@@ -741,7 +742,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                 ))}
                 {(WORK_KINDS.some(k=>minFor(g.dept,k)>0) || shifts.some(s=>s.department===g.dept)) && (
                   <tr style={{borderTop:`1px solid ${BORDER}`,background:PAPER}}>
-                    <td style={{padding:"6px 12px",fontSize:11.5,color:INK_MUTED,fontWeight:600,verticalAlign:"top"}}>Besetzung</td>
+                    <th scope="row" style={{padding:"6px 12px",fontSize:11.5,color:INK_MUTED,fontWeight:600,verticalAlign:"top",textAlign:"start"}}>Besetzung</th>
                     {days.map(d=>(
                       <td key={d} style={{padding:"4px 6px",fontSize:11,verticalAlign:"top"}}>
                         {WORK_KINDS.map(k=>{
@@ -753,7 +754,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
                         })}
                       </td>
                     ))}
-                    <td></td>
+                    <td><span className="sr-only">{tf("keine Angabe")}</span></td>
                   </tr>
                 )}
               </tbody>
@@ -766,7 +767,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
             <input className="input" style={{maxWidth:240}} placeholder="Name ohne Login (z. B. Aushilfe)" value={newName}
               onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter" && addName()} />
             {!dept && (
-              <select className="input" style={{width:"auto"}} value={newNameDept} onChange={e=>setNewNameDept(e.target.value)}>
+              <select className="input" aria-label={tf("Abteilung")} style={{width:"auto"}} value={newNameDept} onChange={e=>setNewNameDept(e.target.value)}>
                 {visibleDepts.map(d=><option key={d} value={d}>{d}</option>)}
               </select>
             )}
@@ -814,7 +815,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
       {canManage && <FirstAidRosterHint hotel={hotel} api={api} days={days} />}
       {canManage && dept && (
         <Card className="no-print" style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:6}}>{tf("Schichtzeiten und Mindestbesetzung")} · <span>{dept}</span></div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Schichtzeiten und Mindestbesetzung")} · <span>{dept}</span></h2>
           <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Eigene Zeiten je Schicht für diese Abteilung. Fehlen Personen gegenüber der Mindestbesetzung, warnt der Plan.")}</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(190px, 1fr))",gap:12}}>
             {WORK_KINDS.map(k=>{ const t = timesFor(dept,k); const st = SHIFT_STYLE[k]; return (
@@ -843,13 +844,13 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
         if(!list.length) return null;
         return (
           <Card className="no-print" style={{marginBottom:18}}>
-            <div style={{fontWeight:700,marginBottom:6}}>{tf("Stundenkonto")} · <span data-no-i18n="">{new Date(m0+"T12:00:00").toLocaleDateString(UI_LOCALE,{month:"long",year:"numeric"})}</span></div>
+            <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Stundenkonto")} · <span data-no-i18n="">{new Date(m0+"T12:00:00").toLocaleDateString(UI_LOCALE,{month:"long",year:"numeric"})}</span></h2>
             <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:8}}>{tf("Geplante Stunden im ganzen Monat gegenüber dem Soll (Wochenstunden anteilig).")}</div>
             {list.map(({r,h,t})=>{ const soll = t!=null ? t*daysInMonth/7 : null; const diff = soll!=null ? h-soll : null; return (
               <div key={r.key} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
                 <span style={{flex:1}} data-no-i18n="">{r.name}</span>
                 <span data-no-i18n="" style={{width:160,textAlign:"end",color:INK_MUTED}}>{fmtHours(h)} h{soll!=null && <span> / {fmtHours(soll)} h</span>}</span>
-                <b data-no-i18n="" style={{width:70,textAlign:"end",color:diff==null?INK_MUTED:diff>0?WARN:diff<0?INK_MUTED:GOOD}}>{diff==null ? "–" : (diff>0?"+":"")+fmtHours(diff)}</b>
+                <b data-no-i18n="" style={{width:70,textAlign:"end",color:diff==null?INK_MUTED:diff>0?WARN_TEXT:diff<0?INK_MUTED:GOOD}}>{diff==null ? "–" : (diff>0?"+":"")+fmtHours(diff)}</b>
               </div>
             ); })}
           </Card>
@@ -858,7 +859,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
       {toDecide.length>0 && (
         <Card className="no-print" style={{marginBottom:18,borderColor:WARN}}>
-          <div style={{fontWeight:700,marginBottom:4}}>Anträge zur Entscheidung</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>Anträge zur Entscheidung</h2>
           {toDecide.map(r=>(
             <RequestLine key={r.id} r={r} actions={
               <span style={{display:"flex",gap:6}}>
@@ -872,7 +873,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
       {role!=="viewer" && me && (
         <Card className="no-print" style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:4}}>{tf("Meine Verfügbarkeit")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Meine Verfügbarkeit")}</h2>
           <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Tippe einen Tag an: verfügbar → lieber nicht → nicht verfügbar → keine Angabe. Die Leitung sieht das beim Planen.")}</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7, minmax(0, 1fr))",gap:6}}>
             {days.map(d=>{ const a = avail.find(x=>x.user_id===me.id && x.avail_date===d); const order = [null,"verfügbar","lieber nicht","nicht verfügbar"];
@@ -888,7 +889,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
       {forMe.length>0 && (
         <Card className="no-print" style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:4}}>Schichten, die du übernehmen sollst</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>Schichten, die du übernehmen sollst</h2>
           <div style={{fontSize:12.5,color:INK_MUTED}}>Die Abteilungsleitung entscheidet; sprich dich bei Fragen direkt ab.</div>
           {forMe.map(r=><RequestLine key={r.id} r={r} />)}
         </Card>
@@ -896,7 +897,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
       {role!=="viewer" && (myDepts.length>0 || isAdmin || role==="manager") && (
         <Card className="no-print" style={{marginBottom:18}}>
-          <div style={{fontWeight:700,marginBottom:10}}>Antrag stellen</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:10}}>Antrag stellen</h2>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
             {[["Urlaub","Urlaub"],["Frei-Wunsch","Frei-Wunsch"],["Tausch","Schichttausch"]].map(([k,l])=>(
               <button key={k} onClick={()=>setReq({...emptyReq, kind:k})}
@@ -935,7 +936,7 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
       {mine.length>0 && (
         <Card className="no-print">
-          <div style={{fontWeight:700,marginBottom:4}}>Meine Anträge</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>Meine Anträge</h2>
           {mine.map(r=>(
             <RequestLine key={r.id} r={r} actions={r.status==="Offen" && <button style={linkBtn} onClick={()=>withdraw(r)}>Zurückziehen</button>} />
           ))}
@@ -947,4 +948,4 @@ function RosterView({hotel, api, me, members, role, myDepts, orgId}){
 
 /* ------------------------- Übergabebuch, Checklisten, Startseite ------------------------- */
 const LOG_KINDS = ["Info","Wichtig","Offen"];
-const LOG_STYLE = {"Info":{color:INK_MUTED,bg:PAPER}, "Wichtig":{color:BAD,bg:BAD_SOFT}, "Offen":{color:WARN,bg:WARN_SOFT}};
+const LOG_STYLE = {"Info":{color:INK_MUTED,bg:PAPER}, "Wichtig":{color:BAD,bg:BAD_SOFT}, "Offen":{color:WARN_TEXT,bg:WARN_SOFT}};

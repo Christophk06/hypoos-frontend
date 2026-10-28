@@ -33,6 +33,8 @@ function DemoTour({tab, setTab, role}){
   const [open,setOpen] = useState(false);
   const [i,setI] = useState(0);
   const nextRef = React.useRef(null);
+  const panelRef = React.useRef(null);
+  const prevFocus = React.useRef(null);
   const steps = demoTourSteps(role);
   const step = steps[Math.min(i, steps.length-1)];
   // Beim ersten Besuch automatisch starten
@@ -47,13 +49,23 @@ function DemoTour({tab, setTab, role}){
     window.addEventListener("ouverture-demo-tour", h);
     return ()=>window.removeEventListener("ouverture-demo-tour", h);
   },[]);
-  const close = useCallback(()=>{ setOpen(false); demoTourMarkSeen(); },[]);
+  // Beim Schließen den Fokus dorthin zurückgeben, wo er vor der Tour war (sonst an den Hauptbereich)
+  const close = useCallback(()=>{
+    setOpen(false); demoTourMarkSeen();
+    const p = prevFocus.current; prevFocus.current = null;
+    setTimeout(()=>{ const t = (p && p!==document.body && document.contains(p)) ? p : document.getElementById("inhalt"); if(t && t.focus) t.focus({preventScroll:true}); }, 0);
+  },[]);
+  useEffect(()=>{ if(open && !prevFocus.current) prevFocus.current = document.activeElement; },[open]);
   // Beim Schrittwechsel in den Bereich springen
   useEffect(()=>{ if(open && step && step.tab!==tab) setTab(step.tab); },[open,i]);
   useEffect(()=>{ if(open && nextRef.current) nextRef.current.focus(); },[open,i]);
   useEffect(()=>{
     if(!open) return;
     const k = (e) => {
+      // Tasten nur auswerten, wenn der Fokus im Tour-Fenster liegt (Esc auch ohne Fokus irgendwo)
+      const inside = panelRef.current && panelRef.current.contains(document.activeElement);
+      const idle = !document.activeElement || document.activeElement===document.body;
+      if(!inside && !(e.key==="Escape" && idle)) return;
       if(e.key==="Escape"){ e.preventDefault(); close(); }
       else if(e.key==="ArrowRight"){ e.preventDefault(); setI(x=>Math.min(x+1, steps.length-1)); }
       else if(e.key==="ArrowLeft"){ e.preventDefault(); setI(x=>Math.max(x-1, 0)); }
@@ -65,7 +77,7 @@ function DemoTour({tab, setTab, role}){
   const last = i >= steps.length-1;
   const btn = {borderRadius:6,padding:"8px 14px",fontSize:13.5,cursor:"pointer",minHeight:36};
   return (
-    <div className="no-print card" role="dialog" aria-modal="false" aria-labelledby="demo-tour-title"
+    <div ref={panelRef} className="no-print card" role="dialog" aria-modal="false" aria-labelledby="demo-tour-title"
       style={{position:"fixed",insetInlineStart:16,insetInlineEnd:16,bottom:role==="member"?76:16,marginInline:"auto",maxWidth:420,zIndex:1000,padding:"16px 18px",boxShadow:"0 10px 30px rgba(0,0,0,.28)",background:CARD,border:`1px solid ${BRASS}`,borderRadius:10,color:INK}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:6}}>
         <span style={{fontSize:12,color:INK_MUTED}}>{tf("So eröffnest du ein Hotel mit Ouverture")} · {tf("Schritt {0} von {1}", i+1, steps.length)}</span>

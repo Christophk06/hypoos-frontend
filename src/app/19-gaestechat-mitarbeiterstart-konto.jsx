@@ -28,7 +28,7 @@ function GuestChatView({hotel, api}){
               <div key={m.id} style={{alignSelf:m.sender==="staff"?"flex-end":"flex-start",maxWidth:"80%",background:m.sender==="staff"?INK:PAPER,color:m.sender==="staff"?"#fff":INK,borderRadius:12,padding:"8px 12px",fontSize:14}}>
                 <div data-no-i18n="" style={{whiteSpace:"pre-wrap"}}>{t2 && t2!==m.body ? t2 : m.body}</div>
                 {t2 && t2!==m.body && <div data-no-i18n="" style={{fontSize:11.5,opacity:0.7,marginTop:3}}>{m.body}</div>}
-                <div style={{fontSize:10.5,opacity:0.6,marginTop:3}}>{fmtDateTime(m.created_at)}</div>
+                <div style={{fontSize:11.5,opacity:0.6,marginTop:3}}>{fmtDateTime(m.created_at)}</div>
               </div>); })}
           </div>
           <div style={{display:"flex",gap:8}}>
@@ -95,12 +95,12 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
       <BriefingCard hotel={hotel} api={api} me={me} role="member" myDepts={myDepts} />
       <div className="stack" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",gap:14,marginBottom:14}}>
         <Card>
-          <div style={{fontWeight:700,marginBottom:8}}>{tf("Heute")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>{tf("Heute")}</h2>
           {todayShift.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Heute hast du keine Schicht.")}</div> : todayShift.map(s=><ShiftChip key={s.id} s={s} />)}
           {myDuty.map(d=><div key={d.id} style={{marginTop:8,fontSize:14}}><span style={{color:INK_MUTED,fontSize:12}}>{tf("Deine Aufgabe heute:")}</span><div data-no-i18n="" style={{whiteSpace:"pre-wrap",fontWeight:600}}>{d.task}</div></div>)}
         </Card>
         <Card>
-          <div style={{fontWeight:700,marginBottom:8}}>{tf("Nächste Schichten")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>{tf("Nächste Schichten")}</h2>
           {nextShifts.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch nichts veröffentlicht.")}</div> : (
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(110px, 1fr))",gap:6}}>
               {nextShifts.map(s=><div key={s.id}><div style={{fontSize:11.5,color:INK_MUTED}} data-no-i18n="">{fmtDay(s.shift_date)}</div><ShiftChip s={s} />
@@ -110,7 +110,7 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
           <button style={{...linkBtn,marginTop:6}} onClick={()=>onOpen("roster")}>{tf("Zum Dienstplan →")}</button>
         </Card>
         <Card>
-          <div style={{fontWeight:700,marginBottom:8}}>{tf("Checklisten heute")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>{tf("Checklisten heute")}</h2>
           {listsMine.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Keine Checklisten.")}</div> : listsMine.map(l=>{
             const n = (l.items||[]).length, d = (l.items||[]).filter(i=>l.run && l.run.checked && l.run.checked[i.id]).length;
             return <div key={l.id} {...pressable(()=>onOpen("checklists"))} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
@@ -120,18 +120,18 @@ function MemberHome({hotel, api, me, orgId, tasks, myDepts, onOpen, members}){
       </div>
       {openLog.length>0 && (
         <Card style={{marginBottom:14,borderColor:WARN}}>
-          <div style={{fontWeight:700,marginBottom:6}}>{tf("Offene Punkte im Übergabebuch")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Offene Punkte im Übergabebuch")}</h2>
           {openLog.slice(0,6).map(e=><div key={e.id} {...pressable(()=>onOpen("logbook"))} style={{padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5,cursor:"pointer"}}>
             <span style={{color:INK_MUTED,fontSize:12}} data-no-i18n="">{fmtDay(e.entry_date)} · </span><span data-no-i18n="">{e.body}</span></div>)}
         </Card>
       )}
       <Card style={{marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:4}}>{tf("Meine Aufgaben")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Meine Aufgaben")}</h2>
         {myTasks.length===0 ? <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Dir ist gerade keine offene Aufgabe zugewiesen.")}</div> : myTasks.slice(0,8).map(t=><TaskLine key={t.id} t={t} />)}
       </Card>
       {deptSoon.length>0 && (
         <Card>
-          <div style={{fontWeight:700,marginBottom:4}}>{tf("Bald fällig in deiner Abteilung")}</div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:4}}>{tf("Bald fällig in deiner Abteilung")}</h2>
           {deptSoon.slice(0,8).map(t=><TaskLine key={t.id} t={t} />)}
         </Card>
       )}
@@ -271,12 +271,12 @@ function MfaCard({config, token}){
     setBusy(false); };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}>{tf("Zwei-Faktor-Anmeldung")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Zwei-Faktor-Anmeldung")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Google Authenticator, Microsoft Authenticator). Für Admins dringend empfohlen.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {factors===null ? <div style={{color:INK_MUTED,fontSize:13}}>…</div> : active.length>0 && !enroll ? (
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-          <Pill color={GOOD} bg={GOOD_SOFT}>{tf("Eingeschaltet")}</Pill>
+          <Pill color={GOOD_TEXT} bg={GOOD_SOFT}>{tf("Eingeschaltet")}</Pill>
           <button style={{...linkBtn,color:BAD}} disabled={busy} onClick={disable}>{tf("Ausschalten")}</button>
         </div>
       ) : !enroll ? (
@@ -314,7 +314,7 @@ function PasswordCard({config, token}){
   };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:12}}>Passwort ändern</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:12}}>Passwort ändern</h2>
       <Field label="Neues Passwort"><input type="password" className="input" value={pw} onChange={e=>setPw(e.target.value)} autoComplete="new-password" /></Field>
       <Field label="Neues Passwort wiederholen"><input type="password" className="input" value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&save()} autoComplete="new-password" /></Field>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
@@ -339,13 +339,13 @@ function DeleteAccountCard({api, onDeleted}){
   };
   return (
     <Card style={{marginBottom:18,maxWidth:520,borderColor:BAD_SOFT}}>
-      <div style={{fontWeight:700,marginBottom:6,color:BAD}}>Konto löschen</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6,color:BAD}}>Konto löschen</h2>
       <div style={{fontSize:13,color:INK_MUTED,marginBottom:10}}>
         Löscht dein Login und deine Mitgliedschaften. Organisationen, in denen du allein bist, werden mit allen Daten gelöscht (ein laufendes Abo endet sofort).
         In Organisationen mit anderen Mitgliedern bleiben die Daten erhalten. Bist du dort der letzte Admin, gib die Rolle vorher unter „Team“ weiter.
       </div>
       <Field label={"Zur Bestätigung „"+WORD+"“ eingeben"}><input className="input" value={confirm} onChange={e=>setConfirm(e.target.value)} /></Field>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:10}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       <button onClick={run} disabled={busy || confirm.trim().toUpperCase()!==WORD}
         style={{background:confirm.trim().toUpperCase()===WORD?BAD:"#ccc",color:"#fff",border:"none",borderRadius:4,padding:"9px 16px",fontSize:13.5,fontWeight:600,cursor:"pointer"}}>
         {busy ? "Wird gelöscht…" : "Konto endgültig löschen"}
@@ -362,7 +362,7 @@ function SharedDeviceCard(){
   const toggle = (v) => { try { v ? window.localStorage.setItem(SHARED_DEVICE_KEY,"1") : window.localStorage.removeItem(SHARED_DEVICE_KEY); } catch(e){} setOn(v); window.dispatchEvent(new Event("hpoos-shared-device")); };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}>{tf("Gemeinsam genutztes Gerät")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Gemeinsam genutztes Gerät")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Für Rezeptions-PC oder Stationstablet: Ouverture meldet sich auf diesem Gerät nach 15 Minuten ohne Nutzung automatisch ab und löscht zwischengespeicherte Daten.")}</div>
       <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13.5,cursor:"pointer"}}><input type="checkbox" checked={on} onChange={e=>toggle(e.target.checked)} /> {tf("Auf diesem Gerät automatisch abmelden")}</label>
     </Card>
@@ -379,9 +379,9 @@ function DataExportCard({api}){
   };
   return (
     <Card style={{marginBottom:18,maxWidth:520}}>
-      <div style={{fontWeight:700,marginBottom:6}}>{tf("Meine Daten herunterladen")}</div>
+      <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Meine Daten herunterladen")}</h2>
       <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Alle Daten, die Ouverture zu deiner Person gespeichert hat – Schichten, Zeiten, Aufgaben, Einträge und Einstellungen – als Datei (DSGVO Art. 15 und 20).")}</div>
-      {error && <div style={{color:BAD,fontSize:13,marginBottom:8}}>{error}</div>}
+      {error && <ErrorText style={{marginBottom:8}}>{error}</ErrorText>}
       <button style={{background:"none",border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 14px",fontSize:13.5,cursor:"pointer"}} disabled={busy || !!window.OUVERTURE_DEMO} onClick={run}>{busy ? tf("Wird vorbereitet…") : tf("Datei herunterladen")}</button>
     </Card>
   );
@@ -395,14 +395,14 @@ function AccountView({config, token, me, api, onDeleted}){
         <div style={{fontSize:15,fontWeight:600,marginTop:4}}>{me ? me.email : "…"}</div>
       </Card>
       <Card style={{marginBottom:18,maxWidth:520}}>
-        <div style={{fontWeight:700,marginBottom:6}}>Meine Sprache</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>Meine Sprache</h2>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>Deine Sprache gilt nur für dich. Ohne Auswahl folgt Ouverture der Standardsprache der Organisation.</div>
         <LanguageSwitcher withDefault api={api} me={me} />
       </Card>
       <ThemeCard />
       <CalendarCard api={api} />
       <Card style={{marginBottom:18,maxWidth:520}}>
-        <div style={{fontWeight:700,marginBottom:6}}>{tf("Ouverture als App")}</div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Ouverture als App")}</h2>
         <div style={{fontSize:12.5,color:INK_MUTED,marginBottom:10}}>{tf("Symbol auf dem Startbildschirm, Vollbild und schneller Start – ganz ohne App Store. Ideal für Dienstplan und Checklisten.")}</div>
         {isStandalone() ? <div style={{color:GOOD,fontSize:13.5}}>✓ {tf("Ouverture ist als App installiert.")}</div> : <InstallAppButton />}
         {!isStandalone() && !/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.__installPrompt && <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.")}</div>}

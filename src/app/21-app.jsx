@@ -49,11 +49,24 @@ function App(){
         setRecoveryToken(params.get("access_token"));
         window.history.replaceState(null,"",window.location.pathname);
       } else if(params.get("access_token") && params.get("refresh_token")){
-        // Rückkehr von „Mit Google/Microsoft anmelden“
-        const data = {access_token:params.get("access_token"), refresh_token:params.get("refresh_token"), expires_in:Number(params.get("expires_in"))||3600, expires_at:Number(params.get("expires_at"))||undefined};
-        Session.save(sessionFromAuth(data)); setToken(data.access_token);
+        // Rückkehr von „Mit Google/Microsoft anmelden“ – nur annehmen, wenn dieser Tab die Anmeldung selbst gestartet hat
+        // (Nonce aus oauthStart), sonst könnte ein fremder Link eine fremde Sitzung unterschieben.
         window.history.replaceState(null,"",window.location.pathname + window.location.search);
+        const started = ssoTakeNonce();
+        const data = {access_token:params.get("access_token"), refresh_token:params.get("refresh_token"), expires_in:Number(params.get("expires_in"))||3600, expires_at:Number(params.get("expires_at"))||undefined};
+        const prev = Session.load();
+        const prevSub = prev && ssoClaims(prev.access_token).sub, nextSub = ssoClaims(data.access_token).sub;
+        if(!started){
+          // z. B. Bestätigungslink aus der Registrierungs-Mail: Adresse ist bestätigt, angemeldet wird bewusst von Hand
+          if(params.get("type")==="signup") setTimeout(()=>window.alert(tf("E-Mail-Adresse bestätigt. Bitte jetzt anmelden.")), 300);
+        } else if(prev && prev.access_token && prevSub && nextSub && prevSub!==nextSub
+          && !window.confirm(tf("In diesem Browser ist schon jemand anderes angemeldet. Abmelden und mit dem neuen Konto fortfahren?"))){
+          // bestehende Sitzung bleibt
+        } else {
+          Session.save(sessionFromAuth(data)); setToken(data.access_token);
+        }
       } else if(params.get("error_description")){
+        ssoTakeNonce();
         window.history.replaceState(null,"",window.location.pathname);
         setTimeout(()=>window.alert(params.get("error_description")), 300);
       }
@@ -134,6 +147,7 @@ function App(){
           let ref = null; try { ref = window.localStorage.getItem(LS_REF_KEY); } catch(e){}
           const boot = await apiCall(config.backendUrl, token, "/api/bootstrap-organization", "POST", {name:"Meine Organisation", ref});
           organizationId = boot.organization_id;
+          claimPartnerAttribution((p,m,b)=>apiCall(config.backendUrl, token, p, m, b), organizationId); // Partner-Code aus ?partner= (falls gemerkt)
           try { window.localStorage.removeItem(LS_REF_KEY); } catch(e){}
         }
         const list = await apiCall(config.backendUrl, token, "/api/organizations");
@@ -181,6 +195,9 @@ function App(){
   const role = currentOrg ? currentOrg.role : "member";
   const myDepts = (currentOrg && currentOrg.departments) || [];
   ACCESS = {role, depts: myDepts};
+  PLATFORM_ADMIN = usePlatformAdmin(api)===true;
+  // Welche Bereiche genutzt werden (nur Organisation + Bereich, keine Personen; nie in der Demo)
+  useEffect(()=>{ if(hotel && orgId) trackArea(tab, orgId); },[tab, orgId, !!hotel]);
   const isAdmin = role==="admin";
   const isLead = role==="admin" || role==="manager";
   // Oberfläche in der Sprache der Organisation
@@ -318,7 +335,8 @@ function App(){
       <main id="inhalt" tabIndex={-1} style={{flex:1,minWidth:0,outline:"none"}}>
         <div className="page-header" style={{padding:"18px 28px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
           <div>
-            <div style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.logo_data && <img src={hotel.logo_data} alt="" style={{height:30,maxWidth:90,objectFit:"contain"}} />}<span data-no-i18n="">{hotel.name}</span>{hotel.is_demo && <Pill color={BRASS} bg={BRASS_SOFT}>Beispielhotel</Pill>}</div>
+            <FocusMainOnChange tabKey={tab} />
+            <h1 className="ui-h" style={{fontFamily:"Fraunces, serif",fontSize:20,fontWeight:600,display:"flex",alignItems:"center",gap:10}}>{hotel.logo_data && <img src={hotel.logo_data} alt="" style={{height:30,maxWidth:90,objectFit:"contain"}} />}<span data-no-i18n="">{hotel.name}</span>{(NAV.find(n=>n.key===tab)||{}).label && <span className="sr-only">{" – "}{(NAV.find(n=>n.key===tab)||{}).label}</span>}{hotel.is_demo && <Pill color={BRASS_TEXT} bg={BRASS_SOFT}>Beispielhotel</Pill>}</h1>
             <div style={{fontSize:12.5,color:INK_MUTED}}>{hotel.city} · {tf("{0} Zimmer · Eröffnung {1}", hotel.rooms, fmtDate(hotel.opening_date))}</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
@@ -441,6 +459,9 @@ function App(){
           {tab==="reviews" && <ReviewsView hotel={hotel} api={api} role={role} />}
           {tab==="energy" && <EnergyView hotel={hotel} api={api} role={role} />}
           {tab==="help" && <HelpView onOpen={setTab} />}
+          {tab==="wishes" && <FeatureRequestsView api={api} me={me} orgId={orgId} />}
+          {tab==="integrations" && <IntegrationsView hotel={hotel} api={api} orgId={orgId} role={role} />}
+          {tab==="platform" && <PlatformView api={api} />}
           {tab==="events" && <EventsView hotel={hotel} api={api} role={role} />}
           {tab==="invoices" && <InvoicesView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="letters" && <LettersView hotel={hotel} api={api} role={role} me={me} />}

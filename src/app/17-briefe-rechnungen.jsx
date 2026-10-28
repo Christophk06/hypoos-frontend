@@ -274,7 +274,7 @@ function LettersView({hotel, api, role, me}){
         {tabBtn("create","Dokument erstellen")}{lead && tabBtn("manage","Vorlagen verwalten")}
         <span style={{flex:1}} />
         <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:6,alignItems:"center"}}>{tf("Sprache der fertigen Vorlagen")}
-          <select className="input" style={{width:"auto",padding:"5px 8px"}} value={lang} onChange={e=>setLang(e.target.value)}>{LANGS.map(([c,n])=><option key={c} value={c}>{n}</option>)}</select></label>
+          <select className="input" aria-label={tf("Sprache")} style={{width:"auto",padding:"5px 8px"}} value={lang} onChange={e=>setLang(e.target.value)}>{LANGS.map(([c,n])=><option key={c} value={c}>{n}</option>)}</select></label>
       </div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
 
@@ -336,7 +336,7 @@ function LettersView({hotel, api, role, me}){
                 );
                 return g==="hotel"
                   ? <details key={g} style={{marginBottom:10}}><summary style={{cursor:"pointer",fontSize:12.5,color:INK_MUTED,marginBottom:6}}>{tf(gl)}</summary>{inputs}</details>
-                  : <div key={g} style={{marginBottom:6}}><div className="field-label" style={{color:BRASS,marginBottom:4}}>{tf(gl)}</div>{inputs}</div>;
+                  : <div key={g} style={{marginBottom:6}}><div className="field-label" style={{color:BRASS_TEXT,marginBottom:4}}>{tf(gl)}</div>{inputs}</div>;
               })}
             </div>
             {!tpl.has_file && <div style={{position:"sticky",top:12}}>
@@ -417,7 +417,7 @@ function LettersView({hotel, api, role, me}){
 
 // ------------------------------------------------------------ Rechnungen
 const INV_KIND_TITLE = {Rechnung:"Rechnung", Anzahlung:"Anzahlungsrechnung", Schlussrechnung:"Schlussrechnung", Storno:"Stornorechnung"};
-const INV_STATUS = {offen:[WARN,WARN_SOFT,"offen"], bezahlt:[GOOD,GOOD_SOFT,"bezahlt"], storniert:[INK_MUTED,PAPER,"storniert"]};
+const INV_STATUS = {offen:[WARN_TEXT,WARN_SOFT,"offen"], bezahlt:[GOOD_TEXT,GOOD_SOFT,"bezahlt"], storniert:[INK_MUTED,PAPER,"storniert"]};
 const r2 = (n) => Math.round((Number(n)||0)*100)/100;
 function invTotals(items, gross){
   const by = {};
@@ -562,7 +562,7 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
   return (
     <div>
       <div style={{fontWeight:700,fontSize:16,marginBottom:8}}><Icon n="receipt" /> {tf("Rechnung erstellen")}{ev ? <span style={{fontWeight:400,color:INK_MUTED}} data-no-i18n=""> · {ev.title}</span> : null}</div>
-      {!(hotel.invoice_settings && hotel.invoice_settings.company) && <div style={{fontSize:12.5,color:WARN,marginBottom:8}}>{tf("Tipp: Zuerst unter „Rechnungen“ die Rechnungsdaten des Hotels (Firma, UID, Bank) eintragen.")}</div>}
+      {!(hotel.invoice_settings && hotel.invoice_settings.company) && <div style={{fontSize:12.5,color:WARN_TEXT,marginBottom:8}}>{tf("Tipp: Zuerst unter „Rechnungen“ die Rechnungsdaten des Hotels (Firma, UID, Bank) eintragen.")}</div>}
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
         {(ev ? ["Anzahlung","Schlussrechnung","Rechnung"] : ["Rechnung"]).map(k=><button key={k} onClick={()=>setF({...f,kind:k})} style={{border:`1px solid ${f.kind===k?INK:BORDER}`,background:f.kind===k?INK:CARD,color:f.kind===k?"#fff":INK,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{tf(INV_KIND_TITLE[k])}</button>)}
       </div>
@@ -572,7 +572,7 @@ function InvoiceForm({hotel, api, ev, invoices, onDone, onCancel}){
           <Field label={tf("E-Mail des Empfängers")}><input className="input" type="email" value={f.recipient_email} onChange={e=>setF({...f,recipient_email:e.target.value})} /></Field>
           <Field label={tf("Leistungsdatum / -zeitraum")}><input className="input" value={f.service_date} onChange={e=>setF({...f,service_date:e.target.value})} /></Field>
           <Field label={tf("UID-Nummer des Empfängers (bei Unternehmen)")}><input className="input" placeholder="ATU12345678" value={f.recipient_uid} onChange={e=>setF({...f,recipient_uid:e.target.value})} data-no-i18n="" /></Field>
-          {!f.recipient_uid.trim() && (depAmount ?? t.gross) > 10000 && <div style={{fontSize:12.5,color:WARN,marginTop:-4,marginBottom:8}}>{tf("Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG).")}</div>}
+          {!f.recipient_uid.trim() && (depAmount ?? t.gross) > 10000 && <div style={{fontSize:12.5,color:WARN_TEXT,marginTop:-4,marginBottom:8}}>{tf("Über 10.000 € brutto muss die UID-Nummer eines Unternehmens auf der Rechnung stehen (§ 11 UStG).")}</div>}
         </div>
       </div>
       <div style={{overflowX:"auto"}}>

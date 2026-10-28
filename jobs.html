@@ -7,7 +7,7 @@
 <title>Ouverture</title>
 <link rel="icon" href="icon-192.png" />
 <style>
-  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#5F6672; --good:#3F7A5C; --bad:#A23B32; }
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --bad:#A23B32; }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
   .w { max-width: 620px; margin: 0 auto; padding: 22px 16px 40px; }
@@ -43,7 +43,12 @@
 <body>
 <div class="w">
   <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
-  <main id="app" aria-live="polite"></main>
+  <main id="app"></main>
+  <div id="live" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></div>
+<script>
+(function () { var app = document.getElementById("app"), live = document.getElementById("live"), last = "";
+  new MutationObserver(function () { var m = app.querySelector("[data-live]"); var txt = m ? m.textContent : ""; if (txt !== last) { last = txt; live.textContent = txt; } }).observe(app, { childList: true, subtree: true }); })();
+</script>
   <footer>Ouverture</footer>
 </div>
 <script>
@@ -98,7 +103,7 @@ function render() {
   var h = (list.length > 1 || hotelId ? '<button type="button" class="link" id="back">← ' + esc(t("back")) + "</button>" : "") + '<h1 dir="auto">' + esc(p.title) + '</h1><div class="sub">' + esc(meta(p)) + "</div>";
   if (p.description) h += '<div class="box desc" dir="auto">' + esc(p.description) + "</div>";
   if (p.salary_note) h += '<div class="box"><b>' + esc(t("salary")) + ':</b> <span dir="auto">' + esc(p.salary_note) + "</span></div>";
-  if (state.sent) { h += '<div class="msg ok" role="status">✓ ' + esc(t("sent")) + "</div>"; a.innerHTML = h; bindBack(); return; }
+  if (state.sent) { h += '<div class="msg ok" data-live="1">✓ ' + esc(t("sent")) + "</div>"; a.innerHTML = h; bindBack(); return; }
   var f = state.f;
   h += "<h2>" + esc(t("apply")) + "</h2><form id=\"form\" novalidate>"
     + '<label class="t" for="name">' + esc(t("name")) + ' *</label><input type="text" id="name" autocomplete="name" maxlength="120" required value="' + esc(f.name) + '" />'

@@ -7,7 +7,7 @@
 <title>Ouverture</title>
 <link rel="icon" href="icon-192.png" />
 <style>
-  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#6B7280; --good:#3F7A5C; --bad:#A23B32; }
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --bad:#A23B32; }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
   .w { max-width: 480px; margin: 0 auto; padding: 22px 16px 40px; }
@@ -41,7 +41,7 @@
 <body>
 <div class="w">
   <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
-  <div id="app"></div>
+  <main id="app"></main>
   <footer>Ouverture</footer>
 </div>
 <script>
@@ -142,10 +142,10 @@ function render() {
   if (!state.skipRead) readReg(); state.skipRead = false;
   document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   var a = $("app"), i = state.info;
-  if (state.error && !i) { a.innerHTML = '<div class="msg err">' + esc(state.error) + "</div>"; return; }
+  if (state.error && !i) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
   if (!i) { a.innerHTML = '<div class="sub">' + t("loading") + "</div>"; return; }
   var head = "<h1>" + esc(t("hello", { name: i.guest.name })) + '</h1><div class="sub">' + esc(t("arrival", { date: fmtDate(i.guest.arrival_date), time: i.checkin_time })) + "</div>";
-  if (state.sent) { a.innerHTML = head + '<div class="msg ok">✓ ' + esc(t("saved")) + '</div><button class="send" style="background:#fff;color:var(--ink);border:1px solid var(--border)" id="again">' + esc(t("change")) + "</button>";
+  if (state.sent) { a.innerHTML = head + '<div class="msg ok" role="status">✓ ' + esc(t("saved")) + '</div><button class="send" style="background:#fff;color:var(--ink);border:1px solid var(--border)" id="again">' + esc(t("change")) + "</button>";
     $("again").onclick = function () { state.sent = false; render(); }; return; }
   var html = head;
   if (i.info) html += '<div class="box info">' + esc(i.info) + "</div>";
@@ -161,7 +161,7 @@ function render() {
   html += '<label class="extra" style="margin-top:14px"><input type="checkbox" id="remember"' + (state.remember ? " checked" : "") + ' /><b>' + esc(t("remember")) + '</b></label><div class="note">' + esc(t("rememberHint")) + "</div>";
   if (state.remember) html += '<label class="t" for="prefs">' + esc(t("prefs")) + '</label><textarea id="prefs" maxlength="1000" dir="auto">' + esc(state.prefs || "") + "</textarea>";
   if (i.marketing) html += mktHtml();
-  html += '<button class="send" id="send"' + (state.busy ? " disabled" : "") + ">" + esc(t("send")) + "</button>" + (state.error ? '<div class="msg err">' + esc(state.error) + "</div>" : "");
+  html += '<button class="send" id="send"' + (state.busy ? " disabled" : "") + ">" + esc(t("send")) + "</button>" + (state.error ? '<div class="msg err" role="alert">' + esc(state.error) + "</div>" : "");
   a.innerHTML = html;
   [].forEach.call(a.querySelectorAll("[data-x]"), function (c) { c.onchange = function () { var id = c.getAttribute("data-x"); state.extras = state.extras.filter(function (x) { return x !== id; }); if (c.checked) state.extras.push(id); }; });
   $("eta").oninput = function () { state.eta = this.value; };

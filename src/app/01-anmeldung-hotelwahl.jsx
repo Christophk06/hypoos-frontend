@@ -8,7 +8,12 @@ function Logo({size=24, color="#C9A66B"}){
 }
 
 function Card(props){ return <div className={"card"+(props.className ? " "+props.className : "")} style={props.style}>{props.children}</div>; }
-function Field({label, children}){ return <label style={{display:"block",marginBottom:14}}><div className="field-label">{label}</div>{children}</label>; }
+function Field({label, children}){
+  const uid = React.useId();
+  const only = React.Children.count(children)===1 && React.isValidElement(children) && typeof children.type==="string" ? children : null;
+  const id = only ? (only.props.id || uid) : undefined;
+  return <label htmlFor={id} style={{display:"block",marginBottom:14}}><div className="field-label">{label}</div>{only ? React.cloneElement(only,{id}) : children}</label>;
+}
 function Pill({children,color,bg}){ return <span style={{color,background:bg,fontSize:12,fontWeight:600,padding:"3px 9px",borderRadius:999}}>{children}</span>; }
 
 function SetupView({onSave}){
@@ -74,23 +79,37 @@ function LoginView({config,onLogin,onReset}){
     setLoading(false);
   };
 
-  const submit = mode==="login" ? submitLogin : mode==="register" ? submitRegister : submitForgot;
+  const run = mode==="login" ? submitLogin : mode==="register" ? submitRegister : submitForgot;
+  const submit = () => {
+    if(loading) return;
+    if(!email.trim()){ setInfo(""); setError("Bitte gib deine E-Mail-Adresse ein."); return; }
+    if(!/^[^\s@]+@[^\s@]+$/.test(email.trim())){ setInfo(""); setError("Bitte gib eine gültige E-Mail-Adresse ein."); return; }
+    if(mode!=="forgot" && !password){ setInfo(""); setError("Bitte gib dein Passwort ein."); return; }
+    run();
+  };
+  const onFormSubmit = (e) => { e.preventDefault(); submit(); };
+  const errId = "login-error";
+  const descr = error ? errId : undefined;
+  const infoBox = info ? <div role="status" id="login-info" style={{color:GOOD_TEXT,fontSize:13,marginBottom:12}}>{info}</div> : null;
+  const linkBtn = {background:"none",border:"none",color:INK_MUTED,fontSize:13,minHeight:24,padding:"2px 4px",cursor:"pointer",textDecoration:"underline"};
 
   if(mode==="forgot"){
     return (
-      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+      <main style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
         <Card style={{maxWidth:380,width:"100%"}}>
-          <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Passwort vergessen</div>
+          <h1 style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,margin:"0 0 8px"}}>Passwort vergessen</h1>
           <div style={{fontSize:13,color:INK_MUTED,marginBottom:16}}>Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.</div>
-          <Field label="E-Mail"><input className="input" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} /></Field>
-          {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
-          {info && <div style={{color:GOOD,fontSize:13,marginBottom:12}}>{info}</div>}
-          <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>{loading?"Bitte warten…":"Link schicken"}</button>
+          <form onSubmit={onFormSubmit} noValidate>
+            <Field label="E-Mail"><input type="email" autoComplete="username" className="input" value={email} onChange={e=>setEmail(e.target.value)} aria-invalid={error?true:undefined} aria-describedby={descr} /></Field>
+            <ErrorText id={errId} style={{marginBottom:12}}>{error}</ErrorText>
+            {infoBox}
+            <button type="submit" className="btn-primary" style={{width:"100%"}} disabled={loading}>{loading?"Bitte warten…":"Link schicken"}</button>
+          </form>
           <div style={{textAlign:"center",marginTop:12}}>
-            <button onClick={()=>{setMode("login");setError("");setInfo("");}} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Zurück zur Anmeldung</button>
+            <button type="button" onClick={()=>{setMode("login");setError("");setInfo("");}} style={linkBtn}>Zurück zur Anmeldung</button>
           </div>
         </Card>
-      </div>
+      </main>
     );
   }
 
@@ -110,33 +129,35 @@ function LoginView({config,onLogin,onReset}){
         </div>
         <div style={{fontSize:12,color:"rgba(246,244,239,0.5)",position:"relative"}}>Aufgaben · Meilensteine · Risiken · KI-Lagebericht</div>
       </div>
-      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:20,position:"relative"}}>
+      <main style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:20,position:"relative"}}>
       <div style={{position:"absolute",top:16,right:16}}><LanguageSwitcher /></div>
       <Card style={{maxWidth:380,width:"100%"}}>
         <div style={{display:"flex",gap:6,marginBottom:18,background:PAPER,borderRadius:4,padding:4}}>
-          <button onClick={()=>{setMode("login");setError("");setInfo("");}}
+          <button type="button" aria-pressed={mode==="login"} onClick={()=>{setMode("login");setError("");setInfo("");}}
             style={{flex:1,padding:"8px 0",borderRadius:6,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:600,
               background:mode==="login"?INK:"transparent",color:mode==="login"?"#fff":INK_MUTED}}>Anmelden</button>
-          <button onClick={()=>{setMode("register");setError("");setInfo("");}}
+          <button type="button" aria-pressed={mode==="register"} onClick={()=>{setMode("register");setError("");setInfo("");}}
             style={{flex:1,padding:"8px 0",borderRadius:6,border:"none",cursor:"pointer",fontSize:13.5,fontWeight:600,
               background:mode==="register"?INK:"transparent",color:mode==="register"?"#fff":INK_MUTED}}>Registrieren</button>
         </div>
-        <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:18}}>
+        <h1 style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,margin:"0 0 18px"}}>
           {mode==="login" ? "Anmelden" : "Neues Konto erstellen"}
-        </div>
-        <Field label="E-Mail"><input className="input" value={email} onChange={e=>setEmail(e.target.value)} /></Field>
-        <Field label="Passwort"><input type="password" className="input" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} /></Field>
-        {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
-        {info && <div style={{color:GOOD,fontSize:13,marginBottom:12}}>{info}</div>}
-        <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>
-          {loading?"Bitte warten…":(mode==="login"?"Anmelden":"Konto erstellen")}
-        </button>
+        </h1>
+        <form onSubmit={onFormSubmit} noValidate>
+          <Field label="E-Mail"><input type="email" autoComplete={mode==="register"?"email":"username"} className="input" value={email} onChange={e=>setEmail(e.target.value)} aria-invalid={error?true:undefined} aria-describedby={descr} /></Field>
+          <Field label="Passwort"><input type="password" autoComplete={mode==="register"?"new-password":"current-password"} className="input" value={password} onChange={e=>setPassword(e.target.value)} aria-invalid={error?true:undefined} aria-describedby={descr} /></Field>
+          <ErrorText id={errId} style={{marginBottom:12}}>{error}</ErrorText>
+          {infoBox}
+          <button type="submit" className="btn-primary" style={{width:"100%"}} disabled={loading}>
+            {loading?"Bitte warten…":(mode==="login"?"Anmelden":"Konto erstellen")}
+          </button>
+        </form>
         <OAuthButtons config={config} />
         <div style={{textAlign:"center",marginTop:12,display:"flex",justifyContent:"center",gap:14}}>
-          {mode==="login" && <button onClick={()=>{setMode("forgot");setError("");setInfo("");}} style={{background:"none",border:"none",color:INK_MUTED,fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Passwort vergessen?</button>}
+          {mode==="login" && <button type="button" onClick={()=>{setMode("forgot");setError("");setInfo("");}} style={linkBtn}>Passwort vergessen?</button>}
         </div>
       </Card>
-      </div>
+      </main>
     </div>
   );
 }
@@ -154,15 +175,17 @@ function ResetPasswordView({config, accessToken, onDone}){
     setLoading(false);
   };
   return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
+    <main style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:PAPER,padding:20}}>
       <Card style={{maxWidth:380,width:"100%"}}>
-        <div style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,marginBottom:8}}>Neues Passwort festlegen</div>
-        <Field label="Neues Passwort"><input type="password" className="input" value={password} onChange={e=>setPassword(e.target.value)} /></Field>
-        <Field label="Neues Passwort wiederholen"><input type="password" className="input" value={password2} onChange={e=>setPassword2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} /></Field>
-        {error && <div style={{color:BAD,fontSize:13,marginBottom:12}}>{error}</div>}
-        <button className="btn-primary" style={{width:"100%"}} onClick={submit} disabled={loading}>{loading?"Bitte warten…":"Passwort speichern"}</button>
+        <h1 style={{fontFamily:"Fraunces, serif",fontSize:19,fontWeight:600,margin:"0 0 8px"}}>Neues Passwort festlegen</h1>
+        <form onSubmit={e=>{e.preventDefault(); submit();}} noValidate>
+          <Field label="Neues Passwort"><input type="password" autoComplete="new-password" className="input" value={password} onChange={e=>setPassword(e.target.value)} aria-invalid={error?true:undefined} aria-describedby={error?"reset-error":undefined} /></Field>
+          <Field label="Neues Passwort wiederholen"><input type="password" autoComplete="new-password" className="input" value={password2} onChange={e=>setPassword2(e.target.value)} aria-invalid={error?true:undefined} aria-describedby={error?"reset-error":undefined} /></Field>
+          <ErrorText id="reset-error" style={{marginBottom:12}}>{error}</ErrorText>
+          <button type="submit" className="btn-primary" style={{width:"100%"}} disabled={loading}>{loading?"Bitte warten…":"Passwort speichern"}</button>
+        </form>
       </Card>
-    </div>
+    </main>
   );
 }
 

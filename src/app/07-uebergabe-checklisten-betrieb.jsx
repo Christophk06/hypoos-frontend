@@ -50,7 +50,7 @@ function LogbookView({hotel, api, me, members, role, myDepts}){
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {canWrite && dept && (
         <Card style={{marginBottom:16}}>
-          <div style={{fontWeight:700,marginBottom:8}}>{tf("Neuer Eintrag")} · <span>{dept}</span></div>
+          <h2 className="ui-h" style={{fontWeight:700,marginBottom:8}}>{tf("Neuer Eintrag")} · <span>{dept}</span></h2>
           <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
             {LOG_KINDS.map(k=><button key={k} onClick={()=>setKind(k)} style={{border:`1px solid ${kind===k?LOG_STYLE[k].color:BORDER}`,background:kind===k?LOG_STYLE[k].bg:"#fff",
               color:kind===k?LOG_STYLE[k].color:INK,fontWeight:kind===k?700:400,borderRadius:999,padding:"5px 12px",fontSize:12.5,cursor:"pointer"}}>{k}</button>)}
@@ -61,7 +61,7 @@ function LogbookView({hotel, api, me, members, role, myDepts}){
         </Card>
       )}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-        <div style={{fontWeight:700,flex:1}}>{tf("Übergabebuch")}{openCount>0 && <span style={{color:WARN,fontWeight:400,fontSize:13}}> · {tf("{0} offene Punkte", openCount)}</span>}</div>
+        <div style={{fontWeight:700,flex:1}}>{tf("Übergabebuch")}{openCount>0 && <span style={{color:WARN_TEXT,fontWeight:400,fontSize:13}}> · {tf("{0} offene Punkte", openCount)}</span>}</div>
         <TranslateToggle t={T} />
         <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={onlyOpen} onChange={e=>setOnlyOpen(e.target.checked)} /> {tf("Nur offene Punkte")}</label>
       </div>
@@ -255,25 +255,25 @@ function ClockCard({hotel, api, role, myDepts, compact, onChanged}){
             <div style={{fontSize:13.5,marginTop:2}}>
               <span style={{color:GOOD,fontWeight:700}}>● {tf("Eingestempelt seit {0}", fmtClock(open.clock_in))}</span>
               <span style={{color:INK_MUTED}}> · <span data-no-i18n="">{fmtHM(entryHours({...open, break_minutes:0}))} h</span> · <span>{open.department}</span></span>
-              {open.hotel_id!==hotel.id && <div style={{fontSize:12.5,color:WARN}}>{tf("Im Hotel {0}", open.hotel_name)}</div>}
+              {open.hotel_id!==hotel.id && <div style={{fontSize:12.5,color:WARN_TEXT}}>{tf("Im Hotel {0}", open.hotel_name)}</div>}
             </div>
           ) : <div style={{fontSize:13,color:INK_MUTED,marginTop:2}}>{tf("Nicht eingestempelt.")}</div>}
           {data && <div style={{fontSize:12,color:INK_MUTED,marginTop:4}}>{tf("Diesen Monat: {0} h", fmtHM(monthTotal))}</div>}
         </div>
-        {data && !open && depts.length>1 && <select className="input" style={{width:"auto",minWidth:150}} value={dept} onChange={e=>setDept(e.target.value)}>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>}
+        {data && !open && depts.length>1 && <select className="input" aria-label={tf("Abteilung")} style={{width:"auto",minWidth:150}} value={dept} onChange={e=>setDept(e.target.value)}>{depts.map(d=><option key={d} value={d}>{d}</option>)}</select>}
         {data && open && (
           <label style={{fontSize:12.5,color:INK_MUTED,display:"flex",alignItems:"center",gap:6}}>{tf("Pause")}
             <input className="input" type="number" min="0" max="600" step="5" value={brk} onChange={e=>setBrk(e.target.value)} style={{width:74}} /> {tf("Min.")}
           </label>
         )}
-        {data && needQr && <div style={{fontSize:13,color:WARN,maxWidth:260}}><Icon n="camera" /> {tf("Zum Stempeln den QR-Code am Mitarbeitereingang mit der Handykamera scannen.")}</div>}
+        {data && needQr && <div style={{fontSize:13,color:WARN_TEXT,maxWidth:260}}><Icon n="camera" /> {tf("Zum Stempeln den QR-Code am Mitarbeitereingang mit der Handykamera scannen.")}</div>}
         {data && !needQr && (open
           ? <button className="btn-primary" disabled={busy} style={{background:BAD,minWidth:110,padding:"11px 18px"}} onClick={()=>doClock("out")}>{tf("Gehen")}</button>
           : <button className="btn-primary" disabled={busy || !dept} style={{background:GOOD,minWidth:110,padding:"11px 18px"}} onClick={()=>doClock("in")}>{tf("Kommen")}</button>)}
       </div>
-      {open && Number(brk)===0 && entryHours({...open, break_minutes:0})>6 && <div style={{fontSize:12.5,color:WARN,marginTop:8}}>{tf("Ab 6 Stunden Arbeit sind mindestens 30 Minuten Pause vorgeschrieben.")}</div>}
+      {open && Number(brk)===0 && entryHours({...open, break_minutes:0})>6 && <div style={{fontSize:12.5,color:WARN_TEXT,marginTop:8}}>{tf("Ab 6 Stunden Arbeit sind mindestens 30 Minuten Pause vorgeschrieben.")}</div>}
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginTop:8}}>{msg.text}</div>}
-      {queued>0 && <div style={{fontSize:12.5,color:WARN,marginTop:6}}><Icon n="clock" /> {tf("{0} Buchungen warten auf Netz.", queued)}</div>}
+      {queued>0 && <div style={{fontSize:12.5,color:WARN_TEXT,marginTop:6}}><Icon n="clock" /> {tf("{0} Buchungen warten auf Netz.", queued)}</div>}
       {!compact && monthEntries.length>0 && (
         <div style={{marginTop:12}}>
           <div style={{fontSize:12,fontWeight:700,color:INK_MUTED,textTransform:"uppercase",marginBottom:4}}>{tf("Meine Zeiten")}</div>
@@ -281,7 +281,7 @@ function ClockCard({hotel, api, role, myDepts, compact, onChanged}){
             <div key={e.id} style={{display:"flex",gap:10,padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}} data-no-i18n="">
               <span style={{width:110,color:INK_MUTED}}>{fmtDay(toLocalInput(e.clock_in).slice(0,10))}</span>
               <span style={{flex:1}} dir="ltr">{fmtClock(e.clock_in)}–{fmtClock(e.clock_out)}{e.break_minutes ? " · "+e.break_minutes+" min" : ""}</span>
-              {e.edited_by && <span style={{fontSize:11.5,color:WARN}}>{tf("korrigiert")}</span>}
+              {e.edited_by && <span style={{fontSize:11.5,color:WARN_TEXT}}>{tf("korrigiert")}</span>}
               {e.offline && <span style={{fontSize:11.5,color:INK_MUTED}}>{tf("offline")}</span>}
               <b>{fmtHM(entryHours(e))}</b>
             </div>
@@ -363,7 +363,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
     <div>
       <div className="no-print" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"18px 0 12px"}}>
         <div style={{fontFamily:"Fraunces, serif",fontSize:18,fontWeight:600,flex:1,minWidth:200}}>{tf("Team und Monatsauswertung")}</div>
-        <select className="input" style={{width:"auto"}} value={dept} onChange={e=>setDept(e.target.value)}>
+        <select className="input" aria-label={tf("Abteilung")} style={{width:"auto"}} value={dept} onChange={e=>setDept(e.target.value)}>
           {depts.length>1 && <option value="">{tf("Alle meine Abteilungen")}</option>}
           {depts.map(d=><option key={d} value={d}>{d}</option>)}
         </select>
@@ -372,7 +372,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {laOpen && <PayrollExportCard hotel={hotel} api={api} rows={rows} month={month} onHotel={(h)=>{ if(onHotel) onHotel(h); }} onClose={()=>setLaOpen(false)} />}
       <Card style={{marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:6}}>{tf("Jetzt im Dienst")} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({openNow.length})</span></div>
+        <h2 className="ui-h" style={{fontWeight:700,marginBottom:6}}>{tf("Jetzt im Dienst")} <span style={{color:INK_MUTED,fontWeight:400}} data-no-i18n="">({openNow.length})</span></h2>
         {openNow.length===0 ? <div style={{fontSize:13,color:INK_MUTED}}>{tf("Gerade ist niemand eingestempelt.")}</div> : openNow.map(e=>(
           <div key={e.id} style={{display:"flex",gap:10,padding:"5px 0",borderTop:`1px solid ${BORDER}`,fontSize:13.5}}>
             <span style={{color:GOOD}}>●</span><span style={{flex:1}}><span data-no-i18n="">{nameOf(e.user_id)}</span> · <span>{e.department}</span></span><span dir="ltr" data-no-i18n="">{fmtClock(e.clock_in)} · {fmtHM(entryHours({...e,break_minutes:0}))} h</span>
@@ -381,7 +381,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
       </Card>
       <Card style={{marginBottom:14,padding:0,overflow:"hidden"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"14px 16px 6px",flexWrap:"wrap"}}>
-          <div style={{fontWeight:700,flex:1}}>{tf("Monatsauswertung")} · <span data-no-i18n="">{new Date(mb.first+"T12:00:00").toLocaleDateString(UI_LOCALE,{month:"long",year:"numeric"})}</span></div>
+          <h2 className="ui-h" style={{fontWeight:700,flex:1}}>{tf("Monatsauswertung")} · <span data-no-i18n="">{new Date(mb.first+"T12:00:00").toLocaleDateString(UI_LOCALE,{month:"long",year:"numeric"})}</span></h2>
           <button style={smallBtn} onClick={()=>setAdd({user:"", dept:dept||depts[0], in:"", out:"", brk:"30", note:""})}>{tf("+ Zeit nachtragen")}</button>
           <button style={smallBtn} onClick={exportCsv}>CSV</button>
           <button style={smallBtn} onClick={()=>setLaOpen(!laOpen)}>{tf("Lohnarten-Export")}</button>
@@ -414,9 +414,9 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
               {rows.map(r=>(
                 <React.Fragment key={r.key}>
                   <tr onClick={()=>r.user_id && setOpenKey(openKey===r.key?null:r.key)} style={{borderTop:`1px solid ${BORDER}`,cursor:r.user_id?"pointer":"default",background:openKey===r.key?BRASS_SOFT:"transparent"}}>
-                    <td style={{...td,textAlign:"start"}}><b data-no-i18n="">{r.name}</b>{r.open>0 && <span style={{color:GOOD}}> ●</span>}{r.corrected>0 && <span style={{color:WARN,fontSize:11}} data-no-i18n=""> ✎{r.corrected}</span>}<div style={{fontSize:11,color:INK_MUTED}}>{r.departments.map((d,i)=><span key={d}>{i?", ":""}<span>{d}</span></span>)}</div></td>
+                    <td style={{...td,textAlign:"start"}}><b data-no-i18n="">{r.name}</b>{r.open>0 && <span style={{color:GOOD}}> ●</span>}{r.corrected>0 && <span style={{color:WARN_TEXT,fontSize:11}} data-no-i18n=""> ✎{r.corrected}</span>}<div style={{fontSize:11,color:INK_MUTED}}>{r.departments.map((d,i)=><span key={d}>{i?", ":""}<span>{d}</span></span>)}</div></td>
                     <td style={td}>{H(r.target)}</td><td style={td}>{H(r.planned)}</td><td style={td}>{r.entries?H(r.worked):"–"}</td>
-                    <td style={{...td,fontWeight:700,color:r.diff==null?INK_MUTED:r.diff>0.01?WARN:r.diff<-0.01?BAD:GOOD}}>{r.diff==null?"–":(r.diff>0?"+":"")+fmtHours(r.diff)}</td>
+                    <td style={{...td,fontWeight:700,color:r.diff==null?INK_MUTED:r.diff>0.01?WARN_TEXT:r.diff<-0.01?BAD:GOOD}}>{r.diff==null?"–":(r.diff>0?"+":"")+fmtHours(r.diff)}</td>
                     <td style={td}>{r.night?H(r.night):"–"}</td><td style={td}>{r.sunday?H(r.sunday):"–"}</td><td style={td}>{r.holiday?H(r.holiday):"–"}</td><td style={td}>{r.vacation||"–"}</td><td style={td}>{r.sick||"–"}</td>
                   </tr>
                   {openKey===r.key && <tr style={{background:"#FBFAF7"}}><td colSpan={10} style={{padding:"7px 12px"}}>
@@ -442,7 +442,7 @@ function TeamTime({hotel, api, me, members, role, myDepts, onHotel}){
                             <b data-no-i18n="">{fmtHM(entryHours(e))} h</b>
                             {e.department!==r.departments[0] && <span style={{color:INK_MUTED}}>{e.department}</span>}
                             {e.note && <span style={{color:INK_MUTED}} data-no-i18n="">· {e.note}</span>}
-                            {e.edited_by && <span style={{color:WARN,fontSize:11.5}}>{tf("korrigiert von {0}", nameOf(e.edited_by))}</span>}
+                            {e.edited_by && <span style={{color:WARN_TEXT,fontSize:11.5}}>{tf("korrigiert von {0}", nameOf(e.edited_by))}</span>}
                             <span style={{flex:1}}></span>
                             {canManageDept(e.department) && <button style={linkBtn} onClick={()=>setEdit({id:e.id, in:toLocalInput(e.clock_in), out:toLocalInput(e.clock_out), brk:String(e.break_minutes||0), note:e.note||""})}>{tf("Bearbeiten")}</button>}
                             {canManageDept(e.department) && <button style={{...linkBtn,color:BAD}} onClick={()=>{ if(window.confirm(tf("Buchung löschen?"))) run(()=>api("/api/time-entries/"+e.id,"DELETE")); }}>✕</button>}

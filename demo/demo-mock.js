@@ -387,7 +387,7 @@
     elevator: { available: true, wheelchair_size: true, note: "" }, restaurant: { step_free: true, accessible_table: false, note: "" },
     spa: { step_free: true, pool_lift: false, note: "" }, toilets: { accessible_public: true, note: "" } }, note: "Ein Rollstuhl steht an der Rezeption zum Verleih bereit.", saved: true };
   D.hotel.referral_settings = { bonus: 300, after_weeks: 4, note: "Die Prämie wird mit dem Gehalt nach der Probezeit ausbezahlt." };
-  D.hotel.safety_settings = { min_first_aid: 2, min_fire: 1 };
+  D.hotel.safety_settings = { min_first_aid: 2, min_fire: 1, emergency_contacts: [{ name: "Haustechnik-Notdienst", role: "Technik", phone: "+43 512 555 0100" }, { name: "Aufzugsfirma Schindler", role: "Aufzug", phone: "+43 512 555 0111" }, { name: "Gesamtleitung (Bereitschaft)", role: "Leitung", phone: "+43 664 555 0123" }] };
   D.hotel.registration_settings = { enabled: true, require_id: false };
   D.hotel.queue_settings = { enabled: true, areas: ["Restaurant", "Spa", "Bar"], token: "DEMOwarteschlangeAlpenblick" };
   D.hotel.occasion_mail = { enabled: true, anniversary: true, birthday: true, offer: "10 % auf Ihre nächste Direktbuchung mit dem Code WIEDERSEHEN." };
@@ -1281,6 +1281,8 @@
     if (p === H + "/courses") { if (m === "POST") { var nc = Object.assign({ id: nid("co"), hotel_id: D.hotel.id, pass_percent: 80, active: true, lessons: [], quiz: [], created_at: new Date().toISOString() }, b); D.courses.push(nc); return ok(nc); }
       return ok(D.courses.filter(function (c) { return lead || c.active; })); }
     if (p === H + "/course-results") return ok(D.course_results.slice().sort(function (a, c) { return a.completed_at < c.completed_at ? 1 : -1; }));
+    // Akademie-Videos (Migration 042): in der Demo gibt es keinen Speicher – keine fremden Inhalte
+    if ((mm = p.match(/^\/api\/courses\/([^/]+)\/video-url$/))) return ok({ url: null, message: "In der Demo nicht verfügbar." });
     if ((mm = p.match(/^\/api\/courses\/([^/]+)\/submit$/)) && m === "POST") {
       var cu = byId(D.courses, mm[1]); if (!cu || !cu.active) return ok({ error: "Kurs nicht gefunden." }, 404);
       var ans = (Array.isArray(b.answers) ? b.answers : []).map(function (a) { return Number.isInteger(a) ? a : -1; }), qz = cu.quiz || [];
@@ -1710,7 +1712,7 @@
         if (b.referral_settings !== undefined) { if (!hrNow()) return deny("Die Empfehlungsprämie stellt die Leitung Personal ein."); var rr = b.referral_settings || {};
           tso.referral_settings = { bonus: tnum(rr.bonus, 100000), after_weeks: tnum(rr.after_weeks, 104) === null ? null : Math.round(tnum(rr.after_weeks, 104)), note: s200(rr.note, 500) }; }
         if (b.safety_settings !== undefined) { if (!hrNow() && !(ROLE === "manager" && MYDEPTS.indexOf("Sicherheit") >= 0)) return deny("Die Mindestbesetzung stellt die Leitung Personal oder Sicherheit ein."); var ss = b.safety_settings || {}, ti = function (v) { var n = Math.round(Number(v)); return n >= 0 && n <= 50 ? n : 0; };
-          tso.safety_settings = { min_first_aid: ti(ss.min_first_aid), min_fire: ti(ss.min_fire) }; }
+          tso.safety_settings = { min_first_aid: ti(ss.min_first_aid), min_fire: ti(ss.min_fire), emergency_contacts: (D.hotel.safety_settings || {}).emergency_contacts || [] }; }
         if (!Object.keys(tso).length) return ok({ error: "Nichts zu speichern." }, 400);
         Object.assign(D.hotel, tso); return ok({ referral_settings: D.hotel.referral_settings, safety_settings: D.hotel.safety_settings }); }
       return ok({ referral_settings: D.hotel.referral_settings || {}, safety_settings: D.hotel.safety_settings || {} }); }
@@ -1973,6 +1975,44 @@
       if (!igAdmin()) return deny(IGDENY);
       return ok({ error: "In der Live-Demo nicht verfügbar." }, 400); }
 
+    // Paket 042: Zertifikat und Notfallmappe (Schreibvorgänge nur im Speicher)
+    if (p === H + "/readiness-certificate" && m === "POST") {
+      if (!(ROLE === "admin" || (ROLE === "manager" && !MYDEPTS.length))) return deny("Das Zertifikat erstellen nur Admin und Gesamtleitung.");
+      var pc = function (a, n) { return n > 0 ? Math.max(0, Math.min(100, Math.round(a * 100 / n))) : null; };
+      var cdone = D.tasks.filter(function (t) { return t.status === "Erledigt" || t.status === "Abgeschlossen"; }).length, cperm = D.permits.filter(function (x) { return x.status === "erteilt"; }).length;
+      var cprocOk = (D.procurement || []).filter(function (x) { return x.status === "geliefert" || x.status === "montiert"; }).length;
+      var cr = [], ca = [["tasks", "Aufgaben", pc(cdone, D.tasks.length), cdone + " / " + D.tasks.length, true], ["schedule", "Zeitplan (Bereitschafts-Score)", 62, null, false], ["permits", "Genehmigungen", pc(cperm, D.permits.length), cperm + " / " + D.permits.length, true],
+        ["procurement", "Einkauf und Lieferungen", (D.procurement || []).length ? pc(cprocOk, D.procurement.length) : null, (D.procurement || []).length ? cprocOk + " / " + D.procurement.length : null, true], ["staff", "Personal", 71, null, true]]
+        .map(function (x) { return { key: x[0], label: x[1], pct: x[2], detail: x[3], in_total: x[4], status: x[2] == null ? "keine Daten" : x[2] >= 95 ? "bereit" : x[2] >= 80 ? "fast bereit" : "offen" }; });
+      D.permits.forEach(function (x) { if (x.status !== "erteilt") cr.push({ area: "permits", text: x.title, detail: x.status === "beantragt" ? "beantragt, noch nicht erteilt" : "noch nicht beantragt", code: x.status === "beantragt" ? "permit_requested" : "permit_open", arg: null }); });
+      D.tasks.forEach(function (t) { if (t.priority === "Kritisch" && t.status !== "Erledigt" && t.status !== "Abgeschlossen") cr.push({ area: "tasks", text: t.title, detail: t.due_date && t.due_date < todayIso ? "überfällig seit " + t.due_date : "Aufgabe mit Priorität Kritisch", code: t.due_date && t.due_date < todayIso ? "overdue" : "critical_task", arg: t.due_date || null }); });
+      var cnt = ca.filter(function (x) { return x.in_total && x.pct != null; }), covr = cnt.length ? Math.round(cnt.reduce(function (s, x) { return s + x.pct; }, 0) / cnt.length) : 0;
+      var ccrit = [{ key: "overall", text: "Gesamtstand mindestens 95 %", ok: covr >= 95 }, { key: "critical", text: "Keine offenen kritischen Punkte", ok: cr.length === 0 }, { key: "areas", text: "Kein Bereich unter 80 %", ok: cnt.every(function (x) { return x.pct >= 80; }) }, { key: "data", text: "Aufgaben und Genehmigungen sind erfasst", ok: true }];
+      var cready = ccrit.every(function (x) { return x.ok; });
+      return ok({ hotel: { id: D.hotel.id, name: D.hotel.name, city: D.hotel.city || null, country: D.hotel.country || null, opening_date: D.hotel.opening_date || null }, date: todayIso, generated_at: new Date().toISOString(),
+        ready: cready, title: cready ? "Eröffnungsbereit" : "Bereitschaftsbericht", overall: covr, areas: ca, criteria: ccrit, critical: cr.slice(0, 40), critical_count: cr.length, readiness_score: 62,
+        days_to_opening: D.hotel.opening_date ? Math.round((new Date(D.hotel.opening_date + "T00:00:00Z") - new Date(todayIso + "T00:00:00Z")) / 86400000) : null,
+        code: "DEMO-Pruefcode-nicht-gueltig-nur-Beispiel", verify_url: "DEMO – kein echter Prüfcode", secret_fallback: false }); }
+    if (p === H + "/emergency-folder" && m === "GET") {
+      if (ROLE === "member") return deny("Den Notfall-Modus nutzt die Leitung.");
+      var etom = add(todayIso, 1), emn = function (u) { var mb = D.members.find(function (x) { return x.user_id === u; }); return mb ? mb.email.split("@")[0] : "Teammitglied"; }, eq = qualSet(todayIso), ehm = function (t, d) { return String(t || d).slice(0, 5); };
+      var esh = D.shifts.filter(function (s) { return s.shift_date === todayIso && ["Früh", "Spät", "Nacht", "Zwischen"].indexOf(s.kind) >= 0 && (ROLE === "admin" || !MYDEPTS.length || MYDEPTS.indexOf(s.department) >= 0); }).map(function (s) {
+        return { department: s.department, kind: s.kind, from: ehm(s.start_time, "06:00"), to: ehm(s.end_time, "14:30"), name: s.user_id ? emn(s.user_id) : String(s.employee_name || ""), first_aid: !!(s.user_id && eq[s.user_id] && eq[s.user_id]["Erste Hilfe"]), fire: !!(s.user_id && eq[s.user_id] && eq[s.user_id]["Brandschutz"]) }; })
+        .sort(function (a, c) { return a.department.localeCompare(c.department, "de") || a.from.localeCompare(c.from) || a.name.localeCompare(c.name, "de"); });
+      var ear = D.arrivals.filter(function (a) { return a.arrival_date === todayIso || a.arrival_date === etom; }).sort(function (a, c) { return a.arrival_date < c.arrival_date ? -1 : a.arrival_date > c.arrival_date ? 1 : String(a.guest_name).localeCompare(c.guest_name, "de"); }).map(function (a) {
+        return { arrival_date: a.arrival_date, departure_date: a.departure_date || null, guest_name: a.guest_name, room: a.assigned_room || null, room_type: a.room_type || null, adults: a.adults != null ? a.adults : null, children: a.children != null ? a.children : null, vip: a.vip === true, eta: a.eta || null }; });
+      var erm = D.rooms.map(function (r) { return { number: r.number, floor: r.floor || floorOfR(r) || null, room_type: r.room_type || null, status: r.status, occupancy: r.occupancy }; }).sort(function (a, c) { return String(a.number).localeCompare(String(c.number), "de", { numeric: true }); });
+      return ok({ hotel: { id: D.hotel.id, name: D.hotel.name }, today: todayIso, tomorrow: etom, generated_at: new Date().toISOString(), generated_local: new Date().toTimeString().slice(0, 5), arrivals: ear, rooms: erm, shifts: esh,
+        contacts: ((D.hotel.safety_settings || {}).emergency_contacts || []).slice(0, 15), reception_phone: (D.hotel.guest_info && D.hotel.guest_info.reception_phone) || "+43 512 555 0100",
+        public_numbers: [{ label: "Feuerwehr", number: "122" }, { label: "Rettung", number: "144" }, { label: "Polizei", number: "133" }, { label: "Euro-Notruf", number: "112" }], missing: [] }); }
+    if (p === H + "/emergency-contacts" && m === "PUT") {
+      if (!(ROLE === "admin" || (ROLE === "manager" && (!MYDEPTS.length || MYDEPTS.indexOf("Sicherheit") >= 0)))) return deny("Notfallkontakte pflegen Admin, Gesamtleitung und Leitung Sicherheit.");
+      var ecs = (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 15).map(function (c) { return { name: String((c && c.name) || "").trim().slice(0, 60), role: String((c && c.role) || "").trim().slice(0, 60), phone: String((c && c.phone) || "").trim().slice(0, 30).replace(/[^0-9+()/ .-]/g, "") }; }).filter(function (c) { return c.name && c.phone; });
+      D.hotel.safety_settings = Object.assign({}, D.hotel.safety_settings || {}, { emergency_contacts: ecs }); return ok({ contacts: ecs }); }
+    if (p === H + "/emergency-mail") {
+      var eelig = ROLE === "admin" || (ROLE === "manager" && (!MYDEPTS.length || MYDEPTS.indexOf("Rezeption & Empfang") >= 0));
+      if (m === "PUT") { var eon = b.enabled === true; if (eon && !eelig) return deny("Die Notfall-Mail gibt es nur für Admin, Gesamtleitung und Leitung Rezeption."); D.emergency_mail_on = eon; return ok({ available: true, eligible: eelig, enabled: eon }); }
+      return ok({ available: true, eligible: eelig, enabled: !!D.emergency_mail_on, hours: "05:00–08:00" }); }
     return ok({});
   };
 })();

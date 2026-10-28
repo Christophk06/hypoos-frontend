@@ -381,6 +381,8 @@ function App(){
           {tab==="dashboard" && role!=="member" && preOpeningOff(hotel) && <KpiView hotel={hotel} api={api} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmOnDutyCard hotel={hotel} api={api} members={members} me={me} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmProbationDueCard hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="dashboard" && (role==="admin" || role==="manager") && <ReadinessCertificateCard hotel={hotel} api={api} role={role} />}
+          {tab==="dashboard" && role!=="member" && role!=="viewer" && <EmergencyFolderButton hotel={hotel} api={api} me={me} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <CityEventsCard hotel={hotel} api={api} />}
           {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <AiReportCard hotel={hotel} api={api} ai={ai} onChange={setAi} readOnly={!isLead} />}
           {tab==="dashboard" && role!=="member" && !preOpeningOff(hotel) && <DashboardView readiness={readiness} tasks={tasks} risks={risks} budget={budget} staff={staff} lead={role!=="member"} onOpen={isLead ? setTab : ()=>{}} />}
@@ -432,7 +434,7 @@ function App(){
           {tab==="staffdocs" && canManageDept("Personal") && <TmReferenceLetterCard hotel={hotel} api={api} members={members} />}
           {roomHistory && <RoomHistoryView room={roomHistory} api={api} hotel={hotel} onClose={()=>setRoomHistory(null)} />}
           {tab==="assets" && <AssetsView hotel={hotel} api={api} />}
-          {tab==="academy" && <AcademyView hotel={hotel} api={api} me={me} members={members} />}
+          {tab==="academy" && <AcademyView hotel={hotel} api={api} me={me} members={members} upload={docCtx.upload} />}
           {tab==="academy" && <TmRoleplayView hotel={hotel} api={api} me={me} members={members} />}
           {tab==="patrols" && <PatrolsView hotel={hotel} api={api} />}
           {tab==="instructions" && <InstructionsView hotel={hotel} api={api} />}
@@ -440,7 +442,10 @@ function App(){
           {tab==="cash" && <CashView hotel={hotel} api={api} me={me} members={members} myDepts={myDepts} />}
           {tab==="keys" && <KeysView hotel={hotel} api={api} members={members} />}
           {tab==="uniforms" && <UniformsView hotel={hotel} api={api} members={members} />}
+          {tab==="emergency" && <EmergencyFolderButton hotel={hotel} api={api} me={me} />}
           {tab==="emergency" && <EmergencyView hotel={hotel} api={api} />}
+          {tab==="emergency" && <EmergencyContactsCard hotel={hotel} api={api} />}
+          {tab==="emergency" && role!=="member" && role!=="viewer" && <EmergencyMailSettings hotel={hotel} api={api} me={me} />}
           {tab==="laundry" && <LaundryView hotel={hotel} api={api} />}
           {tab==="minibar" && <MinibarView hotel={hotel} api={api} />}
           {tab==="breakfast" && <BreakfastView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}

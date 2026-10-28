@@ -1,3 +1,7 @@
+%;background:
+%</b><div class="bar"><i style="width:
+%</div></div><div class="f"><div class="l">
+%</div><div><div class="t">
 %PDF
 &after=
 &amp;
@@ -20,6 +24,7 @@
 (Admin)
 (display-mode: standalone)
 (prefers-color-scheme: dark)
+)</span>
 -0.16em
 0 KB
 0 auto
@@ -44,6 +49,8 @@
 86vw
 90vh
 9AA3AF
+?autoplay=1&rel=0
+?dnt=1&autoplay=1
 ?from=
 ?hotelType=
 ?invite=
@@ -60,6 +67,7 @@ ArrowDown
 ArrowLeft
 ArrowRight
 ArrowUp
+Authorization
 BEGIN:VCALENDAR
 BEGIN:VEVENT
 Backend-URL
@@ -69,6 +77,7 @@ Booking.com
 CALSCALE:GREGORIAN
 Client-ID
 Client-Secret
+Content-Type
 Content-Type: application/json
 CreditMemo
 DATEV LODAS
@@ -132,10 +141,12 @@ Türkçe
 UID:
 UID:ouv-int-
 VERSION:2.0
+Vimeo
 Wie war Ihr Aufenthalt? · How was your stay? · Com’è stato il soggiorno?
 Word
 Wunsch oder Problem? Scannen. · Need anything? Scan me. · Besoin de quelque chose ? Scannez.
 X-WR-CALNAME:
+YouTube
 Zur Bestätigung „
 Zuständig:
 a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])
@@ -150,6 +161,7 @@ application/vnd.openxmlformats-officedocument.wordprocessingml.document
 application/xml
 ar-SA
 arrival.answered
+autoplay; fullscreen; picture-in-picture; encrypted-media
 beleg.
 beleg.pdf
 calc(
@@ -196,9 +208,11 @@ kWh
 mailto:
 maßnahme
 monatsabschluss.pdf
+mp4
 optionsText
 ouv_partner_v1
 ouv_ref_v1
+player.vimeo.com
 pos:
 post:
 priorität
@@ -227,6 +241,8 @@ ticket.done
 tr-TR
 translateX(-50%)
 vendor/docx.js
+video/mp4
+vimeo.com
 warten.html
 weeklyRest
 word/_rels/document.xml.rels
@@ -236,6 +252,9 @@ word/media/logo.png
 word/styles.xml
 write:tickets
 xMidYMax slice
+youtu.be
+youtube-nocookie.com
+youtube.com
 zh-CN
 zuständig
 { "date": "2026-10-24", "outlet": "Restaurant", "net": 3120.50, "gross": 3577.80, "tax": 457.30, "cash": 812.00, "card": 2765.80, "covers": 96 }

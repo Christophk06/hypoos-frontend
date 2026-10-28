@@ -51,17 +51,25 @@ function GuestInfoCard({hotel, api, onHotel}){
 }
 
 // ------------------------------------------------------------ Schulungs-Akademie
-function AcademyView({hotel, api, me, members}){
+function AcademyView({hotel, api, me, members, upload}){
+  const up = upload || {supabaseUrl: DEFAULT_CONFIG.supabaseUrl, anonKey: DEFAULT_CONFIG.supabaseAnonKey, token: Session.current && Session.current.access_token};
   const [courses, load, error] = useList(api, "/api/hotels/"+hotel.id+"/courses");
   const [results, loadResults] = useList(api, "/api/hotels/"+hotel.id+"/course-results");
   const [play,setPlay] = useState(null); const [form,setForm] = useState(null); const [msg,setMsg] = useState(null); const [showRes,setShowRes] = useState(null);
   const canWrite = isLeadRole();
   const myBest = (cid) => (results||[]).filter(r=>r.course_id===cid && me && r.user_id===me.id).sort((a,b)=>b.score-a.score)[0];
   const who = (id) => ((members||[]).find(m=>m.user_id===id)||{}).email || "–";
-  const save = async () => { setMsg(null);
-    try { const body = {...form, quiz: form.quiz.map(q=>({question:q.question, options:String(q.optionsText||"").split("\n").map(x=>x.trim()).filter(Boolean), correct:Number(q.correct)||0}))};
-      if(form.id) await api("/api/courses/"+form.id,"PATCH",body); else await api("/api/hotels/"+hotel.id+"/courses","POST",body);
-      setForm(null); load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  const save = async (keep) => { setMsg(null);
+    try { const {_removedVideos, _newVideos, ...rest} = form;
+      const body = {...rest, lessons: cleanCourseLessons(form.lessons), quiz: form.quiz.map(q=>({question:q.question, options:String(q.optionsText||"").split("\n").map(x=>x.trim()).filter(Boolean), correct:Number(q.correct)||0}))};
+      const saved = form.id ? await api("/api/courses/"+form.id,"PATCH",body) : await api("/api/hotels/"+hotel.id+"/courses","POST",body);
+      // Entfernte Videos erst nach dem Speichern aus dem Speicher löschen
+      const used = new Set(body.lessons.filter(l=>l.video).map(l=>l.video.path));
+      for(const p of (_removedVideos||[])) if(!used.has(p)) deleteAcademyVideo(up, p).catch(()=>{});
+      if(keep===true && saved && saved.id) setForm({...form, id:saved.id, active:saved.active, _removedVideos:[], _newVideos:[]}); else setForm(null);
+      load(); } catch(e){ setMsg({ok:false,text:e.message}); } };
+  // Abbrechen: in dieser Sitzung hochgeladene, nicht gespeicherte Videos wieder löschen
+  const cancel = () => { for(const p of ((form && form._newVideos)||[])) deleteAcademyVideo(up, p).catch(()=>{}); setForm(null); };
   if(play) return <CoursePlayer course={play} api={api} onClose={()=>{ setPlay(null); loadResults(); }} />;
   return (
     <div>
@@ -69,7 +77,7 @@ function AcademyView({hotel, api, me, members}){
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {error && <ErrorText style={{marginBottom:10}}>{error}</ErrorText>}
       {canWrite && !form && <button className="btn-primary" style={{marginBottom:14}} onClick={()=>setForm({title:"", description:"", department:"", pass_percent:80, lessons:[{title:"", text:""}], quiz:[{question:"", optionsText:"", correct:0}]})}>{tf("Kurs anlegen")}</button>}
-      {form && <CourseEditor form={form} setForm={setForm} onSave={save} onCancel={()=>setForm(null)} onError={(t)=>setMsg({ok:false,text:t})} />}
+      {form && <CourseEditor form={form} setForm={setForm} onSave={save} onCancel={cancel} hotel={hotel} upload={up} onError={(t)=>setMsg({ok:false,text:t})} />}
       {courses && courses.filter(c=>c.active || canWrite).length===0 && !form && <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Noch keine Kurse.")}</div>}
       {!form && (courses||[]).filter(c=>c.active || canWrite).map(c=>{ const best = myBest(c.id); const done = (results||[]).filter(r=>r.course_id===c.id);
         return (
@@ -88,7 +96,7 @@ function AcademyView({hotel, api, me, members}){
     </div>
   );
 }
-function CourseEditor({form, setForm, onSave, onCancel, onError}){
+function CourseEditor({form, setForm, onSave, onCancel, onError, hotel, upload}){
   const setL = (i,k,v) => setForm({...form, lessons:form.lessons.map((x,j)=>j===i?{...x,[k]:v}:x)});
   const setQ = (i,k,v) => setForm({...form, quiz:form.quiz.map((x,j)=>j===i?{...x,[k]:v}:x)});
   return (
@@ -108,8 +116,9 @@ function CourseEditor({form, setForm, onSave, onCancel, onError}){
           <div style={{display:"flex",gap:10,alignItems:"center",marginTop:6,flexWrap:"wrap"}}>
             {l.photo_data && <img src={l.photo_data} alt="" style={{height:50,borderRadius:6}} />}
             <label style={{...smallBtn,cursor:"pointer"}}>{l.photo_data ? tf("Anderes Foto") : tf("Foto hinzufügen")}<input type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{ try { setL(i,"photo_data", await compressImage(e.target.files[0], 1280)); } catch(x){ onError(x.message); } }} /></label>
-            {form.lessons.length>1 && <button style={linkBtn} onClick={()=>setForm({...form,lessons:form.lessons.filter((_,j)=>j!==i)})}>{tf("Lektion entfernen")}</button>}
+            {form.lessons.length>1 && <button style={linkBtn} onClick={()=>setForm({...form,lessons:form.lessons.filter((_,j)=>j!==i), _removedVideos:[...(form._removedVideos||[]), ...(l.video && l.video.path?[l.video.path]:[])]})}>{tf("Lektion entfernen")}</button>}
           </div>
+          <LessonVideoEditor lesson={l} index={i} form={form} setForm={setForm} hotel={hotel} upload={upload} onError={onError} onSaveFirst={()=>onSave(true)} />
         </div>))}
       {form.lessons.length<30 && <button style={{...smallBtn,marginBottom:12}} onClick={()=>setForm({...form,lessons:[...form.lessons,{title:"",text:""}]})}>{tf("Lektion hinzufügen")}</button>}
       <div className="field-label">{tf("Quiz")}</div>
@@ -124,7 +133,7 @@ function CourseEditor({form, setForm, onSave, onCancel, onError}){
           </div>
         </div>); })}
       {form.quiz.length<30 && <button style={{...smallBtn,marginBottom:12}} onClick={()=>setForm({...form,quiz:[...form.quiz,{question:"",optionsText:"",correct:0}]})}>{tf("Frage hinzufügen")}</button>}
-      <div style={{display:"flex",gap:8}}><button className="btn-primary" onClick={onSave}>{tf("Speichern")}</button><button style={btnLine} onClick={onCancel}>{tf("Abbrechen")}</button></div>
+      <div style={{display:"flex",gap:8}}><button className="btn-primary" onClick={()=>onSave()}>{tf("Speichern")}</button><button style={btnLine} onClick={onCancel}>{tf("Abbrechen")}</button></div>
     </Card>
   );
 }
@@ -140,6 +149,8 @@ function CoursePlayer({course, api, onClose}){
         <div style={{fontSize:12.5,color:INK_MUTED}}>{course.title} · {inQuiz ? tf("Quiz") : tf("Lektion {0} von {1}", step+1, lessons.length)}</div>
         {!inQuiz && <div>
           <h2 style={{fontFamily:"Fraunces, serif",fontWeight:600,fontSize:22,margin:"6px 0 10px"}}>{lessons[step].title}</h2>
+          {lessons[step].video && lessons[step].video.path && <LessonVideo course={course} video={lessons[step].video} api={api} key={"v"+step} />}
+          {lessons[step].video_url && <ExternalVideo url={lessons[step].video_url} key={"e"+step} />}
           {lessons[step].photo_data && <img src={lessons[step].photo_data} alt="" style={{maxWidth:"100%",maxHeight:340,borderRadius:8,marginBottom:10}} />}
           <div style={{fontSize:15,whiteSpace:"pre-wrap",lineHeight:1.6}}>{lessons[step].text}</div>
           <div style={{display:"flex",gap:8,marginTop:16}}>
@@ -165,6 +176,147 @@ function CoursePlayer({course, api, onClose}){
           <div style={{display:"flex",gap:8}}>{!result.passed && <button className="btn-primary" onClick={()=>{ setResult(null); setStep(0); setAnswers(quiz.map(()=>-1)); }}>{tf("Noch einmal")}</button>}<button style={btnLine} onClick={onClose}>{tf("Fertig")}</button></div>
         </div>}
       </Card>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Akademie-Videos (Migration 042)
+const ACADEMY_VIDEO_MAX = 100 * 1024 * 1024;
+const ACADEMY_VIDEO_TYPES = {"video/mp4":"mp4", "video/webm":"webm", "video/quicktime":"mov"};
+function academyVideoExt(file){
+  if(ACADEMY_VIDEO_TYPES[file.type]) return ACADEMY_VIDEO_TYPES[file.type];
+  const m = /\.(mp4|webm|mov)$/i.exec(file.name||""); return m ? m[1].toLowerCase() : null;
+}
+function cleanCourseLessons(ls){
+  return (ls||[]).map(l=>{ const x = {title:l.title, text:l.text};
+    if(l.photo_data) x.photo_data = l.photo_data;
+    if(l.video && l.video.path){ x.video = {path:l.video.path}; if(l.video.title) x.video.title = String(l.video.title).slice(0,200); if(l.video.duration_s) x.video.duration_s = Math.round(l.video.duration_s); }
+    if(l.video_url && String(l.video_url).trim()) x.video_url = String(l.video_url).trim();
+    return x; });
+}
+const academyObjectUrl = (up, path) => up.supabaseUrl.replace(/\/$/,"")+"/storage/v1/object/academy-videos/"+path.split("/").map(encodeURIComponent).join("/");
+async function deleteAcademyVideo(up, path){
+  if(window.OUVERTURE_DEMO) return;
+  await fetch(academyObjectUrl(up, path), {method:"DELETE", headers:{Authorization:"Bearer "+(await freshToken(up.token)), apikey:up.anonKey}});
+}
+// Direkt in den Supabase-Speicher (mit dem Login der Person), mit Fortschritt
+function uploadAcademyVideo(up, path, file, onProgress){
+  let xhr = null, aborted = false;
+  const promise = (async () => { const token = await freshToken(up.token);
+    return new Promise((resolve, reject) => {
+      if(aborted) return reject(new Error(tf("Hochladen abgebrochen.")));
+      xhr = new XMLHttpRequest(); xhr.open("POST", academyObjectUrl(up, path));
+      xhr.setRequestHeader("Authorization", "Bearer "+token); xhr.setRequestHeader("apikey", up.anonKey);
+      xhr.setRequestHeader("Content-Type", file.type || "video/mp4"); xhr.setRequestHeader("x-upsert", "false");
+      xhr.upload.onprogress = (e) => { if(e.lengthComputable) onProgress(Math.round(e.loaded/e.total*100)); };
+      xhr.onload = () => { if(xhr.status>=200 && xhr.status<300) return resolve();
+        let m=""; try { m = JSON.parse(xhr.responseText).message; } catch(e){}
+        reject(new Error(m ? tf("Hochladen fehlgeschlagen: {0}", m) : tf("Hochladen fehlgeschlagen"))); };
+      xhr.onerror = () => reject(new Error(tf("Hochladen fehlgeschlagen")));
+      xhr.onabort = () => reject(new Error(tf("Hochladen abgebrochen.")));
+      xhr.send(file);
+    }); })();
+  return {promise, abort: () => { aborted = true; if(xhr) xhr.abort(); }};
+}
+function videoDuration(file){
+  return new Promise(resolve => { try { const v = document.createElement("video"); const u = URL.createObjectURL(file); v.preload = "metadata";
+    v.onloadedmetadata = () => { const d = v.duration; URL.revokeObjectURL(u); resolve(Number.isFinite(d) ? Math.round(d) : null); };
+    v.onerror = () => { URL.revokeObjectURL(u); resolve(null); }; v.src = u; } catch(e){ resolve(null); } });
+}
+const fmtDuration = (s) => s ? Math.floor(s/60)+":"+String(s%60).padStart(2,"0") : "";
+// YouTube (über youtube-nocookie) und Vimeo (dnt=1)
+function externalVideoInfo(url){
+  try { const u = new URL(String(url||"").trim()); if(u.protocol!=="https:") return null;
+    const host = u.hostname.toLowerCase().replace(/^(www\.|m\.)/,""); const parts = u.pathname.split("/").filter(Boolean);
+    let yt = null;
+    if(host==="youtube.com") yt = parts[0]==="watch" ? u.searchParams.get("v") : (["embed","shorts","live"].includes(parts[0]) ? parts[1] : null);
+    else if(host==="youtu.be") yt = parts[0];
+    else if(host==="youtube-nocookie.com" && parts[0]==="embed") yt = parts[1];
+    if(yt) return /^[A-Za-z0-9_-]{11}$/.test(yt) ? {provider:"YouTube", embed:"https://www.youtube-nocookie.com/embed/"+yt+"?autoplay=1&rel=0", open:"https://www.youtube.com/watch?v="+yt} : null;
+    if(host==="vimeo.com" || host==="player.vimeo.com"){ const p = host==="player.vimeo.com" ? (parts[0]==="video" ? parts.slice(1) : []) : parts;
+      if(/^\d{1,12}$/.test(p[0]||"")){ const hx = /^[0-9a-f]{6,20}$/i; const h = hx.test(p[1]||"") ? p[1] : (hx.test(u.searchParams.get("h")||"") ? u.searchParams.get("h") : "");
+        return {provider:"Vimeo", embed:"https://player.vimeo.com/video/"+p[0]+"?dnt=1&autoplay=1"+(h ? "&h="+h : ""), open:"https://vimeo.com/"+p[0]+(h ? "/"+h : "")}; } }
+  } catch(e){}
+  return null;
+}
+function LessonVideoEditor({lesson:l, index:i, form, setForm, hotel, upload, onError, onSaveFirst}){
+  const [consent,setConsent] = useState(false); const [pct,setPct] = useState(null); const [job,setJob] = useState(null);
+  const hintId = "acv-hint-"+i;
+  const setLesson = (patch, extra) => setForm(f => ({...f, ...(extra ? extra(f) : {}), lessons:f.lessons.map((x,j)=>j===i?{...x,...patch}:x)}));
+  const pick = async (file) => {
+    if(!file) return;
+    const ext = academyVideoExt(file);
+    if(!ext) return onError(tf("Bitte ein Video als MP4, WebM oder MOV wählen."));
+    if(file.size > ACADEMY_VIDEO_MAX) return onError(tf("Das Video ist größer als 100 MB. Bitte kürzen oder in geringerer Auflösung aufnehmen."));
+    if(window.OUVERTURE_DEMO) return onError(tf("In der Demo können keine Videos hochgeladen werden."));
+    const path = hotel.organization_id+"/"+form.id+"/"+crypto.randomUUID()+"."+ext;
+    const duration = await videoDuration(file);
+    const j = uploadAcademyVideo(upload, path, file, setPct); setJob(j); setPct(0);
+    try { await j.promise;
+      const old = l.video && l.video.path;
+      setLesson({video:{path, title:(l.video && l.video.title) || file.name.replace(/\.[^.]+$/,"").slice(0,200), ...(duration ? {duration_s:duration} : {})}},
+        f => ({_newVideos:[...(f._newVideos||[]), path], _removedVideos:[...(f._removedVideos||[]), ...(old?[old]:[])]}));
+    } catch(e){ onError(e.message); }
+    setJob(null); setPct(null);
+  };
+  const ext = l.video_url ? externalVideoInfo(l.video_url) : null;
+  return (
+    <div style={{marginTop:8,paddingTop:8,borderTop:`1px dashed ${BORDER}`}}>
+      <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>{tf("Video (optional)")}</div>
+      {l.video && l.video.path && <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
+        <input className="input" style={{flex:1,minWidth:180}} aria-label={tf("Titel des Videos")} placeholder={tf("Titel des Videos")} value={l.video.title||""} onChange={e=>setLesson({video:{...l.video, title:e.target.value}})} />
+        {l.video.duration_s ? <span style={{fontSize:12.5,color:INK_MUTED}}>{fmtDuration(l.video.duration_s)}</span> : null}
+        <button style={linkBtn} onClick={()=>setLesson({video:null}, f=>({_removedVideos:[...(f._removedVideos||[]), l.video.path]}))}>{tf("Video entfernen")}</button>
+      </div>}
+      {!form.id ? <div style={{fontSize:12.5,color:INK_MUTED,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>{tf("Zum Hochladen eines Videos den Kurs zuerst speichern.")}<button style={smallBtn} onClick={onSaveFirst}>{tf("Jetzt speichern")}</button></div>
+      : pct!==null ? <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+          <progress max={100} value={pct} aria-label={tf("Fortschritt beim Hochladen")} style={{flex:1}} />
+          <span aria-live="polite" style={{fontSize:12.5,minWidth:40}}>{pct} %</span>
+          <button style={linkBtn} onClick={()=>job && job.abort()}>{tf("Abbrechen")}</button></div>
+      : <div style={{marginBottom:6}}>
+          <div id={hintId} style={{fontSize:12.5,color:INK_MUTED,marginBottom:4}}>{tf("Sind Personen im Video zu erkennen oder zu hören, brauchst du vorher ihre Einwilligung. Keine Gäste filmen. MP4, WebM oder MOV, höchstens 100 MB. Wichtige Schritte bitte auch in den Text schreiben – nicht alle können den Ton hören.")}</div>
+          <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,marginBottom:6}}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} /> {tf("Einwilligung liegt vor oder es sind keine Personen zu erkennen")}</label>
+          <input type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" disabled={!consent} aria-describedby={hintId}
+            aria-label={l.video ? tf("Anderes Video hochladen") : tf("Video hochladen")} style={{fontSize:13}} onChange={e=>{ const f = e.target.files[0]; e.target.value=""; pick(f); }} />
+        </div>}
+      <Field label={tf("Oder Link zu YouTube oder Vimeo")}>
+        <input className="input" type="url" inputMode="url" placeholder="https://" value={l.video_url||""} onChange={e=>setLesson({video_url:e.target.value})} aria-invalid={!!(l.video_url && !ext)} />
+      </Field>
+      {l.video_url && !ext && <div role="alert" style={{fontSize:12.5,color:BAD}}>{tf("Bitte einen YouTube- oder Vimeo-Link mit https angeben.")}</div>}
+    </div>
+  );
+}
+function LessonVideo({course, video, api}){
+  const [st,setSt] = useState({loading:true}); const retried = React.useRef(false);
+  const load = useCallback(() => api("/api/courses/"+course.id+"/video-url?path="+encodeURIComponent(video.path))
+    .then(r => setSt(r && r.url ? {url:r.url} : {note:(r && r.message) || tf("Video nicht verfügbar.")}))
+    .catch(e => setSt({error:e.message})), [api, course.id, video.path]);
+  useEffect(() => { load(); }, [load]);
+  return (
+    <figure style={{margin:"0 0 12px"}}>
+      {st.loading && <div style={{fontSize:13,color:INK_MUTED}} aria-live="polite">{tf("Video wird geladen…")}</div>}
+      {st.url && <video controls playsInline preload="metadata" src={st.url} aria-label={video.title || tf("Video zur Lektion")} style={{width:"100%",maxHeight:440,borderRadius:8,background:"#000"}}
+        onError={() => { if(!retried.current){ retried.current = true; load(); } }} />}
+      {st.note && <div style={{fontSize:13,color:INK_MUTED,padding:"10px 12px",border:`1px dashed ${BORDER}`,borderRadius:8}}>{st.note}</div>}
+      {st.error && <ErrorText>{st.error}</ErrorText>}
+      <figcaption style={{fontSize:12.5,color:INK_MUTED,marginTop:4}}>{video.title ? video.title+" · " : ""}{video.duration_s ? fmtDuration(video.duration_s)+" · " : ""}{tf("Keine Untertitel – die wichtigsten Schritte stehen im Text der Lektion.")}</figcaption>
+    </figure>
+  );
+}
+// Externes Video: erst nach Klick laden (vorher keine Verbindung zu YouTube/Vimeo)
+function ExternalVideo({url}){
+  const [on,setOn] = useState(false); const info = externalVideoInfo(url);
+  if(!info) return null;
+  return (
+    <div style={{marginBottom:12}}>
+      {on ? <div style={{position:"relative",paddingTop:"56.25%",borderRadius:8,overflow:"hidden",background:"#000"}}>
+          <iframe src={info.embed} title={tf("Video von {0}", info.provider)} allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" style={{position:"absolute",inset:0,width:"100%",height:"100%",border:0}} /></div>
+      : <button onClick={()=>setOn(true)} style={{width:"100%",minHeight:160,border:`1px solid ${BORDER}`,borderRadius:8,background:PAPER,cursor:"pointer",padding:16,textAlign:"center",color:INK}}>
+          <div style={{fontSize:28}} aria-hidden="true">▶</div>
+          <div style={{fontWeight:600,margin:"4px 0"}}>{tf("Video von {0} abspielen", info.provider)}</div>
+          <div style={{fontSize:12.5,color:INK_MUTED}}>{tf("Erst beim Abspielen wird eine Verbindung zu {0} aufgebaut; dabei werden Daten wie deine IP-Adresse übertragen.", info.provider)}</div>
+        </button>}
+      <a href={info.open} target="_blank" rel="noopener noreferrer" style={{fontSize:12.5,color:INK_MUTED}}>{tf("Auf {0} öffnen", info.provider)}</a>
     </div>
   );
 }

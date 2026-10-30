@@ -73,6 +73,27 @@ var T2 = {
   ar: { regTitle: "استمارة تسجيل النزيل", regWhy: "التزام قانوني بالتسجيل: يجب على منشآت الإقامة جمع هذه البيانات (النمسا: قانون التسجيل، ألمانيا: قانون التسجيل الاتحادي). تُستخدم لهذا الغرض فقط وتُحذف بعد انتهاء المدة القانونية.", birth: "تاريخ الميلاد", nat: "الجنسية", street: "الشارع ورقم المبنى", zip: "الرمز البريدي", city: "المدينة", country: "بلد الإقامة", idType: "نوع وثيقة الهوية", idNo: "رقم الوثيقة", idKeep: "محفوظ: {hint}. اتركه فارغًا للإبقاء عليه.", passport: "جواز سفر", idcard: "بطاقة هوية", licence: "رخصة قيادة", other: "أخرى", comp: "المرافقون", compAdd: "+ إضافة مرافق", compName: "الاسم", remove: "إزالة", regDone: "تم ملء الاستمارة مسبقًا – يمكنك تعديل البيانات هنا.", choose: "يرجى الاختيار", mkt: "أرغب في تلقي عروض من حين لآخر عبر البريد الإلكتروني", mktHint: "اختياري. ستصلك أولًا رسالة للتأكيد. يمكنك إلغاء الاشتراك في أي وقت عبر الرابط في كل رسالة.", bday: "تاريخ الميلاد للتهنئة (اختياري)", day: "اليوم", month: "الشهر" },
 };
 Object.keys(T2).forEach(function (l) { for (var k in T2[l]) T[l][k] = T2[l][k]; });
+// Allergien (Paket 043): 14 EU-Allergene, Kennbuchstaben wie ALLERGENS in der App
+var ALG = ["A","B","C","D","E","F","G","H","L","M","N","O","P","R"];
+var T3 = {
+  de: { algTitle: "Allergien und Unverträglichkeiten", algHint: "Freiwillig. Küche und Service sehen diese Angaben, damit Ihre Mahlzeiten sicher sind. Entfernen kann sie nur die Rezeption – bitte sagen Sie uns Bescheid, falls sich etwas ändert.", algNote: "Weitere Hinweise (z. B. Schweregrad, andere Unverträglichkeiten)", algs: ["Gluten","Krebstiere","Eier","Fisch","Erdnüsse","Soja","Milch und Laktose","Schalenfrüchte (Nüsse)","Sellerie","Senf","Sesam","Sulfite","Lupinen","Weichtiere"] },
+  en: { algTitle: "Allergies and intolerances", algHint: "Optional. Kitchen and service staff see these details so that your meals are safe. Only reception can remove them – please let us know if anything changes.", algNote: "Further notes (e.g. severity, other intolerances)", algs: ["Gluten","Crustaceans","Eggs","Fish","Peanuts","Soy","Milk and lactose","Tree nuts","Celery","Mustard","Sesame","Sulphites","Lupin","Molluscs"] },
+  fr: { algTitle: "Allergies et intolérances", algHint: "Facultatif. La cuisine et le service voient ces informations afin que vos repas soient sûrs. Seule la réception peut les supprimer – merci de nous prévenir en cas de changement.", algNote: "Autres remarques (p. ex. gravité, autres intolérances)", algs: ["Gluten","Crustacés","Œufs","Poisson","Arachides","Soja","Lait et lactose","Fruits à coque","Céleri","Moutarde","Sésame","Sulfites","Lupin","Mollusques"] },
+  it: { algTitle: "Allergie e intolleranze", algHint: "Facoltativo. Cucina e servizio vedono queste informazioni perché i suoi pasti siano sicuri. Solo la reception può rimuoverle – ci avvisi se cambia qualcosa.", algNote: "Altre indicazioni (es. gravità, altre intolleranze)", algs: ["Glutine","Crostacei","Uova","Pesce","Arachidi","Soia","Latte e lattosio","Frutta a guscio","Sedano","Senape","Sesamo","Solfiti","Lupini","Molluschi"] },
+  es: { algTitle: "Alergias e intolerancias", algHint: "Opcional. Cocina y servicio ven estos datos para que sus comidas sean seguras. Solo recepción puede eliminarlos: avísenos si algo cambia.", algNote: "Otras indicaciones (p. ej. gravedad, otras intolerancias)", algs: ["Gluten","Crustáceos","Huevos","Pescado","Cacahuetes","Soja","Leche y lactosa","Frutos de cáscara","Apio","Mostaza","Sésamo","Sulfitos","Altramuces","Moluscos"] },
+  pt: { algTitle: "Alergias e intolerâncias", algHint: "Opcional. A cozinha e o serviço veem estes dados para que as suas refeições sejam seguras. Só a receção os pode remover – avise-nos se algo mudar.", algNote: "Outras indicações (p. ex. gravidade, outras intolerâncias)", algs: ["Glúten","Crustáceos","Ovos","Peixe","Amendoins","Soja","Leite e lactose","Frutos de casca rija","Aipo","Mostarda","Sésamo","Sulfitos","Tremoço","Moluscos"] },
+  tr: { algTitle: "Alerjiler ve intoleranslar", algHint: "İsteğe bağlı. Yemeklerinizin güvenli olması için mutfak ve servis ekibi bu bilgileri görür. Yalnızca resepsiyon silebilir – bir değişiklik olursa lütfen bize bildirin.", algNote: "Diğer notlar (ör. şiddeti, başka intoleranslar)", algs: ["Gluten","Kabuklu deniz ürünleri","Yumurta","Balık","Yer fıstığı","Soya","Süt ve laktoz","Sert kabuklu yemişler","Kereviz","Hardal","Susam","Sülfitler","Acı bakla","Yumuşakçalar"] },
+  ja: { algTitle: "アレルギー・不耐症", algHint: "任意です。お食事を安全にご提供するため、キッチンとサービスのスタッフがこの情報を確認します。削除はフロントのみ可能です。変更がある場合はお知らせください。", algNote: "その他（重症度、その他の不耐症など）", algs: ["グルテン","甲殻類","卵","魚","落花生","大豆","乳・乳糖","ナッツ類","セロリ","マスタード","ごま","亜硫酸塩","ルピナス","軟体動物"] },
+  zh: { algTitle: "过敏与不耐受", algHint: "自愿。厨房和服务人员会看到这些信息，以确保您的餐食安全。只有前台可以删除——如有变化请告知我们。", algNote: "其他说明（如严重程度、其他不耐受）", algs: ["麸质","甲壳类","蛋类","鱼类","花生","大豆","乳及乳糖","坚果","芹菜","芥末","芝麻","亚硫酸盐","羽扇豆","软体动物"] },
+  ar: { algTitle: "الحساسية وعدم التحمل", algHint: "اختياري. يرى فريق المطبخ والخدمة هذه البيانات حتى تكون وجباتكم آمنة. لا يمكن حذفها إلا من الاستقبال – يرجى إبلاغنا إذا تغير شيء.", algNote: "ملاحظات أخرى (مثل شدة الحساسية، أنواع أخرى من عدم التحمل)", algs: ["الغلوتين","القشريات","البيض","السمك","الفول السوداني","الصويا","الحليب واللاكتوز","المكسرات","الكرفس","الخردل","السمسم","الكبريتيت","الترمس","الرخويات"] },
+};
+Object.keys(T3).forEach(function (l) { for (var k in T3[l]) T[l][k] = T3[l][k]; });
+function algHtml() {
+  var names = (T[lang] || T.en).algs || T.en.algs;
+  var h = '<div class="box" style="margin-top:14px"><b style="font-family:Georgia,serif;font-size:17px" id="alg_t">' + esc(t("algTitle")) + '</b><div class="note">' + esc(t("algHint")) + '</div><div role="group" aria-labelledby="alg_t" style="margin-top:6px">';
+  ALG.forEach(function (k, n) { h += '<label class="extra"><input type="checkbox" data-alg="' + k + '"' + (state.alg.indexOf(k) >= 0 ? " checked" : "") + " /><b>" + esc(names[n]) + "</b></label>"; });
+  return h + '</div><label class="t" for="alg_note">' + esc(t("algNote")) + '</label><textarea id="alg_note" maxlength="500" dir="auto">' + esc(state.algNote) + "</textarea></div>";
+}
 var COUNTRIES = "AT DE CH IT NL FR GB US CZ PL HU SK SI BE DK SE ES RO HR LI LU AD AE AF AG AL AM AO AR AU AZ BA BB BD BF BG BH BI BJ BN BO BR BS BT BW BY BZ CA CD CF CG CI CL CM CN CO CR CU CV CY DJ DM DO DZ EC EE EG ER ET FI FJ FM GA GD GE GH GM GN GQ GR GT GW GY HN HT ID IE IL IN IQ IR IS JM JO JP KE KG KH KI KM KN KP KR KW KZ LA LB LC LK LR LS LT LV LY MA MC MD ME MG MH MK ML MM MN MR MT MU MV MW MX MY MZ NA NE NG NI NO NP NR NZ OM PA PE PG PH PK PS PT PW PY QA RS RU RW SA SB SC SD SG SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TV TW TZ UA UG UY UZ VA VC VE VN VU WS XK YE ZA ZM ZW".split(" ");
 var ID_TYPES = [["Reisepass", "passport"], ["Personalausweis", "idcard"], ["Führerschein", "licence"], ["Sonstiges", "other"]];
 function countryOptions(sel) {
@@ -122,7 +143,7 @@ function mktHtml() {
   return h;
 }
 var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
-var state = { info: null, extras: [], eta: "", note: "", sent: false, error: null, busy: false, reg: { companions: [] }, mkt: false, bdD: "", bdM: "" };
+var state = { info: null, extras: [], eta: "", note: "", sent: false, error: null, busy: false, reg: { companions: [] }, mkt: false, bdD: "", bdM: "", alg: [], algNote: "" };
 var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
 var $ = function (id) { return document.getElementById(id); };
 function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k]; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
@@ -131,7 +152,7 @@ LANGS.forEach(function (l) { var o = document.createElement("option"); o.value =
 $("lang").value = lang;
 $("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
 var DEMO = { hotel: { name: "Beispielhotel Alpenblick", currency: "EUR" }, guest: { name: "Familie Weber", arrival_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) }, checkin_time: "15:00",
-  info: "Parkplätze in der Tiefgarage, Einfahrt Seestraße 4.", extras: [{ id: "x0", name: "Frühstück", price: 24 }, { id: "x1", name: "Parkplatz in der Garage", price: 18 }, { id: "x2", name: "Später Check-out bis 14 Uhr", price: 35 }], chosen: [], eta: null, note: null, answered: false, registration: { enabled: true, require_id: true, done: false, data: {} }, marketing: true };
+  info: "Parkplätze in der Tiefgarage, Einfahrt Seestraße 4.", extras: [{ id: "x0", name: "Frühstück", price: 24 }, { id: "x1", name: "Parkplatz in der Garage", price: 18 }, { id: "x2", name: "Später Check-out bis 14 Uhr", price: 35 }], chosen: [], eta: null, note: null, answered: false, registration: { enabled: true, require_id: true, done: false, data: {} }, marketing: true, allergies: { allergens: [], note: "" } };
 function api(path, opt) {
   if (demo) return Promise.resolve(opt ? { ok: true } : DEMO);
   return fetch(API + path, Object.assign({ headers: { "Content-Type": "application/json", "Accept-Language": lang } }, opt || {})).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || t("error")); return j; }); });
@@ -156,6 +177,7 @@ function render() {
     html += '</div><div class="note">' + esc(t("payNote")) + "</div>";
   }
   html += '<label class="t" for="note">' + esc(t("note")) + '</label><textarea id="note" maxlength="1000">' + esc(state.note) + '</textarea><input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true" />';
+  html += algHtml();
   if (i.registration && i.registration.enabled) html += regHtml(i);
   // Vorlieben für künftige Aufenthalte – nur mit ausdrücklicher Einwilligung
   html += '<label class="extra" style="margin-top:14px"><input type="checkbox" id="remember"' + (state.remember ? " checked" : "") + ' /><b>' + esc(t("remember")) + '</b></label><div class="note">' + esc(t("rememberHint")) + "</div>";
@@ -166,6 +188,8 @@ function render() {
   [].forEach.call(a.querySelectorAll("[data-x]"), function (c) { c.onchange = function () { var id = c.getAttribute("data-x"); state.extras = state.extras.filter(function (x) { return x !== id; }); if (c.checked) state.extras.push(id); }; });
   $("eta").oninput = function () { state.eta = this.value; };
   $("note").oninput = function () { state.note = this.value; };
+  [].forEach.call(a.querySelectorAll("[data-alg]"), function (c) { c.onchange = function () { var k = c.getAttribute("data-alg"); state.alg = state.alg.filter(function (x) { return x !== k; }); if (c.checked) state.alg.push(k); }; });
+  $("alg_note").oninput = function () { state.algNote = this.value; };
   $("remember").onchange = function () { state.remember = this.checked; render(); };
   if ($("prefs")) $("prefs").oninput = function () { state.prefs = this.value; };
   if ($("c_add")) $("c_add").onclick = function () { readReg(); state.reg.companions.push({ name: "", birth_date: "", nationality: "" }); state.skipRead = true; render(); };
@@ -175,7 +199,7 @@ function render() {
   $("send").onclick = function () {
     readReg(); state.busy = true; state.error = null; render();
     var reg = i.registration && i.registration.enabled ? state.reg : undefined;
-    api("/api/public/arrival/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ eta: state.eta, extras: state.extras, note: state.note, remember: !!state.remember, preferences: state.prefs || "", registration: reg, marketing: !!(i.marketing && state.mkt), birthday: state.mkt && state.bdD && state.bdM ? state.bdM + "-" + state.bdD : "", website: $("website") ? $("website").value : "" }) })
+    api("/api/public/arrival/" + encodeURIComponent(token), { method: "POST", body: JSON.stringify({ eta: state.eta, extras: state.extras, note: state.note, remember: !!state.remember, preferences: state.prefs || "", registration: reg, allergies: { allergens: state.alg, note: state.algNote }, marketing: !!(i.marketing && state.mkt), birthday: state.mkt && state.bdD && state.bdM ? state.bdM + "-" + state.bdD : "", website: $("website") ? $("website").value : "" }) })
       .then(function () { state.sent = true; }).catch(function (e) { state.error = e.message; }).then(function () { state.busy = false; render(); });
   };
 }
@@ -189,6 +213,7 @@ if (!token && !demo) { state.error = t("invalid"); render(); }
 else api("/api/public/arrival/" + encodeURIComponent(token)).then(function (i) {
   state.info = i; state.extras = (i.chosen || []).slice(); state.skipRead = true;
   if (i.registration && i.registration.enabled) { var d = i.registration.data || {}; state.reg = { birth_date: d.birth_date || "", nationality: d.nationality || "", street: d.street || "", zip: d.zip || "", city: d.city || "", address_country: d.address_country || "", id_doc_type: d.id_doc_type || "", id_doc_number: "", companions: (d.companions || []).map(function (c) { return { name: c.name || "", birth_date: c.birth_date || "", nationality: c.nationality || "" }; }) }; } state.eta = i.eta || ""; state.note = i.note || ""; state.sent = !!i.answered;
+  if (i.allergies) { state.alg = (i.allergies.allergens || []).filter(function (k) { return ALG.indexOf(k) >= 0; }); state.algNote = i.allergies.note || ""; }
   var chosenLang = null; try { chosenLang = localStorage.getItem("ouv_guest_lang"); } catch (e) {}
   if (i.guest.language && T[i.guest.language] && !chosenLang) { lang = i.guest.language; $("lang").value = lang; }
   brand(i.hotel); render();

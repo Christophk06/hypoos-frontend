@@ -467,6 +467,14 @@ function App(){
           {tab==="wishes" && <FeatureRequestsView api={api} me={me} orgId={orgId} />}
           {tab==="integrations" && <IntegrationsView hotel={hotel} api={api} orgId={orgId} role={role} />}
           {tab==="platform" && <PlatformView api={api} />}
+          {tab==="incidents" && <IncidentsView hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="staffmeals" && <StaffMealsView hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="wagecheck" && <WageCheckView api={api} orgId={orgId} members={members} me={me} />}
+          {tab==="capex" && <CapexView hotel={hotel} api={api} />}
+          {tab==="pricewatch" && <BgPriceWatchView hotel={hotel} api={api} />}
+          {tab==="dunning" && <BgDunningView hotel={hotel} api={api} />}
+          {tab==="shrinkage" && <BgShrinkageView hotel={hotel} api={api} />}
+          {tab==="peaks" && <BgPeakView hotel={hotel} api={api} />}
           {tab==="events" && <EventsView hotel={hotel} api={api} role={role} />}
           {tab==="invoices" && <InvoicesView hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="letters" && <LettersView hotel={hotel} api={api} role={role} me={me} />}

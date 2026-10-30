@@ -12,4 +12,5 @@ Disallow: /lieferant.html
 Disallow: /warten.html
 Disallow: /fundsache.html
 Disallow: /warteliste.html
+Disallow: /transfer.html
 Disallow: /native/

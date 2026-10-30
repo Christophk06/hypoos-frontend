@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --warn:#8A5F14; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 480px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; min-height: 44px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 16px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .time { font-family: Georgia, serif; font-size: 34px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 15px; }
+  dt { color: var(--muted); } dd { margin: 0; font-weight: 600; }
+  .steps { display: flex; gap: 6px; margin-top: 4px; }
+  .step { flex: 1; text-align: center; font-size: 12.5px; padding: 10px 4px; border-radius: 8px; background: var(--paper); color: var(--muted); border: 1px solid var(--border); }
+  .step.on { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  .msg { padding: 14px; border-radius: 10px; font-size: 15px; }
+  .err { background: #F5E1DE; color: var(--bad); } .cancel { background: #F5E1DE; color: var(--bad); font-weight: 600; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { hello: "Ihr Transfer, {name}", helloAnon: "Ihr Transfer", pickup: "Abholung", drop: "Fahrt", place: "Ort", flight: "Flug/Zug", pax: "Personen", driver: "Fahrer/in", vehicle: "Fahrzeug", status: "Status", geplant: "Geplant", unterwegs: "Unterwegs", erledigt: "Angekommen", abgesagt: "Dieser Transfer wurde abgesagt. Bitte wenden Sie sich an die Rezeption.", tbd: "wird noch eingeteilt", refresh: "Diese Seite aktualisiert sich automatisch.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…" },
+  en: { hello: "Your transfer, {name}", helloAnon: "Your transfer", pickup: "Pick-up", drop: "Ride", place: "Place", flight: "Flight/train", pax: "Passengers", driver: "Driver", vehicle: "Vehicle", status: "Status", geplant: "Scheduled", unterwegs: "On the way", erledigt: "Arrived", abgesagt: "This transfer has been cancelled. Please contact reception.", tbd: "to be assigned", refresh: "This page updates automatically.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…" },
+  fr: { hello: "Votre transfert, {name}", helloAnon: "Votre transfert", pickup: "Prise en charge", drop: "Trajet", place: "Lieu", flight: "Vol/train", pax: "Personnes", driver: "Chauffeur", vehicle: "Véhicule", status: "Statut", geplant: "Prévu", unterwegs: "En route", erledigt: "Arrivé", abgesagt: "Ce transfert a été annulé. Veuillez contacter la réception.", tbd: "en cours d’attribution", refresh: "Cette page se met à jour automatiquement.", invalid: "Ce lien n’est pas (ou plus) valable.", error: "Cela n’a pas fonctionné. Veuillez réessayer plus tard.", loading: "Chargement…" },
+  it: { hello: "Il suo transfer, {name}", helloAnon: "Il suo transfer", pickup: "Prelievo", drop: "Corsa", place: "Luogo", flight: "Volo/treno", pax: "Persone", driver: "Autista", vehicle: "Veicolo", status: "Stato", geplant: "Programmato", unterwegs: "In viaggio", erledigt: "Arrivato", abgesagt: "Questo transfer è stato annullato. Si rivolga alla reception.", tbd: "da assegnare", refresh: "Questa pagina si aggiorna automaticamente.", invalid: "Questo link non è (più) valido.", error: "Non è andato a buon fine. Riprovi più tardi.", loading: "Caricamento…" },
+  es: { hello: "Su traslado, {name}", helloAnon: "Su traslado", pickup: "Recogida", drop: "Trayecto", place: "Lugar", flight: "Vuelo/tren", pax: "Personas", driver: "Conductor/a", vehicle: "Vehículo", status: "Estado", geplant: "Programado", unterwegs: "En camino", erledigt: "Llegado", abgesagt: "Este traslado ha sido cancelado. Póngase en contacto con recepción.", tbd: "por asignar", refresh: "Esta página se actualiza automáticamente.", invalid: "Este enlace no es (o ya no es) válido.", error: "No ha funcionado. Inténtelo de nuevo más tarde.", loading: "Cargando…" },
+  pt: { hello: "O seu transfer, {name}", helloAnon: "O seu transfer", pickup: "Recolha", drop: "Viagem", place: "Local", flight: "Voo/comboio", pax: "Pessoas", driver: "Motorista", vehicle: "Veículo", status: "Estado", geplant: "Agendado", unterwegs: "A caminho", erledigt: "Chegou", abgesagt: "Este transfer foi cancelado. Contacte a receção.", tbd: "a atribuir", refresh: "Esta página atualiza-se automaticamente.", invalid: "Este link não é (ou já não é) válido.", error: "Não foi possível. Tente novamente mais tarde.", loading: "A carregar…" },
+  tr: { hello: "Transferiniz, {name}", helloAnon: "Transferiniz", pickup: "Karşılama", drop: "Yolculuk", place: "Yer", flight: "Uçuş/tren", pax: "Kişi", driver: "Şoför", vehicle: "Araç", status: "Durum", geplant: "Planlandı", unterwegs: "Yolda", erledigt: "Varıldı", abgesagt: "Bu transfer iptal edildi. Lütfen resepsiyona başvurun.", tbd: "henüz atanmadı", refresh: "Bu sayfa otomatik olarak güncellenir.", invalid: "Bu bağlantı geçerli değil (artık).", error: "Olmadı. Lütfen daha sonra tekrar deneyin.", loading: "Yükleniyor…" },
+  ja: { hello: "{name} 様の送迎", helloAnon: "送迎のご案内", pickup: "お迎え", drop: "お送り", place: "場所", flight: "便名/列車", pax: "人数", driver: "ドライバー", vehicle: "車両", status: "状況", geplant: "予定", unterwegs: "移動中", erledigt: "到着", abgesagt: "この送迎はキャンセルされました。フロントにお問い合わせください。", tbd: "手配中", refresh: "このページは自動的に更新されます。", invalid: "このリンクは無効です（期限切れの可能性があります）。", error: "読み込めませんでした。しばらくしてから再度お試しください。", loading: "読み込み中…" },
+  zh: { hello: "{name}，您的接送", helloAnon: "您的接送", pickup: "接机/接站", drop: "送行", place: "地点", flight: "航班/车次", pax: "人数", driver: "司机", vehicle: "车辆", status: "状态", geplant: "已安排", unterwegs: "途中", erledigt: "已到达", abgesagt: "此接送已取消，请联系前台。", tbd: "待安排", refresh: "此页面会自动更新。", invalid: "此链接无效（或已失效）。", error: "加载失败，请稍后再试。", loading: "加载中…" },
+  ar: { hello: "خدمة النقل الخاصة بكم، {name}", helloAnon: "خدمة النقل الخاصة بكم", pickup: "الاستقبال", drop: "التوصيل", place: "المكان", flight: "الرحلة/القطار", pax: "الأشخاص", driver: "السائق", vehicle: "المركبة", status: "الحالة", geplant: "مجدول", unterwegs: "في الطريق", erledigt: "تم الوصول", abgesagt: "تم إلغاء خدمة النقل هذه. يرجى التواصل مع الاستقبال.", tbd: "سيتم التعيين لاحقًا", refresh: "يتم تحديث هذه الصفحة تلقائيًا.", invalid: "هذا الرابط غير صالح (أو لم يعد صالحًا).", error: "لم ينجح ذلك. يرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…" },
+};
+var q = new URLSearchParams(location.search), token = q.get("t") || "", demo = q.get("demo") === "1";
+var state = { info: null, error: null };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var s = (T[lang] || T.en)[k] || T.en[k] || ""; return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick" }, guest_first: "Anna", direction: "Abholung", pickup_at: new Date(Date.now() + 2 * 3600000).toISOString(), tz: "Europe/Vienna", place: "Flughafen Salzburg", flight_no: "OS 911", pax: 2, vehicle: "Van, schwarz", driver: "Jonas", status: "geplant" };
+function fmt(iso, tz, opt) { try { return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : lang, Object.assign({ timeZone: tz || "Europe/Vienna" }, opt)).format(new Date(iso)); } catch (e) { return iso; } }
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app"), i = state.info;
+  if (state.error && !i) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!i) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var h = "<h1>" + esc(i.guest_first ? t("hello", { name: i.guest_first }) : t("helloAnon")) + "</h1>";
+  if (i.status === "abgesagt") { a.innerHTML = h + '<div class="msg cancel" role="status">' + esc(t("abgesagt")) + "</div>"; return; }
+  h += '<div class="box"><div class="sub" style="margin:0">' + esc(t(i.direction === "Abholung" ? "pickup" : "drop")) + " · " + esc(fmt(i.pickup_at, i.tz, { weekday: "long", day: "numeric", month: "long" })) + '</div><div class="time">' + esc(fmt(i.pickup_at, i.tz, { hour: "2-digit", minute: "2-digit" })) + "</div></div>";
+  var steps = ["geplant", "unterwegs", "erledigt"], cur = steps.indexOf(i.status);
+  h += '<div class="box"><div class="sub" style="margin:0 0 6px">' + esc(t("status")) + '</div><div class="steps">' + steps.map(function (s, n) { return '<div class="step' + (n <= cur ? " on" : "") + '"' + (n === cur ? ' aria-current="step"' : "") + ">" + esc(t(s)) + "</div>"; }).join("") + "</div></div>";
+  h += '<div class="box"><dl><dt>' + esc(t("place")) + "</dt><dd>" + esc(i.place || "–") + "</dd>";
+  if (i.flight_no) h += "<dt>" + esc(t("flight")) + "</dt><dd>" + esc(i.flight_no) + "</dd>";
+  h += "<dt>" + esc(t("pax")) + "</dt><dd>" + esc(i.pax) + "</dd><dt>" + esc(t("driver")) + "</dt><dd>" + esc(i.driver || t("tbd")) + "</dd>";
+  if (i.vehicle) h += "<dt>" + esc(t("vehicle")) + "</dt><dd>" + esc(i.vehicle) + "</dd>";
+  h += '</dl></div><div class="note">' + esc(t("refresh")) + "</div>";
+  a.innerHTML = h;
+}
+function brand(hh) {
+  $("hotel").textContent = hh.name || ""; document.title = hh.name || "Ouverture";
+  if (hh.logo_data && /^data:image\/(png|jpeg|webp|svg\+xml);/.test(hh.logo_data)) { $("logo").src = hh.logo_data; $("logo").hidden = false; }
+  if (hh.brand_color && /^#[0-9a-fA-F]{3,8}$/.test(hh.brand_color)) document.documentElement.style.setProperty("--ink", hh.brand_color);
+}
+function load() {
+  var p = demo ? Promise.resolve(DEMO) : fetch(API + "/api/public/transfer/" + encodeURIComponent(token), { headers: { "Accept-Language": lang } }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(r.status === 404 ? t("invalid") : j.error || t("error")); return j; }); });
+  return p.then(function (i) { state.info = i; state.error = null; brand(i.hotel || {}); render(); }).catch(function (e) { state.error = e.message || t("error"); render(); });
+}
+render();
+if (!demo && !/^[A-Za-z0-9_-]{20,64}$/.test(token)) { state.error = t("invalid"); render(); }
+else { load(); setInterval(function () { if (!document.hidden && !(state.info && ["erledigt", "abgesagt"].indexOf(state.info.status) >= 0)) load(); }, 60000); }
+</script>
+</body>
+</html>

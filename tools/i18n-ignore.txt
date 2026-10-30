@@ -12,6 +12,7 @@
 &gt;
 &lang=
 &lt;
+&max_shift_h=
 &nbsp;</td><td>
 &open=true
 &quot;
@@ -59,6 +60,7 @@
 ?subject=Ouverture%20Enterprise
 ?task_id=
 @ouverture
+AT / DE
 ATU12345678
 AbortError
 Anfrage fehlgeschlagen.
@@ -98,6 +100,7 @@ Escape
 Español
 Expedia
 FBFAF7
+Flughafen Salzburg ; 65 Bahnhof ; 20
 Français
 Fraunces, serif
 Function Sheet
@@ -127,6 +130,7 @@ RE-
 RevPAR
 SUMMARY:
 Script
+Standard Superior Junior Suite Suite
 Status:
 Strg K
 Supabase Project URL
@@ -204,7 +208,10 @@ inset(50%)
 it-IT
 ja-JP
 jobs.html?
+kW
+kW)
 kWh
+mahnung.pdf
 mailto:
 maßnahme
 monatsabschluss.pdf
@@ -229,6 +236,7 @@ serviceWorker
 speechSynthesis
 splitRest
 status: dirty, clean, inspected, out of order · occupancy: vacant, occupied, departure, arrival
+stück
 task.done
 text/calendar;charset=utf-8
 text/csv

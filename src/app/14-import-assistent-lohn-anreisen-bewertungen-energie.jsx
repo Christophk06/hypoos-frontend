@@ -386,6 +386,7 @@ function ArrivalsView({hotel, hotels, api, role, onHotel}){
                     {g.profile && <GuestProfileBadge profile={g.profile} />}
                     {g.profile && <GuestProfileOrigin profile={g.profile} hotels={hotels||[]} hotelId={hotel.id} />}
                     <GsRegistrationPanel guest={g} hotel={hotel} api={api} />
+                    <ArrivalAllergyEditor guest={g} api={api} />
                     {g.vip!==undefined && <FirstImpressionCheck guest={g} api={api} onSaved={(x)=>setList(l=>(l||[]).map(y=>y.id===x.id?{...y,...x}:y))} />}
                   </div>
                   {lead && <div style={{whiteSpace:"nowrap"}}>

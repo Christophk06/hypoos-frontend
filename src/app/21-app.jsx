@@ -471,6 +471,7 @@ function App(){
           {tab==="staffmeals" && <StaffMealsView hotel={hotel} api={api} members={members} me={me} />}
           {tab==="wagecheck" && <WageCheckView api={api} orgId={orgId} members={members} me={me} />}
           {tab==="capex" && <CapexView hotel={hotel} api={api} />}
+          {tab==="guest-protection" && <GuestProtectionView hotel={hotel} api={api} role={role} members={members} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="pricewatch" && <BgPriceWatchView hotel={hotel} api={api} />}
           {tab==="dunning" && <BgDunningView hotel={hotel} api={api} />}
           {tab==="shrinkage" && <BgShrinkageView hotel={hotel} api={api} />}

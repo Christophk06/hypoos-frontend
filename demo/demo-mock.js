@@ -676,6 +676,9 @@
       o.text = r.prio === 0 ? ["Anreise" + (r.reason.eta ? " " + r.reason.eta : " heute"), r.reason.vip ? "VIP" : "", r.reason.departure ? "nach Abreise" : ""].filter(Boolean).join(", ") : r.prio === 1 ? "Abreise" : r.prio === 3 ? "Bleibe" : "Schmutzig, unbelegt"; return o; });
   }
 
+  D.hotel.upgrade_settings = { enabled: true, ranking: ["Standard", "Superior", "Deluxe", "Suite"], price_per_step: 25 };
+  D.hotel.transfer_settings = { enabled: true, places: ["Flughafen Innsbruck", "Hauptbahnhof Innsbruck", "Bahnhof Jenbach"], prices: { "Flughafen Innsbruck": 45, "Hauptbahnhof Innsbruck": 28, "Bahnhof Jenbach": 60 } };
+
   var realFetch = window.fetch.bind(window);
   window.fetch = function (input, opt) {
     var url = new URL(typeof input === "string" ? input : input.url, location.href);
@@ -2013,6 +2016,368 @@
       var eelig = ROLE === "admin" || (ROLE === "manager" && (!MYDEPTS.length || MYDEPTS.indexOf("Rezeption & Empfang") >= 0));
       if (m === "PUT") { var eon = b.enabled === true; if (eon && !eelig) return deny("Die Notfall-Mail gibt es nur für Admin, Gesamtleitung und Leitung Rezeption."); D.emergency_mail_on = eon; return ok({ available: true, eligible: eelig, enabled: eon }); }
       return ok({ available: true, eligible: eelig, enabled: !!D.emergency_mail_on, hours: "05:00–08:00" }); }
+    /* ===== Paket 043 B (Betrieb & Geld) und Team & Eigentümer (Antworten wie routes-money.js / routes-ops2.js; nur im Speicher) ===== */
+    var r2x = function (n) { return Math.round(Number(n) * 100) / 100; }, r1x = function (n) { return Math.round(Number(n) * 10) / 10; }, SLOT = 15 * 60000;
+    var dayDiff = function (a, c) { return Math.round((new Date(c + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 86400000); };
+    if (!D.p43) {
+      var P = D.p43 = { cur: D.hotel.currency || "EUR" };
+      // 1. Preisverlauf (Rapsöl: zwei Anstiege; Butter leicht; Rest stabil/fallend)
+      var ob = function (name, unit, price, daysAgo, sup, src) { return { id: nid("po"), item_name: name, item_key: name.toLowerCase(), unit: unit, unit_price: price, observed_on: add(todayIso, -daysAgo), supplier_id: "sp-2", supplier_name: sup || "GastroGroß", source: src || "bestellung", ref_id: null, created_at: add(todayIso, -daysAgo) + "T08:00:00Z" }; };
+      P.obs = [ob("Rapsöl 10 l", "Kanister", 21.5, 330), ob("Rapsöl 10 l", "Kanister", 22.9, 160, null, "rechnung"), ob("Rapsöl 10 l", "Kanister", 26.4, 25),
+        ob("Butter 250 g", "Stück", 2.1, 300), ob("Butter 250 g", "Stück", 2.18, 140), ob("Butter 250 g", "Stück", 2.24, 20),
+        ob("Espresso Bohnen 1 kg", "kg", 14.2, 280, "Kaffeerösterei Alm"), ob("Espresso Bohnen 1 kg", "kg", 14.2, 100, "Kaffeerösterei Alm"), ob("Espresso Bohnen 1 kg", "kg", 14.4, 15, "Kaffeerösterei Alm"),
+        ob("Mineralwasser 0,33 l", "Flasche", 0.52, 250), ob("Mineralwasser 0,33 l", "Flasche", 0.49, 40)];
+      P.quotes = {};
+      P.supInv = [{ id: "si-1", supplier_id: "sp-2", supplier_name: "GastroGroß", invoice_number: "GG-88231", invoice_date: add(todayIso, -25), amount: 1284.6, currency: P.cur }, { id: "si-2", supplier_id: "sp-1", supplier_name: "Textil Moser", invoice_number: "TM-2026-417", invoice_date: add(todayIso, -40), amount: 932.0, currency: P.cur }];
+      // 2. Mahnwesen: 3 offene Rechnungen
+      P.dset = { enabled: true, auto: false, days: [7, 14, 14], fees: [0, 0, 10], pay_days: 7 };
+      P.eset = { price_per_kw_month: 9.5, max_kw: 55 };
+      var di = function (id, no, rec, mail, issued, due, gross) { return { id: id, number: no, kind: "Rechnung", issued_on: add(todayIso, issued), due_on: add(todayIso, due), recipient: rec, recipient_email: mail, gross_total: gross, deducted: 0, currency: P.cur, status: "offen", seller: { company: D.hotel.name, email: "rechnung@alpenblick.example", iban: "AT61 1904 3002 3457 3201", bic: "BKAUATWW", bank: "Bank Austria" } }; };
+      P.dinv = [di("dn-1", "RE-" + todayIso.slice(0, 4) + "-0011", "Reisebüro Tirol Tours", "buchhaltung@tirol-tours.example", -26, -12, 3480), di("dn-2", "RE-" + todayIso.slice(0, 4) + "-0007", "Firma Innova GmbH (Seminar)", "ap@innova.example", -54, -40, 1850.5), di("dn-3", "RE-" + todayIso.slice(0, 4) + "-0003", "Hochzeit Berger/Huber", "familie.berger@example.com", -89, -75, 6200)];
+      P.drem = [{ id: "dr-1", invoice_id: "dn-2", level: 0, sent_at: add(todayIso, -25) + "T09:00:00Z", due_on: add(todayIso, -18), fee: 0, sent_to: "ap@innova.example" },
+        { id: "dr-2", invoice_id: "dn-3", level: 0, sent_at: add(todayIso, -60) + "T09:00:00Z", due_on: add(todayIso, -53), fee: 0, sent_to: "familie.berger@example.com" }, { id: "dr-3", invoice_id: "dn-3", level: 1, sent_at: add(todayIso, -40) + "T09:00:00Z", due_on: add(todayIso, -33), fee: 0, sent_to: "familie.berger@example.com" }];
+      P.dstate = function (inv) {
+        var set = P.dset, due = inv.due_on, over = dayDiff(due, todayIso), sent = P.drem.filter(function (r) { return r.invoice_id === inv.id; }).sort(function (a, c) { return a.level - c.level; }), last = sent.length ? sent[sent.length - 1] : null, nx = last ? last.level + 1 : 0;
+        var base = { due_on: due, days_overdue: over, reminders: sent, last_level: last ? last.level : null }, names = ["Zahlungserinnerung", "1. Mahnung", "2. Mahnung", "Letzte Mahnung"];
+        if (nx >= set.days.length || nx > 3) return Object.assign(base, { next: null, final_reached: true });
+        var at = add(last ? String(last.sent_at).slice(0, 10) : due, set.days[nx]);
+        return Object.assign(base, { next: { level: nx, name: names[nx], due_at: at, due_now: over > 0 && todayIso >= at, fee: set.fees[nx] || 0, pay_until: add(todayIso, set.pay_days) } });
+      };
+      // 3. Schwund (portions = Abgang x Portionen je Einheit)
+      var si = function (id, name, dep, unit, sku, per, outS, sold) { return { id: id, name: name, department: dep, unit: unit, pos_sku: sku, pos_units_per_stock: per, out_stock: outS, sold: sold }; };
+      P.shr = [si("sh-1", "Grüner Veltliner 0,75 l", "Food & Beverage", "Flasche", "W-GV-015", 5, 40, 196), si("sh-2", "Prosecco 0,75 l", "Food & Beverage", "Flasche", "S-PRO-01", 6, 30, 175),
+        si("sh-3", "Bier Fass 30 l", "Food & Beverage", "Fass", "B-FASS-03", 60, 12, 690), si("sh-4", "Whisky 0,7 l", "Food & Beverage", "Flasche", "D-WHI-004", 14, 14, 142), si("sh-5", "Kaffeebohnen 1 kg", "Food & Beverage", "kg", "K-ESP-01", 120, 18, 2105)];
+      P.unm = [{ sku: "tiroler groestl", item_name: "Tiroler Gröstl", qty: 212 }, { sku: "kaiserschmarrn", item_name: "Kaiserschmarrn", qty: 164 }];
+      // 4. Geräte und Läufe (Wochen -1 bis +2, lokale Zeit)
+      P.dev = [{ id: "ed-1", hotel_id: D.hotel.id, name: "Kombidämpfer Küche", kw: 24, flexible: false, note: "Frühstücksvorbereitung" }, { id: "ed-2", hotel_id: D.hotel.id, name: "Industrie-Waschmaschine", kw: 18, flexible: true, note: null },
+        { id: "ed-3", hotel_id: D.hotel.id, name: "Wäschetrockner", kw: 22, flexible: true, note: null }, { id: "ed-4", hotel_id: D.hotel.id, name: "Poolwärmepumpe", kw: 15, flexible: true, note: "Ladezeit nach Bedarf" }];
+      P.runs = [];
+      var mon = new Date(); mon.setHours(0, 0, 0, 0); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+      for (var wk = -1; wk <= 2; wk++) for (var dy = 0; dy < 7; dy++) {
+        var dd = new Date(mon.getTime()); dd.setDate(dd.getDate() + wk * 7 + dy);
+        [["ed-1", 6, 9], ["ed-2", 6.5, 10], ["ed-3", 7, 10], ["ed-4", 6, 8]].forEach(function (rr) {
+          var s = new Date(dd.getTime()); s.setHours(Math.floor(rr[1]), (rr[1] % 1) * 60, 0, 0); var e = new Date(dd.getTime()); e.setHours(Math.floor(rr[2]), (rr[2] % 1) * 60, 0, 0);
+          P.runs.push({ id: nid("dr"), hotel_id: D.hotel.id, device_id: rr[0], start_at: s.toISOString(), end_at: e.toISOString(), planned: true });
+        });
+      }
+      // Hilfen Lastspitzen
+      P.curve = function (runs, from, to) { var n = Math.max(0, Math.ceil((to - from) / SLOT)), ld = []; for (var i = 0; i < n; i++) ld.push(0); runs.forEach(function (r) { P.addRun(ld, from, Date.parse(r.start_at), Date.parse(r.end_at), (byId(P.dev, r.device_id) || {}).kw || 0, 1); }); return ld; };
+      P.addRun = function (ld, from, s, e, kw, sg) { if (!(e > s) || !kw) return; var i0 = Math.max(0, Math.floor((s - from) / SLOT)), i1 = Math.min(ld.length - 1, Math.floor((e - 1 - from) / SLOT));
+        for (var i = i0; i <= i1; i++) { var a = from + i * SLOT, ov = Math.min(e, a + SLOT) - Math.max(s, a); if (ov > 0) ld[i] += sg * kw * ov / SLOT; } };
+      P.peak = function (ld) { var m = { kw: 0, i: -1 }; ld.forEach(function (x, i) { if (x > m.kw + 1e-9) m = { kw: x, i: i }; }); return m; };
+      P.suggest = function (runs, from, to, maxH) {
+        var ld = P.curve(runs, from, to), before = P.peak(ld), steps = Math.round(maxH * 4);
+        var cand = runs.filter(function (r) { var d = byId(P.dev, r.device_id); return r.planned && d && d.flexible; }).map(function (r) { return { id: r.id, device_id: r.device_id, start_at: r.start_at, s: Date.parse(r.start_at), e: Date.parse(r.end_at), kw: byId(P.dev, r.device_id).kw }; })
+          .sort(function (a, c) { return c.kw * (c.e - c.s) - a.kw * (a.e - a.s); });
+        for (var pass = 0; pass < 2; pass++) cand.forEach(function (r) {
+          P.addRun(ld, from, r.s, r.e, r.kw, -1); var best = null;
+          for (var k = -steps; k <= steps; k++) { var s = r.s + k * SLOT, e = r.e + k * SLOT; if (s < from || e > to) continue; P.addRun(ld, from, s, e, r.kw, 1);
+            var pk = P.peak(ld).kw, sq = ld.reduce(function (a, x) { return a + x * x; }, 0); P.addRun(ld, from, s, e, r.kw, -1);
+            var sc = [r1x(pk * 10), sq, Math.abs(k)];
+            if (!best || sc[0] < best.sc[0] || (sc[0] === best.sc[0] && (sc[1] < best.sc[1] - 1e-6 || (Math.abs(sc[1] - best.sc[1]) <= 1e-6 && sc[2] < best.sc[2])))) best = { k: k, sc: sc }; }
+          var kk = best ? best.k : 0; r.s += kk * SLOT; r.e += kk * SLOT; P.addRun(ld, from, r.s, r.e, r.kw, 1); });
+        var after = P.peak(ld), mv = [];
+        cand.forEach(function (r) { var o = Date.parse(r.start_at); if (r.s !== o) mv.push({ run_id: r.id, device_id: r.device_id, device: (byId(P.dev, r.device_id) || {}).name || "", kw: r.kw, from_start: new Date(o).toISOString(), to_start: new Date(r.s).toISOString(), to_end: new Date(r.e).toISOString(), shift_min: Math.round((r.s - o) / 60000) }); });
+        if (after.kw >= before.kw - 0.05) return { before: r2x(before.kw), after: r2x(before.kw), moves: [] };
+        return { before: r2x(before.kw), after: r2x(after.kw), moves: mv };
+      };
+      // Team & Eigentümer
+      var oc = function (d, h) { return new Date(add(todayIso, d) + "T" + h + ":00Z").toISOString(); };
+      P.inc = [{ id: "ic-1", hotel_id: D.hotel.id, organization_id: ORG, kind: "Mitarbeiterunfall", occurred_at: oc(-12, "09:40"), location: "Küche, Kochbereich", description: "Schnittverletzung am linken Zeigefinger beim Gemüseschneiden. Wunde in der Erste-Hilfe-Station versorgt, Arzt am selben Tag aufgesucht.",
+          persons: [{ name: "Küchenhilfe (Mitarbeitende)", role: "Verletzte Person", contact: null }], witnesses: [{ name: "Sous-Chef", role: "Zeuge", contact: null }], measures: "Schneidehandschuhe für alle Posten bestellt; Unterweisung im Team wiederholt.", insurer: "AUVA", insurer_notified_at: oc(-11, "08:00"), status: "gemeldet", created_at: oc(-12, "10:30"), created_by: "u-hkm", photos: [], signature_data: null },
+        { id: "ic-2", hotel_id: D.hotel.id, organization_id: ORG, kind: "Gästeunfall", occurred_at: oc(-3, "16:20"), location: "Poolbereich", description: "Gast ist auf nassem Boden ausgerutscht und leicht gestürzt, Prellung am Knie. Eis angelegt, Gast lehnt Arzt ab.",
+          persons: [{ name: "Gast Zimmer 214", role: "Betroffener Gast", contact: null }], witnesses: [], measures: "Rutschfeste Matten am Beckenrand ausgelegt, Warnschild aufgestellt.", insurer: null, insurer_notified_at: null, status: "offen", created_at: oc(-3, "17:00"), created_by: ME, photos: [], signature_data: null }];
+      P.meals = []; P.mealSet = { values: { "Frühstück": 1.5, Mittag: 3, Abend: 3 }, country: "Österreich" };
+      P.wt = []; P.pay = [];
+      var cx = function (id, comp, area, y, life, cond, cost, qty, room) { return { id: id, hotel_id: D.hotel.id, room_id: room ? room.id : null, area: area, component: comp, installed_on: y + "-06-01", lifetime_years: life, condition: cond, unit_cost: cost, quantity: qty, note: null, created_at: todayIso + "T08:00:00Z", rooms: room ? { number: room.number, room_type: room.room_type } : null }; };
+      var rm = function (n) { return (D.rooms || []).find(function (r) { return String(r.number) === n; }) || null; };
+      P.capex = [cx("cx-1", "Teppich Flure", "Etagen 1–3", 2016, 10, 2, 38, 420, null), cx("cx-2", "Matratzen", "Zimmer 101", 2018, 8, 3, 480, 1, rm("101")), cx("cx-3", "Fassadenanstrich", "Außenhülle", 2019, 8, 3, 54000, 1, null),
+        cx("cx-4", "Aufzugssteuerung", "Haupttreppenhaus", 2008, 20, 4, 42000, 1, null), cx("cx-5", "Lobby-Möbel", "Empfang", 2017, 10, 2, 18500, 1, null), cx("cx-6", "Industrie-Waschmaschinen", "Wäscherei", 2019, 7, 3, 9800, 2, null),
+        cx("cx-7", "Kühlanlage Küche", "Küche", 2014, 16, 4, 31000, 1, null), cx("cx-8", "Dachterrasse Abdichtung", "Dach", 2015, 15, 3, 26000, 1, null), cx("cx-9", "Badezimmer-Fliesen", "Zimmer 102", 2011, 15, 3, 3600, 1, rm("102"))];
+    }
+    var P43 = D.p43, yr43 = Number(todayIso.slice(0, 4));
+    var HR43 = ROLE === "admin" || ROLE === "manager";
+    var uid43 = function () { return String(Math.abs(nextId)) && ME; };
+    if (/^\/api\/(hotels\/[^/]+\/(money-settings|price-watch|price-observations|dunning|pos-items|shrinkage|energy-peaks|energy-devices|device-runs)|price-observations\/|invoices\/[^/]+\/reminder|stock-items\/[^/]+\/pos-mapping|energy-devices\/|device-runs\/)/.test(p) && !HR43) return deny("Dafür fehlt die Berechtigung.");
+    if (p === H + "/money-settings") {
+      if (m === "PUT") { if (b.dunning_settings !== undefined) { var ds = b.dunning_settings || {}; P43.dset = { enabled: !!ds.enabled, auto: !!ds.auto && !!ds.enabled, days: (ds.days || P43.dset.days).slice(0, 4).map(function (x) { return Math.max(1, Math.round(Number(x)) || 7); }), fees: (ds.fees || P43.dset.fees).map(function (x) { return Number(x) > 0 ? r2x(x) : 0; }), pay_days: Math.round(Number(ds.pay_days)) || 7 }; }
+        if (b.energy_peak_settings !== undefined) { var es43 = b.energy_peak_settings || {}; P43.eset = { price_per_kw_month: Number(es43.price_per_kw_month) >= 0 && es43.price_per_kw_month !== "" && es43.price_per_kw_month != null ? r2x(es43.price_per_kw_month) : null, max_kw: Number(es43.max_kw) > 0 ? r1x(es43.max_kw) : null }; } }
+      return ok({ dunning_settings: P43.dset, energy_peak_settings: P43.eset, can: { dunning: true, energy: true } }); }
+    if (p === H + "/price-watch") {
+      var groups = {}; P43.obs.forEach(function (o) { var k = o.item_key + "|" + (o.unit || "").toLowerCase(); (groups[k] = groups[k] || []).push(o); });
+      var items = Object.keys(groups).map(function (k) {
+        var l = groups[k].slice().sort(function (a, c) { return a.observed_on.localeCompare(c.observed_on); }), lt = l[l.length - 1], ch = {};
+        [3, 6, 12].forEach(function (mo) { var cut = add(todayIso, -30 * mo), ref = l.slice().reverse().find(function (x) { return x.observed_on <= cut; }); ch["m" + mo] = ref ? { price: ref.unit_price, on: ref.observed_on, pct: r1x((lt.unit_price - ref.unit_price) * 100 / ref.unit_price) } : null; });
+        var pv = l.length > 1 ? l[l.length - 2] : null, pcts = Object.keys(ch).filter(function (c) { return ch[c]; }).map(function (c) { return ch[c].pct; }), mx = pcts.length ? Math.max.apply(null, pcts) : null;
+        return { key: k, item_key: lt.item_key, item_name: lt.item_name, unit: lt.unit || null, latest: { price: lt.unit_price, on: lt.observed_on, supplier_name: lt.supplier_name, source: lt.source }, previous: pv ? { price: pv.unit_price, on: pv.observed_on, pct: r1x((lt.unit_price - pv.unit_price) * 100 / pv.unit_price) } : null,
+          change: ch, max_pct: mx, warn: mx !== null && mx >= 10, min: Math.min.apply(null, l.map(function (x) { return x.unit_price; })), max: Math.max.apply(null, l.map(function (x) { return x.unit_price; })), count: l.length,
+          suppliers: l.map(function (x) { return x.supplier_name; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }), history: l.slice(-24).map(function (x) { return { id: x.id, on: x.observed_on, price: x.unit_price, supplier_name: x.supplier_name, source: x.source }; }) };
+      }).sort(function (a, c) { return (c.warn - a.warn) || ((c.max_pct == null ? -1e9 : c.max_pct) - (a.max_pct == null ? -1e9 : a.max_pct)); });
+      return ok({ items: items, warn_count: items.filter(function (x) { return x.warn; }).length, observations: P43.obs.length, synced: 0 }); }
+    if (p === H + "/price-observations" && m === "POST") {
+      var list43 = Array.isArray(b.rows) ? b.rows : [b], saved = [];
+      for (var li = 0; li < list43.length; li++) { var x43 = list43[li], nm = String(x43.item_name || "").trim(), pr = Number(String(x43.unit_price).replace(",", "."));
+        if (!nm) return ok({ error: "Bitte den Artikel angeben." }, 400); if (!(pr > 0)) return ok({ error: "Bitte einen gültigen Stückpreis angeben." }, 400);
+        var o43 = { id: nid("po"), item_name: nm, item_key: nm.toLowerCase(), unit: String(x43.unit || "").trim() || null, unit_price: pr, observed_on: x43.observed_on || todayIso, supplier_id: x43.supplier_id || null, supplier_name: x43.supplier_name || null, source: x43.source || "manuell", ref_id: x43.ref_id || null, created_at: new Date().toISOString() };
+        P43.obs.push(o43); saved.push(o43); }
+      return ok({ saved: saved.length, rows: saved }); }
+    if ((mm = p.match(/^\/api\/price-observations\/([^/]+)$/)) && m === "DELETE") { remove(P43.obs, mm[1]); return ok({ ok: true }); }
+    if (p === H + "/price-watch/invoices") return ok(P43.supInv);
+    if (p === H + "/price-watch/quote-request" && m === "POST") {
+      var qi = String(b.item_name || "").trim(); if (!qi) return ok({ error: "Bitte den Artikel angeben." }, 400);
+      if (P43.quotes[qi]) return ok(Object.assign({ existed: true }, P43.quotes[qi]));
+      P43.quotes[qi] = { id: nid("qr"), title: "Angebot: " + qi, status: "offen" }; return ok(P43.quotes[qi]); }
+    if (p === H + "/dunning") {
+      var rows43 = P43.dinv.filter(function (i) { return i.status === "offen"; }).map(function (i) { var o = Object.assign({}, i); delete o.seller; return Object.assign(o, { open: r2x(i.gross_total - i.deducted) }, P43.dstate(i)); });
+      var ag = { not_due: { count: 0, amount: 0 }, d0_30: { count: 0, amount: 0 }, d31_60: { count: 0, amount: 0 }, d60p: { count: 0, amount: 0 } };
+      rows43.forEach(function (r) { var k = r.days_overdue <= 0 ? "not_due" : r.days_overdue <= 30 ? "d0_30" : r.days_overdue <= 60 ? "d31_60" : "d60p"; ag[k].count++; ag[k].amount = r2x(ag[k].amount + r.open); });
+      return ok({ settings: P43.dset, aging: ag, invoices: rows43, due_now: rows43.filter(function (r) { return r.next && r.next.due_now; }).length, can_send: true, today: todayIso }); }
+    if ((mm = p.match(/^\/api\/invoices\/([^/]+)\/reminder-preview$/))) {
+      var iv43 = byId(P43.dinv, mm[1]); if (!iv43) return nf(); var st43 = P43.dstate(iv43); if (!st43.next) return ok({ error: "Alle Mahnstufen sind verschickt." }, 400);
+      var en = q.get("language") === "en", amt = r2x(iv43.gross_total - iv43.deducted), fmt = function (n) { return n.toLocaleString(en ? "en-GB" : "de-AT", { style: "currency", currency: P43.cur }); }, nx43 = st43.next;
+      var txt = en ? ["Dear Sir or Madam,", "", "we have not yet received payment for our invoice " + iv43.number + " for " + fmt(amt) + " (due since " + iv43.due_on + "). Please settle the amount by " + nx43.pay_until + ".", nx43.fee > 0 ? "\nReminder fee: " + fmt(nx43.fee) + "." : "", "", "Kind regards", D.hotel.name]
+        : ["Guten Tag,", "", "zu unserer Rechnung " + iv43.number + " über " + fmt(amt) + " (fällig seit " + iv43.due_on + ") konnten wir bis heute keine Zahlung feststellen. Bitte begleichen Sie den Betrag bis " + nx43.pay_until + ".", nx43.fee > 0 ? "\nFür diese Mahnung berechnen wir Mahnspesen von " + fmt(nx43.fee) + "." : "", "", "Mit freundlichen Grüßen", D.hotel.name];
+      return ok({ level: nx43.level, name: nx43.name, fee: nx43.fee, pay_until: nx43.pay_until, email: iv43.recipient_email || "", subject: nx43.name + (en ? " for invoice " : " zur Rechnung ") + iv43.number + " – " + D.hotel.name, text: txt.filter(function (l) { return l !== ""  || true; }).join("\n") }); }
+    if ((mm = p.match(/^\/api\/invoices\/([^/]+)\/reminder$/)) && m === "POST") {
+      var iv44 = byId(P43.dinv, mm[1]); if (!iv44) return nf(); var st44 = P43.dstate(iv44); if (!st44.next) return ok({ error: "Alle Mahnstufen sind verschickt." }, 400);
+      if (b.level !== undefined && Number(b.level) !== st44.next.level) return ok({ error: "Die Mahnstufe hat sich inzwischen geändert. Bitte neu laden." }, 409);
+      var rem44 = { id: nid("dr"), hotel_id: D.hotel.id, invoice_id: iv44.id, level: st44.next.level, sent_at: new Date().toISOString(), due_on: st44.next.pay_until, fee: st44.next.fee || 0, sent_to: b.manual === true ? "Post" : (b.email || iv44.recipient_email) };
+      P43.drem.push(rem44); return ok(rem44); }
+    if (p === H + "/pos-items/import" && m === "POST") {
+      var imp = (Array.isArray(b.rows) ? b.rows : []).filter(function (r) { return r && (r.sku || r.item_name) && Number(r.qty) === Number(r.qty); }); if (!imp.length) return ok({ error: "In der Datei wurden keine gültigen Verkaufszeilen erkannt.", skipped: [] }, 400);
+      imp.forEach(function (r) { var it = P43.shr.find(function (s) { return String(s.pos_sku).toLowerCase() === String(r.sku || "").toLowerCase(); }); if (it) it.sold = r2x(it.sold + Number(r.qty)); });
+      return ok({ saved: imp.length, skipped: [], skipped_count: (Array.isArray(b.rows) ? b.rows.length : 0) - imp.length }); }
+    if (p === H + "/pos-items") {
+      if (m === "DELETE") return ok({ deleted: 0 });
+      return ok({ from: q.get("from") || add(todayIso, -30), to: q.get("to") || todayIso, items: P43.shr.map(function (s) { return { sku: s.pos_sku, item_name: s.name, qty: s.sold, days: 30 }; }).concat(P43.unm.map(function (u) { return { sku: u.sku, item_name: u.item_name, qty: u.qty, days: 30 }; })).sort(function (a, c) { return c.qty - a.qty; }), rows: 120 }); }
+    if ((mm = p.match(/^\/api\/stock-items\/([^/]+)\/pos-mapping$/)) && m === "PATCH") {
+      var sh = byId(P43.shr, mm[1]); if (!sh) return nf();
+      if (b.pos_sku !== undefined) sh.pos_sku = String(b.pos_sku || "").trim() || null;
+      if (b.pos_units_per_stock !== undefined) { var un = Number(b.pos_units_per_stock); if (!(un > 0)) return ok({ error: "Bitte die Portionen je Lagereinheit angeben (größer als 0)." }, 400); sh.pos_units_per_stock = un; }
+      return ok({ id: sh.id, name: sh.name, pos_sku: sh.pos_sku, pos_units_per_stock: sh.pos_units_per_stock }); }
+    if (p === H + "/shrinkage") {
+      var srows = P43.shr.filter(function (s) { return s.pos_sku; }).map(function (s) { var per = s.pos_units_per_stock > 0 ? s.pos_units_per_stock : 1, por = r2x(s.out_stock * per), diff = r2x(por - s.sold), rate = por > 0 ? r1x(diff * 100 / por) : null;
+        var light = por <= 0 && s.sold <= 0 ? "grau" : por <= 0 || diff < 0 ? "gelb" : rate <= 3 ? "gruen" : rate <= 8 ? "gelb" : "rot";
+        return { id: s.id, name: s.name, department: s.department, unit: s.unit, pos_sku: s.pos_sku, units_per_stock: per, out_stock: s.out_stock, portions: por, sold: s.sold, diff: diff, rate: rate, light: light, value_hint: null, sold_more: diff < 0 }; });
+      var ord = { rot: 0, gelb: 1, gruen: 2, grau: 3 }; srows.sort(function (a, c) { return ord[a.light] - ord[c.light] || (c.rate == null ? -1e9 : c.rate) - (a.rate == null ? -1e9 : a.rate); });
+      var tp = 0, td = 0; srows.forEach(function (r) { tp += Math.max(0, r.portions); td += Math.max(0, r.diff); });
+      return ok({ from: q.get("from") || add(todayIso, -30), to: q.get("to") || todayIso, rows: srows, unmapped: P43.unm, total_rate: tp > 0 ? r1x(td * 100 / tp) : null,
+        items: P43.shr.map(function (s) { return { id: s.id, name: s.name, department: s.department, unit: s.unit, pos_sku: s.pos_sku || null, pos_units_per_stock: s.pos_units_per_stock || 1 }; }) }); }
+    if (p === H + "/energy-devices") { if (m === "POST") { var nd = { id: nid("ed"), hotel_id: D.hotel.id, name: String(b.name || "").trim(), kw: Number(b.kw), flexible: !!b.flexible, note: b.note || null };
+        if (!nd.name) return ok({ error: "Bitte einen Namen angeben." }, 400); if (!(nd.kw > 0)) return ok({ error: "Bitte die Leistung in kW angeben (größer als 0)." }, 400); P43.dev.push(nd); return ok(nd); }
+      return ok(P43.dev.slice().sort(function (a, c) { return a.name.localeCompare(c.name, "de"); })); }
+    if ((mm = p.match(/^\/api\/energy-devices\/([^/]+)$/))) { if (m === "DELETE") { remove(P43.dev, mm[1]); P43.runs = P43.runs.filter(function (r) { return r.device_id !== mm[1]; }); return ok({ ok: true }); } var dv = byId(P43.dev, mm[1]); if (!dv) return nf(); Object.assign(dv, b); return ok(dv); }
+    if (p === H + "/device-runs/copy-week" && m === "POST") {
+      var src = Date.parse(b.from), dst = Date.parse(b.to), W = 7 * 86400000; if (!isFinite(src) || !isFinite(dst) || src === dst) return ok({ error: "Bitte Quell- und Zielwoche wählen." }, 400);
+      var inRange = function (a) { return P43.runs.filter(function (r) { var t = Date.parse(r.start_at); return t >= a && t < a + W; }); };
+      if (inRange(dst).length && b.force !== true) return ok({ error: "In der Zielwoche gibt es schon Läufe." }, 409);
+      var srcRuns = inRange(src); if (!srcRuns.length) return ok({ error: "In der Quellwoche gibt es keine Läufe." }, 400);
+      srcRuns.forEach(function (r) { P43.runs.push({ id: nid("dr"), hotel_id: D.hotel.id, device_id: r.device_id, start_at: new Date(Date.parse(r.start_at) + dst - src).toISOString(), end_at: new Date(Date.parse(r.end_at) + dst - src).toISOString(), planned: true }); });
+      return ok({ copied: srcRuns.length }); }
+    if (p === H + "/device-runs") {
+      if (m === "POST") { var s1 = Date.parse(b.start_at), e1 = Date.parse(b.end_at); if (!byId(P43.dev, b.device_id)) return ok({ error: "Bitte ein Gerät wählen." }, 400); if (!isFinite(s1) || !isFinite(e1)) return ok({ error: "Bitte Beginn und Ende angeben." }, 400);
+        if (!(e1 > s1)) return ok({ error: "Das Ende muss nach dem Beginn liegen." }, 400); var nr = { id: nid("dr"), hotel_id: D.hotel.id, device_id: b.device_id, start_at: new Date(s1).toISOString(), end_at: new Date(e1).toISOString(), planned: b.planned !== false }; P43.runs.push(nr); return ok(nr); }
+      var f1 = Date.parse(q.get("from")), t1 = Date.parse(q.get("to")); return ok(P43.runs.filter(function (r) { return Date.parse(r.start_at) < t1 && Date.parse(r.end_at) > f1; }).sort(function (a, c) { return a.start_at.localeCompare(c.start_at); })); }
+    if ((mm = p.match(/^\/api\/device-runs\/([^/]+)$/))) { if (m === "DELETE") { remove(P43.runs, mm[1]); return ok({ ok: true }); } var rn = byId(P43.runs, mm[1]); if (!rn) return nf(); ["start_at", "end_at", "planned", "device_id"].forEach(function (k) { if (b[k] !== undefined) rn[k] = b[k]; }); return ok(rn); }
+    if (p === H + "/energy-peaks") {
+      var from43 = Date.parse(q.get("from")), to43 = Date.parse(q.get("to")); if (!isFinite(from43) || !isFinite(to43) || to43 <= from43) return ok({ error: "Bitte eine Woche wählen." }, 400);
+      var runs43 = P43.runs.filter(function (r) { return Date.parse(r.start_at) < to43 && Date.parse(r.end_at) > from43; }), ld43 = P43.curve(runs43, from43, to43), pk43 = P43.peak(ld43), mxs = Math.min(12, Math.max(1, Number(q.get("max_shift_h")) || 6));
+      var sg43 = P43.suggest(runs43, from43, to43, mxs), set43 = P43.eset, hrs = []; for (var hi = 0; hi < ld43.length; hi += 4) hrs.push(r1x(Math.max.apply(null, ld43.slice(hi, hi + 4))));
+      return ok({ from: new Date(from43).toISOString(), to: new Date(to43).toISOString(), settings: set43, devices: P43.dev.map(function (d) { return { id: d.id, name: d.name, kw: d.kw, flexible: d.flexible }; }), runs: runs43.map(function (r) { return { id: r.id, device_id: r.device_id, start_at: r.start_at, end_at: r.end_at, planned: r.planned }; }),
+        slots: ld43.map(r1x), hours: hrs, peak: { kw: r2x(pk43.kw), at: pk43.i >= 0 ? new Date(from43 + pk43.i * SLOT).toISOString() : null }, over_max: set43.max_kw ? r2x(Math.max(0, pk43.kw - set43.max_kw)) : null,
+        suggestion: Object.assign({}, sg43, { max_shift_h: mxs, saving_month: set43.price_per_kw_month != null ? r2x((sg43.before - sg43.after) * set43.price_per_kw_month) : null }) }); }
+    // Unfall- und Schadensprotokoll
+    var incList = function () { return P43.inc.filter(function (i) { return HR43 || i.created_by === ME; }); };
+    var incLite = function (i) { var o = Object.assign({}, i); delete o.photos; delete o.signature_data; return o; };
+    if (p === H + "/incidents") {
+      if (m === "POST") { if (!b.kind) return ok({ error: "Bitte die Art des Vorfalls wählen." }, 400); if (!b.occurred_at || isNaN(Date.parse(b.occurred_at))) return ok({ error: "Bitte Datum und Uhrzeit des Vorfalls angeben." }, 400); if (!String(b.description || "").trim()) return ok({ error: "Bitte beschreiben, was passiert ist." }, 400);
+        var ni = { id: nid("ic"), hotel_id: D.hotel.id, organization_id: ORG, kind: b.kind, occurred_at: new Date(b.occurred_at).toISOString(), location: b.location || null, description: b.description, persons: b.persons || [], witnesses: b.witnesses || [], measures: b.measures || null, insurer: b.insurer || null,
+          insurer_notified_at: b.insurer_notified_at || (b.status === "gemeldet" ? new Date().toISOString() : null), status: b.status || "offen", created_at: new Date().toISOString(), created_by: ME, photos: b.photos || [], signature_data: b.signature_data || null };
+        P43.inc.unshift(ni); return ok(incLite(ni)); }
+      var il = incList().slice().sort(function (a, c) { return c.occurred_at.localeCompare(a.occurred_at); }); if (q.get("status")) il = il.filter(function (i) { return i.status === q.get("status"); }); return ok(il.map(incLite)); }
+    if ((mm = p.match(/^\/api\/incidents\/([^/]+)$/))) { var ix = byId(P43.inc, mm[1]); if (!ix) return nf();
+      if (m === "DELETE") { remove(P43.inc, mm[1]); return ok({ ok: true }); }
+      if (m === "PATCH") { ["kind", "occurred_at", "location", "description", "persons", "witnesses", "measures", "photos", "signature_data", "insurer", "insurer_notified_at", "status"].forEach(function (k) { if (b[k] !== undefined) ix[k] = b[k]; });
+        if (b.status === "gemeldet" && b.insurer_notified_at === undefined && !ix.insurer_notified_at) ix.insurer_notified_at = new Date().toISOString(); return ok(incLite(ix)); }
+      return ok(ix); }
+    // Personalverpflegung
+    if (p === H + "/staff-meal-settings") { if (m === "PUT") { if (!HR43) return deny("Sachbezugswerte stellen Admin oder Leitung Personal ein."); var vv = b.values || {}; P43.mealSet = { values: { "Frühstück": Number(vv["Frühstück"]) || 0, Mittag: Number(vv.Mittag) || 0, Abend: Number(vv.Abend) || 0 }, country: b.country || null }; } return ok(P43.mealSet); }
+    if (p === H + "/staff-meals/counts") {
+      var cf = q.get("from") || todayIso, ct = q.get("to") || add(cf, 1), days43 = {}; for (var cd = cf, cn = 0; cd <= ct && cn < 32; cd = add(cd, 1), cn++) { var wd = new Date(cd + "T12:00:00Z").getUTCDay(), base = wd === 0 || wd === 6 ? 0.6 : 1;
+        days43[cd] = { "Frühstück": Math.round(14 * base) + (cn % 3), Mittag: Math.round(26 * base) + (cn % 4), Abend: Math.round(9 * base) + (cn % 2) };
+        P43.meals.filter(function (r) { return r.meal_date === cd; }).forEach(function (r) { days43[cd][r.meal]++; }); }
+      return ok({ from: cf, to: ct, days: days43 }); }
+    if (p === H + "/staff-meals/month") {
+      if (!HR43) return deny("Die Monatsauswertung sehen Admin und Leitung Personal.");
+      var mo = /^\d{4}-\d{2}$/.test(q.get("month") || "") ? q.get("month") : todayIso.slice(0, 7), vals = P43.mealSet.values, ppl = D.members.filter(function (x) { return x.role !== "viewer"; }).slice(0, 6).map(function (x, i) {
+        var c = { "Frühstück": 6 + (i * 3) % 9, Mittag: 14 + (i * 5) % 8, Abend: 3 + (i * 2) % 6 }; return { user_id: x.user_id, counts: c, amount: r2x(c["Frühstück"] * vals["Frühstück"] + c.Mittag * vals.Mittag + c.Abend * vals.Abend) }; });
+      return ok({ month: mo, from: mo + "-01", to: mo + "-31", values: vals, country: P43.mealSet.country, people: ppl }); }
+    if (p === H + "/staff-meals") {
+      if (m === "POST") { if (!b.meal_date || b.meal_date < todayIso || b.meal_date > add(todayIso, 14)) return ok({ error: "Eintragen geht für heute und die nächsten 14 Tage." }, 400); if (["Frühstück", "Mittag", "Abend"].indexOf(b.meal) < 0) return ok({ error: "Bitte eine Mahlzeit wählen." }, 400);
+        if (P43.meals.some(function (r) { return r.meal_date === b.meal_date && r.meal === b.meal && r.user_id === ME; })) return ok({ error: "Diese Mahlzeit ist schon eingetragen." }, 409);
+        var sm = { id: nid("sm"), user_id: ME, meal_date: b.meal_date, meal: b.meal, created_at: new Date().toISOString() }; P43.meals.push(sm); return ok(sm); }
+      var mf = q.get("from") || todayIso, mt = q.get("to") || add(mf, 1); return ok(P43.meals.filter(function (r) { return r.user_id === ME && r.meal_date >= mf && r.meal_date <= mt; })); }
+    if ((mm = p.match(/^\/api\/staff-meals\/([^/]+)$/)) && m === "DELETE") { remove(P43.meals, mm[1]); return ok({ ok: true }); }
+    // KV-Lohnprüfung (Lohntabelle bewusst leer: Hinweis erscheint in der Oberfläche)
+    if (/^\/api\/(organizations\/[^/]+\/(wage-tables|staff-pay|wage-check)|wage-tables\/|staff-pay\/)/.test(p) && !HR43 && !(m === "GET" && /staff-pay$/.test(p))) return deny("Lohntabellen und Löhne pflegen nur Admin und Leitung Personal.");
+    if (/^\/api\/organizations\/[^/]+\/wage-tables$/.test(p)) {
+      if (m === "POST") { if (!String(b.name || "").trim()) return ok({ error: "Bitte einen Namen angeben (z. B. Kollektivvertrag und Jahr)." }, 400); if (!b.valid_from) return ok({ error: "Bitte das Datum „gültig ab“ angeben." }, 400);
+        var wt = { id: nid("wt"), organization_id: ORG, name: b.name, country: b.country || null, valid_from: b.valid_from, valid_to: b.valid_to || null, groups: b.groups || [] }; P43.wt.unshift(wt); return ok(wt); }
+      return ok(P43.wt); }
+    if ((mm = p.match(/^\/api\/wage-tables\/([^/]+)$/))) { if (m === "DELETE") { remove(P43.wt, mm[1]); P43.pay.forEach(function (x) { if (x.wage_table_id === mm[1]) x.wage_table_id = null; }); return ok({ ok: true }); } var wx = byId(P43.wt, mm[1]); if (!wx) return nf(); Object.assign(wx, b); return ok(wx); }
+    if (/^\/api\/organizations\/[^/]+\/staff-pay$/.test(p)) {
+      if (m === "POST") { if (!b.user_id) return ok({ error: "Bitte eine Person wählen." }, 400); var pw = { id: nid("sp"), organization_id: ORG, user_id: b.user_id, wage_table_id: b.wage_table_id || null, wage_group: b.wage_group || null, pay_type: b.pay_type || "Monat", amount: Number(b.amount) || 0, hours_per_week: Number(b.hours_per_week) || 0, valid_from: b.valid_from || todayIso }; P43.pay.unshift(pw); return ok(pw); }
+      return ok(HR43 ? P43.pay : P43.pay.filter(function (x) { return x.user_id === ME; })); }
+    if ((mm = p.match(/^\/api\/staff-pay\/([^/]+)$/))) { if (m === "DELETE") { remove(P43.pay, mm[1]); return ok({ ok: true }); } var px = byId(P43.pay, mm[1]); if (!px) return nf(); Object.assign(px, b); return ok(px); }
+    if (/^\/api\/organizations\/[^/]+\/wage-check$/.test(p)) {
+      var cur43 = {}; P43.pay.forEach(function (x) { if (x.valid_from > todayIso) return; var c = cur43[x.user_id]; if (!c || x.valid_from > c.valid_from) cur43[x.user_id] = x; });
+      var wr = Object.keys(cur43).map(function (k) { var x = cur43[k], t = byId(P43.wt, x.wage_table_id), amt = Number(x.amount) || 0, hrs2 = Number(x.hours_per_week) || 0;
+        var o = { user_id: x.user_id, pay_id: x.id, wage_table: t ? t.name : null, wage_group: x.wage_group || null, pay_type: x.pay_type, amount: amt, hours_per_week: hrs2 || null, minimum: null, basis: null, diff: null, status: "ok", reason: null };
+        if (!t) return Object.assign(o, { status: "unklar", reason: "Keine Lohntabelle zugeordnet." });
+        var g = (t.groups || []).find(function (y) { return y.key === x.wage_group; }); if (!g) return Object.assign(o, { status: "unklar", reason: "Die Lohngruppe fehlt in der Tabelle." });
+        var mM = Number(g.monthly_min) || 0, hM = Number(g.hourly_min) || 0, have, need;
+        if (x.pay_type === "Stunde") { if (hM > 0) { have = amt; need = hM; o.basis = "Stunde"; } else if (mM > 0 && hrs2 > 0) { have = amt * hrs2 * 4.33; need = mM; o.basis = "Monat"; } }
+        else { if (hM > 0 && hrs2 > 0) { have = amt; need = hM * hrs2 * 4.33; o.basis = "Monat"; } else if (mM > 0) { have = amt; need = mM; o.basis = "Monat"; } }
+        if (need == null) return Object.assign(o, { status: "unklar", reason: "Für diese Lohngruppe ist noch kein Mindestwert eingetragen." });
+        o.minimum = r2x(need); o.diff = r2x(have - need); o.status = have + 0.005 < need ? "zu niedrig" : "ok"; return o; });
+      return ok({ date: todayIso, weeks_per_month: 4.33, rows: wr, warnings: wr.filter(function (r) { return r.status !== "ok"; }).length }); }
+    // Renovierungs-Planer (5 Jahre)
+    if (p === H + "/capex" && m === "POST") {
+      if (!HR43) return deny("Den Renovierungs-Planer pflegen Admin, Gesamtleitung und Leitung Technik."); if (!String(b.component || "").trim()) return ok({ error: "Bitte die Komponente angeben (z. B. Teppich, Matratze)." }, 400);
+      var targets = b.room_type || b.all_rooms ? (D.rooms || []).filter(function (r) { return !b.room_type || r.room_type === b.room_type; }) : [null]; if (!targets.length) return ok({ error: "Keine Zimmer dieses Typs gefunden." }, 400);
+      targets.forEach(function (r) { P43.capex.push({ id: nid("cx"), hotel_id: D.hotel.id, room_id: r ? r.id : (b.room_id || null), area: b.area || (r ? "Zimmer " + r.number : null), component: b.component, installed_on: b.installed_on || null, lifetime_years: Number(b.lifetime_years) || 0, condition: b.condition === "" || b.condition == null ? null : Number(b.condition), unit_cost: Number(b.unit_cost) || 0, quantity: b.quantity == null || b.quantity === "" ? 1 : Number(b.quantity), note: b.note || null, created_at: new Date().toISOString(), rooms: r ? { number: r.number, room_type: r.room_type } : null }); });
+      return ok({ ok: true, created: targets.length }); }
+    if (p === H + "/capex") {
+      var cols = [0, 1, 2, 3, 4].map(function (i) { return yr43 + i; }), sums = {}; cols.forEach(function (y) { sums[y] = 0; });
+      var crows = P43.capex.map(function (it) { var life = Number(it.lifetime_years) || 0, due = it.installed_on && life > 0 ? Number(String(it.installed_on).slice(0, 4)) + Math.ceil(life) : null, why = [];
+        if (due == null) why.push("ohne Einbaudatum oder Lebensdauer"); var cond = Number(it.condition) || 0;
+        if (cond && cond <= 2) { var early = yr43 + (cond === 1 ? 0 : 1); if (due == null || early < due) { due = early; why.push(cond === 1 ? "Zustand sehr schlecht" : "Zustand schlecht"); } }
+        var overdue = due != null && due < yr43, dy2 = due == null ? null : Math.max(due, yr43), cost = r2x((Number(it.unit_cost) || 0) * (Number(it.quantity) || 1)); if (dy2 != null && sums[dy2] !== undefined) sums[dy2] += cost;
+        return Object.assign({}, it, { due_year: dy2, overdue: overdue, reasons: why, cost: cost, tickets_12m: 0 }); });
+      cols.forEach(function (y) { sums[y] = r2x(sums[y]); }); return ok({ years: cols, sums: sums, total: r2x(cols.reduce(function (s, y) { return s + sums[y]; }, 0)), rows: crows }); }
+    if ((mm = p.match(/^\/api\/capex\/([^/]+)$/))) { if (!HR43) return deny("Den Renovierungs-Planer pflegen Admin, Gesamtleitung und Leitung Technik."); if (m === "DELETE") { remove(P43.capex, mm[1]); return ok({ ok: true }); }
+      var cxi = byId(P43.capex, mm[1]); if (!cxi) return nf(); ["component", "area", "room_id", "installed_on", "lifetime_years", "unit_cost", "quantity", "condition", "note"].forEach(function (k) { if (b[k] !== undefined) cxi[k] = ["lifetime_years", "unit_cost", "quantity"].indexOf(k) >= 0 ? Number(b[k]) || 0 : (b[k] === "" ? null : b[k]); }); return ok(cxi); }
+    /* ===== Paket 043 G (Gäste schützen und mehr verkaufen; Antworten wie routes-guests2.js; nur im Speicher) ===== */
+    if (!D.p43g) {
+      var G2 = D.p43g = {};
+      var lt = function (dayOff, hm) { return new Date(add(todayIso, dayOff) + "T" + hm + ":00").toISOString(); };
+      // (1) Frühwarnung: 2 Gäste im Haus
+      G2.risk = [
+        { id: "gr-1", arrival_guest_id: "ig-1", guest_name: "Dr. Elisabeth Gruber", room: "214", vip: false, arrival_date: add(todayIso, -1), departure_date: add(todayIso, 2), score: 85, reasons: [{ key: "tickets", n: 1 }, { key: "complaint", n: 1 }, { key: "unanswered", n: 1 }], handled_at: null, handled_by: null, note: "" },
+        { id: "gr-2", arrival_guest_id: "ig-2", guest_name: "James Whitfield", room: "408", vip: true, arrival_date: todayIso, departure_date: add(todayIso, 3), score: 55, reasons: [{ key: "feedback", n: 1 }, { key: "vip", n: 1 }], handled_at: null, handled_by: null, note: "" }];
+      // (2) Allergien an zwei heutigen Anreisen (D.arrivals ar-t0, ar-t2)
+      G2.alg = [{ id: "ag-1", arrival_guest_id: "ar-t0", allergens: ["A", "G"], note: "Zöliakie – bitte streng glutenfrei, Milchprodukte laktosefrei", source: "anreise", created_at: nowIso(3) },
+        { id: "ag-2", arrival_guest_id: "ar-t2", allergens: ["H", "E"], note: "Nussallergie, Notfallset (Adrenalin) liegt im Zimmer", source: "rezeption", created_at: nowIso(2) }];
+      G2.rooms = { "ar-t0": "112", "ar-t2": "227" };
+      G2.acks = [{ allergy_id: "ag-1", meal_date: todayIso, meal: "Mittag", department: "Küche", confirmed_by: "u-hkm", confirmed_at: nowIso(1) }, { allergy_id: "ag-1", meal_date: todayIso, meal: "Mittag", department: "Service", confirmed_by: "u-ewa", confirmed_at: nowIso(1) },
+        { allergy_id: "ag-2", meal_date: todayIso, meal: "Mittag", department: "Küche", confirmed_by: "u-hkm", confirmed_at: nowIso(1) }];
+      G2.meals = ["Frühstück", "Mittag", "Abend"]; G2.times = { "Frühstück": "07:00", Mittag: "12:00", Abend: "18:00" };
+      G2.eats = function (g, day, meal) { var dep = g.departure_date || add(g.arrival_date, 1); return meal === "Frühstück" ? (day > g.arrival_date && day <= dep) : (day >= g.arrival_date && day < dep); };
+      G2.rows = function (from, to) { return G2.alg.map(function (a) { var g = byId(D.arrivals, a.arrival_guest_id); return g && a.allergens.length && (g.departure_date || add(g.arrival_date, 1)) >= from && g.arrival_date <= to ? Object.assign({}, a, { guest: g }) : null; }).filter(Boolean); };
+      G2.email = function (id) { var mb = D.members.find(function (x) { return x.user_id === id; }); return mb ? mb.email : ""; };
+      // (3) Transfers
+      var tr = function (id, ag, name, room, dir, off, hm, place, flight, pax, driver, veh, price, notified, note) { return { id: id, hotel_id: D.hotel.id, arrival_guest_id: ag, guest_name: name, room_number: room, direction: dir, pickup_at: lt(off, hm), place: place, flight_no: flight, pax: pax, driver_id: driver, vehicle: veh, price: price, status: "geplant", note: note, guest_token: "demo-transfer-" + id, guest_notified_at: notified, created_at: nowIso(20) }; };
+      G2.tr = [tr("tf-1", "ar-t0", "Familie Berger", "112", "Abholung", 0, "14:20", "Flughafen Innsbruck", "OS 112", 4, ME, "Van Mercedes V-Klasse", 45, null, "2 Kindersitze"),
+        tr("tf-2", "ar-t2", "Marco Ricci", "227", "Abholung", 0, "19:30", "Hauptbahnhof Innsbruck", null, 2, null, "Limousine", 28, null, null),
+        tr("tf-3", "ar-t1", "Dr. Hannah Weiss", null, "Bringen", 1, "06:15", "Flughafen Innsbruck", "LH 2347", 1, "u-hkm", "Limousine", 45, nowIso(5), "VIP – Gepäckhilfe")];
+      // (4) Upgrades
+      G2.freeRooms = [{ id: "fr-1", number: "305", room_type: "Deluxe", status: "Sauber", occupancy: "Unbelegt" }, { id: "fr-2", number: "412", room_type: "Suite", status: "Kontrolliert", occupancy: "Unbelegt" }];
+      G2.returning = { "ar-t0": true };
+      G2.offers = [{ id: "up-1", arrival_guest_id: "ar-0", from_room_type: "Superior", to_room: "301", price: 75, status: "angenommen", decided_by: "u-hkm", decided_at: nowIso(24 * 9), created_at: nowIso(24 * 10) },
+        { id: "up-2", arrival_guest_id: "ar-1", from_room_type: "Deluxe", to_room: "410", price: 120, status: "abgelehnt", decided_by: "u-hkm", decided_at: nowIso(24 * 5), created_at: nowIso(24 * 5) },
+        { id: "up-3", arrival_guest_id: "ar-2", from_room_type: "Superior", to_room: "308", price: 50, status: "angenommen", decided_by: "u-hkm", decided_at: nowIso(24 * 3), created_at: nowIso(24 * 3) }];
+      G2.trOut = function (x) { var o = Object.assign({}, x); delete o.guest_token; o.link = location.origin + location.pathname.replace(/[^/]*$/, "") + "transfer.html?t=" + encodeURIComponent(x.guest_token) + "&demo=1"; return o; };
+    }
+    var G2d = D.p43g, FRONT = ROLE === "admin" || ROLE === "manager";
+    if (/^\/api\/(hotels\/[^/]+\/(guest-risk|upgrades)|guest-risk\/|upgrades\/)/.test(p) && !FRONT) return deny("Das sieht die Rezeption.");
+    if (p === H + "/guest2-settings" && m === "PUT") {
+      if (ROLE !== "admin") return deny("Nur Admins können das einstellen.");
+      if (b.upgrade_settings !== undefined) { var us = b.upgrade_settings || {}; D.hotel.upgrade_settings = { enabled: !!us.enabled, ranking: (Array.isArray(us.ranking) ? us.ranking : []).map(function (x) { return String(x).trim(); }).filter(Boolean).slice(0, 20), price_per_step: Number(us.price_per_step) > 0 ? Math.round(Number(us.price_per_step) * 100) / 100 : 0 }; }
+      if (b.transfer_settings !== undefined) { var ts = b.transfer_settings || {}, pl = (Array.isArray(ts.places) ? ts.places : []).map(function (x) { return String(x).trim(); }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 20), pr = {};
+        pl.forEach(function (x) { var v = Number(String((ts.prices || {})[x]).replace(",", ".")); if (v >= 0 && (ts.prices || {})[x] !== "" && (ts.prices || {})[x] != null) pr[x] = v; }); D.hotel.transfer_settings = { enabled: !!ts.enabled, places: pl, prices: pr }; }
+      return ok(D.hotel); }
+    if (p === H + "/guest-risk") return ok(G2d.risk.filter(function (r) { return r.score > 0 || q.get("all") === "1"; }).map(function (r) { return Object.assign({ likely_unhappy: r.score >= 70 }, r); }).sort(function (a, c) { return (a.handled_at ? 1 : 0) - (c.handled_at ? 1 : 0) || c.score - a.score; }));
+    if ((mm = p.match(/^\/api\/guest-risk\/([^/]+)$/)) && m === "PATCH") { var gr = byId(G2d.risk, mm[1]); if (!gr) return nf(); if (b.handled !== undefined) { gr.handled_at = b.handled ? new Date().toISOString() : null; gr.handled_by = b.handled ? ME : null; } if (b.note !== undefined) gr.note = String(b.note || "").slice(0, 1000);
+      return ok({ id: gr.id, arrival_guest_id: gr.arrival_guest_id, score: gr.score, reasons: gr.reasons, handled_at: gr.handled_at, handled_by: gr.handled_by, note: gr.note }); }
+    if ((mm = p.match(/^\/api\/arrivals\/([^/]+)\/allergies$/))) {
+      var ga = G2d.alg.find(function (a) { return a.arrival_guest_id === mm[1]; });
+      if (m === "PUT") { if (!byId(D.arrivals, mm[1])) return ok({ error: "Gast nicht gefunden." }, 404); var KEYS = "ABCDEFGHLMNOPR".split(""), al = KEYS.filter(function (k) { return (Array.isArray(b.allergens) ? b.allergens : []).map(function (x) { return String(x).toUpperCase(); }).indexOf(k) >= 0; }), nt = String(b.note || "").trim().slice(0, 500) || null;
+        if (!al.length && !nt) { if (ga) remove(G2d.alg, ga.id); return ok(null); }
+        if (ga) { ga.allergens = al; ga.note = nt; ga.source = "rezeption"; } else { ga = { id: nid("ag"), arrival_guest_id: mm[1], allergens: al, note: nt, source: "rezeption", created_at: new Date().toISOString() }; G2d.alg.push(ga); }
+        return ok(ga); }
+      return ok(ga || null); }
+    if (p === H + "/allergy-board") {
+      var day = /^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "") ? q.get("date") : todayIso, lst = G2d.rows(day, day);
+      return ok({ date: day, meals: G2d.meals.map(function (meal) {
+        var gs = lst.filter(function (a) { return G2d.eats(a.guest, day, meal); }).map(function (a) { var ak = {}; G2d.acks.filter(function (k) { return k.allergy_id === a.id && k.meal === meal && k.meal_date === day; }).forEach(function (k) { ak[k.department] = { by: k.confirmed_by, at: k.confirmed_at }; });
+          return { allergy_id: a.id, guest_name: a.guest.guest_name, room: G2d.rooms[a.guest.id] || a.guest.assigned_room || "", persons: (a.guest.adults || 0) + (a.guest.children || 0) || null, allergens: a.allergens, note: a.note || "", source: a.source, acks: ak }; })
+          .sort(function (x, y) { return String(x.room).localeCompare(String(y.room), "de", { numeric: true }); });
+        return { meal: meal, start: G2d.times[meal], guests: gs, missing: gs.length ? ["Küche", "Service"].filter(function (d) { return gs.some(function (g) { return !g.acks[d]; }); }) : [] }; }) }); }
+    if ((mm = p.match(/^\/api\/allergies\/([^/]+)\/ack$/)) && m === "POST") {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.meal_date || "")) || G2d.meals.indexOf(b.meal) < 0 || ["Küche", "Service"].indexOf(b.department) < 0) return ok({ error: "Bitte Tag, Mahlzeit und Bereich (Küche/Service) angeben." }, 400);
+      if (b.meal_date < add(todayIso, -1) || b.meal_date > add(todayIso, 1)) return ok({ error: "Bestätigen geht nur für gestern, heute und morgen." }, 400);
+      if (!byId(G2d.alg, mm[1])) return nf();
+      if (G2d.acks.some(function (k) { return k.allergy_id === mm[1] && k.meal_date === b.meal_date && k.meal === b.meal && k.department === b.department; })) return ok({ ok: true, already: true });
+      var ak2 = { allergy_id: mm[1], meal_date: b.meal_date, meal: b.meal, department: b.department, confirmed_by: ME, confirmed_at: new Date().toISOString() }; G2d.acks.push(ak2); return ok(ak2); }
+    if (p === H + "/allergy-protocol") {
+      var pto = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : todayIso, pfr = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : add(pto, -6); if (pfr > pto) pfr = pto;
+      var prow = G2d.rows(pfr, pto), prs = []; for (var pd = pfr, pn = 0; pd <= pto && pn < 63; pd = add(pd, 1), pn++) G2d.meals.forEach(function (meal) { prow.filter(function (a) { return G2d.eats(a.guest, pd, meal); }).forEach(function (a) {
+        prs.push({ date: pd, meal: meal, guest_name: a.guest.guest_name, room: G2d.rooms[a.guest.id] || a.guest.assigned_room || "", allergens: a.allergens, note: a.note || "", acks: ["Küche", "Service"].map(function (dep) { var k = G2d.acks.find(function (x) { return x.allergy_id === a.id && x.meal_date === pd && x.meal === meal && x.department === dep; }); return { department: dep, by: k ? G2d.email(k.confirmed_by) : null, at: k ? k.confirmed_at : null }; }) }); }); });
+      return ok({ from: pfr, to: pto, rows: prs }); }
+    if (p === H + "/transfers") {
+      if (m === "POST") {
+        var tg = b.arrival_guest_id ? byId(D.arrivals, b.arrival_guest_id) : null, tname = String(b.guest_name || (tg && tg.guest_name) || "").trim(); if (!tname) return ok({ error: "Bitte den Namen des Gastes angeben." }, 400);
+        if (["Abholung", "Bringen"].indexOf(b.direction) < 0) return ok({ error: "Bitte Abholung oder Bringen wählen." }, 400); var pk = new Date(String(b.pickup_at || "")); if (!b.pickup_at || isNaN(pk.getTime())) return ok({ error: "Bitte Datum und Uhrzeit der Fahrt angeben." }, 400);
+        var tplace = String(b.place || "").trim(); if (!tplace) return ok({ error: "Bitte den Ort angeben (z. B. Flughafen, Bahnhof)." }, 400);
+        var tpax = Math.round(Number(b.pax == null || b.pax === "" ? 1 : b.pax)); if (!(tpax >= 1 && tpax <= 60)) return ok({ error: "Bitte die Personenzahl angeben (1–60)." }, 400);
+        var tprice = b.price === "" || b.price == null ? ((D.hotel.transfer_settings || {}).prices || {})[tplace] : Number(String(b.price).replace(",", ".")); if (tprice != null && !(tprice >= 0)) return ok({ error: "Ungültiger Preis." }, 400);
+        var nt2 = { id: nid("tf"), hotel_id: D.hotel.id, arrival_guest_id: b.arrival_guest_id || null, guest_name: tname, room_number: b.room_number || (tg && (G2d.rooms[tg.id] || tg.assigned_room)) || null, direction: b.direction, pickup_at: pk.toISOString(), place: tplace, flight_no: b.flight_no || null, pax: tpax, driver_id: b.driver_id || null, vehicle: b.vehicle || null, price: tprice == null ? null : tprice, status: "geplant", note: b.note || null, guest_token: "demo-transfer-" + nextId, guest_notified_at: null, created_at: new Date().toISOString() };
+        G2d.tr.push(nt2); return ok(G2d.trOut(nt2)); }
+      var tfrom = q.get("from") || add(todayIso, -1), tto = q.get("to") || add(tfrom, 14), lo = Date.parse(tfrom + "T00:00:00"), hi = Date.parse(add(tto, 1) + "T00:00:00");
+      return ok(G2d.tr.filter(function (x) { var t = Date.parse(x.pickup_at); return t >= lo && t <= hi && (q.get("mine") !== "1" || x.driver_id === ME); }).sort(function (a, c) { return a.pickup_at.localeCompare(c.pickup_at); }).map(G2d.trOut)); }
+    if ((mm = p.match(/^\/api\/transfers\/([^/]+)\/notify$/)) && m === "POST") {
+      var tn = byId(G2d.tr, mm[1]); if (!tn) return nf(); if (!FRONT) return deny("Gäste benachrichtigt die Rezeption."); if (["erledigt", "abgesagt"].indexOf(tn.status) >= 0) return ok({ error: "Dieser Transfer ist schon abgeschlossen." }, 400);
+      var tag = tn.arrival_guest_id ? byId(D.arrivals, tn.arrival_guest_id) : null, tmail = String(b.email || (tag && tag.email) || "").trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(tmail)) return ok({ error: "Bitte eine gültige E-Mail-Adresse des Gastes angeben." }, 400);
+      tn.guest_notified_at = new Date().toISOString(); return ok(G2d.trOut(tn)); }
+    if ((mm = p.match(/^\/api\/transfers\/([^/]+)\/bill$/)) && m === "POST") {
+      var tb = byId(G2d.tr, mm[1]); if (!tb) return nf(); if (!FRONT) return deny("Abrechnen darf die Rezeption."); if (!(Number(tb.price) > 0)) return ok({ error: "Für diesen Transfer ist kein Preis eingetragen." }, 400); if (tb.status === "abgesagt") return ok({ error: "Abgesagte Transfers werden nicht abgerechnet." }, 400);
+      if (!tb.room_number) return ok({ billed: false, hint: "Kein passendes Zimmer gefunden – bitte den Betrag an der Rezeption bzw. im PMS auf die Rechnung buchen." });
+      if (tb.billed) return ok({ billed: true, already: true }); tb.billed = true; return ok({ billed: true, room: tb.room_number, hint: "Als bestätigte Gäste-Bestellung eingetragen. Ins PMS wird nichts automatisch übertragen." }); }
+    if ((mm = p.match(/^\/api\/transfers\/([^/]+)$/))) {
+      var tx = byId(G2d.tr, mm[1]); if (!tx) return nf();
+      if (m === "DELETE") { remove(G2d.tr, mm[1]); return ok({ ok: true }); }
+      if (m === "PATCH") { if (Object.keys(b).every(function (k) { return k === "status"; })) { if (["geplant", "unterwegs", "erledigt", "abgesagt"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400); tx.status = b.status; return ok(G2d.trOut(tx)); }
+        ["guest_name", "room_number", "direction", "place", "flight_no", "vehicle", "note", "driver_id", "status"].forEach(function (k) { if (b[k] !== undefined) tx[k] = b[k] === "" ? null : b[k]; });
+        if (b.pickup_at !== undefined) { var pk2 = new Date(String(b.pickup_at)); if (isNaN(pk2.getTime())) return ok({ error: "Bitte Datum und Uhrzeit der Fahrt angeben." }, 400); tx.pickup_at = pk2.toISOString(); }
+        if (b.pax !== undefined) tx.pax = Math.round(Number(b.pax)) || 1; if (b.price !== undefined) tx.price = b.price === "" || b.price == null ? null : Number(String(b.price).replace(",", ".")); return ok(G2d.trOut(tx)); } }
+    if ((mm = p.match(/^\/api\/public\/transfer\/([^/]+)$/))) { var tp = G2d.tr.find(function (x) { return x.guest_token === mm[1]; }); if (!tp) return ok({ error: "Dieser Link ist nicht (mehr) gültig." }, 404);
+      return ok({ hotel: { name: D.hotel.name, logo_data: null, brand_color: null }, guest_first: String(tp.guest_name).split(/\s+/)[0], direction: tp.direction, pickup_at: tp.pickup_at, tz: "Europe/Vienna", place: tp.place, flight_no: tp.flight_no, pax: tp.pax, vehicle: tp.vehicle, driver: tp.driver_id ? "Hans" : "", status: tp.status }); }
+    if (p === H + "/upgrades" && m === "POST") {
+      var ug = byId(D.arrivals, b.arrival_guest_id); if (!ug) return ok({ error: "Bitte einen Gast wählen." }, 400); if (!String(b.to_room || "").trim()) return ok({ error: "Bitte ein Zimmer wählen." }, 400);
+      var up = Number(String(b.price == null ? 0 : b.price).replace(",", ".")); if (!(up >= 0)) return ok({ error: "Ungültiger Preis." }, 400);
+      var no = { id: nid("up"), arrival_guest_id: ug.id, from_room_type: b.from_room_type || ug.room_type || null, to_room: String(b.to_room).trim(), price: up, status: "vorgeschlagen", decided_by: null, decided_at: null, created_at: new Date().toISOString() }; G2d.offers.unshift(no); return ok(no); }
+    if ((mm = p.match(/^\/api\/upgrades\/([^/]+)$/)) && m === "PATCH") {
+      var uo = byId(G2d.offers, mm[1]); if (!uo) return nf(); if (["vorgeschlagen", "angenommen", "abgelehnt"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400);
+      uo.status = b.status; uo.decided_by = b.status === "vorgeschlagen" ? null : ME; uo.decided_at = b.status === "vorgeschlagen" ? null : new Date().toISOString(); if (b.price !== undefined) { var pp = Number(String(b.price).replace(",", ".")); if (!(pp >= 0)) return ok({ error: "Ungültiger Preis." }, 400); uo.price = pp; }
+      var hint = null; if (b.status === "angenommen") { G2d.rooms[uo.arrival_guest_id] = uo.to_room; hint = "Zimmer " + uo.to_room + " beim Gast eingetragen. Bitte auch im PMS umbuchen und den Preis abrechnen."; }
+      return ok(Object.assign({}, uo, { hint: hint })); }
+    if (p === H + "/upgrades") {
+      var us2 = D.hotel.upgrade_settings || { enabled: false, ranking: [], price_per_step: 0 }, tdy = todayIso, dayAgo = add(tdy, -1);
+      var todays = G2d.offers.filter(function (o) { return String(o.created_at).slice(0, 10) >= dayAgo; }), offered = {}; todays.forEach(function (o) { offered[o.arrival_guest_id] = 1; });
+      var takenR = {}; todays.filter(function (o) { return o.status !== "abgelehnt"; }).forEach(function (o) { takenR[o.to_room] = 1; });
+      var rank = function (t) { return us2.ranking.findIndex(function (x) { return x.toLowerCase() === String(t || "").trim().toLowerCase(); }); };
+      var sugg = [];
+      if (us2.enabled && us2.ranking.length) {
+        var freeL = G2d.freeRooms.filter(function (r) { return !takenR[r.number] && rank(r.room_type) >= 0; }).sort(function (a, c) { return rank(a.room_type) - rank(c.room_type); });
+        var cand = D.arrivals.filter(function (g) { return g.arrival_date === tdy && !offered[g.id] && rank(g.room_type) >= 0 && rank(g.room_type) < us2.ranking.length - 1; }).map(function (g) { return { g: g, ret: !!G2d.returning[g.id], nights: g.departure_date ? Math.max(1, dayDiff(g.arrival_date, g.departure_date)) : 1 }; })
+          .sort(function (a, c) { return (c.g.vip ? 1 : 0) - (a.g.vip ? 1 : 0) || (c.ret ? 1 : 0) - (a.ret ? 1 : 0) || c.nights - a.nights; });
+        var usedR = {}; cand.forEach(function (c) { var from = rank(c.g.room_type), r = freeL.find(function (x) { return !usedR[x.id] && rank(x.room_type) > from; }); if (!r) return; usedR[r.id] = 1; var steps = rank(r.room_type) - from;
+          sugg.push({ arrival_guest_id: c.g.id, guest_name: c.g.guest_name, vip: !!c.g.vip, returning: c.ret, nights: c.nights, from_room_type: c.g.room_type, to_room: r.number, to_room_type: r.room_type, room_ready: ["Sauber", "Kontrolliert"].indexOf(r.status) >= 0, steps: steps, price: Math.round(steps * us2.price_per_step * c.nights * 100) / 100 }); }); }
+      var acc = G2d.offers.filter(function (o) { return o.status === "angenommen"; }), dec = G2d.offers.filter(function (o) { return o.status === "abgelehnt"; }), mo2 = {};
+      acc.forEach(function (o) { var k = String(o.decided_at || o.created_at).slice(0, 7); mo2[k] = Math.round(((mo2[k] || 0) + o.price) * 100) / 100; });
+      return ok({ settings: us2, suggestions: sugg, today: todays.map(function (o) { var gg = byId(D.arrivals, o.arrival_guest_id); return Object.assign({}, o, { guest_name: gg ? gg.guest_name : "" }); }),
+        stats: { offered: G2d.offers.length, accepted: acc.length, declined: dec.length, open: G2d.offers.filter(function (o) { return o.status === "vorgeschlagen"; }).length, rate: acc.length + dec.length ? Math.round(acc.length * 100 / (acc.length + dec.length)) : null,
+          revenue: Math.round(acc.reduce(function (s, o) { return s + o.price; }, 0) * 100) / 100, months: Object.keys(mo2).sort().map(function (k) { return { month: k, revenue: mo2[k] }; }) } }); }
     return ok({});
   };
 })();

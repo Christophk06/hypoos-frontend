@@ -88,30 +88,37 @@ function ArrivalAllergyEditor({guest, api}){
   useEffect(()=>{ api("/api/arrivals/"+guest.id+"/allergies").then(setCur).catch(()=>setCur(null)); },[guest.id]);
   if(cur===undefined) return null;
   const save = async () => { setBusy(true); setMsg(null);
-    try { const r = await api("/api/arrivals/"+guest.id+"/allergies","PUT",{allergens:edit.allergens, note:edit.note}); setCur(r); setEdit(null); setMsg({ok:true,text:tf("Gespeichert.")}); }
+    try { const r = await api("/api/arrivals/"+guest.id+"/allergies","PUT",{allergens:edit.allergens, staff_note:edit.staff_note}); setCur(r); setEdit(null); setMsg({ok:true,text:tf("Gespeichert.")}); }
     catch(e){ setMsg({ok:false,text:e.message}); } setBusy(false); };
-  const has = cur && ((cur.allergens||[]).length || cur.note);
+  const has = cur && !cur.removed_at && ((cur.allergens||[]).length || cur.staff_note || cur.guest_note);
   return (
     <div style={{marginTop:6}}>
       {!edit && <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-        {has ? <Pill color={BAD} bg={BAD_SOFT}>⚠ {tf("Allergien")}: {(cur.allergens||[]).map(gzAllergenName).join(", ")}{cur.note ? " · "+cur.note : ""}</Pill> : <span style={{fontSize:13,color:INK_MUTED}}>{tf("Keine Allergien bekannt")}</span>}
+        {has ? <Pill color={BAD} bg={BAD_SOFT}>⚠ {tf("Allergien")}: {(cur.allergens||[]).map(gzAllergenName).join(", ")}</Pill> : <span style={{fontSize:13,color:INK_MUTED}}>{tf("Keine Allergien bekannt")}</span>}
         {has && cur.source==="anreise" && <span style={{fontSize:12,color:INK_MUTED}}>{tf("vom Gast angegeben")}</span>}
-        {gzIsReception() && <button style={gzBtn} onClick={()=>setEdit({allergens:(cur&&cur.allergens)||[], note:(cur&&cur.note)||""})}>{has ? tf("Allergien ändern") : tf("Allergien eintragen")}</button>}
+        {cur && cur.removed_at && <span style={{fontSize:12,color:INK_MUTED}}>{tf("Allergien entfernt am {0}", fmtDateTime(cur.removed_at))}</span>}
+        {gzIsReception() && <button style={gzBtn} onClick={()=>setEdit({allergens:(cur&&!cur.removed_at&&cur.allergens)||[], staff_note:(cur&&cur.staff_note)||""})}>{has ? tf("Allergien ändern") : tf("Allergien eintragen")}</button>}
       </div>}
       {edit && <div style={{border:`1px solid ${BORDER}`,borderRadius:8,padding:10}}>
         <GzAllergenPicker value={edit.allergens} onChange={(a)=>setEdit({...edit,allergens:a})} />
-        <Field label={tf("Hinweis für Küche und Service")}><textarea className="input" rows={2} maxLength={500} value={edit.note} onChange={e=>setEdit({...edit,note:e.target.value})} /></Field>
+        {cur && cur.guest_note && <div style={{fontSize:13,margin:"8px 0"}}>{tf("Hinweis des Gastes")}: <span data-no-i18n="">{cur.guest_note}</span></div>}
+        <Field label={tf("Interne Notiz (nur Rezeption)")}><textarea className="input" rows={2} maxLength={1000} value={edit.staff_note} onChange={e=>setEdit({...edit,staff_note:e.target.value})} /></Field>
         <div style={{display:"flex",gap:8}}><button className="btn-primary" style={gzMain} disabled={busy} onClick={save}>{busy?"…":tf("Speichern")}</button><button style={gzBtn} onClick={()=>setEdit(null)}>{tf("Abbrechen")}</button></div>
+      </div>}
+      {!edit && cur && !cur.removed_at && (cur.guest_note || cur.staff_note) && <div style={{fontSize:13,marginTop:4}}>
+        {cur.guest_note && <div>{tf("Hinweis des Gastes")}: <span data-no-i18n="">{cur.guest_note}</span></div>}
+        {cur.staff_note && <div style={{color:INK_MUTED}}>{tf("Interne Notiz")}: <span data-no-i18n="">{cur.staff_note}</span></div>}
       </div>}
       {gzMsg(msg)}
     </div>
   );
 }
 function gzProtocolHtml(hotel, d){
-  const yes = (a) => a.at ? fsEsc((a.by||"").split("@")[0]+" · "+fmtDateTime(a.at)) : '<span class="bad">'+fsT("fehlt")+'</span>';
+  // Bestätigung mit Momentaufnahme: weicht der damals bestätigte Stand vom heutigen ab, steht er dabei
+  const yes = (a, r) => a.at ? fsEsc((a.by||"").split("@")[0]+" · "+fmtDateTime(a.at)) + (a.allergens && a.allergens.join(",")!==r.allergens.join(",") ? '<br><small>'+fsT("bestätigt für")+': '+fsEsc(a.allergens.join(", ")||"–")+'</small>' : '') : '<span class="bad">'+fsT("fehlt")+'</span>';
   return FS_TABLE+'<div class="fs land" style="--fs-accent:'+fsEsc(hotel.brand_color||"#A9834B")+'">'+fsHead(hotel, translateString("Allergie-Protokoll Küche und Service"), fmtDate(d.from)+" – "+fmtDate(d.to))
     + '<table class="t"><thead><tr><th>'+fsT("Tag")+'</th><th>'+fsT("Mahlzeit")+'</th><th>'+fsT("Gast")+'</th><th>'+fsT("Zimmer")+'</th><th>'+fsT("Allergene")+'</th><th>'+fsT("Küche")+'</th><th>'+fsT("Service")+'</th></tr></thead><tbody>'
-    + (d.rows.length ? d.rows.map(r=>'<tr><td>'+fsEsc(fmtDate(r.date))+'</td><td>'+fsT(r.meal)+'</td><td>'+fsEsc(r.guest_name)+'</td><td>'+fsEsc(r.room)+'</td><td>'+fsEsc(r.allergens.map(k=>k+" "+gzAllergenName(k)).join(", "))+(r.note?'<br><i>'+fsEsc(r.note)+'</i>':'')+'</td><td>'+yes(r.acks[0])+'</td><td>'+yes(r.acks[1])+'</td></tr>').join("")
+    + (d.rows.length ? d.rows.map(r=>'<tr><td>'+fsEsc(fmtDate(r.date))+'</td><td>'+fsT(r.meal)+'</td><td>'+fsEsc(r.guest_name)+'</td><td>'+fsEsc(r.room)+'</td><td>'+fsEsc(r.allergens.map(k=>k+" "+gzAllergenName(k)).join(", "))+(r.note?'<br><i>'+fsEsc(r.note)+'</i>':'')+'</td><td>'+yes(r.acks[0], r)+'</td><td>'+yes(r.acks[1], r)+'</td></tr>').join("")
       : '<tr><td colspan="7">'+fsT("Keine Gäste mit Allergien in diesem Zeitraum.")+'</td></tr>')
     + '</tbody></table>'+fsFoot()+'</div>';
 }

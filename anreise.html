@@ -213,7 +213,7 @@ if (!token && !demo) { state.error = t("invalid"); render(); }
 else api("/api/public/arrival/" + encodeURIComponent(token)).then(function (i) {
   state.info = i; state.extras = (i.chosen || []).slice(); state.skipRead = true;
   if (i.registration && i.registration.enabled) { var d = i.registration.data || {}; state.reg = { birth_date: d.birth_date || "", nationality: d.nationality || "", street: d.street || "", zip: d.zip || "", city: d.city || "", address_country: d.address_country || "", id_doc_type: d.id_doc_type || "", id_doc_number: "", companions: (d.companions || []).map(function (c) { return { name: c.name || "", birth_date: c.birth_date || "", nationality: c.nationality || "" }; }) }; } state.eta = i.eta || ""; state.note = i.note || ""; state.sent = !!i.answered;
-  if (i.allergies) { state.alg = (i.allergies.allergens || []).filter(function (k) { return ALG.indexOf(k) >= 0; }); state.algNote = i.allergies.note || ""; }
+  if (i.allergies) { state.alg = (i.allergies.allergens || []).filter(function (k) { return ALG.indexOf(k) >= 0; }); state.algNote = i.allergies.guest_note || ""; }
   var chosenLang = null; try { chosenLang = localStorage.getItem("ouv_guest_lang"); } catch (e) {}
   if (i.guest.language && T[i.guest.language] && !chosenLang) { lang = i.guest.language; $("lang").value = lang; }
   brand(i.hotel); render();

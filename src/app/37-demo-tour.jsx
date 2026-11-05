@@ -24,24 +24,30 @@ function demoTourSteps(role){
 function demoTourSeen(){ try { return localStorage.getItem(DEMO_TOUR_KEY)==="1"; } catch(e){ return false; } }
 function demoTourMarkSeen(){ try { localStorage.setItem(DEMO_TOUR_KEY,"1"); } catch(e){} }
 
+// Seit Paket 044 auch für echte Konten: startet beim ersten Login, „gesehen“ steht in user_settings.tours.main
 function DemoTourButton({onStart}){
-  if(!window.OUVERTURE_DEMO) return null;
   return <button type="button" className="no-print" onClick={onStart} style={{background:"none",border:`1px solid ${BRASS}`,color:INK,borderRadius:6,padding:"6px 12px",fontSize:12.5,cursor:"pointer"}}><Icon n="compass" /> {tf("Tour starten")}</button>;
 }
 
-function DemoTour({tab, setTab, role}){
+function DemoTour({tab, setTab, role, api, nav}){
+  const real = !window.OUVERTURE_DEMO;
   const [open,setOpen] = useState(false);
   const [i,setI] = useState(0);
   const nextRef = React.useRef(null);
   const panelRef = React.useRef(null);
   const prevFocus = React.useRef(null);
-  const steps = demoTourSteps(role);
+  const navKeys = (nav||[]).map(n=>n.key);
+  // Nur Schritte zu Bereichen, die im Menü dieser Person stehen (sonst zeigt der Schritt ins Leere)
+  const steps = (real ? DEMO_TOUR_STEPS.filter(s=>s.tab!=="billing") : demoTourSteps(role)).filter(s=>!navKeys.length || navKeys.includes(s.tab));
   const step = steps[Math.min(i, steps.length-1)];
   // Beim ersten Besuch automatisch starten
   useEffect(()=>{
-    if(!window.OUVERTURE_DEMO || demoTourSeen()) return;
-    const t = setTimeout(()=>{ setI(0); setOpen(true); }, 800);
-    return ()=>clearTimeout(t);
+    let t = null, gone = false;
+    if(real){
+      if(!api) return;
+      api("/api/me/tours").then(x=>{ if(!gone && !(x && x.main)) t = setTimeout(()=>{ setI(0); setOpen(true); }, 1200); }).catch(()=>{});
+    } else if(!demoTourSeen()) t = setTimeout(()=>{ setI(0); setOpen(true); }, 800);
+    return ()=>{ gone = true; if(t) clearTimeout(t); };
   },[]);
   // Knopf „Tour starten“ löst ein Ereignis aus, falls die Hauptsitzung es so verdrahtet
   useEffect(()=>{
@@ -51,7 +57,8 @@ function DemoTour({tab, setTab, role}){
   },[]);
   // Beim Schließen den Fokus dorthin zurückgeben, wo er vor der Tour war (sonst an den Hauptbereich)
   const close = useCallback(()=>{
-    setOpen(false); demoTourMarkSeen();
+    setOpen(false);
+    if(real){ if(api) api("/api/me/tours","PATCH",{main:true}).catch(()=>{}); } else demoTourMarkSeen();
     const p = prevFocus.current; prevFocus.current = null;
     setTimeout(()=>{ const t = (p && p!==document.body && document.contains(p)) ? p : document.getElementById("inhalt"); if(t && t.focus) t.focus({preventScroll:true}); }, 0);
   },[]);
@@ -73,14 +80,14 @@ function DemoTour({tab, setTab, role}){
     window.addEventListener("keydown", k);
     return ()=>window.removeEventListener("keydown", k);
   },[open,steps.length,close]);
-  if(!window.OUVERTURE_DEMO || !open || !step) return null;
+  if(!open || !step) return null;
   const last = i >= steps.length-1;
   const btn = {borderRadius:6,padding:"8px 14px",fontSize:13.5,cursor:"pointer",minHeight:36};
   return (
     <div ref={panelRef} className="no-print card" role="dialog" aria-modal="false" aria-labelledby="demo-tour-title"
       style={{position:"fixed",insetInlineStart:16,insetInlineEnd:16,bottom:role==="member"?76:16,marginInline:"auto",maxWidth:420,zIndex:1000,padding:"16px 18px",boxShadow:"0 10px 30px rgba(0,0,0,.28)",background:CARD,border:`1px solid ${BRASS}`,borderRadius:10,color:INK}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:6}}>
-        <span style={{fontSize:12,color:INK_MUTED}}>{tf("So eröffnest du ein Hotel mit Ouverture")} · {tf("Schritt {0} von {1}", i+1, steps.length)}</span>
+        <span style={{fontSize:12,color:INK_MUTED}}>{real ? tf("Kurze Einführung in Ouverture") : tf("So eröffnest du ein Hotel mit Ouverture")} · {tf("Schritt {0} von {1}", i+1, steps.length)}</span>
       </div>
       <div aria-live="polite">
         <div id="demo-tour-title" style={{fontWeight:700,fontSize:16,marginBottom:4,color:INK}}><Icon n={step.icon} /> {tf(step.title)}</div>

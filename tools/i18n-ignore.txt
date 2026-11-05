@@ -10,6 +10,7 @@
 &department=
 &department=Housekeeping
 &gt;
+&holidays=
 &lang=
 &lt;
 &max_shift_h=
@@ -39,6 +40,7 @@
 1fr 1fr
 1fr 1fr 1fr
 1fr 1fr 1fr 2fr
+1fr 1fr auto
 2-digit
 210mm
 2fr 1.2fr 1.2fr 1fr
@@ -190,6 +192,7 @@ frei:
 fälligkeit
 geschäftstag
 guest_order.created
+gutschein.html?
 gäste
 hpoos_c:
 hpoos_connection_config_v1
@@ -228,6 +231,7 @@ read:arrivals
 read:rooms
 read:tasks
 read:tickets
+repeat(3, 1fr)
 review.created
 rotate(45deg)
 sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx
@@ -238,6 +242,7 @@ splitRest
 status: dirty, clean, inspected, out of order · occupancy: vacant, occupied, departure, arrival
 stück
 task.done
+tel:
 text/calendar;charset=utf-8
 text/csv
 text/csv;charset=utf-8
@@ -246,6 +251,7 @@ text/plain;charset=utf-8
 text/plain;charset=windows-1252
 ticket.created
 ticket.done
+tisch.html?
 tr-TR
 translateX(-50%)
 vendor/docx.js
@@ -270,6 +276,8 @@ zuständig
 °C</h3><table class="t"><thead><tr><th>
 · Waiting list: scan & we’ll call you.
 · überfällig
+überweisung
 “ eingeben
+“</div>
 📄 PDF
 📘 Word

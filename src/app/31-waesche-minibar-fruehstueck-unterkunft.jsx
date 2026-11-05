@@ -167,7 +167,7 @@ function BreakfastView({hotel, api, onHotel}){
 function HousingView({hotel, api, members}){
   const [units, loadUnits, err] = useList(api, "/api/hotels/"+hotel.id+"/housing-units");
   const [asg, loadAsg] = useList(api, "/api/hotels/"+hotel.id+"/housing-assignments");
-  const [form,setForm] = useState(null); const [move,setMove] = useState(null); const [msg,setMsg] = useState(null);
+  const [form,setForm] = useState(null); const [move,setMove] = useState(null); const [msg,setMsg] = useState(null); const [ho,setHo] = useState(null); const [ded,setDed] = useState(null);
   const today = todayIso(); const money = moneyOf(hotel);
   const run = async (fn, ok) => { setMsg(null); try { await fn(); loadUnits(); loadAsg(); if(ok) setMsg({ok:true,text:ok}); } catch(e){ setMsg({ok:false,text:e.message}); } };
   const current = (u) => (asg||[]).filter(a=>a.unit_id===u.id && a.from_date<=today && (!a.to_date || a.to_date>=today));
@@ -177,6 +177,7 @@ function HousingView({hotel, api, members}){
       <div style={{fontSize:13.5,color:INK_MUTED,marginBottom:12}}>{tf("Zimmer im Personalhaus: wer wohnt wo, seit wann, Kaution und Übergabe. Sehen können das Admins und die Leitung Personal; jede Person sieht ihre eigene Unterkunft.")}</div>
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {err && <ErrorText style={{marginBottom:10}}>{err}</ErrorText>}
+      {isLeadRole() && <HousingPayrollCard hotel={hotel} api={api} members={members} />}
       {!form && <button className="btn-primary" style={{marginBottom:12}} onClick={()=>setForm({name:"", beds:1, rent_month:"", note:""})}>{tf("Unterkunft anlegen")}</button>}
       {form && <Card style={{marginBottom:12,borderColor:BRASS}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(150px, 1fr))",gap:"0 10px"}}>
@@ -201,7 +202,10 @@ function HousingView({hotel, api, members}){
             <div key={a.id} style={{display:"flex",gap:10,flexWrap:"wrap",padding:"6px 0",borderTop:`1px solid ${BORDER}`,fontSize:13,opacity:active?1:0.6}}>
               <span style={{flex:1,minWidth:140}} data-no-i18n="">{nameOf(a)}</span>
               <span style={{color:INK_MUTED}}>{fmtDate(a.from_date)} – {a.to_date ? fmtDate(a.to_date) : tf("offen")}</span>
+              {a.deduction_month!=null && <span>{tf("Abzug")} {money(a.deduction_month)} / {tf("Monat")}</span>}
               {a.deposit!=null && <span>{tf("Kaution")} {money(a.deposit)}{a.deposit_returned_at ? " · "+tf("zurück am {0}", fmtDate(a.deposit_returned_at)) : ""}</span>}
+              <button style={linkBtn} onClick={()=>setHo({a, unit:u})}>{tf("Übergabe-Protokoll")}</button>
+              <button style={linkBtn} onClick={()=>setDed({id:a.id, value:a.deduction_month==null?"":String(a.deduction_month)})}>{tf("Abzug")}</button>
               {active && <button style={linkBtn} onClick={()=>run(()=>api("/api/housing-assignments/"+a.id,"PATCH",{to_date:today}), tf("Auszug eingetragen."))}>{tf("Auszug heute")}</button>}
               {a.deposit!=null && !a.deposit_returned_at && !active && <button style={linkBtn} onClick={()=>run(()=>api("/api/housing-assignments/"+a.id,"PATCH",{deposit_returned_at:today}))}>{tf("Kaution zurück")}</button>}
             </div>); })}
@@ -213,10 +217,18 @@ function HousingView({hotel, api, members}){
           <Field label={tf("Einzug")}><input className="input" type="date" value={move.from_date} onChange={e=>setMove({...move,from_date:e.target.value})} /></Field>
           <Field label={tf("Auszug (optional)")}><input className="input" type="date" value={move.to_date} onChange={e=>setMove({...move,to_date:e.target.value})} /></Field>
         </div>
-        <Field label={tf("Kaution (optional)")}><input className="input" inputMode="decimal" value={move.deposit} onChange={e=>setMove({...move,deposit:e.target.value})} /></Field>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
+          <Field label={tf("Kaution (optional)")}><input className="input" inputMode="decimal" value={move.deposit} onChange={e=>setMove({...move,deposit:e.target.value})} /></Field>
+          <Field label={tf("Abzug pro Monat (optional)")}><input className="input" inputMode="decimal" placeholder={tf("sonst Miete")} value={move.deduction_month||""} onChange={e=>setMove({...move,deduction_month:e.target.value})} /></Field>
+        </div>
         <Field label={tf("Übergabe (Zustand, Schlüssel, Inventar)")}><textarea className="input" rows={3} value={move.handover_note} onChange={e=>setMove({...move,handover_note:e.target.value})} /></Field>
         <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={!move.user_id && !(move.person_name||"").trim()} onClick={()=>run(async()=>{ await api("/api/hotels/"+hotel.id+"/housing-assignments","POST",{...move, holder_name:move.person_name, user_id:move.user_id||null}); setMove(null); }, tf("Einzug eingetragen."))}>{tf("Speichern")}</button><button style={btnLine} onClick={()=>setMove(null)}>{tf("Abbrechen")}</button></div>
       </Overlay>}
+      {ded && <Overlay onClose={()=>setDed(null)} width={380} label={tf("Abzug")}>
+        <Field label={tf("Abzug pro Monat für die Lohnverrechnung (leer = Miete der Unterkunft)")}><input className="input" inputMode="decimal" autoFocus value={ded.value} onChange={e=>setDed({...ded,value:e.target.value})} /></Field>
+        <div style={{display:"flex",gap:8}}><button className="btn-primary" onClick={()=>run(async()=>{ await api("/api/housing-assignments/"+ded.id,"PATCH",{deduction_month:ded.value.trim()}); setDed(null); }, tf("Gespeichert."))}>{tf("Speichern")}</button><button style={btnLine} onClick={()=>setDed(null)}>{tf("Abbrechen")}</button></div>
+      </Overlay>}
+      {ho && <HousingHandoverDialog hotel={hotel} api={api} assignment={ho.a} unitName={ho.unit.name} personName={nameOf(ho.a)} onClose={()=>setHo(null)} />}
     </div>
   );
 }

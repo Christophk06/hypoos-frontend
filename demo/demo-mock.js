@@ -301,6 +301,89 @@
     { id: "ha-5", unit_id: "hu-2", user_id: null, person_name: "Anna K. (Aushilfe)", from_date: add(todayIso, -120), to_date: add(todayIso, -10), deposit: 300, deposit_returned_at: add(todayIso, -8), handover_note: "Sauber zurückgegeben, Kaution erstattet." }
   ].map(function (a) { return Object.assign({ hotel_id: AH, created_at: now.toISOString() }, a); });
   function numOrNull(v) { if (v === "" || v == null) return null; var n = Math.round(Number(String(v).replace(",", ".")) * 100) / 100; return isNaN(n) ? null : n; }
+  /* Paket 044: Preisempfehlung, Tischreservierung, Gutscheine, Unterkunft-Erweiterung (alles nur im Speicher) */
+  D.housing_assignments.forEach(function (a) { if (a.deduction_month === undefined) a.deduction_month = a.id === "ha-1" ? 150 : a.id === "ha-3" ? 120 : null; });
+  var HO = [{ id: "hov-1", assignment_id: "ha-1", hotel_id: AH, kind: "einzug", day: add(todayIso, -200), keys: 2, damages: null, signer_name: null, signature_data: null, created_at: now.toISOString(),
+    meters: { Strom: "12345", Wasser: "208" }, items: [{ label: "Wände und Decke", ok: true, note: null }, { label: "Bett und Matratze", ok: true, note: null }, { label: "Schrank", ok: true, note: null }, { label: "Bad und WC", ok: false, note: "Silikonfuge leicht verfärbt" }, { label: "Fenster und Türen", ok: true, note: null }] },
+    { id: "hov-2", assignment_id: "ha-5", hotel_id: AH, kind: "auszug", day: add(todayIso, -10), keys: 2, damages: "Keine Schäden. Sauber zurückgegeben.", signer_name: "Anna K.", signature_data: null, created_at: now.toISOString(),
+    meters: { Strom: "12980" }, items: [{ label: "Wände und Decke", ok: true, note: null }, { label: "Bad und WC", ok: true, note: null }] }];
+  function hoClean(b, partial) {
+    var o = {}, t = function (v, n) { return String(v == null ? "" : v).replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, n) || null; };
+    if (!partial || b.kind !== undefined) { if (["einzug", "auszug"].indexOf(b.kind) < 0) throw new Error("Bitte Einzug oder Auszug wählen."); o.kind = b.kind; }
+    if (!partial || b.day !== undefined) { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.day || ""))) throw new Error("Bitte ein Datum angeben."); o.day = b.day; }
+    if (b.items !== undefined) { if (!Array.isArray(b.items) || b.items.length > 60) throw new Error("Zu viele Punkte."); o.items = b.items.map(function (x) { return { label: t(x && x.label, 120) || "", ok: x && x.ok === true ? true : x && x.ok === false ? false : null, note: t(x && x.note, 300) }; }).filter(function (x) { return x.label; }); }
+    if (b.meters !== undefined) { var mt = b.meters && typeof b.meters === "object" && !Array.isArray(b.meters) ? b.meters : {}, mo = {}; Object.keys(mt).slice(0, 10).forEach(function (k) { var v = t(mt[k], 40); if (k && v) mo[String(k).slice(0, 40)] = v; }); o.meters = mo; }
+    if (b.keys !== undefined) { var n = b.keys === "" || b.keys == null ? null : Math.round(Number(b.keys)); if (n !== null && !(n >= 0 && n <= 50)) throw new Error("Schlüssel: 0 bis 50."); o.keys = n; }
+    if (b.damages !== undefined) o.damages = t(b.damages, 2000);
+    if (b.signer_name !== undefined) o.signer_name = t(b.signer_name, 120);
+    if (b.signature_data !== undefined) { var sg = b.signature_data || null; if (sg && (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sg) || sg.length > 200000)) throw new Error("Ungültige Unterschrift."); o.signature_data = sg; }
+    return o;
+  }
+  var RT = { settings: { enabled: true, base: { "Standard Doppelzimmer": 129, "Superior Doppelzimmer": 169 }, min: 99, max: 340, weekend_pct: 10, holiday_pct: 15, event_pct: { niedrig: 5, mittel: 15, hoch: 30 },
+    occ_steps: [[30, -10], [50, 0], [70, 8], [85, 15], [95, 25]], lastminute_days: 3, lastminute_pct: -10, early_days: 90, early_pct: 0, rounding: 1 }, decisions: [],
+    events: [{ title: "Stadtfest", start_date: add(todayIso, 12), end_date: add(todayIso, 14), impact: "mittel" }, { title: "Messe Alpin", start_date: add(todayIso, 30), end_date: add(todayIso, 33), impact: "hoch" }] };
+  function rtNum(v, lo, hi, d) { var s = v == null ? "" : String(v), n = Number(s.replace(",", ".")); return s !== "" && isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n * 10) / 10)) : d; }
+  function rtPrice(v) { if (v === "" || v == null) return null; var n = Number(String(v).replace(",", ".")); if (!isFinite(n) || n < 0 || n > 100000) throw new Error("Bitte gültige Preise angeben."); return Math.round(n * 100) / 100; }
+  function cleanRates(o) {
+    o = o || {}; var base = {}; Object.keys(o.base || {}).slice(0, 40).forEach(function (k) { var n = rtPrice(o.base[k]); if (n != null) base[String(k).trim().slice(0, 60)] = n; });
+    var mn = rtPrice(o.min), mx = rtPrice(o.max); if (mn != null && mx != null && mn > mx) throw new Error("Der Mindestpreis ist höher als der Höchstpreis.");
+    var ev = o.event_pct || RT.settings.event_pct, steps = (Array.isArray(o.occ_steps) ? o.occ_steps : RT.settings.occ_steps).filter(function (s) { return Array.isArray(s) && s.length === 2; })
+      .map(function (s) { return [Math.min(100, Math.max(0, Math.round(Number(s[0]) || 0))), rtNum(s[1], -90, 300, 0)]; }).sort(function (a, c) { return a[0] - c[0]; }).slice(0, 10);
+    return { enabled: o.enabled === undefined ? true : !!o.enabled, base: base, min: mn, max: mx, weekend_pct: rtNum(o.weekend_pct, -90, 300, 10), holiday_pct: rtNum(o.holiday_pct, -90, 300, 15),
+      event_pct: { niedrig: rtNum(ev.niedrig, -90, 300, 0), mittel: rtNum(ev.mittel, -90, 300, 0), hoch: rtNum(ev.hoch, -90, 300, 0) }, occ_steps: steps,
+      lastminute_days: Math.min(30, Math.max(0, Math.round(Number(o.lastminute_days)) || 0)), lastminute_pct: rtNum(o.lastminute_pct, -90, 300, 0),
+      early_days: Math.min(365, Math.max(0, Math.round(Number(o.early_days)) || 0)), early_pct: rtNum(o.early_pct, -90, 300, 0), rounding: [1, 5, 10].indexOf(Number(o.rounding)) >= 0 ? Number(o.rounding) : 1 };
+  }
+  function rtOcc(day) { var f = D.forecast.find(function (x) { return x.day === day; }); return f ? f.occupied : [118, 92, 88, 96, 112, 131, 126][new Date(day + "T00:00:00Z").getUTCDay()]; }
+  function rtSuggest(from, days, holidays) {
+    var s = RT.settings, types = Object.keys(s.base), rooms = Number(D.hotel.rooms) || 140, out = [], hol = {}; (holidays || []).forEach(function (h) { hol[h] = 1; });
+    for (var i = 0; i < days; i++) {
+      var day = add(from, i), occ = Math.min(100, Math.round(rtOcc(day) / rooms * 100)), factors = [], st = s.occ_steps.length ? s.occ_steps[0][1] : 0;
+      s.occ_steps.forEach(function (x) { if (occ >= x[0]) st = x[1]; }); if (st) factors.push({ key: "belegung", pct: st });
+      var wd = new Date(day + "T12:00:00Z").getUTCDay(); if ((wd === 5 || wd === 6) && s.weekend_pct) factors.push({ key: "wochenende", pct: s.weekend_pct });
+      if (hol[day] && s.holiday_pct) factors.push({ key: "feiertag", pct: s.holiday_pct });
+      var ev = RT.events.filter(function (e) { return e.start_date <= day && (e.end_date || e.start_date) >= day; }), evMax = ev.reduce(function (mx, e) { return Math.max(mx, s.event_pct[e.impact] || 0); }, 0);
+      if (evMax) factors.push({ key: "ereignis", pct: evMax, label: ev.map(function (e) { return e.title; }).join(", ") });
+      if (i <= s.lastminute_days && s.lastminute_pct && occ < 60) factors.push({ key: "lastminute", pct: s.lastminute_pct });
+      if (i > s.early_days && s.early_pct) factors.push({ key: "fruehbucher", pct: s.early_pct });
+      var total = factors.reduce(function (mm2, f) { return mm2 * (1 + f.pct / 100); }, 1);
+      types.forEach(function (rt) { var pr = s.base[rt] * total; if (s.min != null) pr = Math.max(s.min, pr); if (s.max != null) pr = Math.min(s.max, pr); pr = Math.round(pr / s.rounding) * s.rounding;
+        out.push({ day: day, room_type: rt, base: s.base[rt], price: Math.round(pr * 100) / 100, occupancy: occ, factors: factors }); });
+    }
+    return out;
+  }
+
+  var DN_FB = "Food & Beverage";
+  var DN_TABLES = [["Tisch 1", 2, "Restaurant"], ["Tisch 2", 2, "Restaurant"], ["Tisch 3", 4, "Restaurant"], ["Tisch 4", 4, "Restaurant"], ["Tisch 5", 6, "Restaurant"], ["Terrasse 1", 4, "Terrasse"], ["Terrasse 2", 4, "Terrasse"]]
+    .map(function (x, i) { return { id: "rtb-" + (i + 1), hotel_id: AH, name: x[0], seats: x[1], area: x[2], active: true, sort: i, created_at: now.toISOString() }; });
+  function dnMin(s) { var mt = String(s || "").match(/^(\d{1,2}):(\d{2})$/); return mt && +mt[1] < 24 && +mt[2] < 60 ? +mt[1] * 60 + +mt[2] : null; }
+  function dnTime(n) { return String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0"); }
+  var DN = { settings: { enabled: true, token: "demoTischToken0123456789ab", name: null, open: { "1": [["18:00", "22:00"]], "2": [["18:00", "22:00"]], "3": [["18:00", "22:00"]], "4": [["18:00", "22:00"]], "5": [["12:00", "14:00"], ["18:00", "22:30"]], "6": [["12:00", "14:00"], ["18:00", "22:30"]], "7": [["12:00", "15:00"]] },
+    slot_min: 30, duration_min: 120, max_party: 8, lead_hours: 2, max_days: 60, auto_confirm: true, closed_days: [], note: "Wir freuen uns auf Ihren Besuch." } };
+  DN.res = [[0, 1140, 2, "Familie Bauer", "bestätigt", ["A", "G"], "Kind mit Nussallergie, bitte Küche informieren.", "online", ["rtb-1"], "Z 214"], [0, 1170, 4, "Dr. Hofer", "bestätigt", [], "Jahrestag, Kerze am Tisch.", "intern", ["rtb-3"], null],
+    [0, 1200, 6, "Schmid (Geburtstag)", "angefragt", ["C", "G", "H"], null, "online", [], null], [0, 1110, 2, "Herr Lang", "bestätigt", [], null, "intern", ["rtb-2"], "Z 305"], [0, 1230, 3, "Ana Ferreira", "bestätigt", [], null, "online", ["rtb-4"], null],
+    [1, 1140, 2, "Mayer", "bestätigt", ["N"], "Sellerieallergie", "online", ["rtb-1"], null], [1, 1200, 4, "Kuhn", "angefragt", [], null, "online", [], null], [2, 1170, 5, "Reisegruppe Weber", "bestätigt", [], "Menü vorbestellt.", "intern", ["rtb-5"], null]]
+    .map(function (x, i) { return { id: "trs-" + (i + 1), hotel_id: AH, day: add(todayIso, x[0]), start_min: x[1], duration_min: 120, party: x[2], name: x[3], email: x[7] === "online" ? "gast" + (i + 1) + "@example.com" : null, phone: null, room_no: x[9], allergens: x[5], note: x[6], status: x[4], table_ids: x[8], source: x[7], created_at: now.toISOString() }; });
+  function dnPick(tables, res, start, dur, party) {
+    var busy = {}; res.forEach(function (r) { if ((r.status === "angefragt" || r.status === "bestätigt") && r.start_min < start + dur && start < r.start_min + (r.duration_min || 120)) (r.table_ids || []).forEach(function (t) { busy[t] = 1; }); });
+    var free = tables.filter(function (t) { return t.active !== false && !busy[t.id]; }).sort(function (a, c) { return a.seats - c.seats || (a.sort || 0) - (c.sort || 0); });
+    var one = free.find(function (t) { return t.seats >= party; }); if (one) return [one.id];
+    var best = null; for (var i = 0; i < free.length; i++) for (var j = i + 1; j < free.length; j++) { var a = free[i], c = free[j];
+      if ((a.area || "") !== (c.area || "") || a.seats + c.seats < party) continue; if (!best || a.seats + c.seats < best[2]) best = [a.id, c.id, a.seats + c.seats]; }
+    return best ? [best[0], best[1]] : [];
+  }
+  function dnAllerg(v) { var L = "ABCDEFGHLMNOPR".split(""), list = Array.isArray(v) ? v : String(v || "").split(/[,\s]+/); return list.map(function (x) { return String(x).trim().toUpperCase(); }).filter(function (x, i, a) { return L.indexOf(x) >= 0 && a.indexOf(x) === i; }).sort(); }
+
+  var VC_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  function vcCode() { var g = function () { var s = ""; for (var i = 0; i < 4; i++) s += VC_ALPHA.charAt(Math.floor(Math.random() * VC_ALPHA.length)); return s; }; return g() + "-" + g() + "-" + g(); }
+  var VC = { settings: { enabled: true, token: "demoGutscheinToken0123456789", presets: [50, 100, 150], custom: true, custom_min: 20, custom_max: 1000, valid_years: 0, title: "Gutschein Alpenblick Hotels", text: "Einlösbar für Zimmer, Restaurant und Wellness." } };
+  VC.list = [["AB23-KM7P-XY34", 100, 100, "aktiv", "Julia Berger", "online", "stripe", 3, "Alles Gute zum Geburtstag!", "Martin"], ["CD45-QR8T-WZ56", 150, 70, "aktiv", "Rezeption", "rezeption", "karte", 12, null, "Familie Steiner"],
+    ["EF67-WX9H-AB78", 50, 0, "eingelöst", "Rezeption", "rezeption", "bar", 40, null, null], ["GH89-JL2N-CD34", 200, 200, "aktiv", "Peter Gruber", "online", "stripe", 1, "Schöne Auszeit zu zweit.", "Eva und Tom"], ["JK23-MN4P-EF56", 100, 100, "storniert", "Rezeption", "rezeption", "bar", 25, null, null]]
+    .map(function (x, i) { var t = new Date(now.getTime() - x[7] * 86400000).toISOString(); return { id: "vch-" + (i + 1), hotel_id: AH, code: x[0], title: VC.settings.title, amount: x[1], remaining: x[2], currency: D.hotel.currency || "EUR", status: x[3], buyer_name: x[4], buyer_email: x[5] === "online" ? "kaeufer" + (i + 1) + "@example.com" : null,
+      recipient_name: x[9], message: x[8], valid_until: null, source: x[5], payment_method: x[6], paid_at: t, created_at: t }; });
+  VC.red = [{ id: "vcr-1", voucher_id: "vch-2", amount: 50, note: "Abendessen", redeemed_by: "u-admin", redeemed_at: new Date(now.getTime() - 6 * 86400000).toISOString() }, { id: "vcr-2", voucher_id: "vch-2", amount: 30, note: "Bar", redeemed_by: "u-admin", redeemed_at: new Date(now.getTime() - 2 * 86400000).toISOString() },
+    { id: "vcr-3", voucher_id: "vch-3", amount: 50, note: "Spa-Anwendung", redeemed_by: "u-admin", redeemed_at: new Date(now.getTime() - 30 * 86400000).toISOString() }];
+  var TOURS = {};
 
   /* Migration 038: Gästeprofile, Gästebuchungen, Simulator, Saison-Übergabe, Nachhaltigkeit, Aushilfs-Börse, Lehrlinge */
   var CO2_DEF = { Strom: 0.13, Gas: 0.2, "Wärme": 0.15, "Öl": 0.27, Pellets: 0.03, Wasser: 0.3 };
@@ -1445,13 +1528,13 @@
     if (p === H + "/housing-assignments") {
       if (m === "POST") { if (!byId(D.housing_units, b.unit_id)) return ok({ error: "Unterkunft nicht gefunden." }, 400); if (!b.from_date) return ok({ error: "Bitte ein Einzugsdatum angeben." }, 400);
         var nha = { id: nid("ha"), hotel_id: D.hotel.id, unit_id: b.unit_id, user_id: b.user_id || null, person_name: b.user_id ? null : (b.person_name || b.holder_name || null), from_date: b.from_date, to_date: b.to_date || null,
-          deposit: numOrNull(b.deposit), deposit_returned_at: b.deposit_returned_at || null, handover_note: b.handover_note || null, created_at: new Date().toISOString() };
+          deposit: numOrNull(b.deposit), deposit_returned_at: b.deposit_returned_at || null, handover_note: b.handover_note || null, deduction_month: numOrNull(b.deduction_month), created_at: new Date().toISOString() };
         D.housing_assignments.push(nha); return ok(nha); }
       return ok(D.housing_assignments.slice().sort(function (a, c) { return a.from_date < c.from_date ? 1 : -1; })); }
     if ((mm = p.match(/^\/api\/housing-assignments\/([^/]+)$/))) {
       if (m === "DELETE") { remove(D.housing_assignments, mm[1]); return ok({ ok: true }); }
       var eha = byId(D.housing_assignments, mm[1]); if (!eha) return ok({ error: "Unterkünfte verwalten Admins und die Leitung Personal." }, 403);
-      var pb2 = Object.assign({}, b); if (pb2.holder_name !== undefined) { pb2.person_name = pb2.holder_name; delete pb2.holder_name; } if (pb2.deposit !== undefined) pb2.deposit = numOrNull(pb2.deposit);
+      var pb2 = Object.assign({}, b); if (pb2.holder_name !== undefined) { pb2.person_name = pb2.holder_name; delete pb2.holder_name; } if (pb2.deposit !== undefined) pb2.deposit = numOrNull(pb2.deposit); if (pb2.deduction_month !== undefined) pb2.deduction_month = numOrNull(pb2.deduction_month);
       Object.assign(eha, pb2); return ok(eha); }
 
     /* Migration 038 */
@@ -2378,6 +2461,114 @@
       return ok({ settings: us2, suggestions: sugg, today: todays.map(function (o) { var gg = byId(D.arrivals, o.arrival_guest_id); return Object.assign({}, o, { guest_name: gg ? gg.guest_name : "" }); }),
         stats: { offered: G2d.offers.length, accepted: acc.length, declined: dec.length, open: G2d.offers.filter(function (o) { return o.status === "vorgeschlagen"; }).length, rate: acc.length + dec.length ? Math.round(acc.length * 100 / (acc.length + dec.length)) : null,
           revenue: Math.round(acc.reduce(function (s, o) { return s + o.price; }, 0) * 100) / 100, months: Object.keys(mo2).sort().map(function (k) { return { month: k, revenue: mo2[k] }; }) } }); }
+    /* Paket 044: Preisempfehlung */
+    if (p === H + "/rates" && m === "GET") {
+      var rdays = Math.min(120, Math.max(1, Number(q.get("days")) || 60)), rhol = String(q.get("holidays") || "").split(",").filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); });
+      var rlist = rtSuggest(todayIso, rdays, rhol), adr = [0, 0, 0, 0, 0, 0, 0].map(function (_, w) { return [152, 142, 128, 124, 129, 138, 159][w]; });
+      return ok({ from: todayIso, days: rdays, currency: D.hotel.currency || "EUR", rooms: Number(D.hotel.rooms) || 140, settings: RT.settings, can_edit: lead, adr_weekday: adr, has_forecast: true,
+        rates: rlist.map(function (r) { return Object.assign({}, r, { decision: RT.decisions.find(function (d) { return d.day === r.day && d.room_type === r.room_type; }) || null }); }) }); }
+    if (p === H + "/rate-settings" && m === "PUT") { if (!lead) return deny("Die Einstellungen ändert die Leitung Revenue Management oder Finanzen.");
+      try { RT.settings = cleanRates(b); } catch (e1) { return ok({ error: e1.message }, 400); } return ok(RT.settings); }
+    if ((mm = p.match(/^\/api\/hotels\/[^/]+\/rates\/(\d{4}-\d{2}-\d{2})$/)) && m === "PUT") {
+      var rrt = String(b.room_type || "").trim().slice(0, 60), rfin, rnote = String(b.note || "").trim().slice(0, 300) || null;
+      try { rfin = rtPrice(b.final); } catch (e2) { return ok({ error: e2.message }, 400); }
+      RT.decisions = RT.decisions.filter(function (d) { return !(d.day === mm[1] && d.room_type === rrt); });
+      if (rfin == null && !rnote) return ok({ ok: true, removed: true });
+      var rd = { hotel_id: D.hotel.id, day: mm[1], room_type: rrt, suggested: rtPrice(b.suggested) || 0, final: rfin, note: rnote, decided_at: new Date().toISOString() }; RT.decisions.push(rd); return ok(rd); }
+
+    /* Paket 044: Tischreservierung */
+    if (p === H + "/restaurant-tables") {
+      if (m === "POST") { if (!lead) return deny("Tische verwaltet die Leitung Food & Beverage."); var tnm = s200(b.name, 40), tse = Math.round(Number(b.seats));
+        if (!tnm) return ok({ error: "Bitte einen Namen angeben." }, 400); if (!(tse >= 1 && tse <= 40)) return ok({ error: "Plätze: 1 bis 40." }, 400);
+        var ntb = { id: nid("rtb"), hotel_id: D.hotel.id, name: tnm, seats: tse, area: s200(b.area, 40) || null, active: b.active === undefined ? true : !!b.active, sort: Math.round(Number(b.sort) || 0), created_at: new Date().toISOString() }; DN_TABLES.push(ntb); return ok(ntb); }
+      return ok(DN_TABLES.slice().sort(function (a, c) { return (a.sort || 0) - (c.sort || 0) || (a.name < c.name ? -1 : 1); })); }
+    if ((mm = p.match(/^\/api\/restaurant-tables\/([^/]+)$/))) { if (!lead) return deny("Tische verwaltet die Leitung Food & Beverage.");
+      if (m === "DELETE") { remove(DN_TABLES, mm[1]); return ok({ ok: true }); } var etb = byId(DN_TABLES, mm[1]); if (!etb) return deny("Tische verwaltet die Leitung Food & Beverage.");
+      if (b.name !== undefined) { if (!s200(b.name, 40)) return ok({ error: "Bitte einen Namen angeben." }, 400); etb.name = s200(b.name, 40); }
+      if (b.seats !== undefined) { var se2 = Math.round(Number(b.seats)); if (!(se2 >= 1 && se2 <= 40)) return ok({ error: "Plätze: 1 bis 40." }, 400); etb.seats = se2; }
+      if (b.area !== undefined) etb.area = s200(b.area, 40) || null; if (b.active !== undefined) etb.active = !!b.active; if (b.sort !== undefined) etb.sort = Math.round(Number(b.sort) || 0); return ok(etb); }
+    if (p === H + "/table-reservations") {
+      if (m === "POST") {
+        var rday = String(b.day || ""), rmin = dnMin(b.time), rpar = Math.round(Number(b.party)), rna = s200(b.name, 120), rdu = Math.round(Number(b.duration_min || 120));
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(rday)) return ok({ error: "Bitte ein Datum angeben." }, 400); if (rmin == null) return ok({ error: "Bitte eine Uhrzeit angeben (z. B. 19:30)." }, 400);
+        if (!(rdu >= 15 && rdu <= 600)) return ok({ error: "Ungültige Dauer." }, 400); if (!(rpar >= 1 && rpar <= 200)) return ok({ error: "Bitte die Personenzahl angeben." }, 400); if (!rna) return ok({ error: "Bitte einen Namen angeben." }, 400);
+        var rem = String(b.email || "").trim(); if (rem && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(rem)) return ok({ error: "Ungültige E-Mail-Adresse." }, 400);
+        var rtid = Array.isArray(b.table_ids) && b.table_ids.length ? b.table_ids : dnPick(DN_TABLES, DN.res.filter(function (x) { return x.day === rday; }), rmin, rdu, rpar);
+        var nrs = { id: nid("trs"), hotel_id: D.hotel.id, day: rday, start_min: rmin, duration_min: rdu, party: rpar, name: rna, email: rem || null, phone: s200(b.phone, 40) || null, room_no: s200(b.room_no, 20) || null,
+          allergens: dnAllerg(b.allergens), note: s200(b.note, 500) || null, status: (["angefragt", "bestätigt", "abgesagt", "nicht_erschienen", "erledigt"].indexOf(b.status) >= 0 ? b.status : "bestätigt"), table_ids: rtid, source: "intern", created_at: new Date().toISOString() };
+        DN.res.push(nrs); return ok(Object.assign({}, nrs, { time: dnTime(nrs.start_min) })); }
+      var rfr = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : todayIso, rto = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : rfr;
+      return ok(DN.res.filter(function (x) { return x.day >= rfr && x.day <= rto; }).sort(function (a, c) { return a.day < c.day ? -1 : a.day > c.day ? 1 : a.start_min - c.start_min; }).map(function (x) { return Object.assign({}, x, { time: dnTime(x.start_min) }); })); }
+    if ((mm = p.match(/^\/api\/table-reservations\/([^/]+)$/))) {
+      if (m === "DELETE") { remove(DN.res, mm[1]); return ok({ ok: true }); } var ers = byId(DN.res, mm[1]); if (!ers) return nf();
+      if (b.status !== undefined && ["angefragt", "bestätigt", "abgesagt", "nicht_erschienen", "erledigt"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400);
+      if (b.time !== undefined) { var m2 = dnMin(b.time); if (m2 == null) return ok({ error: "Bitte eine Uhrzeit angeben (z. B. 19:30)." }, 400); ers.start_min = m2; }
+      if (b.party !== undefined) { var p2 = Math.round(Number(b.party)); if (!(p2 >= 1 && p2 <= 200)) return ok({ error: "Bitte die Personenzahl angeben." }, 400); ers.party = p2; }
+      if (b.name !== undefined) { if (!s200(b.name, 120)) return ok({ error: "Bitte einen Namen angeben." }, 400); ers.name = s200(b.name, 120); }
+      ["day", "status", "table_ids", "duration_min"].forEach(function (k) { if (b[k] !== undefined) ers[k] = b[k]; });
+      ["email", "phone", "room_no", "note"].forEach(function (k) { if (b[k] !== undefined) ers[k] = s200(b[k], 500) || null; }); if (b.allergens !== undefined) ers.allergens = dnAllerg(b.allergens);
+      return ok(Object.assign({}, ers, { time: dnTime(ers.start_min) })); }
+    if (p === H + "/restaurant-settings") {
+      if (m === "PUT") { if (!lead) return deny("Die Einstellungen ändert die Leitung Food & Beverage.");
+        var ds = DN.settings, nopen = {}; ["1", "2", "3", "4", "5", "6", "7"].forEach(function (d) { var rg = ((b.open || {})[d] || []).slice(0, 4).map(function (r) { return [dnMin(r && r[0]), dnMin(r && r[1])]; }).filter(function (r) { return r[0] != null && r[1] != null && r[1] > r[0]; }); if (rg.length) nopen[d] = rg.map(function (r) { return [dnTime(r[0]), dnTime(r[1])]; }); });
+        var ci = function (v, lo, hi, d) { var n = Math.round(Number(v)); return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+        DN.settings = { enabled: !!b.enabled, token: ds.token, name: s200(b.name, 80) || null, open: nopen, slot_min: [15, 30, 60].indexOf(Number(b.slot_min)) >= 0 ? Number(b.slot_min) : 30, duration_min: ci(b.duration_min, 30, 360, 120), max_party: ci(b.max_party, 1, 40, 8),
+          lead_hours: ci(b.lead_hours, 0, 72, 2), max_days: ci(b.max_days, 1, 180, 60), auto_confirm: b.auto_confirm === undefined ? true : !!b.auto_confirm, closed_days: (Array.isArray(b.closed_days) ? b.closed_days : []).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d)); }).sort(), note: s200(b.note, 500) || null };
+        if (b.new_token || (DN.settings.enabled && !DN.settings.token)) DN.settings.token = "demoTisch" + Math.random().toString(36).slice(2, 12) + "abcdef"; return ok(DN.settings); }
+      return ok(Object.assign({}, DN.settings, { can_edit: lead })); }
+
+    /* Paket 044: Gutscheine */
+    if (p === H + "/payments/status") return ok({ connected: true, admin: ROLE === "admin", stripe_enabled: true, charges_enabled: true, details_submitted: true, account: "acct_demo…" });
+    if (p === H + "/payments/connect" && m === "POST") return ok({ error: "In der Demo nicht möglich." }, 400);
+    if (p === H + "/voucher-settings") {
+      if (m === "PUT") { if (ROLE !== "admin") return deny("Nur Admins können das einstellen."); var vs = VC.settings, vpr = (Array.isArray(b.presets) ? b.presets : [50, 100, 150]).map(function (x) { var n = Number(String(x).replace(",", ".")); return n > 0 && n <= 10000 ? Math.round(n * 100) / 100 : null; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).sort(function (a, c) { return a - c; }).slice(0, 8);
+        var vmn = Number(String(b.custom_min == null ? 20 : b.custom_min).replace(",", ".")) || 20, vmx = Number(String(b.custom_max == null ? 1000 : b.custom_max).replace(",", ".")) || 1000; if (vmn > vmx) return ok({ error: "Der Mindestbetrag ist höher als der Höchstbetrag." }, 400);
+        var vyr = Math.round(Number(b.valid_years)); VC.settings = { enabled: !!b.enabled, token: vs.token, presets: vpr, custom: b.custom === undefined ? true : !!b.custom, custom_min: vmn, custom_max: vmx, valid_years: isFinite(vyr) ? Math.min(30, Math.max(0, vyr)) : 0, title: s200(b.title, 120) || null, text: s200(b.text, 600) || null };
+        if (b.new_token || (VC.settings.enabled && !VC.settings.token)) VC.settings.token = "demoGutschein" + Math.random().toString(36).slice(2, 12) + "abcdef"; return ok(VC.settings); }
+      return ok(Object.assign({}, VC.settings, { currency: D.hotel.currency || "EUR", can_edit: ROLE === "admin" })); }
+    if (p === H + "/vouchers") {
+      if (m === "POST") { var vam = Number(String(b.amount == null ? "" : b.amount).replace(",", ".")); if (!(vam > 0 && vam <= 10000)) return ok({ error: "Bitte einen Betrag angeben (bis 10.000)." }, 400); vam = Math.round(vam * 100) / 100;
+        if (["bar", "karte", "überweisung", "sonstiges"].indexOf(b.payment_method) < 0) return ok({ error: "Bitte die Zahlungsart wählen." }, 400);
+        var vem = String(b.buyer_email || "").trim(); if (vem && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(vem)) return ok({ error: "Ungültige E-Mail-Adresse." }, 400);
+        var nvc = { id: nid("vch"), hotel_id: D.hotel.id, code: vcCode(), title: s200(b.title, 120) || VC.settings.title, amount: vam, remaining: vam, currency: D.hotel.currency || "EUR", status: "aktiv", buyer_name: s200(b.buyer_name, 120) || "Rezeption", buyer_email: vem || null,
+          recipient_name: s200(b.recipient_name, 120) || null, message: s200(b.message, 500) || null, valid_until: /^\d{4}-\d{2}-\d{2}$/.test(String(b.valid_until || "")) ? b.valid_until : null, source: "rezeption", payment_method: b.payment_method, paid_at: new Date().toISOString(), created_at: new Date().toISOString() };
+        VC.list.unshift(nvc); return ok(nvc); }
+      var vcq = String(q.get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), vst = q.get("status");
+      return ok(VC.list.filter(function (v) { return (vcq.length !== 12 || v.code.replace(/-/g, "") === vcq) && (!vst || v.status === vst); }).sort(function (a, c) { return a.created_at < c.created_at ? 1 : -1; })); }
+    if ((mm = p.match(/^\/api\/vouchers\/([^/]+)\/redeem$/)) && m === "POST") { var rv = byId(VC.list, mm[1]); if (!rv) return nf();
+      var rva = Number(String(b.amount == null ? "" : b.amount).replace(",", ".")); if (!(rva > 0 && rva <= 100000)) return ok({ error: "Bitte einen Betrag angeben." }, 400); rva = Math.round(rva * 100) / 100;
+      if (rv.status !== "aktiv") return ok({ error: "Dieser Gutschein ist nicht einlösbar (Status: " + rv.status + ")." }, 400); if (rva > rv.remaining) return ok({ error: "Der Betrag ist höher als der Restwert (" + rv.remaining + ")." }, 400);
+      rv.remaining = Math.round((rv.remaining - rva) * 100) / 100; if (rv.remaining <= 0) { rv.remaining = 0; rv.status = "eingelöst"; }
+      VC.red.push({ id: nid("vcr"), voucher_id: rv.id, amount: rva, note: s200(b.note, 200) || null, redeemed_by: ME, redeemed_at: new Date().toISOString() }); return ok(rv); }
+    if ((mm = p.match(/^\/api\/vouchers\/([^/]+)\/redemptions$/))) return ok(VC.red.filter(function (x) { return x.voucher_id === mm[1]; }).sort(function (a, c) { return a.redeemed_at < c.redeemed_at ? -1 : 1; }));
+    if ((mm = p.match(/^\/api\/vouchers\/([^/]+)$/))) {
+      if (m === "DELETE") { var dv = byId(VC.list, mm[1]); if (ROLE !== "admin" || !dv || (dv.status !== "storniert" && dv.status !== "ausstehend")) return deny("Löschen können Admins nur stornierte Gutscheine."); remove(VC.list, mm[1]); return ok({ ok: true }); }
+      var ev2 = byId(VC.list, mm[1]); if (!ev2) return nf(); if (m === "PATCH") {
+        if (b.status !== undefined) { if (b.status !== "storniert") return ok({ error: "Nur Stornieren ist möglich." }, 400); ev2.status = "storniert"; }
+        ["recipient_name", "message", "title", "buyer_name"].forEach(function (k) { if (b[k] !== undefined) ev2[k] = s200(b[k], k === "message" ? 500 : 120) || null; });
+        if (b.valid_until !== undefined) ev2.valid_until = /^\d{4}-\d{2}-\d{2}$/.test(String(b.valid_until || "")) ? b.valid_until : null; }
+      return ok(ev2); }
+
+    /* Paket 044: Unterkunft – Übergabe-Protokolle, Monatsliste, Touren */
+    if ((mm = p.match(/^\/api\/housing-assignments\/([^/]+)\/handovers$/))) {
+      if (m === "POST") { if (!hrNow()) return deny("Übergaben trägt die Leitung Personal ein."); var hasg = byId(D.housing_assignments, mm[1]); if (!hasg) return nf(); var hrow; try { hrow = hoClean(b, false); } catch (e3) { return ok({ error: e3.message }, 400); }
+        var nho = Object.assign({ items: [], meters: {}, keys: null, damages: null, signer_name: null, signature_data: null }, hrow, { id: nid("hov"), assignment_id: hasg.id, hotel_id: D.hotel.id, created_at: new Date().toISOString() }); HO.push(nho); return ok(nho); }
+      return ok(HO.filter(function (x) { return x.assignment_id === mm[1]; }).sort(function (a, c) { return a.day < c.day ? -1 : 1; })); }
+    if ((mm = p.match(/^\/api\/housing-handovers\/([^/]+)$/))) { if (!hrNow()) return deny("Übergaben trägt die Leitung Personal ein.");
+      if (m === "DELETE") { remove(HO, mm[1]); return ok({ ok: true }); } var eho = byId(HO, mm[1]); if (!eho) return deny("Übergaben trägt die Leitung Personal ein.");
+      try { Object.assign(eho, hoClean(b, true)); } catch (e4) { return ok({ error: e4.message }, 400); } return ok(eho); }
+    if (p === H + "/housing/payroll") {
+      if (!hrNow()) return deny("Die Monatsliste sieht die Leitung Personal.");
+      var pmo = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get("month") || "") ? q.get("month") : todayIso.slice(0, 7), pm0 = pmo + "-01", pdim = new Date(Date.UTC(Number(pmo.slice(0, 4)), Number(pmo.slice(5)), 0)).getUTCDate(), pm1 = add(pm0, pdim - 1), prows = [];
+      D.housing_assignments.forEach(function (a) {
+        var pf = a.from_date > pm0 ? a.from_date : pm0, pt = a.to_date && a.to_date < pm1 ? a.to_date : pm1; if (a.from_date > pm1 || (a.to_date && a.to_date < pm0) || pt < pf) return;
+        var pd = Math.round((new Date(pt + "T12:00:00Z") - new Date(pf + "T12:00:00Z")) / 86400000) + 1, pu = byId(D.housing_units, a.unit_id) || {}, pmn = a.deduction_month != null ? Number(a.deduction_month) : pu.rent_month != null ? Number(pu.rent_month) : null;
+        var pmem = a.user_id ? D.members.find(function (x) { return x.user_id === a.user_id; }) : null;
+        prows.push({ assignment_id: a.id, user_id: a.user_id || null, person_name: a.person_name || (pmem && (pmem.full_name || pmem.name)) || null, unit: pu.name || "", from: pf, to: pt, days: pd, days_in_month: pdim, monthly: pmn, amount: pmn == null ? null : Math.round(pmn * pd / pdim * 100) / 100, source: a.deduction_month != null ? "abzug" : "miete" }); });
+      prows.sort(function (x, y) { return String(x.unit).localeCompare(String(y.unit)) || x.from.localeCompare(y.from); });
+      return ok({ month: pmo, currency: D.hotel.currency || "EUR", rows: prows, total: Math.round(prows.reduce(function (s, r) { return s + (r.amount || 0); }, 0) * 100) / 100 }); }
+    if (p === "/api/me/tours") { if (m === "PATCH") { Object.keys(b || {}).forEach(function (k) { if (b[k] === null) delete TOURS[k]; else TOURS[k] = todayIso; }); } return ok(TOURS); }
+
     return ok({});
   };
 })();

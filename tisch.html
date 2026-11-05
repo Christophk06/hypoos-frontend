@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --warn:#8A5F14; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 520px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select, input, textarea { font: inherit; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fff; color: var(--ink); width: 100%; min-height: 44px; }
+  select.lang { width: auto; padding: 5px 6px; font-size: 13px; }
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  h2 { font-size: 15px; margin: 18px 0 8px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 14px; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 8px 10px; min-height: 44px; min-width: 64px; cursor: pointer; font: inherit; font-size: 14px; color: var(--ink); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  .chip:disabled { opacity: .45; cursor: not-allowed; text-decoration: line-through; }
+  .alg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .alg label { display: flex; gap: 6px; align-items: center; font-size: 13.5px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; background: #fff; min-height: 44px; }
+  .alg input { width: auto; min-height: 0; }
+  button.main { background: var(--ink); color: #fff; border: none; border-radius: 10px; padding: 13px 18px; font: inherit; font-weight: 700; width: 100%; min-height: 48px; cursor: pointer; margin-top: 16px; }
+  button.main:disabled { opacity: .5; }
+  button.sec { background: #fff; color: var(--bad); border: 1px solid var(--bad); border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .msg { padding: 14px; border-radius: 10px; font-size: 15px; margin-bottom: 12px; }
+  .err { background: #F5E1DE; color: var(--bad); } .ok { background: #E3F0E8; color: var(--good); } .wait { background: #F7EBD3; color: var(--warn); }
+  .hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 15px; }
+  dt { color: var(--muted); } dd { margin: 0; font-weight: 600; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Tisch reservieren", party: "Personen", day: "Tag", time: "Uhrzeit", none: "An diesem Tag ist nichts mehr frei.", noDays: "Derzeit sind keine Reservierungen möglich.", details: "Ihre Angaben", name: "Name", email: "E-Mail", phone: "Telefon", room: "Zimmernummer (falls Hotelgast)", allergens: "Allergien und Unverträglichkeiten", note: "Anmerkungen", contact: "Bitte E-Mail oder Telefon angeben.", send: "Reservieren", sending: "Wird gesendet…", confirmed: "Ihr Tisch ist reserviert.", requested: "Ihre Anfrage ist eingegangen. Das Restaurant bestätigt sie in Kürze.", mailed: "Eine Bestätigung mit Storno-Link kommt per E-Mail.", keep: "Diesen Link aufheben, um die Reservierung anzusehen oder zu stornieren:", your: "Ihre Reservierung", status: "Status", bestätigt: "Bestätigt", angefragt: "Angefragt", abgesagt: "Storniert", erledigt: "Abgeschlossen", nicht_erschienen: "Nicht erschienen", cancel: "Reservierung stornieren", cancelQ: "Reservierung wirklich stornieren?", cancelled: "Die Reservierung wurde storniert.", consentAlg: "Ich willige ein, dass das Restaurant meine Allergie-Angaben (Gesundheitsdaten) für diese Reservierung verarbeitet. Nach spätestens 90 Tagen werden sie gelöscht.", consentNeed: "Bitte bestätigen Sie die Einwilligung für Ihre Allergie-Angaben oder entfernen Sie die Auswahl.", privacy: "Ihre Angaben verwendet nur das Restaurant für diese Reservierung.", more: "Für größere Gruppen bitte direkt beim Hotel anfragen.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…",
+    alg: { A: "Gluten", B: "Krebstiere", C: "Eier", D: "Fisch", E: "Erdnüsse", F: "Soja", G: "Milch/Laktose", H: "Schalenfrüchte", L: "Sellerie", M: "Senf", N: "Sesam", O: "Sulfite", P: "Lupinen", R: "Weichtiere" } },
+  en: { title: "Book a table", party: "Guests", day: "Day", time: "Time", none: "Nothing is available on this day.", noDays: "Reservations are currently not possible.", details: "Your details", name: "Name", email: "Email", phone: "Phone", room: "Room number (if staying with us)", allergens: "Allergies and intolerances", note: "Comments", contact: "Please enter an email address or phone number.", send: "Book now", sending: "Sending…", confirmed: "Your table is booked.", requested: "Your request has been received. The restaurant will confirm it shortly.", mailed: "A confirmation with a cancellation link is on its way by email.", keep: "Keep this link to view or cancel your reservation:", your: "Your reservation", status: "Status", bestätigt: "Confirmed", angefragt: "Requested", abgesagt: "Cancelled", erledigt: "Completed", nicht_erschienen: "No-show", cancel: "Cancel reservation", cancelQ: "Do you really want to cancel this reservation?", cancelled: "The reservation has been cancelled.", consentAlg: "I consent to the restaurant processing my allergy details (health data) for this reservation. They are deleted after 90 days at the latest.", consentNeed: "Please confirm your consent for the allergy details or remove your selection.", privacy: "Your details are used by the restaurant for this reservation only.", more: "For larger groups, please contact the hotel directly.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…",
+    alg: { A: "Gluten", B: "Crustaceans", C: "Eggs", D: "Fish", E: "Peanuts", F: "Soy", G: "Milk/lactose", H: "Tree nuts", L: "Celery", M: "Mustard", N: "Sesame", O: "Sulphites", P: "Lupin", R: "Molluscs" } },
+  fr: { title:"Réserver une table",party:"Personnes",day:"Jour",time:"Heure",none:"Plus aucune disponibilité ce jour-là.",noDays:"Les réservations ne sont pas possibles pour le moment.",details:"Vos coordonnées",name:"Nom",email:"E-mail",phone:"Téléphone",room:"Numéro de chambre (si vous séjournez chez nous)",allergens:"Allergies et intolérances",note:"Remarques",contact:"Veuillez indiquer une adresse e-mail ou un numéro de téléphone.",send:"Réserver",sending:"Envoi en cours…",confirmed:"Votre table est réservée.",requested:"Votre demande a bien été reçue. Le restaurant la confirmera sous peu.",mailed:"Une confirmation avec un lien d’annulation vous sera envoyée par e-mail.",keep:"Conservez ce lien pour consulter ou annuler votre réservation :",your:"Votre réservation",status:"Statut","bestätigt":"Confirmée",angefragt:"Demandée",abgesagt:"Annulée",erledigt:"Terminée",nicht_erschienen:"Non présenté",cancel:"Annuler la réservation",cancelQ:"Voulez-vous vraiment annuler la réservation ?",cancelled:"La réservation a été annulée.",consentAlg: "J’accepte que le restaurant traite mes informations sur les allergies (données de santé) pour cette réservation. Elles sont supprimées au plus tard après 90 jours.", consentNeed: "Veuillez confirmer votre consentement pour les informations sur les allergies ou retirer votre sélection.", privacy:"Vos données ne sont utilisées par le restaurant que pour cette réservation.",more:"Pour les groupes plus importants, veuillez contacter directement l’hôtel.",invalid:"Ce lien n’est pas (ou plus) valide.",error:"Cela n’a pas fonctionné. Veuillez réessayer plus tard.",loading:"Chargement…",alg:{A:"Gluten",B:"Crustacés",C:"Œufs",D:"Poisson",E:"Arachides",F:"Soja",G:"Lait/lactose",H:"Fruits à coque",L:"Céleri",M:"Moutarde",N:"Sésame",O:"Sulfites",P:"Lupin",R:"Mollusques"} },
+  it: { title:"Prenota un tavolo",party:"Persone",day:"Giorno",time:"Orario",none:"In questo giorno non c’è più disponibilità.",noDays:"Al momento non è possibile prenotare.",details:"I suoi dati",name:"Nome",email:"E-mail",phone:"Telefono",room:"Numero di camera (se alloggia da noi)",allergens:"Allergie e intolleranze",note:"Note",contact:"Indichi un indirizzo e-mail o un numero di telefono.",send:"Prenota",sending:"Invio in corso…",confirmed:"Il suo tavolo è prenotato.",requested:"La sua richiesta è stata ricevuta. Il ristorante la confermerà a breve.",mailed:"Riceverà per e-mail una conferma con il link di annullamento.",keep:"Conservi questo link per visualizzare o annullare la prenotazione:",your:"La sua prenotazione",status:"Stato","bestätigt":"Confermata",angefragt:"Richiesta",abgesagt:"Annullata",erledigt:"Conclusa",nicht_erschienen:"Non presentato",cancel:"Annulla prenotazione",cancelQ:"Vuole davvero annullare la prenotazione?",cancelled:"La prenotazione è stata annullata.",consentAlg: "Acconsento al trattamento da parte del ristorante dei miei dati sulle allergie (dati sanitari) per questa prenotazione. Vengono cancellati al più tardi dopo 90 giorni.", consentNeed: "Confermi il consenso per i dati sulle allergie oppure rimuova la selezione.", privacy:"I suoi dati vengono utilizzati dal ristorante solo per questa prenotazione.",more:"Per gruppi più numerosi, si rivolga direttamente all’hotel.",invalid:"Questo link non è (più) valido.",error:"Non ha funzionato. Riprovi più tardi.",loading:"Caricamento…",alg:{A:"Glutine",B:"Crostacei",C:"Uova",D:"Pesce",E:"Arachidi",F:"Soia",G:"Latte/lattosio",H:"Frutta a guscio",L:"Sedano",M:"Senape",N:"Sesamo",O:"Solfiti",P:"Lupini",R:"Molluschi"} },
+  es: { title:"Reservar mesa",party:"Personas",day:"Día",time:"Hora",none:"No queda disponibilidad este día.",noDays:"Por el momento no es posible reservar.",details:"Sus datos",name:"Nombre",email:"Correo electrónico",phone:"Teléfono",room:"Número de habitación (si se aloja con nosotros)",allergens:"Alergias e intolerancias",note:"Observaciones",contact:"Indique un correo electrónico o un teléfono.",send:"Reservar",sending:"Enviando…",confirmed:"Su mesa está reservada.",requested:"Hemos recibido su solicitud. El restaurante la confirmará en breve.",mailed:"Recibirá por correo electrónico una confirmación con un enlace de cancelación.",keep:"Guarde este enlace para ver o cancelar su reserva:",your:"Su reserva",status:"Estado","bestätigt":"Confirmada",angefragt:"Solicitada",abgesagt:"Cancelada",erledigt:"Finalizada",nicht_erschienen:"No presentado",cancel:"Cancelar reserva",cancelQ:"¿Desea realmente cancelar la reserva?",cancelled:"La reserva ha sido cancelada.",consentAlg: "Consiento que el restaurante trate mis datos sobre alergias (datos de salud) para esta reserva. Se eliminan como máximo a los 90 días.", consentNeed: "Confirme su consentimiento para los datos de alergias o elimine la selección.", privacy:"El restaurante solo utiliza sus datos para esta reserva.",more:"Para grupos más grandes, consulte directamente con el hotel.",invalid:"Este enlace no es válido (o ya no lo es).",error:"No ha funcionado. Inténtelo de nuevo más tarde.",loading:"Cargando…",alg:{A:"Gluten",B:"Crustáceos",C:"Huevos",D:"Pescado",E:"Cacahuetes",F:"Soja",G:"Leche/lactosa",H:"Frutos de cáscara",L:"Apio",M:"Mostaza",N:"Sésamo",O:"Sulfitos",P:"Altramuces",R:"Moluscos"} },
+  pt: { title:"Reservar mesa",party:"Pessoas",day:"Dia",time:"Hora",none:"Já não há disponibilidade neste dia.",noDays:"De momento não é possível reservar.",details:"Os seus dados",name:"Nome",email:"E-mail",phone:"Telefone",room:"Número do quarto (se estiver hospedado connosco)",allergens:"Alergias e intolerâncias",note:"Observações",contact:"Indique um e-mail ou um número de telefone.",send:"Reservar",sending:"A enviar…",confirmed:"A sua mesa está reservada.",requested:"O seu pedido foi recebido. O restaurante irá confirmá-lo em breve.",mailed:"Receberá por e-mail uma confirmação com um link de cancelamento.",keep:"Guarde este link para ver ou cancelar a sua reserva:",your:"A sua reserva",status:"Estado","bestätigt":"Confirmada",angefragt:"Solicitada",abgesagt:"Cancelada",erledigt:"Concluída",nicht_erschienen:"Não compareceu",cancel:"Cancelar reserva",cancelQ:"Deseja mesmo cancelar a reserva?",cancelled:"A reserva foi cancelada.",consentAlg: "Autorizo que o restaurante trate os meus dados sobre alergias (dados de saúde) para esta reserva. São eliminados no máximo após 90 dias.", consentNeed: "Confirme o seu consentimento para os dados sobre alergias ou remova a seleção.", privacy:"O restaurante utiliza os seus dados apenas para esta reserva.",more:"Para grupos maiores, contacte diretamente o hotel.",invalid:"Este link não é (ou já não é) válido.",error:"Não funcionou. Tente novamente mais tarde.",loading:"A carregar…",alg:{A:"Glúten",B:"Crustáceos",C:"Ovos",D:"Peixe",E:"Amendoins",F:"Soja",G:"Leite/lactose",H:"Frutos de casca rija",L:"Aipo",M:"Mostarda",N:"Sésamo",O:"Sulfitos",P:"Tremoços",R:"Moluscos"} },
+  tr: { title:"Masa rezervasyonu",party:"Kişi",day:"Gün",time:"Saat",none:"Bu gün için boş yer kalmadı.",noDays:"Şu anda rezervasyon yapılamıyor.",details:"Bilgileriniz",name:"Ad",email:"E-posta",phone:"Telefon",room:"Oda numarası (otelde konaklıyorsanız)",allergens:"Alerjiler ve intoleranslar",note:"Notlar",contact:"Lütfen bir e-posta adresi veya telefon numarası girin.",send:"Rezervasyon yap",sending:"Gönderiliyor…",confirmed:"Masanız rezerve edildi.",requested:"Talebiniz alındı. Restoran kısa süre içinde onaylayacaktır.",mailed:"İptal bağlantısını içeren bir onay e-postayla gönderilecektir.",keep:"Rezervasyonunuzu görüntülemek veya iptal etmek için bu bağlantıyı saklayın:",your:"Rezervasyonunuz",status:"Durum","bestätigt":"Onaylandı",angefragt:"Talep edildi",abgesagt:"İptal edildi",erledigt:"Tamamlandı",nicht_erschienen:"Gelmedi",cancel:"Rezervasyonu iptal et",cancelQ:"Rezervasyonu gerçekten iptal etmek istiyor musunuz?",cancelled:"Rezervasyon iptal edildi.",consentAlg: "Restoranın bu rezervasyon için alerji bilgilerimi (sağlık verileri) işlemesine onay veriyorum. Bilgiler en geç 90 gün sonra silinir.", consentNeed: "Lütfen alerji bilgileriniz için onay verin veya seçiminizi kaldırın.", privacy:"Bilgilerinizi restoran yalnızca bu rezervasyon için kullanır.",more:"Daha büyük gruplar için lütfen doğrudan otelle iletişime geçin.",invalid:"Bu bağlantı geçerli değil (veya artık geçerli değil).",error:"İşlem başarısız oldu. Lütfen daha sonra tekrar deneyin.",loading:"Yükleniyor…",alg:{A:"Gluten",B:"Kabuklular",C:"Yumurta",D:"Balık",E:"Yer fıstığı",F:"Soya",G:"Süt/laktoz",H:"Sert kabuklu yemişler",L:"Kereviz",M:"Hardal",N:"Susam",O:"Sülfitler",P:"Acı bakla",R:"Yumuşakçalar"} },
+  ja: { title:"テーブルを予約",party:"人数",day:"日付",time:"時間",none:"この日は空きがありません。",noDays:"現在、ご予約を受け付けておりません。",details:"お客様情報",name:"お名前",email:"メールアドレス",phone:"電話番号",room:"客室番号（ご宿泊のお客様）",allergens:"アレルギー・食物不耐症",note:"ご要望",contact:"メールアドレスまたは電話番号をご入力ください。",send:"予約する",sending:"送信中…",confirmed:"テーブルのご予約が完了しました。",requested:"リクエストを受け付けました。レストランがまもなく確認いたします。",mailed:"キャンセル用リンク付きの確認メールをお送りします。",keep:"予約の確認・キャンセルのため、このリンクを保存してください：",your:"ご予約内容",status:"ステータス","bestätigt":"確定",angefragt:"リクエスト中",abgesagt:"キャンセル済み",erledigt:"完了",nicht_erschienen:"不来店",cancel:"予約をキャンセル",cancelQ:"本当に予約をキャンセルしますか？",cancelled:"予約をキャンセルしました。",consentAlg: "この予約のために、レストランが私のアレルギー情報（健康データ）を取り扱うことに同意します。情報は遅くとも90日後に削除されます。", consentNeed: "アレルギー情報への同意を確認するか、選択を外してください。", privacy:"お客様の情報は、この予約のためにのみレストランが使用します。",more:"大人数のグループは、ホテルに直接お問い合わせください。",invalid:"このリンクは無効、または有効期限が切れています。",error:"うまくいきませんでした。しばらくしてからもう一度お試しください。",loading:"読み込み中…",alg:{A:"グルテン",B:"甲殻類",C:"卵",D:"魚",E:"落花生",F:"大豆",G:"乳/乳糖",H:"ナッツ類",L:"セロリ",M:"マスタード",N:"ごま",O:"亜硫酸塩",P:"ルピナス",R:"軟体動物"} },
+  zh: { title:"预订餐桌",party:"人数",day:"日期",time:"时间",none:"当天已无空位。",noDays:"目前暂不接受预订。",details:"您的信息",name:"姓名",email:"电子邮件",phone:"电话",room:"房号（如为住店客人）",allergens:"过敏和不耐受",note:"备注",contact:"请填写电子邮件或电话号码。",send:"预订",sending:"发送中…",confirmed:"您的餐桌已预订。",requested:"我们已收到您的申请，餐厅将尽快确认。",mailed:"含取消链接的确认邮件将发送至您的邮箱。",keep:"请保存此链接，以便查看或取消预订：",your:"您的预订",status:"状态","bestätigt":"已确认",angefragt:"已申请",abgesagt:"已取消",erledigt:"已完成",nicht_erschienen:"未到店",cancel:"取消预订",cancelQ:"确定要取消此预订吗？",cancelled:"预订已取消。",consentAlg: "我同意餐厅为本次预订处理我的过敏信息（健康数据）。这些信息最迟在90天后删除。", consentNeed: "请确认同意处理过敏信息，或取消所选项。", privacy:"餐厅仅将您的信息用于本次预订。",more:"大型团体请直接联系酒店。",invalid:"此链接无效或已失效。",error:"操作未成功，请稍后再试。",loading:"加载中…",alg:{A:"麸质",B:"甲壳类",C:"蛋",D:"鱼",E:"花生",F:"大豆",G:"奶/乳糖",H:"坚果",L:"芹菜",M:"芥末",N:"芝麻",O:"亚硫酸盐",P:"羽扇豆",R:"软体动物"} },
+  ar: { title:"حجز طاولة",party:"عدد الأشخاص",day:"اليوم",time:"الوقت",none:"لا يوجد توفر في هذا اليوم.",noDays:"الحجز غير متاح حاليًا.",details:"بياناتك",name:"الاسم",email:"البريد الإلكتروني",phone:"الهاتف",room:"رقم الغرفة (إذا كنت نزيلًا لدينا)",allergens:"الحساسية وعدم التحمل",note:"ملاحظات",contact:"يرجى إدخال بريد إلكتروني أو رقم هاتف.",send:"احجز",sending:"جارٍ الإرسال…",confirmed:"تم حجز طاولتك.",requested:"تم استلام طلبك. سيؤكده المطعم قريبًا.",mailed:"ستصلك رسالة تأكيد تتضمن رابط الإلغاء عبر البريد الإلكتروني.",keep:"احتفظ بهذا الرابط لعرض الحجز أو إلغائه:",your:"حجزك",status:"الحالة","bestätigt":"مؤكد",angefragt:"قيد الطلب",abgesagt:"ملغى",erledigt:"مكتمل",nicht_erschienen:"لم يحضر",cancel:"إلغاء الحجز",cancelQ:"هل تريد فعلًا إلغاء الحجز؟",cancelled:"تم إلغاء الحجز.",consentAlg: "أوافق على أن يعالج المطعم بيانات الحساسية الخاصة بي (بيانات صحية) لهذا الحجز. تُحذف بعد 90 يومًا كحد أقصى.", consentNeed: "يرجى تأكيد موافقتك على بيانات الحساسية أو إزالة اختيارك.", privacy:"يستخدم المطعم بياناتك لهذا الحجز فقط.",more:"للمجموعات الأكبر، يرجى التواصل مباشرة مع الفندق.",invalid:"هذا الرابط غير صالح (أو لم يعد صالحًا).",error:"لم تنجح العملية. يرجى المحاولة لاحقًا.",loading:"جارٍ التحميل…",alg:{A:"الغلوتين",B:"القشريات",C:"البيض",D:"السمك",E:"الفول السوداني",F:"الصويا",G:"الحليب/اللاكتوز",H:"المكسرات",L:"الكرفس",M:"الخردل",N:"السمسم",O:"الكبريتيت",P:"الترمس",R:"الرخويات"} },
+};
+var ALG = ["A","B","C","D","E","F","G","H","L","M","N","O","P","R"];
+var q = new URLSearchParams(location.search), token = q.get("h") || "", manage = q.get("m") || "", demo = q.get("demo") === "1";
+var TOK = /^[A-Za-z0-9_-]{20,64}$/;
+var state = { info: null, error: null, party: 2, day: null, time: null, done: null, busy: false, m: null, form: { name: "", email: "", phone: "", room_no: "", note: "", allergens: [], allergen_consent: false } };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k) { var L = T[lang] || T.en; return L[k] != null ? L[k] : (T.en[k] != null ? T.en[k] : ""); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { if (!T[l[0]]) return; var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+function fmtDay(iso, opt) { try { return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : lang, Object.assign({ timeZone: "UTC" }, opt || { weekday: "short", day: "numeric", month: "short" })).format(new Date(iso + "T12:00:00Z")); } catch (e) { return iso; } }
+function brand(h) {
+  $("hotel").textContent = h.name || ""; document.title = (h.name ? h.name + " · " : "") + t("title");
+  if (h.logo && /^data:image\/(png|jpeg|webp|svg\+xml);/.test(h.logo)) { $("logo").src = h.logo; $("logo").hidden = false; }
+  if (h.color && /^#[0-9a-fA-F]{3,8}$/.test(h.color)) document.documentElement.style.setProperty("--ink", h.color);
+}
+function call(method, path, body) {
+  return fetch(API + path, { method: method, headers: { "Content-Type": "application/json", "Accept-Language": lang }, body: body ? JSON.stringify(body) : undefined })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(r.status === 404 ? t("invalid") : j.error || t("error")); return j; }); });
+}
+function demoInfo() {
+  var d0 = new Date(), days = [];
+  for (var i = 0; i < 6; i++) { var d = new Date(d0.getTime() + i * 86400000).toISOString().slice(0, 10); days.push({ day: d, slots: ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"].map(function (x, n) { return { time: x, free: (n + i) % 4 !== 2 }; }) }); }
+  return { hotel: { name: "Beispielhotel Alpenblick" }, note: "Warme Küche bis 21:30.", max_party: 8, max_days: 60, days: days };
+}
+function loadInfo() {
+  var p = demo ? Promise.resolve(demoInfo()) : call("GET", "/api/public/dining/" + encodeURIComponent(token) + "?party=" + state.party);
+  return p.then(function (i) {
+    state.info = i; state.error = null; brand(i.hotel || {});
+    if (!state.day || !i.days.some(function (d) { return d.day === state.day; })) state.day = i.days.length ? i.days[0].day : null;
+    var d = i.days.filter(function (x) { return x.day === state.day; })[0];
+    if (!d || !d.slots.some(function (s) { return s.time === state.time && s.free; })) state.time = null;
+    render();
+  }).catch(function (e) { state.error = e.message || t("error"); render(); });
+}
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var hn = $("hotel").textContent; document.title = (hn && hn !== "…" ? hn + " · " : "") + t(manage ? "your" : "title");
+  var a = $("app");
+  if (manage) return renderManage(a);
+  if (state.error && !state.info) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!state.info) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  if (state.done) {
+    var d = state.done, link = location.origin + location.pathname + "?m=" + encodeURIComponent(d.manage || "");
+    a.innerHTML = "<h1>" + esc(t("title")) + '</h1><div class="msg ' + (d.status === "bestätigt" ? "ok" : "wait") + '" role="status">' + esc(t(d.status === "bestätigt" ? "confirmed" : "requested")) + "</div>"
+      + '<div class="box"><dl><dt>' + esc(t("day")) + "</dt><dd>" + esc(fmtDay(d.day, { weekday: "long", day: "numeric", month: "long" })) + "</dd><dt>" + esc(t("time")) + "</dt><dd>" + esc(d.time) + "</dd><dt>" + esc(t("party")) + "</dt><dd>" + esc(d.party) + "</dd></dl></div>"
+      + (state.form.email ? '<div class="note">' + esc(t("mailed")) + "</div>" : "")
+      + (d.manage ? '<div class="note">' + esc(t("keep")) + '<br><a href="' + esc(link) + '">' + esc(link) + "</a></div>" : "");
+    return;
+  }
+  var i = state.info, f = state.form, h = "<h1>" + esc(t("title")) + "</h1>";
+  if (i.note) h += '<div class="sub">' + esc(i.note) + "</div>";
+  if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+  h += '<label class="f" for="party">' + esc(t("party")) + '</label><select id="party">';
+  for (var n = 1; n <= i.max_party; n++) h += '<option value="' + n + '"' + (n === state.party ? " selected" : "") + ">" + n + "</option>";
+  h += '</select><div class="note">' + esc(t("more")) + "</div>";
+  if (!i.days.length) { a.innerHTML = h + '<div class="msg wait" style="margin-top:12px">' + esc(t("noDays")) + "</div>"; bind(); return; }
+  h += "<h2>" + esc(t("day")) + '</h2><div class="chips" role="group" aria-label="' + esc(t("day")) + '">' + i.days.map(function (d) { var free = d.slots.some(function (s) { return s.free; }); return '<button type="button" class="chip" data-day="' + esc(d.day) + '" aria-pressed="' + (d.day === state.day) + '"' + (free ? "" : " disabled") + ">" + esc(fmtDay(d.day)) + "</button>"; }).join("") + "</div>";
+  var day = i.days.filter(function (d) { return d.day === state.day; })[0];
+  h += "<h2>" + esc(t("time")) + "</h2>";
+  if (!day || !day.slots.some(function (s) { return s.free; })) h += '<div class="sub">' + esc(t("none")) + "</div>";
+  else h += '<div class="chips" role="group" aria-label="' + esc(t("time")) + '">' + day.slots.map(function (s) { return '<button type="button" class="chip" data-time="' + esc(s.time) + '" aria-pressed="' + (s.time === state.time) + '"' + (s.free ? "" : " disabled") + ">" + esc(s.time) + "</button>"; }).join("") + "</div>";
+  h += "<h2>" + esc(t("details")) + "</h2><form id=\"frm\" novalidate>"
+    + '<label class="f" for="name">' + esc(t("name")) + ' *</label><input id="name" autocomplete="name" required maxlength="120" value="' + esc(f.name) + '" />'
+    + '<label class="f" for="email">' + esc(t("email")) + '</label><input id="email" type="email" autocomplete="email" maxlength="200" value="' + esc(f.email) + '" />'
+    + '<label class="f" for="phone">' + esc(t("phone")) + '</label><input id="phone" type="tel" autocomplete="tel" maxlength="40" value="' + esc(f.phone) + '" />'
+    + '<label class="f" for="room">' + esc(t("room")) + '</label><input id="room" maxlength="20" value="' + esc(f.room_no) + '" />'
+    + '<fieldset style="border:none;padding:0;margin:10px 0 0"><legend class="f" style="font-size:13px;color:var(--muted)">' + esc(t("allergens")) + '</legend><div class="alg">'
+    + ALG.map(function (k) { return '<label><input type="checkbox" data-alg="' + k + '"' + (f.allergens.indexOf(k) >= 0 ? " checked" : "") + " /> " + k + " · " + esc((t("alg") || {})[k] || "") + "</label>"; }).join("") + '</div><label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:8px"><input type="checkbox" id="algok" style="width:auto;min-height:0;margin-top:3px"' + (f.allergen_consent ? " checked" : "") + " /> <span>" + esc(t("consentAlg")) + "</span></label></fieldset>"
+    + '<label class="f" for="note">' + esc(t("note")) + '</label><textarea id="note" rows="2" maxlength="500">' + esc(f.note) + "</textarea>"
+    + '<div class="hp" aria-hidden="true"><input id="website" tabindex="-1" autocomplete="off" /></div>'
+    + '<button class="main" type="submit"' + (state.time && !state.busy ? "" : " disabled") + ">" + esc(state.busy ? t("sending") : t("send")) + "</button>"
+    + '<div class="note">' + esc(t("privacy")) + "</div></form>";
+  a.innerHTML = h; bind();
+}
+function readForm() {
+  var f = state.form; if (!$("name")) return;
+  f.name = $("name").value; f.email = $("email").value; f.phone = $("phone").value; f.room_no = $("room").value; f.note = $("note").value;
+  f.allergen_consent = !!($("algok") && $("algok").checked);
+  f.allergens = Array.prototype.slice.call(document.querySelectorAll("[data-alg]")).filter(function (x) { return x.checked; }).map(function (x) { return x.getAttribute("data-alg"); });
+}
+function bind() {
+  var p = $("party"); if (p) p.onchange = function () { readForm(); state.party = Number(this.value); loadInfo(); };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-day]"), function (b) { b.onclick = function () { readForm(); state.day = b.getAttribute("data-day"); state.time = null; render(); }; });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-time]"), function (b) { b.onclick = function () { readForm(); state.time = b.getAttribute("data-time"); render(); var m = document.querySelector('[data-time="' + state.time + '"]'); if (m) m.focus(); }; });
+  var frm = $("frm"); if (!frm) return;
+  frm.onsubmit = function (e) {
+    e.preventDefault(); readForm();
+    var f = state.form;
+    if (!f.name.trim()) { state.error = t("name") + " *"; render(); $("name").focus(); return; }
+    if (!f.email.trim() && !f.phone.trim()) { state.error = t("contact"); render(); $("email").focus(); return; }
+    if (f.allergens.length && !f.allergen_consent) { state.error = t("consentNeed"); render(); $("algok").focus(); return; }
+    state.busy = true; state.error = null; render();
+    var body = { day: state.day, time: state.time, party: state.party, name: f.name, email: f.email, phone: f.phone, room_no: f.room_no, note: f.note, allergens: f.allergen_consent ? f.allergens : [], allergen_consent: !!f.allergen_consent, lang: lang, website: $("website") ? $("website").value : "" };
+    var p = demo ? Promise.resolve({ ok: true, status: "bestätigt", day: state.day, time: state.time, party: state.party, manage: "" }) : call("POST", "/api/public/dining/" + encodeURIComponent(token), body);
+    p.then(function (r) { state.busy = false; state.done = r; render(); window.scrollTo(0, 0); })
+     .catch(function (e) { state.busy = false; state.error = e.message || t("error"); loadInfo(); });
+  };
+}
+function renderManage(a) {
+  var m = state.m;
+  if (state.error && !m) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!m) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var h = "<h1>" + esc(t("your")) + "</h1>";
+  if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+  if (m.status === "abgesagt") h += '<div class="msg wait" role="status">' + esc(t("cancelled")) + "</div>";
+  h += '<div class="box"><dl><dt>' + esc(t("name")) + "</dt><dd>" + esc(m.name) + "</dd><dt>" + esc(t("day")) + "</dt><dd>" + esc(fmtDay(m.day, { weekday: "long", day: "numeric", month: "long" })) + "</dd><dt>" + esc(t("time")) + "</dt><dd>" + esc(m.time) + "</dd><dt>" + esc(t("party")) + "</dt><dd>" + esc(m.party) + "</dd><dt>" + esc(t("status")) + "</dt><dd>" + esc(t(m.status)) + "</dd></dl></div>";
+  if (m.can_cancel) h += '<button class="sec" id="cancel" type="button">' + esc(t("cancel")) + "</button>";
+  a.innerHTML = h;
+  var c = $("cancel");
+  if (c) c.onclick = function () {
+    if (!confirm(t("cancelQ"))) return;
+    call("DELETE", "/api/public/dining/manage/" + encodeURIComponent(manage)).then(function () { m.status = "abgesagt"; m.can_cancel = false; state.error = null; render(); })
+      .catch(function (e) { state.error = e.message || t("error"); render(); });
+  };
+}
+render();
+if (manage) {
+  if (!TOK.test(manage)) { state.error = t("invalid"); render(); }
+  else call("GET", "/api/public/dining/manage/" + encodeURIComponent(manage)).then(function (m) { state.m = m; brand(m.hotel || {}); render(); }).catch(function (e) { state.error = e.message || t("error"); render(); });
+} else if (!demo && !TOK.test(token)) { state.error = t("invalid"); render(); }
+else loadInfo();
+</script>
+</body>
+</html>

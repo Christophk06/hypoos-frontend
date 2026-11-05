@@ -131,11 +131,21 @@ function InstallAppButton({dark}){
 function GettingStarted({hotel, api, tasks, members, onOpen}){
   const key = "hpoos_onboarding_hidden_"+hotel.id;
   const [hidden,setHidden] = useState(()=>{ try { return window.localStorage.getItem(key)==="1"; } catch(e){ return false; } });
-  const [hasShifts,setHasShifts] = useState(null);
+  const [hasShifts,setHasShifts] = useState(null); const [hasRooms,setHasRooms] = useState(null);
+  const ops = preOpeningOff(hotel); // Hotel im Betrieb: Zimmer und Gäste-Infos statt Pre-Opening-Vorlage (Paket 044)
   useEffect(()=>{ const m = mondayOfIso(todayIso());
-    api("/api/hotels/"+hotel.id+"/shifts?from="+addDaysIso(m,-28)+"&to="+addDaysIso(m,27)).then(r=>setHasShifts(r.length>0)).catch(()=>setHasShifts(false)); },[hotel.id]);
+    api("/api/hotels/"+hotel.id+"/shifts?from="+addDaysIso(m,-28)+"&to="+addDaysIso(m,27)).then(r=>setHasShifts(r.length>0)).catch(()=>setHasShifts(false));
+    if(ops) api("/api/hotels/"+hotel.id+"/rooms").then(r=>setHasRooms(Array.isArray(r) && r.length>0)).catch(()=>setHasRooms(false)); },[hotel.id, ops]);
   if(hidden || hotel.is_demo) return null;
-  const steps = [
+  const steps = ops ? [
+    {done:true, label:tf("Hotel anlegen"), tab:null},
+    {done:!!hasRooms, label:tf("Zimmer anlegen"), tab:"rooms"},
+    {done:members.length>1, label:tf("Team einladen"), tab:"team"},
+    {done:members.some(m=>(m.departments||[]).length>0), label:tf("Rollen und Abteilungen zuordnen"), tab:"team"},
+    {done:!!hasShifts, label:tf("Ersten Dienstplan anlegen"), tab:"roster"},
+    {done:!!(hotel.guest_info && Object.keys(hotel.guest_info).length), label:tf("Gäste-Infos für den Zimmer-QR ausfüllen"), tab:"rooms"},
+    {done:isStandalone(), label:tf("Ouverture als App aufs Handy holen"), tab:"account"},
+  ] : [
     {done:true, label:tf("Hotel anlegen"), tab:null},
     {done:tasks.some(t=>t.template_key), label:tf("Pre-Opening-Vorlage anwenden"), tab:"tasks"},
     {done:members.length>1, label:tf("Team einladen"), tab:"team"},

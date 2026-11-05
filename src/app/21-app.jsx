@@ -86,6 +86,11 @@ function App(){
         window.history.replaceState(null,"",window.location.pathname);
       }
       // Rückkehr von der Stripe-Bezahlseite oder der Abo-Verwaltung: ?billing=success|cancel|portal
+      // Rückkehr von der Stripe-Kontoeinrichtung (Gutscheine, Paket 044): ?connect=done|refresh
+      if(search.get("connect")){
+        setTab("vouchers");
+        window.history.replaceState(null,"",window.location.pathname);
+      }
       if(search.get("billing")){
         setBillingNotice(search.get("billing"));
         setTab("billing");
@@ -364,7 +369,7 @@ function App(){
           <ServiceButton api={api} orgId={orgId} hotel={hotel} tab={tab} nav={NAV} onOpen={setTab} />
           <OfflineBadge />
           {window.OUVERTURE_DEMO && <DemoBar role={role} />}
-          {window.OUVERTURE_DEMO && <DemoTour tab={tab} setTab={setTab} role={role} />}
+          <DemoTour tab={tab} setTab={setTab} role={role} api={api} nav={NAV} />
           <HelpTip tab={tab} role={role} hotel={hotel} open={helpOpen} onClose={()=>setHelpOpen(false)} />
           {fatalError && <div style={{color:BAD,marginBottom:14}}>{fatalError}</div>}
           {tab!=="billing" && isAdmin && !window.OUVERTURE_DEMO && <BillingBanner billing={billing} onOpen={()=>setTab("billing")} />}
@@ -377,7 +382,7 @@ function App(){
             onSaved={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); setEditingHotel(false); }} />}
           {tab==="dashboard" && isAdmin && hotel.setup_completed===false && !hotel.is_demo && !window.OUVERTURE_DEMO && <SetupWizard hotel={hotel} api={api} orgId={orgId} onOpen={setTab} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); loadHotelData(h); }} />}
           {tab==="dashboard" && isAdmin && !window.OUVERTURE_DEMO && <PhaseHint key={hotel.id} hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
-          {tab==="dashboard" && isAdmin && !preOpeningOff(hotel) && hotel.setup_completed!==false && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
+          {tab==="dashboard" && isAdmin && hotel.setup_completed!==false && <GettingStarted hotel={hotel} api={api} tasks={tasks} members={members} onOpen={setTab} />}
           {tab==="dashboard" && role!=="member" && preOpeningOff(hotel) && <KpiView hotel={hotel} api={api} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmOnDutyCard hotel={hotel} api={api} members={members} me={me} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmProbationDueCard hotel={hotel} api={api} members={members} me={me} />}
@@ -450,6 +455,9 @@ function App(){
           {tab==="minibar" && <MinibarView hotel={hotel} api={api} />}
           {tab==="breakfast" && <BreakfastView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="housing" && <HousingView hotel={hotel} api={api} members={members} />}
+          {tab==="rates" && <RatesView hotel={hotel} api={api} />}
+          {tab==="dining" && <DiningView hotel={hotel} api={api} />}
+          {tab==="vouchers" && <VouchersView hotel={hotel} api={api} />}
           {tab==="staffdocs" && <StaffDocsView orgId={orgId} api={api} members={members} />}
           {tab==="pulse" && <PulseView orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />}
           {tab==="tourismtax" && <TourismStatsCard hotel={hotel} api={api} />}

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --warn:#8A5F14; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 520px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select, input, textarea { font: inherit; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fff; color: var(--ink); width: 100%; min-height: 44px; }
+  select.lang { width: auto; padding: 5px 6px; font-size: 13px; }
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  h2 { font-size: 15px; margin: 18px 0 8px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 14px; white-space: pre-wrap; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 10px 14px; min-height: 44px; cursor: pointer; font: inherit; font-size: 15px; color: var(--ink); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  button.main { background: var(--ink); color: #fff; border: none; border-radius: 10px; padding: 13px 18px; font: inherit; font-weight: 700; width: 100%; min-height: 48px; cursor: pointer; margin-top: 16px; }
+  button.main:disabled { opacity: .5; }
+  button.sec { background: #fff; color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font: inherit; min-height: 44px; cursor: pointer; }
+  .msg { padding: 14px; border-radius: 10px; font-size: 15px; margin-bottom: 12px; }
+  .err { background: #F5E1DE; color: var(--bad); } .ok { background: #E3F0E8; color: var(--good); } .wait { background: #F7EBD3; color: var(--warn); }
+  .hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .card { background: #fff; border: 2px solid var(--brass); border-radius: 12px; padding: 26px 18px; text-align: center; margin: 12px 0; }
+  .card .v { font-family: Georgia, serif; font-size: 38px; font-weight: 700; margin: 8px 0; }
+  .card .code { font-family: monospace; font-size: 22px; font-weight: 700; letter-spacing: .12em; }
+  .card .l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  @media print { header select, footer, .noprint { display: none !important; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Gutschein verschenken", amount: "Betrag", custom: "Anderer Betrag", range: "zwischen {min} und {max}", buyer: "Ihr Name", email: "Ihre E-Mail-Adresse", emailNote: "Dorthin schicken wir den Gutschein nach der Zahlung.", recipient: "Für wen ist der Gutschein? (optional)", message: "Persönliche Nachricht (optional)", pay: "Weiter zur Zahlung", paying: "Weiterleitung…", secure: "Die Zahlung läuft sicher über Stripe direkt an das Hotel.", valid: "Gültig {years} Jahre (bis Jahresende)", validNone: "Ohne Ablaufdatum", aborted: "Die Zahlung wurde abgebrochen. Es wurde nichts abgebucht.", checking: "Zahlung wird geprüft…", paid: "Vielen Dank! Ihr Gutschein ist bezahlt.", pending: "Die Zahlung ist noch nicht bestätigt. Sie erhalten den Gutschein per E-Mail, sobald sie eingegangen ist.", show: "Gutschein ansehen und drucken", voucher: "Gutschein", worth: "im Wert von", for: "für", code: "Gutscheincode", rest: "Restwert", until: "Gültig bis {date}", print: "Drucken oder als PDF speichern", redeem: "Einlösbar für alle Leistungen des Hotels, auch in Teilbeträgen. Keine Barauszahlung.", status_eingelöst: "Dieser Gutschein ist vollständig eingelöst.", status_storniert: "Dieser Gutschein ist storniert.", status_ausstehend: "Die Zahlung für diesen Gutschein ist noch offen.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…", choose: "Bitte einen Betrag wählen." },
+  en: { title: "Give a gift voucher", amount: "Amount", custom: "Other amount", range: "between {min} and {max}", buyer: "Your name", email: "Your email address", emailNote: "We’ll send the voucher there after payment.", recipient: "Who is the voucher for? (optional)", message: "Personal message (optional)", pay: "Continue to payment", paying: "Redirecting…", secure: "Payment is processed securely by Stripe and goes directly to the hotel.", valid: "Valid for {years} years (until the end of the year)", validNone: "No expiry date", aborted: "The payment was cancelled. Nothing has been charged.", checking: "Checking payment…", paid: "Thank you! Your voucher has been paid.", pending: "The payment has not been confirmed yet. You will receive the voucher by email as soon as it arrives.", show: "View and print voucher", voucher: "Gift voucher", worth: "worth", for: "for", code: "Voucher code", rest: "Remaining value", until: "Valid until {date}", print: "Print or save as PDF", redeem: "Redeemable for all hotel services, also in part. No cash payout.", status_eingelöst: "This voucher has been fully redeemed.", status_storniert: "This voucher has been cancelled.", status_ausstehend: "Payment for this voucher is still pending.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…", choose: "Please choose an amount." },
+  fr: { title:"Offrir un bon cadeau",amount:"Montant",custom:"Autre montant",range:"entre {min} et {max}",buyer:"Votre nom",email:"Votre adresse e-mail",emailNote:"Nous y enverrons le bon après le paiement.",recipient:"Pour qui est le bon ? (facultatif)",message:"Message personnel (facultatif)",pay:"Continuer vers le paiement",paying:"Redirection…",secure:"Le paiement est traité en toute sécurité par Stripe et versé directement à l’hôtel.",valid:"Valable {years} ans (jusqu’à la fin de l’année)",validNone:"Sans date d’expiration",aborted:"Le paiement a été annulé. Rien n’a été débité.",checking:"Vérification du paiement…",paid:"Merci ! Votre bon est payé.",pending:"Le paiement n’est pas encore confirmé. Vous recevrez le bon par e-mail dès qu’il sera reçu.",show:"Afficher et imprimer le bon",voucher:"Bon cadeau",worth:"d’une valeur de",for:"pour",code:"Code du bon",rest:"Valeur restante",until:"Valable jusqu’au {date}",print:"Imprimer ou enregistrer en PDF",redeem:"Utilisable pour toutes les prestations de l’hôtel, également en montants partiels. Pas de remboursement en espèces.","status_eingelöst":"Ce bon a été entièrement utilisé.",status_storniert:"Ce bon a été annulé.",status_ausstehend:"Le paiement de ce bon est encore en attente.",invalid:"Ce lien n’est pas (ou plus) valide.",error:"Cela n’a pas fonctionné. Veuillez réessayer plus tard.",loading:"Chargement…",choose:"Veuillez choisir un montant." },
+  it: { title:"Regala un buono",amount:"Importo",custom:"Altro importo",range:"tra {min} e {max}",buyer:"Il suo nome",email:"Il suo indirizzo e-mail",emailNote:"Le invieremo il buono a questo indirizzo dopo il pagamento.",recipient:"Per chi è il buono? (facoltativo)",message:"Messaggio personale (facoltativo)",pay:"Continua al pagamento",paying:"Reindirizzamento…",secure:"Il pagamento viene elaborato in modo sicuro da Stripe e accreditato direttamente all’hotel.",valid:"Valido {years} anni (fino a fine anno)",validNone:"Senza data di scadenza",aborted:"Il pagamento è stato annullato. Non è stato addebitato nulla.",checking:"Verifica del pagamento…",paid:"Grazie! Il suo buono è stato pagato.",pending:"Il pagamento non è ancora confermato. Riceverà il buono via e-mail non appena sarà arrivato.",show:"Visualizza e stampa il buono",voucher:"Buono regalo",worth:"del valore di",for:"per",code:"Codice del buono",rest:"Valore residuo",until:"Valido fino al {date}",print:"Stampa o salva come PDF",redeem:"Utilizzabile per tutti i servizi dell’hotel, anche in importi parziali. Nessun rimborso in contanti.","status_eingelöst":"Questo buono è stato utilizzato per intero.",status_storniert:"Questo buono è stato annullato.",status_ausstehend:"Il pagamento di questo buono è ancora in sospeso.",invalid:"Questo link non è (più) valido.",error:"Non ha funzionato. Riprovi più tardi.",loading:"Caricamento…",choose:"Scelga un importo." },
+  es: { title:"Regalar un bono",amount:"Importe",custom:"Otro importe",range:"entre {min} y {max}",buyer:"Su nombre",email:"Su correo electrónico",emailNote:"Allí le enviaremos el bono después del pago.",recipient:"¿Para quién es el bono? (opcional)",message:"Mensaje personal (opcional)",pay:"Continuar al pago",paying:"Redirigiendo…",secure:"El pago se procesa de forma segura con Stripe y va directamente al hotel.",valid:"Válido {years} años (hasta fin de año)",validNone:"Sin fecha de caducidad",aborted:"El pago se ha cancelado. No se ha cobrado nada.",checking:"Comprobando el pago…",paid:"¡Gracias! Su bono está pagado.",pending:"El pago aún no está confirmado. Recibirá el bono por correo electrónico en cuanto llegue.",show:"Ver e imprimir el bono",voucher:"Bono regalo",worth:"por valor de",for:"para",code:"Código del bono",rest:"Valor restante",until:"Válido hasta el {date}",print:"Imprimir o guardar como PDF",redeem:"Canjeable por todos los servicios del hotel, también en importes parciales. No se paga en efectivo.","status_eingelöst":"Este bono se ha canjeado por completo.",status_storniert:"Este bono ha sido anulado.",status_ausstehend:"El pago de este bono sigue pendiente.",invalid:"Este enlace no es válido (o ya no lo es).",error:"No ha funcionado. Inténtelo de nuevo más tarde.",loading:"Cargando…",choose:"Elija un importe." },
+  pt: { title:"Oferecer um vale-presente",amount:"Valor",custom:"Outro valor",range:"entre {min} e {max}",buyer:"O seu nome",email:"O seu e-mail",emailNote:"Enviaremos o vale para esse endereço após o pagamento.",recipient:"Para quem é o vale? (opcional)",message:"Mensagem pessoal (opcional)",pay:"Continuar para o pagamento",paying:"A redirecionar…",secure:"O pagamento é processado em segurança pelo Stripe e vai diretamente para o hotel.",valid:"Válido por {years} anos (até ao fim do ano)",validNone:"Sem data de validade",aborted:"O pagamento foi cancelado. Nada foi cobrado.",checking:"A verificar o pagamento…",paid:"Obrigado! O seu vale está pago.",pending:"O pagamento ainda não foi confirmado. Receberá o vale por e-mail assim que for recebido.",show:"Ver e imprimir o vale",voucher:"Vale-presente",worth:"no valor de",for:"para",code:"Código do vale",rest:"Valor restante",until:"Válido até {date}",print:"Imprimir ou guardar como PDF",redeem:"Utilizável em todos os serviços do hotel, também em valores parciais. Sem pagamento em dinheiro.","status_eingelöst":"Este vale foi totalmente resgatado.",status_storniert:"Este vale foi cancelado.",status_ausstehend:"O pagamento deste vale ainda está pendente.",invalid:"Este link não é (ou já não é) válido.",error:"Não funcionou. Tente novamente mais tarde.",loading:"A carregar…",choose:"Escolha um valor." },
+  tr: { title:"Hediye çeki hediye edin",amount:"Tutar",custom:"Başka tutar",range:"{min} ile {max} arasında",buyer:"Adınız",email:"E-posta adresiniz",emailNote:"Ödemeden sonra çeki oraya göndereceğiz.",recipient:"Çek kimin için? (isteğe bağlı)",message:"Kişisel mesaj (isteğe bağlı)",pay:"Ödemeye geç",paying:"Yönlendiriliyor…",secure:"Ödeme Stripe üzerinden güvenle yapılır ve doğrudan otele aktarılır.",valid:"{years} yıl geçerli (yıl sonuna kadar)",validNone:"Son kullanma tarihi yok",aborted:"Ödeme iptal edildi. Hesabınızdan hiçbir şey çekilmedi.",checking:"Ödeme kontrol ediliyor…",paid:"Teşekkürler! Çekiniz ödendi.",pending:"Ödeme henüz onaylanmadı. Ödeme ulaşır ulaşmaz çeki e-postayla alacaksınız.",show:"Çeki görüntüle ve yazdır",voucher:"Hediye çeki",worth:"değerinde",for:"için",code:"Çek kodu",rest:"Kalan değer",until:"{date} tarihine kadar geçerli",print:"Yazdır veya PDF olarak kaydet",redeem:"Otelin tüm hizmetlerinde, kısmi tutarlar halinde de kullanılabilir. Nakit ödeme yapılmaz.","status_eingelöst":"Bu çek tamamen kullanıldı.",status_storniert:"Bu çek iptal edildi.",status_ausstehend:"Bu çekin ödemesi hâlâ bekliyor.",invalid:"Bu bağlantı geçerli değil (veya artık geçerli değil).",error:"İşlem başarısız oldu. Lütfen daha sonra tekrar deneyin.",loading:"Yükleniyor…",choose:"Lütfen bir tutar seçin." },
+  ja: { title:"ギフト券を贈る",amount:"金額",custom:"その他の金額",range:"{min}〜{max}",buyer:"お名前",email:"メールアドレス",emailNote:"お支払い後、こちらにギフト券をお送りします。",recipient:"ギフト券の贈り先（任意）",message:"メッセージ（任意）",pay:"お支払いへ進む",paying:"移動中…",secure:"お支払いはStripeで安全に処理され、ホテルに直接入金されます。",valid:"有効期間：{years}年（年末まで）",validNone:"有効期限なし",aborted:"お支払いはキャンセルされました。請求は発生していません。",checking:"お支払いを確認しています…",paid:"ありがとうございます。ギフト券のお支払いが完了しました。",pending:"お支払いはまだ確認できていません。入金確認後、ギフト券をメールでお送りします。",show:"ギフト券を表示・印刷",voucher:"ギフト券",worth:"金額",for:"宛先",code:"ギフト券コード",rest:"残高",until:"有効期限：{date}",print:"印刷またはPDFで保存",redeem:"ホテルのすべてのサービスにご利用いただけます（分割利用も可）。現金での払い戻しはできません。","status_eingelöst":"このギフト券は全額利用済みです。",status_storniert:"このギフト券はキャンセルされています。",status_ausstehend:"このギフト券のお支払いはまだ完了していません。",invalid:"このリンクは無効、または有効期限が切れています。",error:"うまくいきませんでした。しばらくしてからもう一度お試しください。",loading:"読み込み中…",choose:"金額を選択してください。" },
+  zh: { title:"赠送礼券",amount:"金额",custom:"其他金额",range:"介于{min}与{max}之间",buyer:"您的姓名",email:"您的电子邮件",emailNote:"付款后，我们会将礼券发送到该邮箱。",recipient:"礼券赠送给谁？（可选）",message:"个人留言（可选）",pay:"继续付款",paying:"正在跳转…",secure:"付款通过Stripe安全处理，款项直接进入酒店账户。",valid:"有效期{years}年（至年底）",validNone:"无到期日",aborted:"付款已取消，未扣款。",checking:"正在核实付款…",paid:"谢谢！您的礼券已付款。",pending:"付款尚未确认。款项到账后，我们将通过电子邮件发送礼券。",show:"查看并打印礼券",voucher:"礼券",worth:"面值",for:"受赠人",code:"礼券代码",rest:"剩余价值",until:"有效期至{date}",print:"打印或保存为PDF",redeem:"可用于酒店所有服务，也可分次使用。不可兑换现金。","status_eingelöst":"该礼券已全部使用。",status_storniert:"该礼券已作废。",status_ausstehend:"该礼券的付款尚未完成。",invalid:"此链接无效或已失效。",error:"操作未成功，请稍后再试。",loading:"加载中…",choose:"请选择金额。" },
+  ar: { title:"إهداء قسيمة",amount:"المبلغ",custom:"مبلغ آخر",range:"بين {min} و{max}",buyer:"اسمك",email:"بريدك الإلكتروني",emailNote:"سنرسل القسيمة إليه بعد الدفع.",recipient:"لمن القسيمة؟ (اختياري)",message:"رسالة شخصية (اختياري)",pay:"المتابعة إلى الدفع",paying:"جارٍ التحويل…",secure:"تتم معالجة الدفع بأمان عبر Stripe ويذهب مباشرة إلى الفندق.",valid:"صالحة لمدة {years} سنوات (حتى نهاية السنة)",validNone:"بدون تاريخ انتهاء",aborted:"تم إلغاء الدفع. لم يتم خصم أي مبلغ.",checking:"جارٍ التحقق من الدفع…",paid:"شكرًا لك! تم دفع قيمة القسيمة.",pending:"لم يتم تأكيد الدفع بعد. ستصلك القسيمة عبر البريد الإلكتروني فور وصول المبلغ.",show:"عرض القسيمة وطباعتها",voucher:"قسيمة هدية",worth:"بقيمة",for:"إلى",code:"رمز القسيمة",rest:"القيمة المتبقية",until:"صالحة حتى {date}",print:"اطبع أو احفظ بصيغة PDF",redeem:"قابلة للاستخدام لجميع خدمات الفندق، حتى بمبالغ جزئية. لا يمكن صرفها نقدًا.","status_eingelöst":"تم استرداد هذه القسيمة بالكامل.",status_storniert:"تم إلغاء هذه القسيمة.",status_ausstehend:"لا يزال الدفع لهذه القسيمة معلقًا.",invalid:"هذا الرابط غير صالح (أو لم يعد صالحًا).",error:"لم تنجح العملية. يرجى المحاولة لاحقًا.",loading:"جارٍ التحميل…",choose:"يرجى اختيار مبلغ." },
+};
+var q = new URLSearchParams(location.search), token = q.get("h") || "", sid = q.get("s") || "", view = q.get("v") || "", aborted = q.get("abgebrochen") === "1", demo = q.get("demo") === "1";
+var TOK = /^[A-Za-z0-9_-]{20,64}$/;
+var state = { info: null, v: null, error: null, amount: null, custom: "", busy: false, paid: null, form: { buyer_name: "", buyer_email: "", recipient_name: "", message: "" } };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var L = T[lang] || T.en, s = L[k] != null ? L[k] : (T.en[k] || ""); return s.replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { if (!T[l[0]]) return; var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+function money(n, cur) { try { return new Intl.NumberFormat(lang === "en" ? "en-GB" : lang, { style: "currency", currency: cur || "EUR" }).format(n); } catch (e) { return n + " " + (cur || ""); } }
+function fmtDate(iso) { try { return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : lang, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(iso + "T12:00:00Z")); } catch (e) { return iso; } }
+function parseAmount(s) { var x = String(s || "").replace(/\s/g, ""); x = /,\d{1,2}$/.test(x) ? x.replace(/\./g, "").replace(",", ".") : x.replace(/,/g, ""); var n = Number(x); return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; }
+function brand(h) {
+  $("hotel").textContent = h.name || ""; document.title = (h.name ? h.name + " · " : "") + t("voucher");
+  if (h.logo && /^data:image\/(png|jpeg|webp|svg\+xml);/.test(h.logo)) { $("logo").src = h.logo; $("logo").hidden = false; }
+  if (h.color && /^#[0-9a-fA-F]{3,8}$/.test(h.color)) document.documentElement.style.setProperty("--ink", h.color);
+}
+function call(method, path, body) {
+  return fetch(API + path, { method: method, headers: { "Content-Type": "application/json", "Accept-Language": lang }, body: body ? JSON.stringify(body) : undefined })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(r.status === 404 ? t("invalid") : j.error || t("error")); return j; }); });
+}
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick" }, currency: "EUR", presets: [50, 100, 150, 250], custom: true, custom_min: 20, custom_max: 1000, valid_years: 0, title: "Gutschein", text: "Für Zimmer, Restaurant und Spa." };
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var hn = $("hotel").textContent; document.title = (hn && hn !== "…" ? hn + " · " : "") + t("voucher");
+  var a = $("app");
+  if (view) return renderView(a);
+  if (state.error && !state.info) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!state.info) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var i = state.info, f = state.form;
+  if (sid) {
+    var p = state.paid, h = "<h1>" + esc(i.title || t("title")) + "</h1>";
+    if (!p) h += '<div class="sub">' + esc(t("checking")) + "</div>";
+    else if (p.status === "aktiv") h += '<div class="msg ok" role="status">' + esc(t("paid")) + "</div>" + (p.view ? '<a class="main" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:10px;background:var(--ink);color:#fff;font-weight:700" href="?v=' + esc(p.view) + '">' + esc(t("show")) + "</a>" : "");
+    else h += '<div class="msg wait" role="status">' + esc(t("pending")) + "</div>";
+    a.innerHTML = h; return;
+  }
+  var h = "<h1>" + esc(i.title || t("title")) + "</h1>";
+  if (i.text) h += '<div class="sub">' + esc(i.text) + "</div>";
+  if (aborted) h += '<div class="msg wait" role="status">' + esc(t("aborted")) + "</div>";
+  if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+  h += "<h2>" + esc(t("amount")) + '</h2><div class="chips" role="group" aria-label="' + esc(t("amount")) + '">' + i.presets.map(function (p) { return '<button type="button" class="chip" data-amt="' + p + '" aria-pressed="' + (state.amount === p) + '">' + esc(money(p, i.currency)) + "</button>"; }).join("") + "</div>";
+  if (i.custom) h += '<label class="f" for="custom">' + esc(t("custom")) + " (" + esc(t("range", { min: money(i.custom_min, i.currency), max: money(i.custom_max, i.currency) })) + ')</label><input id="custom" inputmode="decimal" value="' + esc(state.custom) + '" />';
+  h += '<form id="frm" novalidate>'
+    + '<label class="f" for="buyer">' + esc(t("buyer")) + ' *</label><input id="buyer" autocomplete="name" maxlength="120" value="' + esc(f.buyer_name) + '" />'
+    + '<label class="f" for="email">' + esc(t("email")) + ' *</label><input id="email" type="email" autocomplete="email" maxlength="200" value="' + esc(f.buyer_email) + '" aria-describedby="emailNote" /><div class="note" id="emailNote">' + esc(t("emailNote")) + "</div>"
+    + '<label class="f" for="recipient">' + esc(t("recipient")) + '</label><input id="recipient" maxlength="120" value="' + esc(f.recipient_name) + '" />'
+    + '<label class="f" for="message">' + esc(t("message")) + '</label><textarea id="message" rows="3" maxlength="500">' + esc(f.message) + "</textarea>"
+    + '<div class="hp" aria-hidden="true"><input id="website" tabindex="-1" autocomplete="off" /></div>'
+    + '<div class="note">' + esc(i.valid_years ? t("valid", { years: i.valid_years }) : t("validNone")) + "</div>"
+    + '<button class="main" type="submit"' + (state.busy ? " disabled" : "") + ">" + esc(state.busy ? t("paying") : t("pay")) + "</button>"
+    + '<div class="note">' + esc(t("secure")) + "</div></form>";
+  a.innerHTML = h; bind();
+}
+function readForm() {
+  if (!$("buyer")) return;
+  var f = state.form; f.buyer_name = $("buyer").value; f.buyer_email = $("email").value; f.recipient_name = $("recipient").value; f.message = $("message").value;
+  if ($("custom")) state.custom = $("custom").value;
+}
+function bind() {
+  Array.prototype.forEach.call(document.querySelectorAll("[data-amt]"), function (b) { b.onclick = function () { readForm(); state.amount = Number(b.getAttribute("data-amt")); state.custom = ""; render(); }; });
+  var c = $("custom"); if (c) c.oninput = function () { state.custom = this.value; if (this.value) { state.amount = null; Array.prototype.forEach.call(document.querySelectorAll("[data-amt]"), function (b) { b.setAttribute("aria-pressed", "false"); }); } };
+  $("frm").onsubmit = function (e) {
+    e.preventDefault(); readForm();
+    var f = state.form, amt = state.custom ? parseAmount(state.custom) : state.amount;
+    if (!amt) { state.error = t("choose"); render(); return; }
+    if (!f.buyer_name.trim()) { state.error = t("buyer") + " *"; render(); $("buyer").focus(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.buyer_email.trim())) { state.error = t("email") + " *"; render(); $("email").focus(); return; }
+    state.busy = true; state.error = null; render();
+    if (demo) { setTimeout(function () { state.busy = false; sid = "demo"; state.paid = { status: "aktiv", view: "" }; render(); }, 600); return; }
+    call("POST", "/api/public/vouchers/" + encodeURIComponent(token), { amount: amt, buyer_name: f.buyer_name, buyer_email: f.buyer_email.trim(), recipient_name: f.recipient_name, message: f.message, lang: lang, website: $("website") ? $("website").value : "" })
+      .then(function (r) { if (r.url && /^https:\/\/[^\s"<>]+$/.test(r.url)) location.href = r.url; else { state.busy = false; state.error = t("error"); render(); } })
+      .catch(function (e) { state.busy = false; state.error = e.message || t("error"); render(); });
+  };
+}
+function renderView(a) {
+  var v = state.v;
+  if (state.error && !v) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!v) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var h = "";
+  if (v.status !== "aktiv") h += '<div class="msg wait noprint" role="status">' + esc(t("status_" + v.status)) + "</div>";
+  h += '<div class="card"><div class="l">' + esc(v.title || t("voucher")) + " · " + esc(t("worth")) + '</div><div class="v">' + esc(money(v.amount, v.currency)) + "</div>"
+    + (v.recipient_name ? "<div>" + esc(t("for")) + " <b>" + esc(v.recipient_name) + "</b></div>" : "")
+    + (v.message ? '<div style="font-style:italic;margin-top:12px;white-space:pre-wrap">„' + esc(v.message) + "“</div>" : "")
+    + '<div class="l" style="margin-top:20px">' + esc(t("code")) + '</div><div class="code">' + esc(v.code) + "</div>"
+    + '<div class="note">' + esc(v.valid_until ? t("until", { date: fmtDate(v.valid_until) }) : t("validNone")) + "</div>"
+    + (Number(v.remaining) !== Number(v.amount) ? '<div class="note">' + esc(t("rest")) + ": " + esc(money(v.remaining, v.currency)) + "</div>" : "") + "</div>";
+  if (v.text) h += '<div class="sub">' + esc(v.text) + "</div>";
+  h += '<div class="note">' + esc(t("redeem")) + "</div>";
+  h += '<button class="sec noprint" type="button" id="print" style="margin-top:14px;width:100%">' + esc(t("print")) + "</button>";
+  a.innerHTML = h; $("print").onclick = function () { window.print(); };
+}
+render();
+if (view) {
+  if (!TOK.test(view)) { state.error = t("invalid"); render(); }
+  else call("GET", "/api/public/voucher/" + encodeURIComponent(view)).then(function (v) { state.v = v; brand(v.hotel || {}); render(); }).catch(function (e) { state.error = e.message; render(); });
+} else if (!demo && !TOK.test(token)) { state.error = t("invalid"); render(); }
+else {
+  var p = demo ? Promise.resolve(DEMO) : call("GET", "/api/public/vouchers/" + encodeURIComponent(token));
+  p.then(function (i) {
+    state.info = i; brand(i.hotel || {}); render();
+    if (sid && !demo) {
+      var tries = 0;
+      (function check() {
+        call("GET", "/api/public/vouchers/" + encodeURIComponent(token) + "/session/" + encodeURIComponent(sid)).then(function (r) {
+          state.paid = r; render();
+          if (r.status === "ausstehend" && ++tries < 5) setTimeout(check, 3000);
+        }).catch(function (e) { state.paid = { status: "ausstehend" }; state.error = e.message; render(); });
+      })();
+    }
+  }).catch(function (e) { state.error = e.message || t("error"); render(); });
+}
+</script>
+</body>
+</html>

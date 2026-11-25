@@ -37702,4 +37702,23 @@ I18N.ja["Öffnungszeiten Spa & Freizeit"] = "スパ＆レジャー営業時間";
 I18N.zh["Öffnungszeiten Spa & Freizeit"] = "水疗与休闲营业时间";
 I18N.ar["Öffnungszeiten Spa & Freizeit"] = "ساعات عمل السبا والترفيه";
 
+I18N.en["E-Bikes"] = "E-bikes";
+I18N.fr["E-Bikes"] = "Vélos électriques";
+I18N.it["E-Bikes"] = "E-bike";
+I18N.es["E-Bikes"] = "Bicicletas eléctricas";
+I18N.pt["E-Bikes"] = "Bicicletas elétricas";
+I18N.tr["E-Bikes"] = "E-bisikletler";
+I18N.ja["E-Bikes"] = "電動自転車";
+I18N.zh["E-Bikes"] = "电动自行车";
+I18N.ar["E-Bikes"] = "دراجات كهربائية";
+I18N.en["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "Booked, but the health questions were not saved: {0}";
+I18N.fr["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "Réservé, mais les questions de santé n’ont pas été enregistrées : {0}";
+I18N.it["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "Prenotato, ma le domande sulla salute non sono state salvate: {0}";
+I18N.es["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "Reservado, pero las preguntas de salud no se han guardado: {0}";
+I18N.pt["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "Reservado, mas as perguntas de saúde não foram guardadas: {0}";
+I18N.tr["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "Rezervasyon yapıldı, ancak sağlık soruları kaydedilmedi: {0}";
+I18N.ja["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "予約しましたが、健康に関する質問は保存されませんでした：{0}";
+I18N.zh["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "已预订，但健康问题未能保存：{0}";
+I18N.ar["Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}"] = "تم الحجز، لكن لم يتم حفظ الأسئلة الصحية: {0}";
+
 startI18n(initialUiLanguage());

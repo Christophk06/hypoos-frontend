@@ -2655,7 +2655,9 @@
           allergens: dnAllerg(b.allergens), note: s200(b.note, 500) || null, status: (["angefragt", "bestätigt", "abgesagt", "nicht_erschienen", "erledigt"].indexOf(b.status) >= 0 ? b.status : "bestätigt"), table_ids: rtid, source: "intern", created_at: new Date().toISOString() };
         DN.res.push(nrs); return ok(Object.assign({}, nrs, { time: dnTime(nrs.start_min) })); }
       var rfr = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : todayIso, rto = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : rfr;
-      return ok(DN.res.filter(function (x) { return x.day >= rfr && x.day <= rto; }).sort(function (a, c) { return a.day < c.day ? -1 : a.day > c.day ? 1 : a.start_min - c.start_min; }).map(function (x) { return Object.assign({}, x, { time: dnTime(x.start_min) }); })); }
+      var nsb = {}, nkey = function (v) { return String(v || "").toLowerCase().replace(/[\s()\/-]/g, ""); };
+      DN.res.forEach(function (x) { if (x.status === "nicht_erschienen" && x.day < rfr && x.day >= add(rfr, -365)) [nkey(x.email), nkey(x.phone)].forEach(function (k) { if (k.length >= 5) nsb[k] = (nsb[k] || 0) + 1; }); });
+      return ok(DN.res.filter(function (x) { return x.day >= rfr && x.day <= rto; }).sort(function (a, c) { return a.day < c.day ? -1 : a.day > c.day ? 1 : a.start_min - c.start_min; }).map(function (x) { return Object.assign({}, x, { time: dnTime(x.start_min), noshow_before: Math.max(nsb[nkey(x.email)] || 0, nsb[nkey(x.phone)] || 0) }); })); }
     if ((mm = p.match(/^\/api\/table-reservations\/([^/]+)$/))) {
       if (m === "DELETE") { remove(DN.res, mm[1]); return ok({ ok: true }); } var ers = byId(DN.res, mm[1]); if (!ers) return nf();
       if (b.status !== undefined && ["angefragt", "bestätigt", "abgesagt", "nicht_erschienen", "erledigt"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400);
@@ -2725,6 +2727,58 @@
       prows.sort(function (x, y) { return String(x.unit).localeCompare(String(y.unit)) || x.from.localeCompare(y.from); });
       return ok({ month: pmo, currency: D.hotel.currency || "EUR", rows: prows, total: Math.round(prows.reduce(function (s, r) { return s + (r.amount || 0); }, 0) * 100) / 100 }); }
     if (p === "/api/me/tours") { if (m === "PATCH") { Object.keys(b || {}).forEach(function (k) { if (b[k] === null) delete TOURS[k]; else TOURS[k] = todayIso; }); } return ok(TOURS); }
+
+    /* Paket 045: Spa & Freizeit (Antworten wie routes-booking.js) und Restaurant-Erweiterungen (routes-dining.js) */
+    var spSub = p.indexOf(H + "/") === 0 ? p.slice(H.length + 1) : "";
+    if (SPA_CRUD[spSub]) { var sc = SPA_CRUD[spSub];
+      if (m === "POST") { if (spSub !== "booking-blocks" && !lead) return deny(sc[4]); var srow; try { srow = sc[1](b, false); } catch (e5) { return ok({ error: e5.message }, 400); }
+        var snw = Object.assign({ id: nid(sc[2]), hotel_id: D.hotel.id, created_at: new Date().toISOString() }, sc[3], srow); sc[0].push(snw); return ok(snw); }
+      return ok(sc[0].slice().sort(function (a, c) { return spSub === "booking-blocks" ? (a.day < c.day ? -1 : a.day > c.day ? 1 : 0) : (a.sort || 0) - (c.sort || 0) || (String(a.name) < String(c.name) ? -1 : 1); })); }
+    if ((mm = p.match(/^\/api\/(booking-services|booking-resources|booking-blocks)\/([^/]+)$/))) { var sc2 = SPA_CRUD[mm[1]]; if (mm[1] !== "booking-blocks" && !lead) return deny(sc2[4]);
+      if (m === "DELETE") { if (!byId(sc2[0], mm[2])) return deny(sc2[4]); remove(sc2[0], mm[2]); return ok({ ok: true }); } var sit = byId(sc2[0], mm[2]); if (!sit) return deny(sc2[4]);
+      try { Object.assign(sit, sc2[1](b, true)); } catch (e6) { return ok({ error: e6.message }, 400); } return ok(sit); }
+    if (p === H + "/booking-settings") {
+      if (m === "PUT") { if (!lead) return deny("Die Einstellungen ändert die Leitung Spa & Wellness oder Rezeption."); var ps = SPA.settings;
+        SPA.settings = { enabled: !!b.enabled, token: ps.token, name: spTxt(b.name, 80), open: spWeek(b.open), slot_min: [15, 30, 60].indexOf(Number(b.slot_min)) >= 0 ? Number(b.slot_min) : 30, lead_hours: spInt(b.lead_hours, 0, 72, 2), max_days: spInt(b.max_days, 1, 365, 60), cancel_hours: spInt(b.cancel_hours, 0, 168, 24),
+          reminder: b.reminder === undefined ? true : !!b.reminder, room_charge: b.room_charge === undefined ? true : !!b.room_charge, terms: spTxt(b.terms, 2000), closed_days: (Array.isArray(b.closed_days) ? b.closed_days : []).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d)); }).sort() };
+        if (b.new_token || (SPA.settings.enabled && !SPA.settings.token)) SPA.settings.token = "demoBuchen" + Math.random().toString(36).slice(2, 12) + "abcdefgh"; return ok(SPA.settings); }
+      return ok(Object.assign({}, SPA.settings, { token: lead ? SPA.settings.token : null, can_edit: lead, currency: D.hotel.currency || "EUR" })); }
+    if (p === H + "/booking-slots") { if (!q.get("service") || !/^\d{4}-\d{2}-\d{2}$/.test(q.get("day") || "")) return ok({ error: "Bitte Leistung und Tag wählen." }, 400);
+      var sls = spSlots(q.get("service"), q.get("day"), spInt(q.get("persons"), 1, 500, 1), q.get("pref") || "egal", q.get("ignore") || null); return sls ? ok(sls) : ok({ error: "Leistung nicht gefunden." }, 404); }
+    if (p === H + "/bookings") {
+      if (m === "POST") { var bbu, bgu; try { bbu = spBuild(b); bgu = spGuest(Object.assign({ guest_name: "" }, b)); } catch (e7) { return ok({ error: e7.message }, e7.status || 400); }
+        var nbk = Object.assign({ id: nid("bbk"), hotel_id: D.hotel.id, status: "bestätigt", payment: "vor_ort", paid: false, charged_at: null, deposit: null, deposit_paid_at: null, health_flag: false, cancel_reason: null, email: null, phone: null, room_no: null, arrival_guest_id: null, wishes: null, staff_pref: "egal", created_at: new Date().toISOString() }, bgu, bbu, { source: "intern" });
+        SPA.bk.push(nbk); return ok(spOut(nbk)); }
+      var bfr = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : todayIso, bto = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : bfr;
+      return ok(SPA.bk.filter(function (x) { return x.day >= bfr && x.day <= bto; }).sort(function (a, c) { return a.day < c.day ? -1 : a.day > c.day ? 1 : a.start_min - c.start_min; }).map(spOut)); }
+    if ((mm = p.match(/^\/api\/bookings\/([^/]+)\/health$/))) { var hbk = byId(SPA.bk, mm[1]); if (!hbk) return nf();
+      if (m === "PUT") { if (!lead) return deny("Gesundheitsfragen sieht nur Spa & Wellness."); if (b.consent !== true) return ok({ error: "Gesundheitsfragen nur mit Einwilligung des Gastes speichern." }, 400);
+        var hk = ["pregnant", "heart", "blood_pressure", "allergies", "injuries", "skin", "medication"], hans = {}, hflag = false; hk.forEach(function (k) { hans[k] = !!(b.answers && b.answers[k] === true); if (hans[k]) hflag = true; }); hans.note = spTxt(b.answers && b.answers.note, 1000);
+        SPA.health[hbk.id] = { booking_id: hbk.id, answers: hans, consent_at: new Date().toISOString() }; hbk.health_flag = hflag; return ok({ ok: true, flag: hflag }); }
+      if (!lead || !SPA.health[hbk.id]) return ok({ error: "Keine Gesundheitsfragen vorhanden oder keine Berechtigung." }, 404); return ok(SPA.health[hbk.id]); }
+    if ((mm = p.match(/^\/api\/bookings\/([^/]+)$/))) { var ebk = byId(SPA.bk, mm[1]); if (!ebk) return deny("Buchungen verwalten Spa & Wellness und die Rezeption.");
+      if (m === "DELETE") { remove(SPA.bk, mm[1]); return ok({ ok: true }); }
+      try { var bo = spGuest(b); if (b.charged !== undefined) bo.charged_at = b.charged ? new Date().toISOString() : null; if (bo.status === "storniert") bo.cancelled_at = new Date().toISOString();
+        if (b.day !== undefined || b.time !== undefined || b.persons !== undefined || b.service_id !== undefined || b.resource_ids !== undefined) {
+          Object.assign(bo, spBuild({ service_id: b.service_id || ebk.service_id, day: b.day || ebk.day, time: b.time || dnTime(ebk.start_min), persons: b.persons != null ? b.persons : ebk.persons, staff_pref: bo.staff_pref || ebk.staff_pref, resource_ids: b.resource_ids, price: b.price, force_time: b.force_time }, ebk.id)); }
+        else if (b.price !== undefined) bo.price = b.price === "" || b.price == null ? null : spR2(Number(String(b.price).replace(",", "."))); Object.assign(ebk, bo); } catch (e8) { return ok({ error: e8.message }, e8.status || 400); }
+      return ok(spOut(ebk)); }
+    if (p === H + "/booking-stats") { var sto = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : todayIso, sfr = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : add(sto, -29); return ok(spStats(sfr, sto)); }
+    if (p === H + "/table-reservation-series" && m === "POST") {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.from || "")) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.to || "")) || b.to < b.from) return ok({ error: "Bitte einen gültigen Zeitraum angeben." }, 400);
+      if (Math.round((new Date(b.to) - new Date(b.from)) / 86400000) > 60) return ok({ error: "Höchstens 60 Abende auf einmal." }, 400);
+      var sm = dnMin(b.time), spa2 = Math.round(Number(b.party)), sna = s200(b.name, 120), sdu = Math.round(Number(b.duration_min || 120));
+      if (sm == null) return ok({ error: "Bitte eine Uhrzeit angeben (z. B. 19:30)." }, 400); if (!(spa2 >= 1 && spa2 <= 200)) return ok({ error: "Bitte die Personenzahl angeben." }, 400); if (!sna) return ok({ error: "Bitte einen Namen angeben." }, 400);
+      var sid = nid("ser"), smade = 0, sskip = [];
+      for (var sd = b.from; sd <= b.to; sd = add(sd, 1)) { var sday = sd, sres = DN.res.filter(function (x) { return x.day === sday; }), stb = Array.isArray(b.table_ids) && b.table_ids.length ? b.table_ids : dnPick(DN_TABLES, sres, sm, sdu, spa2);
+        var sbusy = stb.some(function (t) { return sres.some(function (x) { return (x.status === "angefragt" || x.status === "bestätigt") && (x.table_ids || []).indexOf(t) >= 0 && x.start_min < sm + sdu && sm < x.start_min + (x.duration_min || 120); }); });
+        if (!stb.length || sbusy) { sskip.push(sd); continue; }
+        DN.res.push({ id: nid("trs"), hotel_id: D.hotel.id, day: sd, start_min: sm, duration_min: sdu, party: spa2, name: sna, email: null, phone: null, room_no: s200(b.room_no, 20) || null, allergens: dnAllerg(b.allergens), note: s200(b.note, 500) || null, status: "bestätigt", table_ids: stb, source: "intern", series_id: sid, created_at: new Date().toISOString() }); smade++; }
+      return ok({ series_id: sid, made: smade, skipped: sskip }); }
+    if ((mm = p.match(/^\/api\/table-reservation-series\/([^/]+)$/)) && m === "DELETE") { var sfd = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : todayIso, scn = 0;
+      DN.res.forEach(function (x) { if (x.series_id === mm[1] && x.day >= sfd && (x.status === "angefragt" || x.status === "bestätigt")) { x.status = "abgesagt"; scn++; } }); return ok({ cancelled: scn }); }
+    if (p === H + "/dining-stats") { var dds = [30, 90, 365].indexOf(Number(q.get("days"))) >= 0 ? Number(q.get("days")) : 30, dfr = add(todayIso, -dds);
+      return ok(Object.assign({ from: dfr, to: todayIso }, dnStats(DN.res.filter(function (x) { return x.day >= dfr && x.day <= todayIso; })))); }
 
     return ok({});
   };

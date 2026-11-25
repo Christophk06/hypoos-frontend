@@ -6,16 +6,20 @@
 &after=
 &amp;
 &body=
+&day=
 &days=
 &department=
 &department=Housekeeping
 &gt;
 &holidays=
+&ignore=
 &lang=
 &lt;
 &max_shift_h=
 &nbsp;</td><td>
 &open=true
+&persons=
+&pref=
 &quot;
 &redirect_to=
 &scopes=
@@ -170,6 +174,7 @@ arrival.answered
 autoplay; fullscreen; picture-in-picture; encrypted-media
 beleg.
 beleg.pdf
+buchen.html?
 calc(
 class="g"
 code_128
@@ -232,6 +237,7 @@ read:rooms
 read:tasks
 read:tickets
 repeat(3, 1fr)
+repeating-linear-gradient(45deg,
 review.created
 rotate(45deg)
 sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx

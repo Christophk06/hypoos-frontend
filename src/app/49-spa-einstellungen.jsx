@@ -6,7 +6,19 @@ const spSchedText = (sc) => SP_DAYS.map(([d])=>((sc||{})[d]||[]).join(", "));
 function SpaServices({hotel, api, services, resources, canEdit, run}){
   const [form,setForm] = useState(null); const money = moneyOf(hotel);
   const rooms = (resources||[]).filter(r=>r.kind==="raum"), gear = (resources||[]).filter(r=>r.kind==="geraet");
-  const addTemplates = () => run(async()=>{ const have = new Set((services||[]).map(s=>s.name)); for(const t of SP_TEMPLATES){ const name = translateString(t.name); if(!have.has(name)) await api("/api/hotels/"+hotel.id+"/booking-services","POST",{...t, name}); } }, tf("Vorlagen angelegt. Preise und Zeiten bitte anpassen."));
+  const addTemplates = () => run(async()=>{
+    const have = new Set((services||[]).map(s=>s.name));
+    // Verleih braucht ein Gerät, der Sportplatz einen Raum – fehlen sie, legen die Vorlagen sie mit an
+    let bikes = gear[0];
+    const court = (resources||[]).find(r=>r.kind==="raum" && /tennis/i.test(r.name)) || null;
+    for(const t of SP_TEMPLATES){
+      const name = translateString(t.name); if(have.has(name)) continue;
+      const body = {...t, name};
+      if(t.category==="verleih"){ if(!bikes) bikes = await api("/api/hotels/"+hotel.id+"/booking-resources","POST",{kind:"geraet", name:translateString("E-Bikes"), quantity:8}); body.gear_id = bikes.id; }
+      if(t.category==="platz"){ const c = court || await api("/api/hotels/"+hotel.id+"/booking-resources","POST",{kind:"raum", name:translateString("Tennisplatz")}); body.room_ids = [c.id]; }
+      await api("/api/hotels/"+hotel.id+"/booking-services","POST",body);
+    }
+  }, tf("Vorlagen angelegt. Preise und Zeiten bitte anpassen."));
   const save = () => run(async()=>{
     const body = {...form, gear_id:form.gear_id||null, price:form.price===""?null:form.price};
     if(form.category==="kurs") body.schedule = Object.fromEntries(SP_DAYS.map(([d],i)=>[d, String((form.schedText||[])[i]||"").split(/[,;\s]+/).filter(Boolean)]));

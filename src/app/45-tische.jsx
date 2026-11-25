@@ -23,7 +23,7 @@ function DiningView({hotel, api}){
   return (
     <div>
       <BgmHead title={tf("Tischreservierung")} intro={tf("Reservierungen fürs Restaurant – intern eingetragen oder online über deinen Buchungslink. Allergene gehen als Hinweis an Food & Beverage.")} />
-      <BgmTabs value={view} onChange={setView} tabs={[["day",tf("Tagesplan")],["tables",tf("Tische")],["stats",tf("Auswertung")]].concat(canEdit?[["settings",tf("Online-Buchung")]]:[])} />
+      <BgmTabs value={view} onChange={(v)=>{ setView(v); setMsg(null); }} tabs={[["day",tf("Tagesplan")],["tables",tf("Tische")],["stats",tf("Auswertung")]].concat(canEdit?[["settings",tf("Online-Buchung")]]:[])} />
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {err && <ErrorText style={{marginBottom:10}}>{err}</ErrorText>}
       {view==="day" && <div>

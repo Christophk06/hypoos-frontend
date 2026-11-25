@@ -63,7 +63,7 @@ function SpaView({hotel, api, me, members}){
   return (
     <div>
       <BgmHead title={tf("Spa & Freizeit")} intro={tf("Behandlungen, Sauna- und Pool-Zeiten, Kurse, Aktivitäten, Verleih und Sportplätze buchen – mit Therapeut/innen, Räumen und Geräten ohne Doppelbuchung.")} />
-      <BgmTabs value={view} onChange={setView} tabs={tabs} />
+      <BgmTabs value={view} onChange={(v)=>{ setView(v); setMsg(null); }} tabs={tabs} />
       {msg && <div style={{color:msg.ok?GOOD:BAD,fontSize:13,marginBottom:10}}>{msg.text}</div>}
       {err && <ErrorText style={{marginBottom:10}}>{err}</ErrorText>}
       {(view==="cal"||view==="mine") && <div>
@@ -159,7 +159,7 @@ function SpaBookingForm({hotel, api, form, setForm, services, onClose, onSaved})
       if(form.move) b = await api("/api/bookings/"+form.id,"PATCH",{day:form.day, time:form.time, persons:form.persons, service_id:form.service_id, staff_pref:form.staff_pref, force_time:!!force});
       else {
         b = await api("/api/hotels/"+hotel.id+"/bookings","POST",{...form, force_time:!!force});
-        if(health && health.consent && s && s.health_form) await api("/api/bookings/"+b.id+"/health","PUT",{consent:true, answers:health.answers}).catch(()=>{});
+        if(health && health.consent && s && s.health_form) await api("/api/bookings/"+b.id+"/health","PUT",{consent:true, answers:health.answers}).catch(e=>{ throw new Error(tf("Gebucht, aber die Gesundheitsfragen wurden nicht gespeichert: {0}", e.message)); });
       }
       onSaved(b);
     } catch(e){ setErr(e.message); } finally { setBusy(false); }
@@ -198,7 +198,7 @@ function SpaBookingForm({hotel, api, form, setForm, services, onClose, onSaved})
           <Field label={tf("Bezahlung")}><select className="input" value={form.payment} onChange={e=>setForm({...form,payment:e.target.value})}>{SP_PAY.filter(p=>p[0]!=="online").map(([k,l])=><option key={k} value={k}>{tf(l)}</option>)}</select></Field>
         </div>
         <Field label={tf("Wünsche und Hinweise")}><textarea className="input" rows={2} value={form.wishes} onChange={e=>setForm({...form,wishes:e.target.value})} /></Field>
-        {s && s.health_form && <SpaHealthForm value={health} onChange={setHealth} />}
+        {s && s.health_form && spaSeesHealth() && <SpaHealthForm value={health} onChange={setHealth} />}
       </>}
       {err && <ErrorText style={{marginBottom:8}}>{err}</ErrorText>}
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -209,6 +209,8 @@ function SpaBookingForm({hotel, api, form, setForm, services, onClose, onSaved})
   );
 }
 
+// Gesundheitsangaben speichern und sehen nur Admin, Gesamtleitung und Spa & Wellness (wie die Datenbank)
+const spaSeesHealth = () => ACCESS.role==="admin" || (ACCESS.role==="manager" && !(ACCESS.depts||[]).length) || (ACCESS.depts||[]).includes("Spa & Wellness");
 function SpaHealthForm({value, onChange}){
   const v = value || {answers:{}, consent:false};
   const set = (k, x) => onChange({...v, answers:{...v.answers, [k]:x}});

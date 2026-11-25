@@ -374,6 +374,163 @@
   }
   function dnAllerg(v) { var L = "ABCDEFGHLMNOPR".split(""), list = Array.isArray(v) ? v : String(v || "").split(/[,\s]+/); return list.map(function (x) { return String(x).trim().toUpperCase(); }).filter(function (x, i, a) { return L.indexOf(x) >= 0 && a.indexOf(x) === i; }).sort(); }
 
+  /* Paket 045: Restaurant-Erweiterungen (Stammtisch-Serie, No-Show-Hinweis, Statistik) – Beispieldaten */
+  [[-20, 1140, 2, "Herr Schmid", "nicht_erschienen", "intern", "gast3@example.com", null], [-18, 1170, 2, "Fam. Oberhofer", "erledigt", "online", "gast20@example.com", null], [-16, 1140, 4, "Dr. Wagner", "erledigt", "intern", null, "Z 118"],
+    [-14, 1200, 3, "Frau Leitner", "abgesagt", "online", "gast22@example.com", null], [-12, 1170, 6, "Geburtstag Roth", "erledigt", "online", "gast23@example.com", null], [-10, 1140, 2, "Herr Brandt", "erledigt", "intern", null, "Z 305"],
+    [-9, 1230, 2, "Ehepaar Mayr", "nicht_erschienen", "online", "gast25@example.com", null], [-7, 1170, 4, "Fam. Kunz", "erledigt", "online", "gast26@example.com", null], [-6, 1140, 5, "Firma Alpina", "erledigt", "intern", null, null],
+    [-4, 1200, 2, "Frau Ruiz", "erledigt", "online", "gast28@example.com", null], [-3, 1170, 2, "Herr Lang", "erledigt", "intern", null, "Z 305"], [-2, 1140, 3, "Fam. Egger", "abgesagt", "online", "gast30@example.com", null], [-1, 1170, 4, "Fam. Bauer", "erledigt", "online", "gast31@example.com", "Z 214"]]
+    .forEach(function (x, i) { DN.res.push({ id: "trs-p" + (i + 1), hotel_id: AH, day: add(todayIso, x[0]), start_min: x[1], duration_min: 120, party: x[2], name: x[3], email: x[6], phone: null, room_no: x[7], allergens: [], note: null, status: x[4], table_ids: ["rtb-" + (3 + i % 3)], source: x[5], created_at: now.toISOString() }); });
+  [0, 1, 2, 3].forEach(function (d, i) { DN.res.push({ id: "trs-s" + (i + 1), hotel_id: AH, day: add(todayIso, d), start_min: 1080, duration_min: 120, party: 2, name: "Fam. Keller (Halbpension)", email: null, phone: null, room_no: "Z 120", allergens: [], note: "Stammtisch für Hausgäste", status: "bestätigt", table_ids: ["rtb-6"], source: "intern", series_id: "ser-demo-1", created_at: now.toISOString() }); });
+  function dnStats(rows) {
+    var wd = []; for (var i = 0; i < 7; i++) wd.push({ reservations: 0, guests: 0 });
+    var c = { total: rows.length, guests: 0, online: 0, cancelled: 0, no_show: 0, came: 0 };
+    rows.forEach(function (r) { if (r.source === "online") c.online++; if (r.status === "abgesagt") { c.cancelled++; return; } if (r.status === "nicht_erschienen") { c.no_show++; return; } if (r.status === "erledigt") c.came++;
+      var w = (new Date(r.day + "T12:00:00Z").getUTCDay() + 6) % 7; wd[w].reservations++; wd[w].guests += r.party || 0; c.guests += r.party || 0; });
+    c.no_show_pct = c.no_show + c.came ? Math.round(c.no_show / (c.no_show + c.came) * 100) : null; c.cancel_pct = c.total ? Math.round(c.cancelled / c.total * 100) : null; c.weekdays = wd; return c;
+  }
+
+  /* Paket 045: Spa & Freizeit – Beispieldaten im Speicher; Logik (freeSlots, priceOf, bookingStats) aus routes-booking.js portiert */
+  var SPA_ACT = ["angefragt", "bestätigt", "angekommen"], SPA_CATS = ["behandlung", "paar", "zeitfenster", "kurs", "aktivitaet", "verleih", "platz"];
+  var SPA_STAT = ["angefragt", "bestätigt", "angekommen", "erledigt", "storniert", "nicht_erschienen"], SPA_PAYS = ["zimmer", "vor_ort", "online", "gutschein", "inklusive"];
+  function spWd(day) { var w = new Date(day + "T12:00:00Z").getUTCDay(); return String(w === 0 ? 7 : w); }
+  function spR2(n) { return Math.round(Number(n) * 100) / 100; }
+  function spInt(x, lo, hi, d) { var n = Math.round(Number(x)); return x !== "" && x != null && isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; }
+  function spTxt(v, n) { return String(v == null ? "" : v).replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, n) || null; }
+  function spWeek(v) { var out = {}; ["1", "2", "3", "4", "5", "6", "7"].forEach(function (d) { var r = (Array.isArray(v && v[d]) ? v[d] : []).slice(0, 4).map(function (x) { return [dnMin(x && x[0]), dnMin(x && x[1])]; }).filter(function (x) { return x[0] != null && x[1] != null && x[1] > x[0]; }); if (r.length) out[d] = r.map(function (x) { return [dnTime(x[0]), dnTime(x[1])]; }); }); return out; }
+  function spSched(v) { var out = {}; ["1", "2", "3", "4", "5", "6", "7"].forEach(function (d) { var t = (Array.isArray(v && v[d]) ? v[d] : []).map(dnMin).filter(function (x) { return x != null; }).sort(function (a, c) { return a - c; }).slice(0, 12); if (t.length) out[d] = t.map(dnTime); }); return out; }
+  var SPA_ALL_DAYS = function (a, e) { var o = {}; ["1", "2", "3", "4", "5", "6", "7"].forEach(function (d) { o[d] = [[a, e]]; }); return o; };
+  var SPA = { settings: { enabled: true, token: "demoBuchenToken0123456789", name: null, open: SPA_ALL_DAYS("09:00", "20:00"), slot_min: 30, lead_hours: 2, max_days: 60, cancel_hours: 24, reminder: true, room_charge: true, terms: "Stornierung bis 24 Stunden vor dem Termin kostenfrei.", closed_days: [] }, health: {} };
+  SPA.svc = [["behandlung", "Klassische Massage", 50, 10, 79, "buchung", 1, 1, true, ["brs-4", "brs-5"], true, null, null], ["behandlung", "Aromaöl-Massage", 80, 10, 115, "buchung", 1, 1, true, ["brs-4", "brs-5"], true, null, null],
+    ["behandlung", "Gesichtsbehandlung", 50, 10, 85, "buchung", 1, 1, true, ["brs-4", "brs-5"], true, null, null], ["paar", "Paarmassage", 50, 15, 160, "buchung", 1, 2, true, ["brs-6"], true, null, null],
+    ["zeitfenster", "Private Sauna", 60, 0, 25, "person", 4, 0, false, [], false, null, null], ["kurs", "Yoga am Morgen", 60, 0, 0, "buchung", 10, 0, false, [], false, null, { "1": ["07:30"], "3": ["07:30"], "5": ["07:30"], "6": ["08:30"] }],
+    ["verleih", "E-Bike (halber Tag)", 240, 0, 35, "person", 1, 0, false, [], false, "brs-7", null], ["platz", "Tennisplatz", 60, 0, 20, "buchung", 1, 0, true, ["brs-8"], false, null, null]]
+    .map(function (x, i) { return { id: "bsv-" + (i + 1), hotel_id: AH, category: x[0], name: x[1], description: null, duration_min: x[2], buffer_before: 0, buffer_after: x[3], price: x[4], price_per: x[5], capacity: x[6], staff_count: x[7], needs_room: x[8], room_ids: x[9],
+      gear_id: x[11], gear_qty: 1, min_age: null, health_form: x[10], online: true, guests_only: false, active: true, schedule: x[12] || {}, color: ["#A9834B", "#6B8F71", "#5B7DB1", "#9B6B9E", "#C0714F", "#4F8A8B", "#8A7F5B", "#A9834B"][i], sort: i, deposit_pct: 0, noshow_fee_pct: 0, created_at: now.toISOString() }; });
+  SPA.res = [["person", "Anna Berger", "w", SPA_ALL_DAYS("09:00", "18:00"), null, 1], ["person", "Lisa Moser", "w", SPA_ALL_DAYS("10:00", "19:00"), "u-member", 1], ["person", "Markus Gruber", "m", SPA_ALL_DAYS("09:00", "17:00"), null, 1],
+    ["raum", "Kabine 1", null, {}, null, 1], ["raum", "Kabine 2", null, {}, null, 1], ["raum", "Paarkabine", null, {}, null, 1], ["geraet", "E-Bikes", null, {}, null, 8], ["raum", "Tennisplatz", null, {}, null, 1]]
+    .map(function (x, i) { return { id: "brs-" + (i + 1), hotel_id: AH, kind: x[0], name: x[1], user_id: x[4], service_ids: [], quantity: x[5], hours: x[3], gender: x[2], active: true, sort: i, created_at: now.toISOString() }; });
+  SPA.blocks = [{ id: "bbl-1", hotel_id: AH, resource_id: "brs-1", day: todayIso, start_min: 750, end_min: 810, reason: "Mittagspause", created_at: now.toISOString() }];
+  function spPrice(s, persons, minutes) { if (s.price == null) return null; var p = Number(s.price); if (s.price_per === "person") return spR2(p * persons); if (s.price_per === "stunde") return spR2(p * (minutes || s.duration_min) / 60 * (s.category === "verleih" ? persons : 1)); return spR2(p); }
+  function spWork(r, day, st) { var own = (r.hours && r.hours[spWd(day)]) || []; if (own.length) return own.map(function (x) { return [dnMin(x[0]), dnMin(x[1])]; }); if (r.kind === "person") return []; return ((st.open || {})[spWd(day)] || []).map(function (x) { return [dnMin(x[0]), dnMin(x[1])]; }); }
+  function spWithin(w, a, b) { return w.some(function (x) { return a >= x[0] && b <= x[1]; }); }
+  function spOv(a0, a1, b0, b1) { return a0 < b1 && b0 < a1; }
+  function spFree(o) {
+    var s = o.service, day = o.day, st = o.settings, res = o.resources, act = o.bookings.filter(function (b) { return SPA_ACT.indexOf(b.status) >= 0 && b.id !== o.ignoreId; }), blocks = o.blocks, persons = o.persons || 1, pref = o.staffPref || "egal";
+    if ((st.closed_days || []).indexOf(day) >= 0 || (o.nowDay && day < o.nowDay)) return [];
+    var wd = spWd(day), dur = s.duration_min, bb = s.buffer_before || 0, ba = s.buffer_after || 0, open = ((st.open || {})[wd] || []).map(function (x) { return [dnMin(x[0]), dnMin(x[1])]; }), shared = (s.capacity || 1) > 1, starts = [];
+    if (s.category === "kurs" && s.schedule && Object.keys(s.schedule).length) starts = (s.schedule[wd] || []).map(dnMin); else open.forEach(function (x) { for (var t = x[0]; t + dur <= x[1]; t += st.slot_min || 30) starts.push(t); });
+    var minStart = o.nowDay && day === o.nowDay ? o.nowMin + (st.lead_hours || 0) * 60 : -1;
+    var pool = function (k) { return res.filter(function (r) { return r.kind === k && r.active !== false; }); };
+    var busy = function (rid, a, b) { return act.some(function (x) { return (x.resource_ids || []).indexOf(rid) >= 0 && spOv(a, b, x.block_start != null ? x.block_start : x.start_min, x.block_end != null ? x.block_end : x.end_min); }) || blocks.some(function (x) { return x.resource_id === rid && spOv(a, b, x.start_min, x.end_min); }); };
+    var load = function (rid) { return act.filter(function (x) { return (x.resource_ids || []).indexOf(rid) >= 0; }).reduce(function (m, x) { return m + (x.end_min - x.start_min); }, 0); };
+    var out = [], uniq = starts.filter(function (t, i, a) { return a.indexOf(t) === i; }).sort(function (a, c) { return a - c; });
+    uniq.forEach(function (t) {
+      if (t < minStart) return; var a = t - bb, e = t + dur, b = e + ba; if (s.category !== "kurs" && !spWithin(open, t, e)) return;
+      if (shared) { var same = act.filter(function (x) { return x.service_id === s.id && x.start_min === t; }), left = (s.capacity || 1) - same.reduce(function (m, x) { return m + (x.persons || 1); }, 0);
+        if (left < persons) return; if (same.length) { out.push({ time: dnTime(t), start: t, staff: [], room: null, resource_ids: same[0].resource_ids || [], left: left }); return; } }
+      var staff = [];
+      if (s.staff_count > 0) { var okp = pool("person").filter(function (r) { return (!r.service_ids || !r.service_ids.length || r.service_ids.indexOf(s.id) >= 0) && (pref === "egal" || !pref || r.gender === pref) && spWithin(spWork(r, day, st), t, e) && !busy(r.id, a, b); })
+          .sort(function (x, y) { return load(x.id) - load(y.id) || (x.sort || 0) - (y.sort || 0); }); if (okp.length < s.staff_count) return; staff = okp.slice(0, s.staff_count).map(function (r) { return r.id; }); }
+      var room = null;
+      if (s.needs_room) { var rooms = pool("raum").filter(function (r) { return (!s.room_ids || !s.room_ids.length || s.room_ids.indexOf(r.id) >= 0) && spWithin(spWork(r, day, st), t, e) && !busy(r.id, a, b); }); if (!rooms.length) return; room = rooms.sort(function (x, y) { return (x.sort || 0) - (y.sort || 0); })[0].id; }
+      var ids = staff.concat(room ? [room] : []);
+      if (s.gear_id) { var g = res.find(function (r) { return r.id === s.gear_id && r.active !== false; }); if (!g) return; var need = (s.gear_qty || 1) * persons,
+          used = act.filter(function (x) { return (x.resource_ids || []).indexOf(g.id) >= 0 && spOv(a, b, x.block_start != null ? x.block_start : x.start_min, x.block_end != null ? x.block_end : x.end_min); }).reduce(function (m, x) { return m + (x.gear_qty || 0); }, 0)
+            + (blocks.some(function (x) { return x.resource_id === g.id && spOv(a, b, x.start_min, x.end_min); }) ? g.quantity : 0);
+        if (used + need > (g.quantity || 1)) return; ids.push(g.id); out.push({ time: dnTime(t), start: t, staff: staff, room: room, resource_ids: ids, gear_qty: need, left: (g.quantity || 1) - used }); return; }
+      out.push({ time: dnTime(t), start: t, staff: staff, room: room, resource_ids: ids, left: shared ? s.capacity : 1 });
+    });
+    return out;
+  }
+  function spNow() { return { day: todayIso, min: now.getHours() * 60 + now.getMinutes() }; }
+  function spSlots(svcId, day, persons, pref, ignoreId) { var s = byId(SPA.svc, svcId); if (!s) return null; var n = spNow();
+    return spFree({ service: s, day: day, settings: SPA.settings, resources: SPA.res, bookings: SPA.bk.filter(function (b) { return b.day === day; }), blocks: SPA.blocks.filter(function (b) { return b.day === day; }), persons: persons, staffPref: pref, nowDay: n.day, nowMin: n.min, ignoreId: ignoreId }); }
+  function spOut(b) { return Object.assign({}, b, { time: dnTime(b.start_min), end: dnTime(b.end_min) }); }
+  function spBk(day, time, svcId, persons, name, status, ids, x) {
+    var s = byId(SPA.svc, svcId), st = dnMin(time); x = x || {};
+    SPA.bk.push(Object.assign({ id: "bbk-" + (SPA.bk.length + 1), hotel_id: AH, service_id: s.id, day: day, start_min: st, end_min: st + s.duration_min, block_start: st - (s.buffer_before || 0), block_end: st + s.duration_min + (s.buffer_after || 0), persons: persons, resource_ids: ids,
+      gear_qty: s.gear_id ? persons : null, guest_name: name, email: null, phone: null, room_no: null, arrival_guest_id: null, wishes: null, staff_pref: "egal", price: spPrice(s, persons), payment: "vor_ort", paid: false, charged_at: null, deposit: null, deposit_paid_at: null, status: status, source: "intern", health_flag: false, cancel_reason: null, created_at: now.toISOString() }, x));
+  }
+  SPA.bk = [];
+  spBk(todayIso, "10:00", "bsv-1", 1, "Frau Berger", "bestätigt", ["brs-1", "brs-4"], { room_no: "214", payment: "zimmer", wishes: "Nacken und Schultern", source: "gast" });
+  spBk(todayIso, "11:30", "bsv-2", 1, "Herr Kern", "bestätigt", ["brs-3", "brs-5"], { health_flag: true, phone: "+43 660 1234567", staff_pref: "m" });
+  spBk(todayIso, "14:00", "bsv-4", 2, "Familie Hofmann", "bestätigt", ["brs-1", "brs-3", "brs-6"], { room_no: "301", payment: "zimmer", wishes: "Hochzeitstag, bitte Rosenblätter" });
+  spBk(todayIso, "16:00", "bsv-5", 2, "Julia Steiner", "angefragt", [], { email: "julia.steiner@example.com", source: "online" });
+  spBk(todayIso, "09:00", "bsv-3", 1, "Frau Lehner", "erledigt", ["brs-3", "brs-5"], { paid: true });
+  spBk(todayIso, "17:00", "bsv-8", 2, "Herr Brandt", "bestätigt", ["brs-8"], { room_no: "305" });
+  spBk(add(todayIso, 1), "10:00", "bsv-1", 1, "Frau Novak", "bestätigt", ["brs-1", "brs-4"], { room_no: "118", payment: "zimmer" });
+  spBk(add(todayIso, 1), "09:00", "bsv-7", 2, "Familie Weiss", "bestätigt", ["brs-7"], { payment: "inklusive", room_no: "122" });
+  spBk(add(todayIso, -1), "15:00", "bsv-1", 1, "Herr Pichler", "nicht_erschienen", ["brs-1", "brs-4"]);
+  spBk(add(todayIso, -2), "11:00", "bsv-2", 1, "Frau Aigner", "erledigt", ["brs-2", "brs-5"], { paid: true });
+  spBk(add(todayIso, -3), "16:00", "bsv-4", 2, "Ehepaar Mayr", "erledigt", ["brs-1", "brs-3", "brs-6"], { payment: "zimmer", charged_at: now.toISOString() });
+  spBk(add(todayIso, -5), "14:00", "bsv-3", 1, "Frau Ruiz", "storniert", ["brs-2", "brs-4"], { cancel_reason: "vom Gast online storniert" });
+  spBk(add(todayIso, -6), "10:30", "bsv-5", 3, "Familie Kunz", "erledigt", [], { paid: true });
+  SPA.health["bbk-2"] = { booking_id: "bbk-2", answers: { pregnant: false, heart: false, blood_pressure: true, allergies: false, injuries: true, skin: false, medication: false, note: "Bandscheibenvorfall vor zwei Jahren, bitte sanft." }, consent_at: now.toISOString() };
+  function spStats(from, to) {
+    var done = SPA.bk.filter(function (b) { return b.day >= from && b.day <= to; }), act = done.filter(function (b) { return ["bestätigt", "angekommen", "erledigt"].indexOf(b.status) >= 0; }), svc = {};
+    SPA.svc.forEach(function (s) { svc[s.id] = { id: s.id, name: s.name, category: s.category, count: 0, persons: 0, revenue: 0 }; });
+    act.forEach(function (b) { var s = svc[b.service_id]; if (!s) return; s.count++; s.persons += b.persons || 1; s.revenue = spR2(s.revenue + (Number(b.price) || 0)); });
+    var rs = SPA.res.filter(function (r) { return r.kind !== "geraet" && r.active !== false; }).map(function (r) { var work = 0; for (var d = from; d <= to; d = add(d, 1)) spWork(r, d, SPA.settings).forEach(function (x) { work += x[1] - x[0]; });
+      var booked = act.filter(function (b) { return (b.resource_ids || []).indexOf(r.id) >= 0; }).reduce(function (m, b) { return m + (b.end_min - b.start_min); }, 0); return { id: r.id, name: r.name, kind: r.kind, work_min: work, booked_min: booked, pct: work ? Math.round(booked / work * 100) : null }; });
+    var ns = done.filter(function (b) { return b.status === "nicht_erschienen"; }).length, base = ns + done.filter(function (b) { return b.status === "angekommen" || b.status === "erledigt"; }).length;
+    return { from: from, to: to, services: Object.keys(svc).map(function (k) { return svc[k]; }).sort(function (a, c) { return c.revenue - a.revenue || c.count - a.count; }), resources: rs,
+      total: { bookings: act.length, revenue: spR2(act.reduce(function (m, b) { return m + (Number(b.price) || 0); }, 0)), cancelled: done.filter(function (b) { return b.status === "storniert"; }).length, no_show: ns, no_show_pct: base ? Math.round(ns / base * 100) : null } };
+  }
+  function spCleanSvc(b, partial) {
+    var o = {};
+    if (!partial || b.category !== undefined) { if (SPA_CATS.indexOf(b.category) < 0) throw new Error("Bitte eine Art wählen."); o.category = b.category; }
+    if (!partial || b.name !== undefined) { o.name = spTxt(b.name, 120); if (!o.name) throw new Error("Bitte einen Namen angeben."); }
+    if (b.description !== undefined) o.description = spTxt(b.description, 1000);
+    if (!partial || b.duration_min !== undefined) { var n = Math.round(Number(b.duration_min)); if (!(n >= 5 && n <= 1440)) throw new Error("Dauer: 5 Minuten bis 24 Stunden."); o.duration_min = n; }
+    ["buffer_before", "buffer_after"].forEach(function (k) { if (b[k] !== undefined) o[k] = spInt(b[k], 0, 120, 0); });
+    if (b.price !== undefined) { if (b.price === "" || b.price == null) o.price = null; else { var pr = Number(String(b.price).replace(",", ".")); if (!(pr >= 0 && pr <= 100000)) throw new Error("Bitte einen gültigen Preis angeben."); o.price = spR2(pr); } }
+    if (b.price_per !== undefined) o.price_per = ["buchung", "person", "stunde"].indexOf(b.price_per) >= 0 ? b.price_per : "buchung";
+    if (b.capacity !== undefined) o.capacity = spInt(b.capacity, 1, 500, 1); if (b.staff_count !== undefined) o.staff_count = spInt(b.staff_count, 0, 4, 1); if (b.needs_room !== undefined) o.needs_room = !!b.needs_room;
+    if (b.room_ids !== undefined) o.room_ids = Array.isArray(b.room_ids) ? b.room_ids.filter(function (x, i, a) { return a.indexOf(x) === i; }) : []; if (b.gear_id !== undefined) o.gear_id = b.gear_id || null; if (b.gear_qty !== undefined) o.gear_qty = spInt(b.gear_qty, 1, 50, 1);
+    if (b.min_age !== undefined) o.min_age = b.min_age === "" || b.min_age == null ? null : spInt(b.min_age, 0, 99, null);
+    ["health_form", "online", "guests_only", "active"].forEach(function (k) { if (b[k] !== undefined) o[k] = !!b[k]; });
+    if (b.schedule !== undefined) o.schedule = spSched(b.schedule); if (b.color !== undefined) o.color = /^#[0-9a-fA-F]{6}$/.test(String(b.color || "")) ? b.color : null; if (b.sort !== undefined) o.sort = spInt(b.sort, -1000, 1000, 0);
+    ["deposit_pct", "noshow_fee_pct"].forEach(function (k) { if (b[k] !== undefined) o[k] = spInt(b[k], 0, 100, 0); });
+    if (!partial) { if (o.category === "paar" && b.staff_count === undefined) o.staff_count = 2; if (["verleih", "platz"].indexOf(o.category) >= 0 && b.staff_count === undefined) o.staff_count = 0; if (o.category === "verleih" && b.needs_room === undefined) o.needs_room = false;
+      if (["zeitfenster", "kurs", "aktivitaet"].indexOf(o.category) >= 0 && b.capacity === undefined) o.capacity = o.category === "zeitfenster" ? 10 : 8; if (o.category === "zeitfenster" && b.staff_count === undefined) o.staff_count = 0; }
+    return o;
+  }
+  function spCleanRes(b, partial) {
+    var o = {};
+    if (!partial || b.kind !== undefined) { if (["person", "raum", "geraet"].indexOf(b.kind) < 0) throw new Error("Bitte Person, Raum oder Gerät wählen."); o.kind = b.kind; }
+    if (!partial || b.name !== undefined) { o.name = spTxt(b.name, 80); if (!o.name) throw new Error("Bitte einen Namen angeben."); }
+    if (b.user_id !== undefined) o.user_id = b.user_id || null; if (b.service_ids !== undefined) o.service_ids = Array.isArray(b.service_ids) ? b.service_ids : []; if (b.quantity !== undefined) o.quantity = spInt(b.quantity, 1, 500, 1);
+    if (b.hours !== undefined) o.hours = spWeek(b.hours); if (b.gender !== undefined) o.gender = ["w", "m", "d"].indexOf(b.gender) >= 0 ? b.gender : null; if (b.active !== undefined) o.active = !!b.active; if (b.sort !== undefined) o.sort = spInt(b.sort, -1000, 1000, 0);
+    return o;
+  }
+  function spCleanBlock(b, partial) {
+    var o = {};
+    if (!partial || b.resource_id !== undefined) { if (!b.resource_id) throw new Error("Bitte eine Ressource wählen."); o.resource_id = b.resource_id; }
+    if (!partial || b.day !== undefined) { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.day || ""))) throw new Error("Bitte ein Datum angeben."); o.day = b.day; }
+    if (!partial || b.from !== undefined || b.to !== undefined) { var a = dnMin(b.from), e = dnMin(b.to); if (a == null || e == null || e <= a) throw new Error("Bitte eine gültige Zeit angeben."); o.start_min = a; o.end_min = e; }
+    if (b.reason !== undefined) o.reason = spTxt(b.reason, 120); return o;
+  }
+  var SPA_CRUD = { "booking-services": [SPA.svc, spCleanSvc, "bsv", { category: "behandlung", description: null, buffer_before: 0, buffer_after: 0, price: null, price_per: "buchung", capacity: 1, staff_count: 1, needs_room: true, room_ids: [], gear_id: null, gear_qty: 1, min_age: null, health_form: false, online: true, guests_only: false, active: true, schedule: {}, color: null, sort: 0, deposit_pct: 0, noshow_fee_pct: 0 }, "Leistungen verwaltet die Leitung Spa & Wellness oder Rezeption."],
+    "booking-resources": [SPA.res, spCleanRes, "brs", { user_id: null, service_ids: [], quantity: 1, hours: {}, gender: null, active: true, sort: 0 }, "Ressourcen verwaltet die Leitung Spa & Wellness oder Rezeption."],
+    "booking-blocks": [SPA.blocks, spCleanBlock, "bbl", { reason: null }, "Buchungen verwalten Spa & Wellness und die Rezeption."] };
+  function spBuild(b, ignoreId) {
+    var s = byId(SPA.svc, b.service_id); if (!b.service_id) throw new Error("Bitte eine Leistung wählen."); if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.day || ""))) throw new Error("Bitte ein Datum angeben."); var st = dnMin(b.time); if (st == null) throw new Error("Bitte eine Uhrzeit angeben.");
+    if (!s) throw new Error("Leistung nicht gefunden."); var persons = spInt(b.persons, 1, 500, 1), ids = Array.isArray(b.resource_ids) ? b.resource_ids.slice() : [], gear = null;
+    if (!ids.length) { var n = spNow(), set = Object.assign({}, SPA.settings, { lead_hours: 0 }); if (b.force_time) set.open = SPA_ALL_DAYS("00:00", "23:59");
+      var slot = spFree({ service: s, day: b.day, settings: set, resources: SPA.res, bookings: SPA.bk.filter(function (x) { return x.day === b.day; }), blocks: SPA.blocks.filter(function (x) { return x.day === b.day; }), persons: persons, staffPref: b.staff_pref || "egal", ignoreId: ignoreId }).find(function (x) { return x.start === st; });
+      if (!slot) { var e = new Error("Zu dieser Zeit ist nichts frei. Bitte eine andere Zeit wählen."); e.status = 409; throw e; } ids = slot.resource_ids; gear = slot.gear_qty != null ? slot.gear_qty : null; } else if (s.gear_id) gear = (s.gear_qty || 1) * persons;
+    return { service_id: s.id, day: b.day, start_min: st, end_min: st + s.duration_min, block_start: Math.max(0, st - (s.buffer_before || 0)), block_end: st + s.duration_min + (s.buffer_after || 0), persons: persons, resource_ids: ids, gear_qty: gear,
+      price: b.price !== undefined && b.price !== "" && b.price != null ? spR2(Number(String(b.price).replace(",", "."))) : spPrice(s, persons) };
+  }
+  function spGuest(b) {
+    var o = {}; if (b.guest_name !== undefined) { o.guest_name = spTxt(b.guest_name, 120); if (!o.guest_name) throw new Error("Bitte einen Namen angeben."); }
+    if (b.email !== undefined) { var em = String(b.email || "").trim(); if (em && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(em)) throw new Error("Ungültige E-Mail-Adresse."); o.email = em || null; }
+    if (b.phone !== undefined) o.phone = spTxt(b.phone, 40); if (b.room_no !== undefined) o.room_no = spTxt(b.room_no, 20); if (b.arrival_guest_id !== undefined) o.arrival_guest_id = b.arrival_guest_id || null; if (b.wishes !== undefined) o.wishes = spTxt(b.wishes, 500);
+    if (b.staff_pref !== undefined) o.staff_pref = ["egal", "w", "m"].indexOf(b.staff_pref) >= 0 ? b.staff_pref : "egal";
+    if (b.payment !== undefined) { if (SPA_PAYS.indexOf(b.payment) < 0) throw new Error("Unbekannte Zahlungsart."); o.payment = b.payment; } if (b.paid !== undefined) o.paid = !!b.paid;
+    if (b.status !== undefined) { if (SPA_STAT.indexOf(b.status) < 0) throw new Error("Unbekannter Status."); o.status = b.status; } if (b.cancel_reason !== undefined) o.cancel_reason = spTxt(b.cancel_reason, 300); return o;
+  }
+
   var VC_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   function vcCode() { var g = function () { var s = ""; for (var i = 0; i < 4; i++) s += VC_ALPHA.charAt(Math.floor(Math.random() * VC_ALPHA.length)); return s; }; return g() + "-" + g() + "-" + g(); }
   var VC = { settings: { enabled: true, token: "demoGutscheinToken0123456789", presets: [50, 100, 150], custom: true, custom_min: 20, custom_max: 1000, valid_years: 0, title: "Gutschein Alpenblick Hotels", text: "Einlösbar für Zimmer, Restaurant und Wellness." } };

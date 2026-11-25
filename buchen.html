@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --warn:#8A5F14; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 560px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select, input, textarea { font: inherit; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fff; color: var(--ink); width: 100%; min-height: 44px; }
+  select.lang { width: auto; padding: 5px 6px; font-size: 13px; }
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 25px; margin: 4px 0 6px; }
+  h2 { font-size: 15px; margin: 18px 0 8px; }
+  .sub { color: var(--muted); font-size: 14.5px; margin-bottom: 14px; white-space: pre-wrap; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 8px 12px; min-height: 44px; min-width: 60px; cursor: pointer; font: inherit; font-size: 14px; color: var(--ink); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  .svc { display: block; width: 100%; text-align: start; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; font: inherit; color: var(--ink); }
+  .svc[aria-pressed="true"] { border: 2px solid var(--ink); }
+  .svc b { font-size: 15.5px; } .svc .meta { color: var(--muted); font-size: 13px; margin-top: 2px; } .svc .d { font-size: 13.5px; margin-top: 6px; color: #374151; }
+  .chk { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 8px 0; } .chk input { width: auto; min-height: 0; margin-top: 3px; }
+  button.main { background: var(--ink); color: #fff; border: none; border-radius: 10px; padding: 13px 18px; font: inherit; font-weight: 700; width: 100%; min-height: 48px; cursor: pointer; margin-top: 16px; }
+  button.main:disabled { opacity: .5; }
+  button.sec { background: #fff; color: var(--bad); border: 1px solid var(--bad); border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 600; min-height: 44px; cursor: pointer; }
+  .box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .msg { padding: 14px; border-radius: 10px; font-size: 15px; margin-bottom: 12px; }
+  .err { background: #F5E1DE; color: var(--bad); } .ok { background: #E3F0E8; color: var(--good); } .wait { background: #F7EBD3; color: var(--warn); }
+  .hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 15px; }
+  dt { color: var(--muted); } dd { margin: 0; font-weight: 600; }
+  fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 12px 0 0; background: #fff; }
+  legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Spa & Freizeit buchen", all: "Alle", cat_behandlung: "Behandlungen", cat_paar: "Für zwei", cat_zeitfenster: "Sauna & Pool", cat_kurs: "Kurse", cat_aktivitaet: "Aktivitäten", cat_verleih: "Verleih", cat_platz: "Sport", min: "Min.", perPerson: "pro Person", perHour: "pro Stunde", free: "inklusive", persons: "Personen", qty: "Anzahl", pref: "Ihr Wunsch", egal: "egal", w: "Therapeutin", m: "Therapeut", day: "Tag", time: "Uhrzeit", left: "frei", none: "An diesem Tag ist nichts mehr frei.", details: "Ihre Angaben", name: "Name", email: "E-Mail", phone: "Telefon", wishes: "Wünsche und Hinweise", contact: "Bitte E-Mail oder Telefon angeben.", room: "Zimmer {room}", roomCharge: "Auf meine Zimmerrechnung buchen", health: "Gesundheitsfragen", healthHint: "Bitte kreuzen Sie an, was zutrifft. Die Angaben sieht nur unser Spa-Team.", h_pregnant: "Schwangerschaft", h_heart: "Herz-Kreislauf-Erkrankung", h_blood_pressure: "Hoher oder niedriger Blutdruck", h_allergies: "Allergien (z. B. Öle, Nüsse)", h_injuries: "Verletzungen oder Operationen", h_skin: "Hautprobleme", h_medication: "Regelmäßige Medikamente", h_note: "Weitere Hinweise", consent: "Ich willige ein, dass das Hotel meine Gesundheitsangaben für diese Behandlung verarbeitet. Sie werden 30 Tage nach dem Termin gelöscht.", consentNeed: "Bitte bestätigen Sie die Einwilligung zu den Gesundheitsfragen.", terms: "Buchungsbedingungen", termsOk: "Ich habe die Buchungsbedingungen gelesen.", termsNeed: "Bitte bestätigen Sie die Buchungsbedingungen.", cancelFree: "Kostenlos stornierbar bis {h} Stunden vor Beginn.", deposit: "Anzahlung {pct} % – Zahlung im nächsten Schritt.", send: "Verbindlich buchen", pay: "Weiter zur Anzahlung", sending: "Wird gesendet…", confirmed: "Ihre Buchung ist bestätigt.", requested: "Ihre Anfrage ist eingegangen.", mailed: "Eine Bestätigung kommt per E-Mail.", keep: "Mit diesem Link können Sie die Buchung ansehen oder stornieren:", choose: "Bitte zuerst eine Leistung wählen.", your: "Ihre Buchung", service: "Leistung", status: "Status", price: "Preis", angefragt: "Angefragt", bestätigt: "Bestätigt", angekommen: "Angekommen", erledigt: "Abgeschlossen", storniert: "Storniert", nicht_erschienen: "Nicht erschienen", cancel: "Buchung stornieren", cancelQ: "Buchung wirklich stornieren?", cancelled: "Die Buchung wurde storniert.", noCancel: "Eine kostenlose Online-Stornierung ist nicht mehr möglich. Bitte wenden Sie sich an das Hotel.", depositNote: "Zur Erstattung der Anzahlung wenden Sie sich bitte an das Hotel.", checking: "Zahlung wird geprüft…", aborted: "Die Zahlung wurde abgebrochen. Die Zeit ist nicht reserviert.", pending: "Die Zahlung ist noch nicht bestätigt. Sie erhalten eine E-Mail, sobald sie eingegangen ist.", calendar: "In den Kalender", noServices: "Derzeit sind keine Online-Buchungen möglich.", privacy: "Ihre Angaben verwendet nur das Hotel für diese Buchung.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…", minAge: "ab {age} Jahren", back: "Andere Leistung wählen" },
+  en: { title: "Book spa & activities", all: "All", cat_behandlung: "Treatments", cat_paar: "For two", cat_zeitfenster: "Sauna & pool", cat_kurs: "Classes", cat_aktivitaet: "Activities", cat_verleih: "Rental", cat_platz: "Sports", min: "min", perPerson: "per person", perHour: "per hour", free: "included", persons: "Guests", qty: "Quantity", pref: "Your preference", egal: "no preference", w: "female therapist", m: "male therapist", day: "Day", time: "Time", left: "left", none: "Nothing is available on this day.", details: "Your details", name: "Name", email: "Email", phone: "Phone", wishes: "Requests and notes", contact: "Please enter an email address or phone number.", room: "Room {room}", roomCharge: "Charge to my room", health: "Health questions", healthHint: "Please tick anything that applies. Only our spa team sees your answers.", h_pregnant: "Pregnancy", h_heart: "Heart or circulatory condition", h_blood_pressure: "High or low blood pressure", h_allergies: "Allergies (e.g. oils, nuts)", h_injuries: "Injuries or surgery", h_skin: "Skin conditions", h_medication: "Regular medication", h_note: "Other notes", consent: "I consent to the hotel processing my health information for this treatment. It is deleted 30 days after the appointment.", consentNeed: "Please confirm your consent to the health questions.", terms: "Booking conditions", termsOk: "I have read the booking conditions.", termsNeed: "Please confirm the booking conditions.", cancelFree: "Free cancellation up to {h} hours before the start.", deposit: "Deposit {pct}% – payment in the next step.", send: "Confirm booking", pay: "Continue to deposit", sending: "Sending…", confirmed: "Your booking is confirmed.", requested: "Your request has been received.", mailed: "A confirmation is on its way by email.", keep: "Use this link to view or cancel your booking:", choose: "Please choose a service first.", your: "Your booking", service: "Service", status: "Status", price: "Price", angefragt: "Requested", bestätigt: "Confirmed", angekommen: "Checked in", erledigt: "Completed", storniert: "Cancelled", nicht_erschienen: "No-show", cancel: "Cancel booking", cancelQ: "Do you really want to cancel this booking?", cancelled: "The booking has been cancelled.", noCancel: "Free online cancellation is no longer possible. Please contact the hotel.", depositNote: "Please contact the hotel about a refund of your deposit.", checking: "Checking payment…", aborted: "The payment was cancelled. The time has not been reserved.", pending: "The payment has not been confirmed yet. You will receive an email as soon as it arrives.", calendar: "Add to calendar", noServices: "Online bookings are currently not available.", privacy: "Your details are used by the hotel for this booking only.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…", minAge: "from age {age}", back: "Choose another service" },
+};
+var HEALTH = ["pregnant", "heart", "blood_pressure", "allergies", "injuries", "skin", "medication"];
+var CATS = ["behandlung", "paar", "zeitfenster", "kurs", "aktivitaet", "verleih", "platz"];
+var q = new URLSearchParams(location.search), token = q.get("h") || "", room = q.get("room") || "", manage = q.get("m") || "", sid = q.get("s") || "", aborted = q.get("abgebrochen") === "1", demo = q.get("demo") === "1";
+var TOK = /^[A-Za-z0-9_-]{20,64}$/;
+var state = { info: null, error: null, cat: "", svc: null, persons: 1, pref: "egal", day: null, slots: null, time: null, busy: false, done: null, m: null, paid: null,
+  form: { guest_name: "", email: "", phone: "", wishes: "", room_charge: true, health: {}, health_consent: false, terms_ok: false } };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (T[s]) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return T[n] ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function t(k, v) { var L = T[lang] || T.en, s = L[k] != null ? L[k] : (T.en[k] != null ? T.en[k] : ""); return String(s).replace(/\{(\w+)\}/g, function (_, x) { return v && v[x] != null ? v[x] : ""; }); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { if (!T[l[0]]) return; var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { readForm(); lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} render(); };
+function addDays(iso, n) { var d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function fmtDay(iso, opt) { try { return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : lang, Object.assign({ timeZone: "UTC" }, opt || { weekday: "short", day: "numeric", month: "short" })).format(new Date(iso + "T12:00:00Z")); } catch (e) { return iso; } }
+function money(n) { var c = (state.info && state.info.currency) || "EUR"; try { return new Intl.NumberFormat(lang === "en" ? "en-GB" : lang, { style: "currency", currency: c }).format(n); } catch (e) { return n + " " + c; } }
+function priceText(s) { if (s.price == null) return ""; if (Number(s.price) === 0) return t("free"); return money(Number(s.price)) + (s.price_per === "person" ? " " + t("perPerson") : s.price_per === "stunde" ? " " + t("perHour") : ""); }
+function brand(h) {
+  $("hotel").textContent = h.name || "";
+  if (h.logo && /^data:image\/(png|jpeg|webp|svg\+xml);/.test(h.logo)) { $("logo").src = h.logo; $("logo").hidden = false; }
+  if (h.color && /^#[0-9a-fA-F]{3,8}$/.test(h.color)) document.documentElement.style.setProperty("--ink", h.color);
+}
+function base() { return room ? "/api/public/room/" + encodeURIComponent(room) + "/booking" : "/api/public/booking/" + encodeURIComponent(token); }
+function call(method, path, body) {
+  return fetch(API + path, { method: method, headers: { "Content-Type": "application/json", "Accept-Language": lang }, body: body ? JSON.stringify(body) : undefined })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(r.status === 404 ? t("invalid") : j.error || t("error")); return j; }); });
+}
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick" }, currency: "EUR", cancel_hours: 24, max_days: 60, room_charge: !!room, terms: "Bitte 10 Minuten vor Beginn im Spa sein. Bademantel liegt im Zimmer.", services: [
+  { id: "d1", category: "behandlung", name: "Klassische Massage", description: "Lösende Ganzkörpermassage.", duration_min: 50, price: 79, price_per: "buchung", capacity: 1, staff_count: 1, health_form: true, deposit_pct: 0 },
+  { id: "d2", category: "paar", name: "Paarmassage", duration_min: 50, price: 160, price_per: "buchung", capacity: 1, staff_count: 2, health_form: true, deposit_pct: 30 },
+  { id: "d3", category: "zeitfenster", name: "Private Sauna", duration_min: 60, price: 25, price_per: "person", capacity: 4, staff_count: 0 },
+  { id: "d4", category: "kurs", name: "Yoga am Morgen", duration_min: 60, price: 0, price_per: "buchung", capacity: 10, staff_count: 1 },
+  { id: "d5", category: "verleih", name: "E-Bike (halber Tag)", duration_min: 240, price: 35, price_per: "buchung", capacity: 1, staff_count: 0 } ] };
+function demoSlots() { var out = []; for (var m = 540; m <= 1080; m += 30) if ((m / 30) % 3 !== 1) out.push({ time: String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"), left: state.svc && state.svc.capacity > 1 ? 3 : undefined }); return out; }
+function loadSlots() {
+  state.slots = null; state.time = null; render();
+  if (!state.svc || !state.day) return;
+  var p = demo ? Promise.resolve(demoSlots()) : call("GET", base() + "?service=" + encodeURIComponent(state.svc.id) + "&day=" + state.day + "&persons=" + state.persons + "&pref=" + state.pref);
+  p.then(function (l) { state.slots = l; render(); }).catch(function (e) { state.slots = []; state.error = e.message; render(); });
+}
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var hn = $("hotel").textContent; document.title = (hn && hn !== "…" ? hn + " · " : "") + t(manage ? "your" : "title");
+  var a = $("app");
+  if (manage) return renderManage(a);
+  if (state.error && !state.info) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!state.info) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var i = state.info, h = "<h1>" + esc(t("title")) + "</h1>";
+  if (sid) { var p = state.paid; h += p ? (p.status === "bestätigt" ? '<div class="msg ok" role="status">' + esc(t("confirmed")) + " " + esc(t("mailed")) + "</div>" : '<div class="msg wait" role="status">' + esc(t("pending")) + "</div>") : '<div class="sub">' + esc(t("checking")) + "</div>"; a.innerHTML = h; return; }
+  if (state.done) {
+    var d = state.done, link = location.origin + location.pathname + "?m=" + encodeURIComponent(d.manage || "");
+    h += '<div class="msg ' + (d.status === "bestätigt" ? "ok" : "wait") + '" role="status">' + esc(t(d.status === "bestätigt" ? "confirmed" : "requested")) + "</div>"
+      + '<div class="box"><dl><dt>' + esc(t("service")) + "</dt><dd>" + esc(d.service) + "</dd><dt>" + esc(t("day")) + "</dt><dd>" + esc(fmtDay(d.day, { weekday: "long", day: "numeric", month: "long" })) + "</dd><dt>" + esc(t("time")) + "</dt><dd>" + esc(d.time) + "</dd><dt>" + esc(t("persons")) + "</dt><dd>" + esc(d.persons) + "</dd>"
+      + (d.price != null ? "<dt>" + esc(t("price")) + "</dt><dd>" + esc(money(d.price)) + "</dd>" : "") + "</dl></div>"
+      + (state.form.email ? '<div class="note">' + esc(t("mailed")) + "</div>" : "")
+      + (d.manage ? '<div class="note">' + esc(t("keep")) + '<br><a href="' + esc(link) + '">' + esc(link) + "</a></div>" : "");
+    a.innerHTML = h; return;
+  }
+  if (aborted) h += '<div class="msg wait" role="status">' + esc(t("aborted")) + "</div>";
+  if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+  if (!i.services.length) { a.innerHTML = h + '<div class="msg wait">' + esc(t("noServices")) + "</div>"; return; }
+  var cats = CATS.filter(function (c) { return i.services.some(function (s) { return s.category === c; }); });
+  if (cats.length > 1) h += '<div class="chips" role="group" aria-label="' + esc(t("title")) + '" style="margin-bottom:12px"><button type="button" class="chip" data-cat="" aria-pressed="' + (state.cat === "") + '">' + esc(t("all")) + "</button>" + cats.map(function (c) { return '<button type="button" class="chip" data-cat="' + c + '" aria-pressed="' + (state.cat === c) + '">' + esc(t("cat_" + c)) + "</button>"; }).join("") + "</div>";
+  var list = state.svc ? [state.svc] : i.services.filter(function (s) { return !state.cat || s.category === state.cat; });
+  h += list.map(function (s) { return '<button type="button" class="svc" data-svc="' + esc(s.id) + '" aria-pressed="' + (state.svc && state.svc.id === s.id) + '"><b>' + esc(s.name) + '</b><div class="meta">' + esc(s.duration_min + " " + t("min")) + (priceText(s) ? " · " + esc(priceText(s)) : "") + (s.min_age ? " · " + esc(t("minAge", { age: s.min_age })) : "") + "</div>" + (s.description ? '<div class="d">' + esc(s.description) + "</div>" : "") + "</button>"; }).join("");
+  if (!state.svc) { a.innerHTML = h; bind(); return; }
+  var s = state.svc, f = state.form;
+  h += '<button type="button" class="chip" id="back" style="margin-bottom:8px">‹ ' + esc(t("back")) + "</button>";
+  var multi = s.capacity > 1 || s.category === "verleih" || s.price_per === "person";
+  if (multi) { h += '<label class="f" for="persons">' + esc(t(s.category === "verleih" ? "qty" : "persons")) + '</label><select id="persons">'; for (var n = 1; n <= Math.min(10, s.capacity > 1 ? s.capacity : 10); n++) h += '<option value="' + n + '"' + (n === state.persons ? " selected" : "") + ">" + n + "</option>"; h += "</select>"; }
+  if (s.staff_count > 0 && (s.category === "behandlung" || s.category === "paar")) h += '<label class="f" for="pref">' + esc(t("pref")) + '</label><select id="pref">' + ["egal", "w", "m"].map(function (k) { return '<option value="' + k + '"' + (state.pref === k ? " selected" : "") + ">" + esc(t(k)) + "</option>"; }).join("") + "</select>";
+  h += "<h2>" + esc(t("day")) + '</h2><div class="chips" role="group" aria-label="' + esc(t("day")) + '">';
+  for (var k = 0; k < 14; k++) { var dd = addDays(today(), k); h += '<button type="button" class="chip" data-day="' + dd + '" aria-pressed="' + (state.day === dd) + '">' + esc(fmtDay(dd)) + "</button>"; }
+  h += '</div><input type="date" id="dayIn" aria-label="' + esc(t("day")) + '" style="margin-top:8px;max-width:200px" min="' + today() + '" max="' + addDays(today(), i.max_days || 60) + '" value="' + esc(state.day || "") + '" />';
+  if (state.day) {
+    h += "<h2>" + esc(t("time")) + "</h2>";
+    if (state.slots === null) h += '<div class="sub">' + esc(t("loading")) + "</div>";
+    else if (!state.slots.length) h += '<div class="sub">' + esc(t("none")) + "</div>";
+    else h += '<div class="chips" role="group" aria-label="' + esc(t("time")) + '">' + state.slots.map(function (x) { return '<button type="button" class="chip" data-time="' + esc(x.time) + '" aria-pressed="' + (state.time === x.time) + '">' + esc(x.time) + (x.left != null && s.capacity > 1 ? " · " + esc(x.left) + " " + esc(t("left")) : "") + "</button>"; }).join("") + "</div>";
+  }
+  if (state.time) {
+    h += "<h2>" + esc(t("details")) + '</h2><form id="frm" novalidate>';
+    if (room) h += '<div class="sub" style="margin:0">' + esc(t("room", { room: i.room || "" })) + "</div>";
+    h += '<label class="f" for="gname">' + esc(t("name")) + ' *</label><input id="gname" autocomplete="name" maxlength="120" value="' + esc(f.guest_name) + '" />'
+      + '<label class="f" for="email">' + esc(t("email")) + '</label><input id="email" type="email" autocomplete="email" maxlength="200" value="' + esc(f.email) + '" />'
+      + '<label class="f" for="phone">' + esc(t("phone")) + '</label><input id="phone" type="tel" autocomplete="tel" maxlength="40" value="' + esc(f.phone) + '" />'
+      + '<label class="f" for="wishes">' + esc(t("wishes")) + '</label><textarea id="wishes" rows="2" maxlength="500">' + esc(f.wishes) + "</textarea>";
+    if (room && i.room_charge) h += '<label class="chk"><input type="checkbox" id="rc"' + (f.room_charge ? " checked" : "") + " /> <span>" + esc(t("roomCharge")) + "</span></label>";
+    if (s.health_form) {
+      h += "<fieldset><legend>" + esc(t("health")) + '</legend><div class="note" style="margin:0 0 6px">' + esc(t("healthHint")) + "</div>"
+        + HEALTH.map(function (k) { return '<label class="chk"><input type="checkbox" data-h="' + k + '"' + (f.health[k] ? " checked" : "") + " /> <span>" + esc(t("h_" + k)) + "</span></label>"; }).join("")
+        + '<label class="f" for="hnote">' + esc(t("h_note")) + '</label><input id="hnote" maxlength="1000" value="' + esc(f.health.note || "") + '" />'
+        + '<label class="chk"><input type="checkbox" id="hok"' + (f.health_consent ? " checked" : "") + " /> <span>" + esc(t("consent")) + "</span></label></fieldset>";
+    }
+    if (i.terms) h += "<fieldset><legend>" + esc(t("terms")) + '</legend><div class="sub" style="margin:0;font-size:13.5px">' + esc(i.terms) + '</div><label class="chk"><input type="checkbox" id="tok"' + (f.terms_ok ? " checked" : "") + " /> <span>" + esc(t("termsOk")) + "</span></label></fieldset>";
+    if (i.cancel_hours) h += '<div class="note">' + esc(t("cancelFree", { h: i.cancel_hours })) + "</div>";
+    if (s.deposit_pct > 0 && !room) h += '<div class="note">' + esc(t("deposit", { pct: s.deposit_pct })) + "</div>";
+    h += '<div class="hp" aria-hidden="true"><input id="website" tabindex="-1" autocomplete="off" /></div>'
+      + '<button class="main" type="submit"' + (state.busy ? " disabled" : "") + ">" + esc(state.busy ? t("sending") : s.deposit_pct > 0 && !room ? t("pay") : t("send")) + "</button>"
+      + '<div class="note">' + esc(t("privacy")) + "</div></form>";
+  }
+  a.innerHTML = h; bind();
+}
+function readForm() {
+  var f = state.form; if (!$("gname")) return;
+  f.guest_name = $("gname").value; f.email = $("email").value; f.phone = $("phone").value; f.wishes = $("wishes").value;
+  if ($("rc")) f.room_charge = $("rc").checked;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-h]"), function (x) { f.health[x.getAttribute("data-h")] = x.checked; });
+  if ($("hnote")) f.health.note = $("hnote").value;
+  if ($("hok")) f.health_consent = $("hok").checked;
+  if ($("tok")) f.terms_ok = $("tok").checked;
+}
+function bind() {
+  var all = function (sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); };
+  all("[data-cat]", function (b) { b.onclick = function () { state.cat = b.getAttribute("data-cat"); render(); }; });
+  all("[data-svc]", function (b) { b.onclick = function () { if (state.svc) return; state.svc = state.info.services.filter(function (s) { return s.id === b.getAttribute("data-svc"); })[0]; state.persons = 1; state.day = null; state.time = null; state.error = null; render(); window.scrollTo(0, 0); }; });
+  if ($("back")) $("back").onclick = function () { readForm(); state.svc = null; state.day = null; state.time = null; state.slots = null; render(); };
+  if ($("persons")) $("persons").onchange = function () { state.persons = Number(this.value); loadSlots(); };
+  if ($("pref")) $("pref").onchange = function () { state.pref = this.value; loadSlots(); };
+  all("[data-day]", function (b) { b.onclick = function () { readForm(); state.day = b.getAttribute("data-day"); loadSlots(); }; });
+  if ($("dayIn")) $("dayIn").onchange = function () { if (this.value) { state.day = this.value; loadSlots(); } };
+  all("[data-time]", function (b) { b.onclick = function () { readForm(); state.time = b.getAttribute("data-time"); render(); var g = $("gname"); if (g) g.focus(); }; });
+  var frm = $("frm"); if (!frm) return;
+  frm.onsubmit = function (e) {
+    e.preventDefault(); readForm();
+    var f = state.form, s = state.svc, i = state.info;
+    var fail = function (k, el) { state.error = k; render(); if (el && $(el)) $(el).focus(); };
+    if (!f.guest_name.trim()) return fail(t("name") + " *", "gname");
+    if (!room && !f.email.trim() && !f.phone.trim()) return fail(t("contact"), "email");
+    if (s.health_form && !f.health_consent) return fail(t("consentNeed"), "hok");
+    if (i.terms && !f.terms_ok) return fail(t("termsNeed"), "tok");
+    state.busy = true; state.error = null; render();
+    var body = { service_id: s.id, day: state.day, time: state.time, persons: state.persons, staff_pref: state.pref, guest_name: f.guest_name, email: f.email.trim(), phone: f.phone, wishes: f.wishes,
+      room_charge: !!f.room_charge, health: s.health_form ? f.health : undefined, health_consent: !!(s.health_form && f.health_consent), lang: lang, website: $("website") ? $("website").value : "" };
+    var p = demo ? Promise.resolve({ ok: true, status: "bestätigt", day: state.day, time: state.time, persons: state.persons, service: s.name, price: s.price, manage: "" }) : call("POST", base(), body);
+    p.then(function (r) {
+      if (r.pay_url) { if (/^https:\/\/[^\s"<>]+$/.test(r.pay_url)) location.href = r.pay_url; else { state.busy = false; state.error = t("error"); render(); } return; }
+      state.busy = false; state.done = r; render(); window.scrollTo(0, 0);
+    }).catch(function (e) { state.busy = false; state.error = e.message || t("error"); loadSlots(); });
+  };
+}
+function renderManage(a) {
+  var m = state.m;
+  if (state.error && !m) { a.innerHTML = '<div class="msg err" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!m) { a.innerHTML = '<div class="sub">' + esc(t("loading")) + "</div>"; return; }
+  var h = "<h1>" + esc(t("your")) + "</h1>";
+  if (state.error) h += '<div class="msg err" role="alert">' + esc(state.error) + "</div>";
+  if (m.status === "storniert") h += '<div class="msg wait" role="status">' + esc(t("cancelled")) + (m.deposit_note ? " " + esc(t("depositNote")) : "") + "</div>";
+  h += '<div class="box"><dl><dt>' + esc(t("service")) + "</dt><dd>" + esc(m.service) + "</dd><dt>" + esc(t("name")) + "</dt><dd>" + esc(m.name) + "</dd><dt>" + esc(t("day")) + "</dt><dd>" + esc(fmtDay(m.day, { weekday: "long", day: "numeric", month: "long" })) + "</dd><dt>" + esc(t("time")) + "</dt><dd>" + esc(m.time + "–" + m.end) + "</dd><dt>" + esc(t("persons")) + "</dt><dd>" + esc(m.persons) + "</dd>"
+    + (m.price != null ? "<dt>" + esc(t("price")) + "</dt><dd>" + esc(money(m.price)) + "</dd>" : "") + "<dt>" + esc(t("status")) + "</dt><dd>" + esc(t(m.status)) + "</dd></dl></div>";
+  if (m.status !== "storniert") h += '<a class="chip" style="display:inline-flex;align-items:center;text-decoration:none;margin-bottom:12px" href="' + esc(API + "/api/public/booking/manage/" + encodeURIComponent(manage) + "?ics=1") + '">' + esc(t("calendar")) + "</a>";
+  if (m.terms) h += '<div class="sub" style="font-size:13.5px">' + esc(m.terms) + "</div>";
+  if (m.can_cancel) h += '<div><button class="sec" id="cancel" type="button">' + esc(t("cancel")) + "</button></div>";
+  else if (["angefragt", "bestätigt"].indexOf(m.status) >= 0) h += '<div class="note">' + esc(t("noCancel")) + "</div>";
+  a.innerHTML = h;
+  var c = $("cancel");
+  if (c) c.onclick = function () {
+    if (!confirm(t("cancelQ"))) return;
+    call("DELETE", "/api/public/booking/manage/" + encodeURIComponent(manage)).then(function (r) { m.status = "storniert"; m.can_cancel = false; m.deposit_note = r.deposit_note; state.error = null; render(); })
+      .catch(function (e) { state.error = e.message || t("error"); render(); });
+  };
+}
+render();
+if (manage) {
+  if (!TOK.test(manage)) { state.error = t("invalid"); render(); }
+  else call("GET", "/api/public/booking/manage/" + encodeURIComponent(manage)).then(function (m) { state.m = m; brand(m.hotel || {}); render(); }).catch(function (e) { state.error = e.message || t("error"); render(); });
+} else if (!demo && !TOK.test(token) && !TOK.test(room)) { state.error = t("invalid"); render(); }
+else {
+  var p0 = demo ? Promise.resolve(DEMO) : call("GET", base());
+  p0.then(function (i) {
+    state.info = i; brand(i.hotel || {}); render();
+    if (sid && !demo) {
+      var tries = 0;
+      (function check() {
+        call("GET", "/api/public/booking/" + encodeURIComponent(token) + "/session/" + encodeURIComponent(sid)).then(function (r) { state.paid = r; render(); if (r.status === "angefragt" && ++tries < 5) setTimeout(check, 3000); })
+          .catch(function (e) { state.paid = { status: "angefragt" }; state.error = e.message; render(); });
+      })();
+    }
+  }).catch(function (e) { state.error = e.message || t("error"); render(); });
+}
+</script>
+</body>
+</html>

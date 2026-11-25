@@ -33,7 +33,7 @@ function useDialog(onClose, active = true){
 // Klickbare Fläche auch mit Tastatur und Screenreader bedienbar (Enter/Leertaste)
 const pressable = (fn) => ({ role:"button", tabIndex:0, onClick:fn, onKeyDown:(e)=>{ if (e.target===e.currentTarget && (e.key==="Enter"||e.key===" ")) { e.preventDefault(); fn(e); } } });
 
-const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Technik","IT & Systeme","Personal","Einkauf","Sicherheit","Revenue Management","Finanzen & Controlling"];
+const DEPARTMENTS = ["Rezeption & Empfang","Housekeeping","Food & Beverage","Technik","IT & Systeme","Personal","Einkauf","Sicherheit","Revenue Management","Finanzen & Controlling","Spa & Wellness"];
 // Eigene Rolle und Abteilungen in der gewählten Organisation (setzt App bei jedem Anzeigen).
 // Die Datenbank erzwingt die Rechte; die Oberfläche blendet nur aus, was nicht geht.
 let ACCESS = {role:"admin", depts:[]};

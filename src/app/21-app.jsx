@@ -457,12 +457,14 @@ function App(){
           {tab==="housing" && <HousingView hotel={hotel} api={api} members={members} />}
           {tab==="rates" && <RatesView hotel={hotel} api={api} />}
           {tab==="dining" && <DiningView hotel={hotel} api={api} />}
+          {tab==="spa" && <SpaView hotel={hotel} api={api} me={me} members={members} />}
           {tab==="vouchers" && <VouchersView hotel={hotel} api={api} />}
           {tab==="staffdocs" && <StaffDocsView orgId={orgId} api={api} members={members} />}
           {tab==="pulse" && <PulseView orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />}
           {tab==="tourismtax" && <TourismStatsCard hotel={hotel} api={api} />}
           {tab==="tourismtax" && <TourismTaxView hotel={hotel} api={api} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="frontdesk" && <GuestOrdersCard hotel={hotel} api={api} />}
+          {tab==="frontdesk" && <SpaTodayCard hotel={hotel} api={api} onOpen={setTab} />}
           {tab==="frontdesk" && <FrontDeskView hotel={hotel} api={api} onOpen={setTab} />}
           {tab==="arrivals" && <GsRegistrationCard hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}
           {tab==="arrivals" && <GsOccasionMailCard hotel={hotel} api={api} role={role} onHotel={(h)=>{ setHotel(h); setHotels((hotels||[]).map(x=>x.id===h.id?h:x)); }} />}

@@ -38632,4 +38632,14 @@ I18N.ja["Für die Warteliste bitte unten Name und E-Mail eintragen."] = "キャ�
 I18N.zh["Für die Warteliste bitte unten Name und E-Mail eintragen."] = "加入候补名单请在下方填写姓名和电子邮箱。";
 I18N.ar["Für die Warteliste bitte unten Name und E-Mail eintragen."] = "للانضمام إلى قائمة الانتظار، يرجى إدخال الاسم والبريد الإلكتروني أدناه.";
 
+I18N.en["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "Only for the following services (none selected = all that need a room)";
+I18N.fr["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "Uniquement pour les prestations suivantes (aucune sélectionnée = toutes celles qui nécessitent une salle)";
+I18N.it["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "Solo per i seguenti servizi (nessuno selezionato = tutti quelli con sala)";
+I18N.es["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "Solo para los siguientes servicios (ninguno seleccionado = todos los que necesitan sala)";
+I18N.pt["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "Apenas para os seguintes serviços (nenhum selecionado = todos os que precisam de sala)";
+I18N.tr["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "Yalnızca şu hizmetler için (hiçbiri seçilmezse = oda gerektiren tümü)";
+I18N.ja["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "次のサービスのみ（未選択の場合＝部屋が必要なすべてのサービス）";
+I18N.zh["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "仅限以下服务（未选择＝所有需要房间的服务）";
+I18N.ar["Nur für folgende Leistungen (keine gewählt = alle mit Raum)"] = "فقط للخدمات التالية (بلا اختيار = كل الخدمات التي تحتاج إلى غرفة)";
+
 startI18n(initialUiLanguage());

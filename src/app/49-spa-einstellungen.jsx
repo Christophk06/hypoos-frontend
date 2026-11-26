@@ -15,8 +15,11 @@ function SpaServices({hotel, api, services, resources, canEdit, run}){
       const name = translateString(t.name); if(have.has(name)) continue;
       const body = {...t, name};
       if(t.category==="verleih"){ if(!bikes) bikes = await api("/api/hotels/"+hotel.id+"/booking-resources","POST",{kind:"geraet", name:translateString("E-Bikes"), quantity:8}); body.gear_id = bikes.id; }
-      if(t.category==="platz"){ const c = court || await api("/api/hotels/"+hotel.id+"/booking-resources","POST",{kind:"raum", name:translateString("Tennisplatz")}); body.room_ids = [c.id]; }
-      await api("/api/hotels/"+hotel.id+"/booking-services","POST",body);
+      let c = null;
+      if(t.category==="platz"){ c = court || await api("/api/hotels/"+hotel.id+"/booking-resources","POST",{kind:"raum", name:translateString("Tennisplatz")}); body.room_ids = [c.id]; }
+      const created = await api("/api/hotels/"+hotel.id+"/booking-services","POST",body);
+      // Der Platz bleibt dem Tennis vorbehalten (sonst landen Massagen auf dem Tennisplatz)
+      if(c && created && created.id) await api("/api/booking-resources/"+c.id,"PATCH",{service_ids:[...new Set([...(c.service_ids||[]), created.id])]});
     }
   }, tf("Vorlagen angelegt. Preise und Zeiten bitte anpassen."));
   const save = () => run(async()=>{
@@ -107,8 +110,8 @@ function SpaResources({hotel, api, services, resources, members, canEdit, run}){
           {form.kind==="person" && <Field label={tf("Geschlecht (für Gästewunsch)")}><select className="input" value={form.gender||""} onChange={e=>setForm({...form,gender:e.target.value})}><option value="">–</option><option value="w">{tf("weiblich")}</option><option value="m">{tf("männlich")}</option><option value="d">{tf("divers")}</option></select></Field>}
           {form.kind==="geraet" && <Field label={tf("Anzahl")}><input className="input" type="number" min={1} max={500} value={form.quantity} onChange={e=>setForm({...form,quantity:e.target.value})} /></Field>}
         </div>
-        {form.kind==="person" && <div style={{marginBottom:10}}><div className="field-label">{tf("Kann folgende Leistungen (keine gewählt = alle)")}</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(services||[]).filter(s=>s.staff_count>0).map(s=><label key={s.id} style={{display:"flex",gap:4,alignItems:"center",fontSize:12.5,border:`1px solid ${BORDER}`,borderRadius:6,padding:"4px 8px",minHeight:32}}><input type="checkbox" checked={(form.service_ids||[]).includes(s.id)} onChange={()=>setForm({...form, service_ids:(form.service_ids||[]).includes(s.id)?form.service_ids.filter(x=>x!==s.id):[...(form.service_ids||[]), s.id]})} /> <span data-no-i18n="">{s.name}</span></label>)}</div></div>}
+        {form.kind!=="geraet" && <div style={{marginBottom:10}}><div className="field-label">{form.kind==="person" ? tf("Kann folgende Leistungen (keine gewählt = alle)") : tf("Nur für folgende Leistungen (keine gewählt = alle mit Raum)")}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{(services||[]).filter(s=>form.kind==="person" ? s.staff_count>0 : s.needs_room).map(s=><label key={s.id} style={{display:"flex",gap:4,alignItems:"center",fontSize:12.5,border:`1px solid ${BORDER}`,borderRadius:6,padding:"4px 8px",minHeight:32}}><input type="checkbox" checked={(form.service_ids||[]).includes(s.id)} onChange={()=>setForm({...form, service_ids:(form.service_ids||[]).includes(s.id)?form.service_ids.filter(x=>x!==s.id):[...(form.service_ids||[]), s.id]})} /> <span data-no-i18n="">{s.name}</span></label>)}</div></div>}
         {form.kind!=="geraet" && <div style={{marginBottom:10}}><div className="field-label">{form.kind==="person" ? tf("Feste Arbeitszeiten (leer = laut Dienstplan)") : tf("Eigene Zeiten (leer = Öffnungszeiten)")}</div><SpWeek value={form.hours} onChange={(h)=>setForm({...form,hours:h})} empty={form.kind==="person" ? tf("laut Dienstplan") : tf("Öffnungszeiten")} /></div>}
         <label style={{display:"flex",gap:8,alignItems:"center",minHeight:36}}><input type="checkbox" checked={form.active!==false} onChange={e=>setForm({...form,active:e.target.checked})} /> {tf("Aktiv")}</label>
         <div style={{display:"flex",gap:8}}><button className="btn-primary" disabled={!String(form.name).trim()} onClick={save}>{tf("Speichern")}</button><button style={btnLine} onClick={()=>setForm(null)}>{tf("Abbrechen")}</button></div>

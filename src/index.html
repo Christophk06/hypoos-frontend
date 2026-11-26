@@ -158,7 +158,9 @@
     .service-panel { right: 8px; left: 8px; width: auto; max-width: none; bottom: 8px; height: calc(100vh - 16px); }
     body:has(.mobile-tabbar) .service-panel { bottom: 72px; height: calc(100vh - 88px); }
     body:has(.mobile-tabbar) .feedback-fab { bottom: 76px; }
-    .feedback-fab { padding: 7px 11px; }
+    .feedback-fab { padding: 0; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .feedback-fab .fab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .page-content { padding-bottom: 72px !important; }
   }
   @media print { .feedback-ui, .mobile-tabbar { display: none !important; } }
 

@@ -156,6 +156,7 @@ Wie war Ihr Aufenthalt? · How was your stay? · Com’è stato il soggiorno?
 Word
 Wunsch oder Problem? Scannen. · Need anything? Scan me. · Besoin de quelque chose ? Scannez.
 X-WR-CALNAME:
+XXXX-XXXX-XXXX
 YouTube
 Zur Bestätigung „
 Zuständig:
@@ -244,6 +245,7 @@ sb_publishable_z7UkYgbek05ZFR199O93eg_0MxUM3Nx
 script[src="
 serviceWorker
 speechSynthesis
+speisekarte.html?
 splitRest
 status: dirty, clean, inspected, out of order · occupancy: vacant, occupied, departure, arrival
 stück

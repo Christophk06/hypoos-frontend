@@ -8,6 +8,7 @@
   var ROLE = ["admin", "manager", "member"].indexOf(Q.get("role")) >= 0 ? Q.get("role") : "admin";
   var ME = { admin: "u-admin", manager: "u-hkm", member: "u-member" }[ROLE];
   var meRow = D.members.find(function (m) { return m.user_id === ME; });
+  if (ROLE === "member" && meRow.departments.indexOf("Spa & Wellness") < 0) meRow.departments = meRow.departments.concat(["Spa & Wellness"]); // Paket 046: „Meine Termine“ zeigen
   var MYDEPTS = ROLE === "admin" ? [] : meRow.departments;
 
   // Datumsangaben auf "heute" verschieben: Termine um Tage, Dienstplan um ganze Wochen (Montag bleibt Montag)
@@ -541,6 +542,92 @@
   VC.red = [{ id: "vcr-1", voucher_id: "vch-2", amount: 50, note: "Abendessen", redeemed_by: "u-admin", redeemed_at: new Date(now.getTime() - 6 * 86400000).toISOString() }, { id: "vcr-2", voucher_id: "vch-2", amount: 30, note: "Bar", redeemed_by: "u-admin", redeemed_at: new Date(now.getTime() - 2 * 86400000).toISOString() },
     { id: "vcr-3", voucher_id: "vch-3", amount: 50, note: "Spa-Anwendung", redeemed_by: "u-admin", redeemed_at: new Date(now.getTime() - 30 * 86400000).toISOString() }];
   var TOURS = {};
+
+  /* Paket 046: Speisekarte, Arrangements, Warteliste (Startdaten deutsch) */
+  var MN = { settings: { enabled: true, token: "demoSpeisekarteToken0123456789", name: null, footer: "Alle Preise in Euro inkl. MwSt. Bei Allergien fragen Sie bitte unser Serviceteam.", translate: true, show_prices: true } };
+  MN.cards = [["Mittagskarte", "11:30–14:00", "Frisch und saisonal – täglich von 11:30 bis 14:00 Uhr.", true], ["Abendkarte", "18:00–22:00", "Regionale Küche, abends mit Menüempfehlung.", true], ["Getränke", "", null, true]]
+    .map(function (x, i) { return { id: "mnc-" + (i + 1), hotel_id: AH, name: x[0], hours: x[1] || null, note: x[2], public: x[3], active: true, sort: i, created_at: now.toISOString() }; });
+  MN.items = [
+    [1, "Vorspeisen", "Kürbiscremesuppe", "mit Kernöl und gerösteten Kernen", 7.5, ["G", "L"], ["vegetarisch", "regional"], false],
+    [1, "Vorspeisen", "Gemischter Blattsalat", "Hausdressing, Croutons", 8.9, ["A", "C", "M"], ["vegan"], false],
+    [1, "Hauptspeisen", "Wiener Schnitzel", "vom Kalb, Petersilienkartoffeln, Preiselbeeren", 21.5, ["A", "C", "G"], ["empfehlung"], false],
+    [1, "Hauptspeisen", "Saibling aus dem See", "Gemüse, Safranschaum", 23.9, ["D", "G"], ["regional", "glutenfrei"], false],
+    [1, "Hauptspeisen", "Kaspressknödel", "auf Salat, mit Rahmsauce", 15.5, ["A", "C", "G"], ["vegetarisch", "regional"], true],
+    [1, "Desserts", "Apfelstrudel", "mit Vanillesauce", 7.9, ["A", "C", "G", "H"], ["regional"], false],
+    [2, "Vorspeisen", "Rindssuppe", "mit Frittaten", 6.9, ["A", "C", "L"], ["regional"], false],
+    [2, "Vorspeisen", "Beef Tatar", "Brioche, Wachtelei", 16.5, ["A", "C", "G", "M"], [], false],
+    [2, "Vorspeisen", "Ziegenkäse im Strudelteig", "Honig, Walnuss", 13.9, ["A", "G", "H"], ["vegetarisch", "neu"], false],
+    [2, "Hauptspeisen", "Tafelspitz", "Apfelkren, Schnittlauchsauce, Rösterdäpfel", 24.5, ["C", "G", "L", "M"], ["regional", "empfehlung"], false],
+    [2, "Hauptspeisen", "Rehrücken", "Rotkraut, Serviettenknödel, Wacholderjus", 32.5, ["A", "C", "G", "L"], ["regional"], true],
+    [2, "Hauptspeisen", "Pilzrisotto", "Steinpilze, Parmesan", 19.5, ["G", "L"], ["vegetarisch", "glutenfrei"], false],
+    [2, "Hauptspeisen", "Gemüsecurry", "Kokosmilch, Basmatireis", 17.9, ["L"], ["vegan", "scharf", "glutenfrei"], false],
+    [2, "Desserts", "Kaiserschmarrn", "mit Zwetschkenröster", 11.5, ["A", "C", "G", "H"], ["regional", "empfehlung"], false],
+    [2, "Desserts", "Schokoladenmousse", "Beeren, Minze", 8.9, ["C", "G", "F"], ["glutenfrei"], false],
+    [3, "Alkoholfreie Getränke", "Apfelsaft gespritzt", "0,4 l", 4.2, [], ["alkoholfrei", "regional"], false],
+    [3, "Alkoholfreie Getränke", "Holunderblütensirup", "0,4 l, mit Soda oder Wasser", 4.5, [], ["alkoholfrei", "vegan"], false],
+    [3, "Bier", "Zipfer Märzen", "vom Fass, 0,5 l", 5.2, ["A"], [], false],
+    [3, "Wein", "Grüner Veltliner", "Glas 0,125 l, Weinviertel", 5.4, ["O"], ["regional"], false],
+    [3, "Wein", "Zweigelt", "Glas 0,125 l, Burgenland", 5.6, ["O"], ["regional"], false],
+    [3, "Heißgetränke", "Melange", "", 4.6, ["G"], [], false]]
+    .map(function (x, i) { return { id: "mni-" + (i + 1), hotel_id: AH, card_id: "mnc-" + x[0], section: x[1], name: x[2], description: x[3] || null, price: x[4], price_note: null, allergens: x[5], tags: x[6], sold_out: x[7], active: true, sort: i, created_at: now.toISOString(), updated_at: now.toISOString() }; });
+  var PK = { bk: [], wl: [] };
+  PK.list = [{ id: "pkg-1", name: "Spa-Tag", description: "Massage, private Sauna und ein Mittagessen – ein Tag zum Abschalten.", price: 149, price_per: "person", persons_min: 1, persons_max: 4, online: true, active: true, color: "#6B8F71", sort: 0,
+    items: [{ kind: "service", service_id: "bsv-1", offset_min: 0 }, { kind: "service", service_id: "bsv-5", offset_min: 60 }, { kind: "table", offset_min: 120, duration_min: 90 }, { kind: "extra", text: "Glas Sekt" }] },
+  { id: "pkg-2", name: "Romantik zu zweit", description: "Paarmassage und anschließend ein Tisch für zwei.", price: 299, price_per: "paket", persons_min: 2, persons_max: 2, online: true, active: true, color: "#9B6B9E", sort: 1,
+    items: [{ kind: "service", service_id: "bsv-4", offset_min: 0 }, { kind: "table", offset_min: 90, duration_min: 90 }, { kind: "extra", text: "Rosenblätter und eine Flasche Sekt am Tisch" }] }]
+    .map(function (x) { return Object.assign({ hotel_id: AH, created_at: now.toISOString() }, x); });
+  var MN_ALL = "ABCDEFGHLMNOPR".split(""), MN_TAGS = ["vegan", "vegetarisch", "glutenfrei", "laktosefrei", "scharf", "regional", "neu", "empfehlung", "alkoholfrei", "kinder"];
+  function mnList(v, allowed) { return (Array.isArray(v) ? v : String(v || "").split(/[,\s]+/)).map(function (x) { return String(x).trim(); }).filter(function (x, i, a) { return allowed.indexOf(x) >= 0 && a.indexOf(x) === i; }); }
+  function mnClean(b, partial, isCard) { var o = {};
+    if (!partial || b.name !== undefined) { o.name = spTxt(b.name, isCard ? 80 : 120); if (!o.name) throw new Error("Bitte einen Namen angeben."); }
+    if (isCard) { if (b.note !== undefined) o.note = spTxt(b.note, 500); if (b.hours !== undefined) o.hours = spTxt(b.hours, 60); ["public", "active"].forEach(function (k) { if (b[k] !== undefined) o[k] = !!b[k]; }); }
+    else { if (!partial || b.card_id !== undefined) { if (!byId(MN.cards, b.card_id)) throw new Error("Bitte eine Karte wählen."); o.card_id = b.card_id; }
+      if (b.section !== undefined) o.section = spTxt(b.section, 60); if (b.description !== undefined) o.description = spTxt(b.description, 500);
+      if (b.price !== undefined) { if (b.price === "" || b.price == null) o.price = null; else { var n = Number(String(b.price).replace(",", ".")); if (!(n >= 0 && n <= 100000)) throw new Error("Bitte einen gültigen Preis angeben."); o.price = spR2(n); } }
+      if (b.price_note !== undefined) o.price_note = spTxt(b.price_note, 40); if (b.allergens !== undefined) o.allergens = mnList(String(Array.isArray(b.allergens) ? b.allergens.join(",") : b.allergens || "").toUpperCase().split(","), MN_ALL).sort();
+      if (b.tags !== undefined) o.tags = mnList(b.tags, MN_TAGS); ["sold_out", "active"].forEach(function (k) { if (b[k] !== undefined) o[k] = !!b[k]; }); }
+    if (b.sort !== undefined) o.sort = spInt(b.sort, -1000, 1000, 0); return o; }
+  function pkClean(b, partial) { var o = {};
+    if (!partial || b.name !== undefined) { o.name = spTxt(b.name, 120); if (!o.name) throw new Error("Bitte einen Namen angeben."); }
+    if (b.description !== undefined) o.description = spTxt(b.description, 1500);
+    if (b.price !== undefined) { if (b.price === "" || b.price == null) o.price = null; else { var n = Number(String(b.price).replace(",", ".")); if (!(n >= 0 && n <= 100000)) throw new Error("Bitte einen gültigen Preis angeben."); o.price = spR2(n); } }
+    if (b.price_per !== undefined) o.price_per = b.price_per === "paket" ? "paket" : "person"; if (b.persons_min !== undefined) o.persons_min = spInt(b.persons_min, 1, 20, 1); if (b.persons_max !== undefined) o.persons_max = spInt(b.persons_max, 1, 20, 2);
+    if (o.persons_min && o.persons_max && o.persons_min > o.persons_max) throw new Error("Mindestens-Personen ist größer als Höchst-Personen.");
+    if (!partial || b.items !== undefined) { var items = (Array.isArray(b.items) ? b.items : []).slice(0, 12).map(function (x) {
+        if (x && x.kind === "service") { if (!byId(SPA.svc, x.service_id)) throw new Error("Bitte für jede Leistung eine Auswahl treffen."); return { kind: "service", service_id: x.service_id, offset_min: spInt(x.offset_min, 0, 720, 0) }; }
+        if (x && x.kind === "table") return { kind: "table", offset_min: spInt(x.offset_min, 0, 720, 0), duration_min: spInt(x.duration_min, 30, 360, 90) };
+        if (x && x.kind === "extra") { var t = spTxt(x.text, 120); if (!t) throw new Error("Bitte die Zusatzleistung beschreiben."); return { kind: "extra", text: t }; } throw new Error("Unbekannter Bestandteil."); });
+      if (!items.some(function (i) { return i.kind !== "extra"; })) throw new Error("Ein Arrangement braucht mindestens eine Leistung oder einen Tisch."); o.items = items; }
+    ["online", "active"].forEach(function (k) { if (b[k] !== undefined) o[k] = !!b[k]; }); if (b.sort !== undefined) o.sort = spInt(b.sort, -1000, 1000, 0); if (b.color !== undefined) o.color = /^#[0-9a-fA-F]{6}$/.test(String(b.color || "")) ? b.color : null; return o; }
+  function pkPrice(p, persons) { return p.price == null ? null : p.price_per === "paket" ? spR2(p.price) : spR2(p.price * persons); }
+  // Teil-Termine für einen Beginn (wie packagePlan im Backend, vereinfacht)
+  function pkPlan(pkg, day, start, persons) {
+    var parts = [], planned = SPA.bk.filter(function (x) { return x.day === day; }), n = spNow();
+    for (var i = 0; i < (pkg.items || []).length; i++) { var it = pkg.items[i], t = start + (it.offset_min || 0);
+      if (it.kind === "service") { var s = byId(SPA.svc, it.service_id); if (!s || s.active === false) return null;
+        var sl = spFree({ service: s, day: day, settings: SPA.settings, resources: SPA.res, bookings: planned, blocks: SPA.blocks.filter(function (x) { return x.day === day; }), persons: persons, staffPref: "egal", nowDay: n.day, nowMin: n.min }).find(function (x) { return x.start === t; }); if (!sl) return null;
+        var e = t + s.duration_min; parts.push({ kind: "service", service_id: s.id, name: s.name, start: t, end: e, resource_ids: sl.resource_ids, gear_qty: sl.gear_qty != null ? sl.gear_qty : null });
+        planned = planned.concat([{ id: "plan-" + i, service_id: s.id, status: "bestätigt", start_min: t, end_min: e, block_start: Math.max(0, t - (s.buffer_before || 0)), block_end: e + (s.buffer_after || 0), resource_ids: sl.resource_ids, persons: persons, gear_qty: sl.gear_qty }]); }
+      else if (it.kind === "table") { var du = it.duration_min || 90, ids = dnPick(DN_TABLES, DN.res.filter(function (x) { return x.day === day; }), t, du, persons); if (!ids.length) return null; parts.push({ kind: "table", start: t, end: t + du, table_ids: ids }); }
+      else parts.push({ kind: "extra", text: it.text }); }
+    return parts; }
+  function pkSlots(pkg, day, persons) {
+    var st = SPA.settings, wd = spWd(day), open = (st.open || {})[wd] || [], out = []; if ((st.closed_days || []).indexOf(day) >= 0) return out;
+    open.forEach(function (r) { for (var t = dnMin(r[0]); t < dnMin(r[1]); t += st.slot_min || 30) { var pl = pkPlan(pkg, day, t, persons); if (pl) out.push({ time: dnTime(t), parts: pl.map(function (x) { return { kind: x.kind, name: x.name || x.text || null, time: x.start != null ? dnTime(x.start) : null }; }) }); } });
+    return out; }
+  function pkOut(x) { return Object.assign({}, x, { time: dnTime(x.start_min) }); }
+  // gebuchte Arrangements samt Teil-Terminen
+  function pkSeed(id, pkgId, dayOff, time, persons, name, room, status) {
+    var pkg = byId(PK.list, pkgId), day = add(todayIso, dayOff), pl = pkPlan(pkg, day, dnMin(time), persons); if (!pl) return;
+    PK.bk.push({ id: id, hotel_id: AH, package_id: pkg.id, day: day, start_min: dnMin(time), persons: persons, guest_name: name, email: null, phone: null, room_no: room, wishes: null, price: pkPrice(pkg, persons), payment: "vor_ort", paid: false, voucher_id: null, status: status, source: "intern", created_at: now.toISOString() });
+    pl.forEach(function (p) { if (p.kind === "service") { var s = byId(SPA.svc, p.service_id);
+        SPA.bk.push({ id: nid("bbk"), hotel_id: AH, service_id: s.id, day: day, start_min: p.start, end_min: p.end, block_start: p.start - (s.buffer_before || 0), block_end: p.end + (s.buffer_after || 0), persons: persons, resource_ids: p.resource_ids, gear_qty: p.gear_qty, guest_name: name, email: null, phone: null, room_no: room, arrival_guest_id: null, wishes: null, staff_pref: "egal",
+          price: null, payment: "inklusive", paid: false, charged_at: null, deposit: null, deposit_paid_at: null, status: status, source: "intern", health_flag: false, cancel_reason: null, package_booking_id: id, voucher_id: null, created_at: now.toISOString() }); }
+      else if (p.kind === "table") DN.res.push({ id: nid("trs"), hotel_id: AH, day: day, start_min: p.start, duration_min: p.end - p.start, party: persons, name: name, email: null, phone: null, room_no: room, allergens: [], note: pkg.name, status: status, table_ids: p.table_ids, source: "intern", package_booking_id: id, voucher_id: null, created_at: now.toISOString() }); }); }
+  pkSeed("pkb-1", "pkg-1", 1, "11:00", 1, "Frau Novak", "118", "bestätigt");
+  pkSeed("pkb-2", "pkg-2", 2, "15:00", 2, "Ehepaar Winter", "305", "bestätigt");
+  PK.wl = [["bsv-1", 1, "10:00", 1, "Frau Kerschbaum", "kerschbaum@example.com", null, "wartet"], ["bsv-4", 2, "14:00", 2, "Familie Hofmann", "hofmann@example.com", "301", "angeboten"], ["bsv-5", 0, null, 3, "Herr Lindner", "lindner@example.com", "214", "wartet"]]
+    .map(function (x, i) { return { id: "bwl-" + (i + 1), hotel_id: AH, service_id: x[0], day: add(todayIso, x[1]), start_min: x[2] ? dnMin(x[2]) : null, persons: x[3], guest_name: x[4], email: x[5], phone: null, room_no: x[6], status: x[7], offer_expires_at: x[7] === "angeboten" ? new Date(now.getTime() + 90 * 60000).toISOString() : null, offered_time: x[7] === "angeboten" ? dnMin("14:30") : null, source: i === 2 ? "gast" : "intern", created_at: new Date(now.getTime() - (3 - i) * 3600000).toISOString() }; });
 
   /* Migration 038: Gästeprofile, Gästebuchungen, Simulator, Saison-Übergabe, Nachhaltigkeit, Aushilfs-Börse, Lehrlinge */
   var CO2_DEF = { Strom: 0.13, Gas: 0.2, "Wärme": 0.15, "Öl": 0.27, Pellets: 0.03, Wasser: 0.3 };
@@ -2779,6 +2866,77 @@
       DN.res.forEach(function (x) { if (x.series_id === mm[1] && x.day >= sfd && (x.status === "angefragt" || x.status === "bestätigt")) { x.status = "abgesagt"; scn++; } }); return ok({ cancelled: scn }); }
     if (p === H + "/dining-stats") { var dds = [30, 90, 365].indexOf(Number(q.get("days"))) >= 0 ? Number(q.get("days")) : 30, dfr = add(todayIso, -dds);
       return ok(Object.assign({ from: dfr, to: todayIso }, dnStats(DN.res.filter(function (x) { return x.day >= dfr && x.day <= todayIso; })))); }
+
+    /* Paket 046: Speisekarte (routes-menu.js) */
+    var mnLead = ROLE !== "member", mnSub = p.indexOf(H + "/") === 0 ? p.slice(H.length + 1) : "";
+    if (mnSub === "menu-settings") {
+      if (m === "PUT") { if (!mnLead) return deny("Die Einstellungen ändert die Leitung Food & Beverage."); var mo = MN.settings;
+        MN.settings = { enabled: !!b.enabled, token: mo.token, name: s200(b.name, 80) || null, footer: s200(b.footer, 600) || null, translate: b.translate === undefined ? true : !!b.translate, show_prices: b.show_prices === undefined ? true : !!b.show_prices };
+        if (b.new_token || (MN.settings.enabled && !MN.settings.token)) MN.settings.token = "demoSpeisekarte" + Math.random().toString(36).slice(2, 12) + "abcdef"; return ok(MN.settings); }
+      return ok(Object.assign({}, MN.settings, { token: mnLead ? MN.settings.token : null, can_edit: mnLead, currency: D.hotel.currency || "EUR" })); }
+    if (mnSub === "menu-cards" || mnSub === "menu-items") { var isC = mnSub === "menu-cards", lst = isC ? MN.cards : MN.items;
+      if (m === "POST") { if (!mnLead && isC) return deny("Karten verwaltet die Leitung Food & Beverage."); if (!mnLead) return deny("Die Speisekarte pflegt Food & Beverage.");
+        var mrow; try { mrow = mnClean(b, false, isC); } catch (e9) { return ok({ error: e9.message }, 400); }
+        var mnw = Object.assign(isC ? { note: null, hours: null, public: true, active: true, sort: 0 } : { section: null, description: null, price: null, price_note: null, allergens: [], tags: [], sold_out: false, active: true, sort: 0 }, { id: nid(isC ? "mnc" : "mni"), hotel_id: D.hotel.id, created_at: new Date().toISOString() }, mrow); lst.push(mnw); return ok(mnw); }
+      return ok(lst.slice().sort(function (a, c) { return (a.sort || 0) - (c.sort || 0) || (String(a.name) < String(c.name) ? -1 : 1); })); }
+    if ((mm = p.match(/^\/api\/(menu-cards|menu-items)\/([^/]+)$/))) { var isC2 = mm[1] === "menu-cards", lst2 = isC2 ? MN.cards : MN.items, mit = byId(lst2, mm[2]);
+      var onlySold = !isC2 && m === "PATCH" && Object.keys(b || {}).every(function (k) { return k === "sold_out"; });
+      if (!mnLead && !onlySold) return deny(isC2 ? "Karten verwaltet die Leitung Food & Beverage." : "Die Speisekarte pflegt Food & Beverage."); if (!mit) return nf();
+      if (m === "DELETE") { remove(lst2, mm[2]); if (isC2) MN.items = MN.items.filter(function (x) { return x.card_id !== mm[2]; }); return ok({ ok: true }); }
+      try { Object.assign(mit, mnClean(b, true, isC2)); } catch (e10) { return ok({ error: e10.message }, 400); } if (!isC2) mit.updated_at = new Date().toISOString(); return ok(mit); }
+
+    /* Paket 046: Arrangements (routes-packages.js) */
+    var pkLead = ROLE !== "member", PKDENY = "Arrangements buchen Spa & Wellness, Food & Beverage und die Rezeption.";
+    if (mnSub === "packages") {
+      if (m === "POST") { if (!pkLead) return deny("Arrangements verwaltet die Leitung Spa & Wellness, Food & Beverage oder Rezeption."); var prow; try { prow = pkClean(b, false); } catch (e11) { return ok({ error: e11.message }, 400); }
+        var npk = Object.assign({ description: null, price: null, price_per: "person", persons_min: 1, persons_max: 2, online: false, active: true, sort: 0, color: null }, { id: nid("pkg"), hotel_id: D.hotel.id, created_at: new Date().toISOString() }, prow); PK.list.push(npk); return ok(npk); }
+      return ok(PK.list.slice().sort(function (a, c) { return (a.sort || 0) - (c.sort || 0) || (String(a.name) < String(c.name) ? -1 : 1); })); }
+    if ((mm = p.match(/^\/api\/packages\/([^/]+)$/))) { if (!pkLead) return deny("Arrangements verwaltet die Leitung Spa & Wellness, Food & Beverage oder Rezeption."); var epk = byId(PK.list, mm[1]); if (!epk) return nf();
+      if (m === "DELETE") { remove(PK.list, mm[1]); return ok({ ok: true }); } try { Object.assign(epk, pkClean(b, true)); } catch (e12) { return ok({ error: e12.message }, 400); } return ok(epk); }
+    if (mnSub === "package-slots") { var psk = byId(PK.list, q.get("package")); if (!psk || !/^\d{4}-\d{2}-\d{2}$/.test(q.get("day") || "")) return ok({ error: "Bitte Arrangement und Tag wählen." }, 400);
+      return ok(pkSlots(psk, q.get("day"), spInt(q.get("persons"), 1, 20, psk.persons_min || 1))); }
+    if (mnSub === "package-bookings") {
+      if (m === "POST") { var pkx = byId(PK.list, b.package_id); if (!pkx) return ok({ error: "Arrangement nicht gefunden." }, 404); var pgn = spTxt(b.guest_name, 120); if (!pgn) return ok({ error: "Bitte einen Namen angeben." }, 400);
+        var pem = spTxt(b.email, 200); if (pem && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(pem)) return ok({ error: "Ungültige E-Mail-Adresse." }, 400);
+        var pps = spInt(b.persons, pkx.persons_min || 1, pkx.persons_max || 20, pkx.persons_min || 1), pst = dnMin(b.time); if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) || pst == null) return ok({ error: "Bitte Tag und Uhrzeit wählen." }, 400);
+        var ppl = pkPlan(pkx, b.day, pst, pps); if (!ppl) return ok({ error: "Zu dieser Zeit ist das Arrangement nicht verfügbar. Bitte eine andere Zeit wählen." }, 409);
+        var pid = nid("pkb"), ppay = ["zimmer", "vor_ort", "gutschein", "inklusive"].indexOf(b.payment) >= 0 ? b.payment : "vor_ort", prm = spTxt(b.room_no, 20);
+        var npb = { id: pid, hotel_id: D.hotel.id, package_id: pkx.id, day: b.day, start_min: pst, persons: pps, guest_name: pgn, email: pem, phone: spTxt(b.phone, 40), room_no: prm, wishes: spTxt(b.wishes, 500), price: pkPrice(pkx, pps), payment: ppay, paid: false, voucher_id: null, status: "bestätigt", source: "intern", created_at: new Date().toISOString() }; PK.bk.push(npb);
+        ppl.forEach(function (x) { if (x.kind === "service") { var sv = byId(SPA.svc, x.service_id);
+            SPA.bk.push({ id: nid("bbk"), hotel_id: D.hotel.id, service_id: sv.id, day: b.day, start_min: x.start, end_min: x.end, block_start: x.start - (sv.buffer_before || 0), block_end: x.end + (sv.buffer_after || 0), persons: pps, resource_ids: x.resource_ids, gear_qty: x.gear_qty, guest_name: pgn, email: pem, phone: npb.phone, room_no: prm, arrival_guest_id: null, wishes: npb.wishes, staff_pref: "egal",
+              price: null, payment: "inklusive", paid: false, charged_at: null, deposit: null, deposit_paid_at: null, status: "bestätigt", source: "intern", health_flag: false, cancel_reason: null, package_booking_id: pid, voucher_id: null, created_at: new Date().toISOString() }); }
+          else if (x.kind === "table") DN.res.push({ id: nid("trs"), hotel_id: D.hotel.id, day: b.day, start_min: x.start, duration_min: x.end - x.start, party: pps, name: pgn, email: pem, phone: npb.phone, room_no: prm, allergens: [], note: pkx.name, status: "bestätigt", table_ids: x.table_ids, source: "intern", package_booking_id: pid, voucher_id: null, created_at: new Date().toISOString() }); });
+        return ok(Object.assign({}, pkOut(npb), { parts: ppl.length })); }
+      var kfr = /^\d{4}-\d{2}-\d{2}$/.test(q.get("from") || "") ? q.get("from") : todayIso, kto = /^\d{4}-\d{2}-\d{2}$/.test(q.get("to") || "") ? q.get("to") : add(kfr, 30);
+      return ok(PK.bk.filter(function (x) { return x.day >= kfr && x.day <= kto; }).sort(function (a, c) { return a.day < c.day ? -1 : a.day > c.day ? 1 : a.start_min - c.start_min; }).map(pkOut)); }
+    if ((mm = p.match(/^\/api\/package-bookings\/([^/]+)$/)) && m === "PATCH") { var epb = byId(PK.bk, mm[1]); if (!epb) return deny(PKDENY);
+      if (b.status !== undefined) { if (["bestätigt", "storniert", "erledigt"].indexOf(b.status) < 0) return ok({ error: "Unbekannter Status." }, 400); epb.status = b.status;
+        if (b.status === "storniert") { epb.cancelled_at = new Date().toISOString(); SPA.bk.forEach(function (x) { if (x.package_booking_id === epb.id && ["angefragt", "bestätigt", "angekommen"].indexOf(x.status) >= 0) { x.status = "storniert"; x.cancelled_at = epb.cancelled_at; x.cancel_reason = "Arrangement storniert"; } });
+          DN.res.forEach(function (x) { if (x.package_booking_id === epb.id && (x.status === "angefragt" || x.status === "bestätigt")) x.status = "abgesagt"; }); } }
+      if (b.paid !== undefined) epb.paid = !!b.paid; if (b.payment !== undefined && ["zimmer", "vor_ort", "gutschein", "inklusive"].indexOf(b.payment) >= 0) epb.payment = b.payment; if (b.wishes !== undefined) epb.wishes = spTxt(b.wishes, 500);
+      return ok(pkOut(epb)); }
+
+    /* Paket 046: Warteliste Spa (routes-booking.js) */
+    if (mnSub === "booking-waitlist") {
+      if (m === "POST") { if (!byId(SPA.svc, b.service_id) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.day || ""))) return ok({ error: "Bitte Leistung und Tag wählen." }, 400); var wnm = spTxt(b.guest_name, 120); if (!wnm) return ok({ error: "Bitte einen Namen angeben." }, 400);
+        var wem = String(b.email || "").trim(); if (wem && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(wem)) return ok({ error: "Ungültige E-Mail-Adresse." }, 400); if (!wem) return ok({ error: "Für die Warteliste brauchen wir eine E-Mail-Adresse (dorthin geht das Angebot)." }, 400);
+        var nwl = { id: nid("bwl"), hotel_id: D.hotel.id, service_id: b.service_id, day: b.day, start_min: b.time ? dnMin(b.time) : null, persons: spInt(b.persons, 1, 50, 1), guest_name: wnm, email: wem, phone: spTxt(b.phone, 40), room_no: spTxt(b.room_no, 20), status: "wartet", offer_expires_at: null, offered_time: null, source: "intern", created_at: new Date().toISOString() }; PK.wl.push(nwl); return ok(nwl); }
+      return ok(PK.wl.filter(function (x) { return x.day >= todayIso; }).sort(function (a, c) { return a.day < c.day ? -1 : a.day > c.day ? 1 : a.created_at < c.created_at ? -1 : 1; }).map(function (x) { return Object.assign({}, x, { time: x.start_min == null ? null : dnTime(x.start_min), offered: x.offered_time == null ? null : dnTime(x.offered_time) }); })); }
+    if ((mm = p.match(/^\/api\/booking-waitlist\/([^/]+)$/)) && m === "PATCH") { var ewl = byId(PK.wl, mm[1]); if (!ewl) return deny("Die Warteliste pflegen Spa & Wellness und die Rezeption."); if (b.status !== "entfernt") return ok({ error: "Nur Entfernen ist möglich." }, 400); ewl.status = "entfernt"; return ok(ewl); }
+
+    /* Paket 046: Mit Gutschein bezahlen (routes-vouchers.js) */
+    if ((mm = p.match(/^\/api\/(bookings|table-reservations|package-bookings)\/([^/]+)\/voucher$/)) && m === "POST") {
+      var vkind = mm[1], vrow = byId(vkind === "bookings" ? SPA.bk : vkind === "table-reservations" ? DN.res : PK.bk, mm[2]); if (!vrow) return nf();
+      var vcode = String(b.code || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); if (vcode.length !== 12) return ok({ error: "Bitte den Gutscheincode eingeben (12 Zeichen)." }, 400);
+      var vv = VC.list.find(function (x) { return x.code.replace(/-/g, "") === vcode; }); if (!vv) return ok({ error: "Gutschein nicht gefunden." }, 404);
+      var vwant = b.amount === undefined || b.amount === "" ? (vrow.price != null ? Number(vrow.price) : null) : Number(String(b.amount).replace(",", "."));
+      if (vwant == null || !(vwant > 0 && vwant <= 100000)) return ok({ error: "Bitte einen Betrag angeben." }, 400); vwant = spR2(vwant);
+      if (vv.status !== "aktiv") return ok({ error: "Dieser Gutschein ist nicht einlösbar (Status: " + vv.status + ")." }, 400);
+      var vamt = Math.min(vwant, Number(vv.remaining)); if (!(vamt > 0)) return ok({ error: "Der Gutschein hat keinen Restwert mehr." }, 400);
+      vv.remaining = spR2(vv.remaining - vamt); if (vv.remaining <= 0) { vv.remaining = 0; vv.status = "eingelöst"; }
+      VC.red.push({ id: nid("vcr"), voucher_id: vv.id, amount: vamt, note: ({ bookings: "Spa", "table-reservations": "Restaurant", "package-bookings": "Arrangement" }[vkind]) + " · " + vrow.day + " · " + (vrow.guest_name || vrow.name || ""), redeemed_by: ME, redeemed_at: new Date().toISOString() });
+      vrow.voucher_id = vv.id; if (vkind !== "table-reservations" && (vrow.price == null || vamt >= Number(vrow.price))) { vrow.payment = "gutschein"; vrow.paid = true; }
+      return ok({ ok: true, amount: vamt, open: vrow.price != null ? Math.max(0, spR2(Number(vrow.price) - vamt)) : null, voucher_remaining: vv.remaining, currency: vv.currency }); }
 
     return ok({});
   };

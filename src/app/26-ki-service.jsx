@@ -37,7 +37,7 @@ function ServiceButton({api, orgId, hotel, tab, nav, onOpen}){
   const starters = SERVICE_STARTERS[tab] || SERVICE_DEFAULT_STARTERS;
   return (
     <div className="feedback-ui no-print">
-      {!open && <button ref={fabRef} className="feedback-fab" aria-haspopup="dialog" onClick={()=>{ setOpen(true); setMode("chat"); }}><Icon n="sparkle" /> {tf("Hilfe 24/7")}</button>}
+      {!open && <button ref={fabRef} className="feedback-fab" aria-haspopup="dialog" onClick={()=>{ setOpen(true); setMode("chat"); }}><Icon n="sparkle" /> <span className="fab-label">{tf("Hilfe 24/7")}</span></button>}
       {open && <div className="service-panel" role="dialog" aria-modal="false" aria-label={tf("KI-Service")} style={{background:CARD,border:`1px solid ${BORDER}`}}>
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",borderBottom:`1px solid ${BORDER}`}}>
           <Icon n="sparkle" size={18} style={{color:BRASS_TEXT}} />

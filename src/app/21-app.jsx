@@ -386,6 +386,7 @@ function App(){
           {tab==="dashboard" && role!=="member" && preOpeningOff(hotel) && <KpiView hotel={hotel} api={api} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmOnDutyCard hotel={hotel} api={api} members={members} me={me} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <TmProbationDueCard hotel={hotel} api={api} members={members} me={me} />}
+          {tab==="dashboard" && (role==="admin" || role==="manager" || role==="viewer") && !window.OUVERTURE_DEMO && <DailyReportCard hotel={hotel} api={api} role={role} />}
           {tab==="dashboard" && (role==="admin" || role==="manager") && <ReadinessCertificateCard hotel={hotel} api={api} role={role} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <EmergencyFolderButton hotel={hotel} api={api} me={me} />}
           {tab==="dashboard" && role!=="member" && role!=="viewer" && <CityEventsCard hotel={hotel} api={api} />}
@@ -458,6 +459,7 @@ function App(){
           {tab==="rates" && <RatesView hotel={hotel} api={api} />}
           {tab==="dining" && <DiningView hotel={hotel} api={api} />}
           {tab==="spa" && <SpaView hotel={hotel} api={api} me={me} members={members} />}
+          {tab==="menu" && <MenuView hotel={hotel} api={api} />}
           {tab==="vouchers" && <VouchersView hotel={hotel} api={api} />}
           {tab==="staffdocs" && <StaffDocsView orgId={orgId} api={api} members={members} />}
           {tab==="pulse" && <PulseView orgId={orgId} api={api} hotel={hotel} myDepts={myDepts} />}

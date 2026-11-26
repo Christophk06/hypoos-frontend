@@ -52,7 +52,7 @@ function SpaView({hotel, api, me, members}){
   const res = (id) => (resources||[]).find(r=>r.id===id) || {};
   const canEdit = settings && settings.can_edit;
   const mine = (resources||[]).filter(r=>r.user_id && me && r.user_id===me.id).map(r=>r.id);
-  const tabs = [["cal",tf("Kalender")]].concat(mine.length?[["mine",tf("Meine Termine")]]:[]).concat([["services",tf("Leistungen")],["resources",tf("Ressourcen")]]).concat(canEdit?[["online",tf("Online-Buchung")],["stats",tf("Auswertung")]]:[]);
+  const tabs = [["cal",tf("Kalender")]].concat(mine.length?[["mine",tf("Meine Termine")]]:[]).concat([["packages",tf("Arrangements")],["waitlist",tf("Warteliste")],["services",tf("Leistungen")],["resources",tf("Ressourcen")]]).concat(canEdit?[["online",tf("Online-Buchung")],["stats",tf("Auswertung")]]:[]);
   const active = (list||[]).filter(b=>["angefragt","bestätigt","angekommen"].includes(b.status));
   const printDay = () => {
     const rows = (list||[]).filter(b=>b.status!=="storniert").map(b=>'<tr><td>'+fsEsc(b.time+"–"+b.end)+'</td><td>'+fsEsc(svc(b.service_id).name||"")+'</td><td>'+fsEsc(b.guest_name)+(b.room_no?' · '+fsEsc(tf("Zimmer {0}", b.room_no)):'')+'</td><td>'+fsEsc((b.resource_ids||[]).map(id=>res(id).name).filter(Boolean).join(", "))+'</td><td>'+fsEsc(b.wishes||"")+(b.health_flag?' ⚠':'')+'</td><td>'+fsT((SP_STATUS[b.status]||[])[2]||"")+'</td></tr>').join("");
@@ -84,11 +84,13 @@ function SpaView({hotel, api, me, members}){
           {(list||[]).filter(b=>(b.resource_ids||[]).some(id=>mine.includes(id))).length===0 && <div style={{color:INK_MUTED,fontSize:13.5}}>{tf("Keine Termine an diesem Tag.")}</div>}</div>}
         {view==="cal" && (list||[]).length>0 && <div style={{marginTop:14}}><b style={{fontSize:13.5}}>{tf("Liste")}</b>{(list||[]).map(b=><SpaRow key={b.id} b={b} svc={svc} res={res} onOpen={setOpen} />)}</div>}
       </div>}
+      {view==="packages" && <SpaPackages hotel={hotel} api={api} services={services} canEdit={canEdit} onChanged={load} />}
+      {view==="waitlist" && <SpaWaitlist hotel={hotel} api={api} services={services} />}
       {view==="services" && <SpaServices hotel={hotel} api={api} services={services} resources={resources} canEdit={canEdit} run={run} />}
       {view==="resources" && <SpaResources hotel={hotel} api={api} services={services} resources={resources} members={members} canEdit={canEdit} run={run} />}
       {view==="online" && canEdit && <SpaSettings hotel={hotel} api={api} value={settings} onSaved={(s)=>{ setSettings({...settings, ...s}); setMsg({ok:true,text:tf("Gespeichert.")}); }} />}
       {view==="stats" && canEdit && <SpaStats hotel={hotel} api={api} />}
-      {form && <SpaBookingForm hotel={hotel} api={api} form={form} setForm={setForm} services={(services||[]).filter(s=>s.active!==false)} onClose={()=>setForm(null)} onSaved={(b)=>{ setForm(null); if(b && b.day!==day) setDay(b.day); setMsg({ok:true,text:tf("Gebucht.")}); reloadAll(); }} />}
+      {form && <SpaBookingForm hotel={hotel} api={api} form={form} setForm={setForm} services={(services||[]).filter(s=>s.active!==false)} onClose={()=>setForm(null)} onSaved={(b)=>{ setForm(null); if(b && b.day && b.day!==day) setDay(b.day); setMsg({ok:true,text:b && b.waitlist ? tf("Auf die Warteliste gesetzt.") : tf("Gebucht.")}); reloadAll(); }} />}
       {open && <SpaBookingDetail hotel={hotel} api={api} b={open} svc={svc} res={res} onClose={()=>setOpen(null)} run={run} onMove={(b)=>{ setOpen(null); setForm({...b, time:b.time, move:true}); }} />}
       {block && <Overlay onClose={()=>setBlock(null)} width={420} label={tf("Sperrzeit")}>
         <b>{tf("Sperrzeit")}</b>
@@ -179,7 +181,7 @@ function SpaBookingForm({hotel, api, form, setForm, services, onClose, onSaved})
       {form.service_id && <div style={{marginBottom:10}}>
         <div className="field-label">{tf("Freie Zeiten")}</div>
         {slots===null && <div style={{fontSize:13,color:INK_MUTED}}>{tf("Lädt …")}</div>}
-        {slots && slots.length===0 && <div style={{fontSize:13,color:WARN_TEXT}}>{tf("An diesem Tag ist nichts frei.")}</div>}
+        {slots && slots.length===0 && <div style={{fontSize:13,color:WARN_TEXT}}>{tf("An diesem Tag ist nichts frei.")} {!form.move && <button type="button" style={linkBtn} onClick={async()=>{ setErr(""); if(!String(form.guest_name).trim() || !String(form.email).trim()){ setErr(tf("Für die Warteliste bitte unten Name und E-Mail eintragen.")); return; } try { await api("/api/hotels/"+hotel.id+"/booking-waitlist","POST",{service_id:form.service_id, day:form.day, persons:form.persons, guest_name:form.guest_name, email:form.email, phone:form.phone, room_no:form.room_no}); onSaved({waitlist:true}); } catch(e){ setErr(e.message); } }}>{tf("Auf die Warteliste setzen (Name und E-Mail unten)")}</button>}</div>}
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}} role="group" aria-label={tf("Freie Zeiten")}>{(slots||[]).map(x=><button key={x.time} type="button" aria-pressed={form.time===x.time} style={{...opSmall,minHeight:40,background:form.time===x.time?INK:"#fff",color:form.time===x.time?"#fff":INK}} onClick={()=>setForm({...form,time:x.time})}>{x.time}{x.left>1 && s && (s.capacity>1||s.gear_id) ? " ("+x.left+")" : ""}</button>)}</div>
         <details style={{marginTop:6}}><summary style={{fontSize:12.5,color:INK_MUTED,cursor:"pointer"}}>{tf("Andere Uhrzeit (außerhalb der Öffnungszeit)")}</summary>
           <input className="input" type="time" step={300} style={{width:130,marginTop:6}} aria-label={tf("Uhrzeit")} value={form.time} onChange={e=>setForm({...form,time:e.target.value,force:true})} /></details>
@@ -254,6 +256,7 @@ function SpaBookingDetail({hotel, api, b, svc, res, onClose, run, onMove}){
         {act && <button style={btnLine} onClick={()=>onMove(b)}>{tf("Verschieben")}</button>}
         {b.payment==="zimmer" && <button style={btnLine} onClick={()=>set({charged:!b.charged_at}, b.charged_at ? null : tf("Als auf die Zimmerrechnung gebucht markiert."))}>{b.charged_at ? tf("Zimmerrechnung zurücknehmen") : tf("Auf Zimmerrechnung gebucht")}</button>}
         {b.payment!=="zimmer" && !b.paid && b.status!=="storniert" && <button style={btnLine} onClick={()=>set({paid:true}, tf("Als bezahlt markiert."))}>{tf("Bezahlt")}</button>}
+        {!b.paid && b.status!=="storniert" && b.payment!=="inklusive" && <VoucherPayButton api={api} kind="bookings" id={b.id} price={b.price} currency={hotel.currency} onDone={()=>{ onClose(); run(async()=>{}, tf("Mit Gutschein bezahlt.")); }} />}
         {act && <button style={{...btnLine,color:BAD}} onClick={()=>{ const r = window.confirm(tf("Buchung stornieren?")); if(r) set({status:"storniert", cancel_reason:"vom Hotel storniert"}, tf("Storniert.")); }}>{tf("Stornieren")}</button>}
         <button style={btnLine} onClick={onClose}>{tf("Schließen")}</button>
       </div>

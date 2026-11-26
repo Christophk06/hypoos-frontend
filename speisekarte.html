@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Ouverture</title>
+<link rel="icon" href="icon-192.png" />
+<style>
+  :root { --ink:#1C2430; --paper:#F6F4EF; --brass:#A9834B; --border:#E4DFD3; --muted:#626976; --good:#3F7A5C; --bad:#A23B32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--paper); color: var(--ink); }
+  .w { max-width: 640px; margin: 0 auto; padding: 22px 16px 40px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  header img { height: 40px; max-width: 120px; object-fit: contain; }
+  .hotel { font-family: Georgia, serif; font-size: 20px; font-weight: 600; flex: 1; }
+  select.lang { border: 1px solid var(--border); border-radius: 6px; padding: 5px 6px; background: #fff; font-size: 13px; min-height: 44px; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+  .chip { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 8px 14px; min-height: 44px; cursor: pointer; font: inherit; font-size: 14px; color: var(--ink); white-space: nowrap; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  .flt { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 14px; }
+  .flt .chip { padding: 6px 12px; min-height: 40px; font-size: 13px; }
+  h1 { font-family: Georgia, serif; font-weight: 500; font-size: 26px; margin: 8px 0 2px; }
+  .hours { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+  .note { color: var(--muted); font-size: 14px; white-space: pre-wrap; }
+  h2 { font-family: Georgia, serif; font-weight: 500; font-size: 19px; margin: 22px 0 6px; border-bottom: 1px solid var(--brass); padding-bottom: 4px; }
+  .it { display: flex; gap: 12px; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .it b { font-size: 15.5px; } .it .d { font-size: 13.5px; color: #374151; margin-top: 2px; }
+  .it .a { font-size: 12px; color: var(--muted); margin-top: 3px; } .it .t { font-size: 12px; color: var(--good); margin-top: 3px; }
+  .it .p { white-space: nowrap; font-weight: 600; font-size: 15px; text-align: end; } .it .p small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .it.out { opacity: .55; } .it.out b { text-decoration: line-through; } .out-l { color: var(--bad); font-size: 12px; font-weight: 700; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 22px; line-height: 1.6; }
+  .msg { padding: 14px; border-radius: 10px; font-size: 15px; background: #F5E1DE; color: var(--bad); }
+  .tr { font-size: 12px; color: var(--muted); margin: 6px 0; }
+  details { margin: 6px 0 0; } summary { cursor: pointer; font-size: 13.5px; color: var(--muted); min-height: 32px; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="w">
+  <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
+  <main id="app" aria-live="polite"></main>
+  <footer>Ouverture</footer>
+</div>
+<script>
+var API = "https://hpoos-backend-1.onrender.com";
+var LANGS = [["de","Deutsch"],["en","English"],["fr","Français"],["it","Italiano"],["es","Español"],["pt","Português"],["tr","Türkçe"],["ja","日本語"],["zh","中文"],["ar","العربية"]];
+var T = {
+  de: { title: "Speisekarte", all: "Alles", vegan: "vegan", vegetarisch: "vegetarisch", glutenfrei: "glutenfrei", laktosefrei: "laktosefrei", scharf: "scharf", regional: "regional", neu: "neu", empfehlung: "Empfehlung", alkoholfrei: "alkoholfrei", kinder: "Kinder", without: "Ohne Allergen …", soldOut: "heute leider aus", allergens: "Allergene", none: "Keine passenden Gerichte.", translated: "Automatisch übersetzt – im Zweifel fragen Sie bitte unser Team.", ask: "Bei Allergien und Unverträglichkeiten beraten wir Sie gern.", invalid: "Dieser Link ist nicht (mehr) gültig.", error: "Das hat nicht geklappt. Bitte später erneut versuchen.", loading: "Lädt…",
+    alg: { A: "Gluten", B: "Krebstiere", C: "Eier", D: "Fisch", E: "Erdnüsse", F: "Soja", G: "Milch/Laktose", H: "Schalenfrüchte", L: "Sellerie", M: "Senf", N: "Sesam", O: "Sulfite", P: "Lupinen", R: "Weichtiere" } },
+  en: { title: "Menu", all: "All", vegan: "vegan", vegetarisch: "vegetarian", glutenfrei: "gluten-free", laktosefrei: "lactose-free", scharf: "spicy", regional: "local", neu: "new", empfehlung: "recommended", alkoholfrei: "alcohol-free", kinder: "kids", without: "Without allergen …", soldOut: "sold out today", allergens: "Allergens", none: "No matching dishes.", translated: "Translated automatically – if in doubt, please ask our team.", ask: "Our team will gladly advise you on allergies and intolerances.", invalid: "This link is not (or no longer) valid.", error: "That didn’t work. Please try again later.", loading: "Loading…",
+    alg: { A: "Gluten", B: "Crustaceans", C: "Eggs", D: "Fish", E: "Peanuts", F: "Soy", G: "Milk/lactose", H: "Tree nuts", L: "Celery", M: "Mustard", N: "Sesame", O: "Sulphites", P: "Lupin", R: "Molluscs" } },
+  fr: { title: "Carte", all: "Tout", vegan: "végan", vegetarisch: "végétarien", glutenfrei: "sans gluten", laktosefrei: "sans lactose", scharf: "épicé", regional: "régional", neu: "nouveau", empfehlung: "recommandé", alkoholfrei: "sans alcool", kinder: "enfants", without: "Sans allergène …", soldOut: "épuisé aujourd’hui", allergens: "Allergènes", none: "Aucun plat correspondant.", translated: "Traduit automatiquement – en cas de doute, adressez-vous à notre équipe.", ask: "Notre équipe vous conseille volontiers en cas d’allergies et d’intolérances.", invalid: "Ce lien n’est plus valable.", error: "Cela n’a pas fonctionné. Veuillez réessayer plus tard.", loading: "Chargement…",
+    alg: { A: "Gluten", B: "Crustacés", C: "Œufs", D: "Poisson", E: "Arachides", F: "Soja", G: "Lait/lactose", H: "Fruits à coque", L: "Céleri", M: "Moutarde", N: "Sésame", O: "Sulfites", P: "Lupin", R: "Mollusques" } },
+  it: { title: "Menù", all: "Tutto", vegan: "vegano", vegetarisch: "vegetariano", glutenfrei: "senza glutine", laktosefrei: "senza lattosio", scharf: "piccante", regional: "regionale", neu: "novità", empfehlung: "consigliato", alkoholfrei: "analcolico", kinder: "bambini", without: "Senza allergene …", soldOut: "oggi esaurito", allergens: "Allergeni", none: "Nessun piatto corrispondente.", translated: "Tradotto automaticamente – in caso di dubbio chiedete al nostro team.", ask: "Il nostro team vi consiglia volentieri in caso di allergie e intolleranze.", invalid: "Questo link non è (più) valido.", error: "Non ha funzionato. Riprovate più tardi.", loading: "Caricamento…",
+    alg: { A: "Glutine", B: "Crostacei", C: "Uova", D: "Pesce", E: "Arachidi", F: "Soia", G: "Latte/lattosio", H: "Frutta a guscio", L: "Sedano", M: "Senape", N: "Sesamo", O: "Solfiti", P: "Lupini", R: "Molluschi" } },
+  es: { title: "Carta", all: "Todo", vegan: "vegano", vegetarisch: "vegetariano", glutenfrei: "sin gluten", laktosefrei: "sin lactosa", scharf: "picante", regional: "local", neu: "nuevo", empfehlung: "recomendado", alkoholfrei: "sin alcohol", kinder: "niños", without: "Sin alérgeno …", soldOut: "agotado hoy", allergens: "Alérgenos", none: "No hay platos que coincidan.", translated: "Traducido automáticamente – en caso de duda, consulte a nuestro equipo.", ask: "Nuestro equipo le asesorará con gusto sobre alergias e intolerancias.", invalid: "Este enlace ya no es válido.", error: "No ha funcionado. Inténtelo de nuevo más tarde.", loading: "Cargando…",
+    alg: { A: "Gluten", B: "Crustáceos", C: "Huevo", D: "Pescado", E: "Cacahuetes", F: "Soja", G: "Leche/lactosa", H: "Frutos de cáscara", L: "Apio", M: "Mostaza", N: "Sésamo", O: "Sulfitos", P: "Altramuces", R: "Moluscos" } },
+  pt: { title: "Menu", all: "Tudo", vegan: "vegano", vegetarisch: "vegetariano", glutenfrei: "sem glúten", laktosefrei: "sem lactose", scharf: "picante", regional: "regional", neu: "novo", empfehlung: "recomendado", alkoholfrei: "sem álcool", kinder: "crianças", without: "Sem alergénio …", soldOut: "esgotado hoje", allergens: "Alergénios", none: "Nenhum prato correspondente.", translated: "Traduzido automaticamente – em caso de dúvida, pergunte à nossa equipa.", ask: "A nossa equipa terá todo o gosto em aconselhá-lo sobre alergias e intolerâncias.", invalid: "Esta ligação já não é válida.", error: "Não funcionou. Tente novamente mais tarde.", loading: "A carregar…",
+    alg: { A: "Glúten", B: "Crustáceos", C: "Ovo", D: "Peixe", E: "Amendoim", F: "Soja", G: "Leite/lactose", H: "Frutos de casca rija", L: "Aipo", M: "Mostarda", N: "Sésamo", O: "Sulfitos", P: "Tremoço", R: "Moluscos" } },
+  tr: { title: "Menü", all: "Tümü", vegan: "vegan", vegetarisch: "vejetaryen", glutenfrei: "glutensiz", laktosefrei: "laktozsuz", scharf: "acılı", regional: "yöresel", neu: "yeni", empfehlung: "önerilen", alkoholfrei: "alkolsüz", kinder: "çocuk", without: "Alerjen içermeyen …", soldOut: "bugün tükendi", allergens: "Alerjenler", none: "Uygun yemek yok.", translated: "Otomatik çevrildi – şüphe halinde lütfen ekibimize danışın.", ask: "Alerji ve intolerans konusunda ekibimiz size memnuniyetle yardımcı olur.", invalid: "Bu bağlantı artık geçerli değil.", error: "İşlem başarısız oldu. Lütfen daha sonra tekrar deneyin.", loading: "Yükleniyor…",
+    alg: { A: "Gluten", B: "Kabuklular", C: "Yumurta", D: "Balık", E: "Yer fıstığı", F: "Soya", G: "Süt/laktoz", H: "Sert kabuklu yemişler", L: "Kereviz", M: "Hardal", N: "Susam", O: "Sülfitler", P: "Acı bakla", R: "Yumuşakçalar" } },
+  ja: { title: "メニュー", all: "すべて", vegan: "ヴィーガン", vegetarisch: "ベジタリアン", glutenfrei: "グルテンフリー", laktosefrei: "乳糖不使用", scharf: "辛い", regional: "地元産", neu: "新登場", empfehlung: "おすすめ", alkoholfrei: "ノンアルコール", kinder: "お子様向け", without: "除外するアレルゲン …", soldOut: "本日売り切れ", allergens: "アレルゲン", none: "該当する料理はありません。", translated: "自動翻訳です。ご不明な点はスタッフにお尋ねください。", ask: "アレルギーや食物不耐症についてはスタッフが喜んでご案内いたします。", invalid: "このリンクは無効です。", error: "うまくいきませんでした。後ほどもう一度お試しください。", loading: "読み込み中…",
+    alg: { A: "グルテン", B: "甲殻類", C: "卵", D: "魚", E: "落花生", F: "大豆", G: "乳/乳糖", H: "ナッツ類", L: "セロリ", M: "マスタード", N: "ごま", O: "亜硫酸塩", P: "ルピナス", R: "軟体動物" } },
+  zh: { title: "菜单", all: "全部", vegan: "纯素", vegetarisch: "素食", glutenfrei: "无麸质", laktosefrei: "无乳糖", scharf: "辣", regional: "本地", neu: "新品", empfehlung: "推荐", alkoholfrei: "无酒精", kinder: "儿童", without: "不含过敏原 …", soldOut: "今日售罄", allergens: "过敏原", none: "没有符合条件的菜品。", translated: "自动翻译 – 如有疑问，请咨询我们的团队。", ask: "如有过敏或不耐受，我们的团队乐意为您提供建议。", invalid: "此链接已失效。", error: "操作失败，请稍后重试。", loading: "加载中…",
+    alg: { A: "麸质", B: "甲壳类", C: "蛋", D: "鱼", E: "花生", F: "大豆", G: "奶/乳糖", H: "坚果", L: "芹菜", M: "芥末", N: "芝麻", O: "亚硫酸盐", P: "羽扇豆", R: "软体动物" } },
+  ar: { title: "قائمة الطعام", all: "الكل", vegan: "نباتي صرف", vegetarisch: "نباتي", glutenfrei: "خالٍ من الغلوتين", laktosefrei: "خالٍ من اللاكتوز", scharf: "حار", regional: "محلي", neu: "جديد", empfehlung: "موصى به", alkoholfrei: "بدون كحول", kinder: "للأطفال", without: "بدون مسبب الحساسية …", soldOut: "نفد اليوم", allergens: "مسببات الحساسية", none: "لا توجد أطباق مطابقة.", translated: "تمت الترجمة تلقائيًا – عند الشك يُرجى سؤال فريقنا.", ask: "يسعد فريقنا بتقديم النصح لكم بشأن الحساسية وعدم تحمل بعض الأطعمة.", invalid: "هذا الرابط لم يعد صالحًا.", error: "لم تنجح العملية. يُرجى المحاولة لاحقًا.", loading: "جارٍ التحميل…",
+    alg: { A: "الغلوتين", B: "القشريات", C: "البيض", D: "السمك", E: "الفول السوداني", F: "الصويا", G: "الحليب/اللاكتوز", H: "المكسرات", L: "الكرفس", M: "الخردل", N: "السمسم", O: "الكبريتيت", P: "الترمس", R: "الرخويات" } },
+};
+var ALG = ["A","B","C","D","E","F","G","H","L","M","N","O","P","R"], TAGS = ["vegan","vegetarisch","glutenfrei","laktosefrei","scharf","regional","neu","empfehlung","alkoholfrei","kinder"];
+var q = new URLSearchParams(location.search), token = q.get("h") || "", demo = q.get("demo") === "1";
+var state = { data: null, error: null, card: null, tag: "", without: [] };
+var lang = (function () { try { var s = localStorage.getItem("ouv_guest_lang"); if (LANGS.some(function (l) { return l[0] === s; })) return s; } catch (e) {} var n = (navigator.language || "en").slice(0, 2).toLowerCase(); return LANGS.some(function (l) { return l[0] === n; }) ? n : "en"; })();
+var $ = function (id) { return document.getElementById(id); };
+function L() { return T[lang] || T.en; }
+function t(k) { var x = L()[k]; return x != null ? x : (T.en[k] != null ? T.en[k] : ""); }
+function an(k) { return (L().alg || T.en.alg)[k] || k; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+LANGS.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; $("lang").appendChild(o); });
+$("lang").value = lang;
+$("lang").onchange = function () { lang = this.value; try { localStorage.setItem("ouv_guest_lang", lang); } catch (e) {} load(); };
+function money(n) { var c = (state.data && state.data.currency) || "EUR"; try { return new Intl.NumberFormat(lang === "en" ? "en-GB" : lang, { style: "currency", currency: c }).format(n); } catch (e) { return n + " " + c; } }
+function brand(h) {
+  $("hotel").textContent = h.name || "";
+  if (h.logo && /^data:image\/(png|jpeg|webp|svg\+xml);/.test(h.logo)) { $("logo").src = h.logo; $("logo").hidden = false; }
+  if (h.color && /^#[0-9a-fA-F]{3,8}$/.test(h.color)) document.documentElement.style.setProperty("--ink", h.color);
+}
+var DEMO = { hotel: { name: "Beispielhotel Alpenblick" }, currency: "EUR", footer: "Alle Preise in Euro inkl. MwSt.", cards: [
+  { id: "c1", name: "Mittagskarte", hours: "11:30–14:00", note: null, sections: [
+    { name: "Suppen", items: [{ id: "1", name: "Frittatensuppe", description: "Rindsuppe mit Palatschinkenstreifen", price: 6.5, allergens: ["A", "C", "G", "L"], tags: ["regional"] }] },
+    { name: "Hauptspeisen", items: [{ id: "2", name: "Wiener Schnitzel", description: "vom Kalb, mit Erdäpfelsalat", price: 24.9, allergens: ["A", "C", "G", "M"], tags: ["empfehlung"] }, { id: "3", name: "Gemüse-Curry", description: "mit Jasminreis", price: 16.5, allergens: ["F"], tags: ["vegan", "scharf"] }, { id: "4", name: "Tiroler Gröstl", price: 15.9, allergens: ["C"], tags: ["regional"], sold_out: true }] },
+    { name: "Desserts", items: [{ id: "5", name: "Kaiserschmarrn", description: "mit Zwetschkenröster", price: 12.9, allergens: ["A", "C", "G"], tags: ["vegetarisch"] }] } ] },
+  { id: "c2", name: "Getränke", sections: [{ name: "", items: [{ id: "6", name: "Hausgemachte Limonade", price: 4.9, price_note: "0,4 l", allergens: [], tags: ["alkoholfrei"] }, { id: "7", name: "Grüner Veltliner", price: 6.2, price_note: "0,125 l", allergens: ["O"], tags: ["regional"] }] }] } ] };
+function load() {
+  render();
+  var p = demo ? Promise.resolve(DEMO) : fetch(API + "/api/public/menu/" + encodeURIComponent(token) + "?lang=" + lang, { headers: { "Accept-Language": lang } }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(r.status === 404 ? t("invalid") : j.error || t("error")); return j; }); });
+  p.then(function (d) { state.data = d; state.error = null; if (!state.card || !d.cards.some(function (c) { return c.id === state.card; })) state.card = d.cards.length ? d.cards[0].id : null; brand(d.hotel || {}); render(); })
+   .catch(function (e) { state.error = e.message || t("error"); render(); });
+}
+function fits(i) {
+  if (state.tag && (i.tags || []).indexOf(state.tag) < 0 && !(state.tag === "vegetarisch" && (i.tags || []).indexOf("vegan") >= 0)) return false;
+  for (var k = 0; k < state.without.length; k++) if ((i.allergens || []).indexOf(state.without[k]) >= 0) return false;
+  return true;
+}
+function render() {
+  document.documentElement.lang = lang; document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  var a = $("app"), d = state.data, hn = $("hotel").textContent;
+  document.title = (hn && hn !== "…" ? hn + " · " : "") + t("title");
+  if (state.error && !d) { a.innerHTML = '<div class="msg" role="alert">' + esc(state.error) + "</div>"; return; }
+  if (!d) { a.innerHTML = '<div class="note">' + esc(t("loading")) + "</div>"; return; }
+  var h = "";
+  if (d.cards.length > 1) h += '<div class="tabs" role="tablist">' + d.cards.map(function (c) { return '<button type="button" role="tab" class="chip" data-card="' + esc(c.id) + '" aria-selected="' + (c.id === state.card) + '" aria-pressed="' + (c.id === state.card) + '">' + esc(c.name) + "</button>"; }).join("") + "</div>";
+  var c = d.cards.filter(function (x) { return x.id === state.card; })[0];
+  if (!c) { a.innerHTML = h + '<div class="note">' + esc(t("none")) + "</div>"; bind(); return; }
+  var used = {}, tagsUsed = {};
+  c.sections.forEach(function (s) { s.items.forEach(function (i) { (i.allergens || []).forEach(function (x) { used[x] = 1; }); (i.tags || []).forEach(function (x) { tagsUsed[x] = 1; }); }); });
+  var tags = TAGS.filter(function (x) { return tagsUsed[x] && ["vegan", "vegetarisch", "glutenfrei", "laktosefrei", "alkoholfrei", "kinder"].indexOf(x) >= 0; });
+  h += "<h1>" + esc(c.name) + "</h1>" + (c.hours ? '<div class="hours"><bdi dir="ltr">' + esc(c.hours) + "</bdi></div>" : "") + (c.note ? '<div class="note">' + esc(c.note) + "</div>" : "");
+  if (d.translated) h += '<div class="tr">' + esc(t("translated")) + "</div>";
+  if (tags.length) h += '<div class="flt" role="group"><button type="button" class="chip" data-tag="" aria-pressed="' + (state.tag === "") + '">' + esc(t("all")) + "</button>" + tags.map(function (x) { return '<button type="button" class="chip" data-tag="' + esc(x) + '" aria-pressed="' + (state.tag === x) + '">' + esc(t(x)) + "</button>"; }).join("") + "</div>";
+  var alg = ALG.filter(function (x) { return used[x]; });
+  if (alg.length) h += "<details" + (state.without.length ? " open" : "") + "><summary>" + esc(t("without")) + (state.without.length ? " (" + state.without.length + ")" : "") + '</summary><div class="flt">' + alg.map(function (x) { return '<button type="button" class="chip" data-wo="' + esc(x) + '" aria-pressed="' + (state.without.indexOf(x) >= 0) + '">' + x + " · " + esc(an(x)) + "</button>"; }).join("") + "</div></details>";
+  var any = false;
+  c.sections.forEach(function (s) {
+    var its = s.items.filter(fits); if (!its.length) return; any = true;
+    if (s.name) h += "<h2>" + esc(s.name) + "</h2>";
+    its.forEach(function (i) {
+      h += '<div class="it' + (i.sold_out ? " out" : "") + '"><div><b>' + esc(i.name) + "</b>" + (i.sold_out ? ' <span class="out-l">' + esc(t("soldOut")) + "</span>" : "")
+        + (i.description ? '<div class="d">' + esc(i.description) + "</div>" : "")
+        + ((i.tags || []).length ? '<div class="t">' + i.tags.map(function (x) { return esc(t(x)); }).join(" · ") + "</div>" : "")
+        + ((i.allergens || []).length ? '<div class="a" title="' + esc(i.allergens.map(an).join(", ")) + '">' + esc(t("allergens")) + ": " + esc(i.allergens.join(", ")) + "</div>" : "")
+        + '</div><div class="p">' + (i.price != null ? esc(money(i.price)) : "") + (i.price_note ? "<small>" + esc(i.price_note) + "</small>" : "") + "</div></div>";
+    });
+  });
+  if (!any) h += '<div class="note" style="margin-top:12px">' + esc(t("none")) + "</div>";
+  h += '<div class="legend"><b>' + esc(t("allergens")) + ":</b> " + ALG.map(function (x) { return x + " " + esc(an(x)); }).join(" · ") + "<br>" + esc(t("ask")) + (d.footer ? "<br>" + esc(d.footer) : "") + "</div>";
+  a.innerHTML = h; bind();
+}
+function bind() {
+  var all = function (sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); };
+  all("[data-card]", function (b) { b.onclick = function () { state.card = b.getAttribute("data-card"); state.tag = ""; state.without = []; render(); }; });
+  all("[data-tag]", function (b) { b.onclick = function () { state.tag = b.getAttribute("data-tag"); if (!state.tag) state.without = []; render(); }; });
+  all("[data-wo]", function (b) { b.onclick = function () { var x = b.getAttribute("data-wo"), i = state.without.indexOf(x); if (i >= 0) state.without.splice(i, 1); else state.without.push(x); render(); }; });
+}
+if (!demo && !/^[A-Za-z0-9_-]{20,64}$/.test(token)) { state.error = t("invalid"); render(); } else load();
+</script>
+</body>
+</html>

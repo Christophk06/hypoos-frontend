@@ -67,6 +67,7 @@ function DiningView({hotel, api}){
               </>}
               <button style={linkBtn} onClick={()=>setForm({...r, email:r.email||"", phone:r.phone||"", room_no:r.room_no||"", note:r.note||"", allergens:r.allergens||[], table_ids:r.table_ids||[]})}>{tf("Bearbeiten")}</button>
               {r.series_id && (r.status==="angefragt"||r.status==="bestätigt") && <button style={linkBtn} onClick={()=>{ if(window.confirm(tf("Alle weiteren Abende dieses Stammtischs ab diesem Tag absagen?"))) run(()=>api("/api/table-reservation-series/"+r.series_id+"?from="+r.day,"DELETE"), tf("Abgesagt.")); }}>{tf("Stammtisch beenden")}</button>}
+              {(r.status==="bestätigt"||r.status==="erledigt") && !r.voucher_id && <VoucherPayButton api={api} kind="table-reservations" id={r.id} price={null} currency={hotel.currency} onDone={(x)=>run(async()=>{}, tf("{0} vom Gutschein eingelöst.", moneyOf(hotel)(x.amount)))} />}
               {r.email && <a style={linkBtn} href={"mailto:"+r.email}>{tf("E-Mail")}</a>}
               {r.phone && <a style={linkBtn} href={"tel:"+r.phone.replace(/\s/g,"")}>{tf("Anrufen")}</a>}
             </div>

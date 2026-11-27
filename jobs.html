@@ -45,6 +45,7 @@
   <header><img id="logo" alt="" hidden /><div class="hotel" id="hotel">…</div><select class="lang" id="lang" aria-label="Language"></select></header>
   <main id="app"></main>
   <div id="live" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap"></div>
+<script src="legal-footer.js"></script>
 <script>
 (function () { var app = document.getElementById("app"), live = document.getElementById("live"), last = "";
   new MutationObserver(function () { var m = app.querySelector("[data-live]"); var txt = m ? m.textContent : ""; if (txt !== last) { last = txt; live.textContent = txt; } }).observe(app, { childList: true, subtree: true }); })();

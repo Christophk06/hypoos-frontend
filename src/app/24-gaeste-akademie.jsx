@@ -2,7 +2,7 @@
 
 // ------------------------------------------------------------ Gäste-Infos bearbeiten (Admin, unter „Gäste-QR“)
 function GuestInfoCard({hotel, api, onHotel}){
-  const init = () => { const g = hotel.guest_info || {}; return {wifi_name:g.wifi_name||"", wifi_password:g.wifi_password||"", breakfast:g.breakfast||"", checkout:g.checkout||"", reception_phone:g.reception_phone||"", taxi:g.taxi||"", notes:g.notes||"", menu:g.menu||[], spa:g.spa||[], offers:g.offers||[], ai:g.ai===true}; };
+  const init = () => { const g = hotel.guest_info || {}; return {wifi_name:g.wifi_name||"", wifi_password:g.wifi_password||"", breakfast:g.breakfast||"", checkout:g.checkout||"", reception_phone:g.reception_phone||"", taxi:g.taxi||"", notes:g.notes||"", menu:g.menu||[], spa:g.spa||[], offers:g.offers||[], ai:g.ai===true, privacy_url:g.privacy_url||"", imprint_url:g.imprint_url||""}; };
   const [open,setOpen] = useState(false); const [f,setF] = useState(init); const [msg,setMsg] = useState(null); const [busy,setBusy] = useState(false);
   if(hotel.guest_info===undefined || ACCESS.role!=="admin") return null;
   const save = async () => { setBusy(true); setMsg(null);

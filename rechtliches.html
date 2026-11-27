@@ -13,20 +13,22 @@
   h2 { margin-top: 48px; padding-top: 12px; border-top: 1px solid #E4DFD3; }
   .todo { background: #F5E1DE; color: #A23B32; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
   a { color: inherit; }
+  h3 { font-size: 17px; margin-top: 28px; }
+  h4 { font-size: 15px; margin-top: 20px; }
+  .note { background: #FBF3E4; border: 1px solid #E8D9B8; padding: 12px 14px; border-radius: 8px; font-size: 14px; }
+  nav.toc a { margin-right: 14px; }
+  .tw { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border: 1px solid #E4DFD3; padding: 6px 8px; text-align: left; vertical-align: top; }
+  @media (prefers-color-scheme: dark) { body { background: #14181F; color: #E9E5DC; } h2, th, td { border-color: #2D3440; } .note { background: #2A2416; border-color: #4A3F26; } .todo { background: #4A2420; color: #F2B8B0; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <a href="landing.html">← Zurück</a>
   <h1>Rechtliches</h1>
-
-  <!--
-    VORLAGE – vor dem Veröffentlichen ausfüllen!
-    Alle Stellen mit class="todo" müssen ersetzt werden. Datenschutzerklärung und AGB
-    am besten mit einem Generator (z. B. WKO-Musterdokumente, e-recht24, Datenschutz-Generator)
-    oder einer Anwältin / einem Anwalt erstellen und hier einfügen.
-  -->
-
+  <nav class="toc"><a href="#impressum">Impressum</a><a href="#datenschutz">Datenschutz</a><a href="#agb">AGB</a><a href="#avv">AVV</a><a href="#gaeste-muster">Muster für Hotels</a></nav>
+  <p class="note"><b>Entwurf – noch nicht rechtsverbindlich.</b> Rot markierte Stellen werden vor der Veröffentlichung ergänzt; die Texte werden von einer Fachperson geprüft.</p>
   <h2 id="impressum">Impressum</h2>
   <p>Informationen nach § 5 ECG, § 14 UGB, § 63 GewO und Offenlegung nach § 25 MedienG</p>
   <p>
@@ -42,22 +44,199 @@
     Mitglied der Wirtschaftskammer <span class="todo">[Bundesland]</span>
   </p>
   <p>Online-Streitbeilegung: Verbraucher können Beschwerden an die Online-Streitbeilegungsplattform der EU richten: https://ec.europa.eu/odr</p>
-
   <h2 id="datenschutz">Datenschutzerklärung</h2>
-  <p class="todo">[Datenschutzerklärung hier einfügen]</p>
-  <p>Für Ouverture sollten darin mindestens vorkommen (Auftragsverarbeiter):</p>
-  <ul>
-    <li>Supabase (Datenbank, Anmeldung, Dokumentenspeicher)</li>
-    <li>Render (Hosting von App und Backend)</li>
-    <li>Stripe (Zahlungsabwicklung, Rechnungen)</li>
-    <li>Brevo bzw. Resend (E-Mail-Versand)</li>
-    <li>Anthropic (KI-Lagebericht – verarbeitet verdichtete Projektdaten auf Anforderung)</li>
-  </ul>
-  <p>Für Geschäftskunden zusätzlich einen Auftragsverarbeitungsvertrag (AVV) anbieten.</p>
-
+<p>Diese Erklärung gilt für die Website und die Software „Ouverture“ (B2B) und richtet sich an Website-Besucher und Kunden (Hotels und andere Unternehmer).</p>
+<h3>1. Verantwortlicher</h3>
+<p><span class="todo">[Firmenname / Vor- und Nachname]</span> <span class="todo">[Straße Hausnummer]</span>, <span class="todo">[PLZ Ort]</span>, Österreich E-Mail: <span class="todo">[kontakt@…]</span> <span class="todo">[UID-Nummer, falls vorhanden]</span> · <span class="todo">[Firmenbuchnummer / Firmenbuchgericht, falls vorhanden]</span></p>
+<p>Wir verarbeiten personenbezogene Daten nach der Datenschutz-Grundverordnung (DSGVO) und dem österreichischen Datenschutzgesetz (DSG).</p>
+<h3>2. Zwei Rollen: Verantwortlicher und Auftragsverarbeiter</h3>
+<p><b>Als Verantwortlicher</b> verarbeiten wir Daten von Website-Besuchern und von unseren Kunden (Konto, Abo, Rechnung, Support). Dafür gilt diese Erklärung.</p>
+<p><b>Als Auftragsverarbeiter</b> (Art. 28 DSGVO) verarbeiten wir Daten, die ein Hotel in Ouverture eingibt oder die über Funktionen des Hotels entstehen. Das betrifft vor allem:</p>
+<ul><li>Daten der Mitarbeitenden des Hotels (z. B. Dienstplan, Arbeitszeiten, Unterkunft, Chat, Bewerbungen),</li><li>Daten der Gäste des Hotels (z. B. Spa-Buchungen, Tischreservierungen, Gutscheine, Gastanfragen, Feedback, Fundsachen, Warteliste).</li></ul>
+<p>Verantwortlicher ist dann <b>das Hotel</b>. Es entscheidet über Zweck und Mittel der Verarbeitung. Wir verarbeiten diese Daten nur auf dessen Weisung, auf Grundlage eines Auftragsverarbeitungsvertrags (AVV).</p>
+<p><b>Betroffene wenden sich bitte zuerst an das Hotel</b>, bei dem sie gebucht, sich beworben oder gearbeitet haben. Anfragen, die bei uns eingehen, leiten wir an das Hotel weiter, soweit uns das Hotel erkennbar ist. Wir beantworten sie nicht selbst.</p>
+<h3>3. Besuch der Website</h3>
+<p>Beim Aufruf werden technisch notwendige Daten verarbeitet (IP-Adresse, Zeitpunkt, aufgerufene Seite, Browser, Betriebssystem). Zweck: sicherer, stabiler Betrieb und Abwehr von Missbrauch. Rechtsgrundlage: berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO). Die Daten liegen in Server-Protokollen bei unserem Hosting-Anbieter (siehe Abschnitt 10).</p>
+<p><b>Keine Analyse- oder Werbe-Cookies.</b> Wir setzen kein Tracking und keine Werbung ein.</p>
+<p><b>Speicherung im Browser:</b> Nur technisch notwendig – Anmeldung, gewählte Sprache und persönliche Einstellungen (Cookies bzw. lokaler Speicher). Dafür ist nach § 165 Abs. 3 TKG 2021 keine Einwilligung nötig.</p>
+<p><b>Schriftarten</b> liegen auf unserem eigenen Server. Es werden keine Daten an Schrift-Anbieter übermittelt.</p>
+<p><b>Programmbibliotheken von öffentlichen CDNs:</b> Die App lädt Bibliotheken von jsDelivr (cdn.jsdelivr.net: React, QR-Code, Excel) und von cdnjs (Cloudflare: PDF-Erstellung html2pdf, jszip). Dabei wird Ihre IP-Adresse an diese Anbieter übermittelt. Rechtsgrundlage: berechtigtes Interesse am Betrieb der App (Art. 6 Abs. 1 lit. f DSGVO). [Prüfen: Ist Selbst-Hosting dieser Bibliotheken geplant? Wenn ja, Absatz nach Umstellung streichen. Sitz und Datenschutzhinweise von jsDelivr und Cloudflare prüfen.]</p>
+<h3>4. Kundenkonto und Nutzung der Software</h3>
+<p><b>Daten:</b> E-Mail-Adresse, Passwort (nur als Prüfwert gespeichert), Name, Organisation, Rollen und Rechte, Anmelde- und Sicherheitsdaten (z. B. Zwei-Faktor-Anmeldung), Nutzungs- und Protokolldaten, Einstellungen sowie Inhalte, die Sie eingeben.</p>
+<p><b>Anmeldung:</b> E-Mail und Passwort über Supabase. Optional „Mit Google anmelden“ (Google OAuth) und, wo eingerichtet, SSO. Eine Zwei-Faktor-Anmeldung ist verfügbar und für sensible Funktionen erforderlich.</p>
+<p><b>Zweck und Rechtsgrundlage:</b> Bereitstellung der Software nach Vertrag (Art. 6 Abs. 1 lit. b DSGVO); Sicherheit und Missbrauchsabwehr, u. a. Ratenbegrenzung (Art. 6 Abs. 1 lit. f DSGVO).</p>
+<p><b>Testphase und Abo:</b> 14 Tage kostenlos testen. Ouverture richtet sich nur an Unternehmer.</p>
+<h3>5. E-Mails und Mitteilungen</h3>
+<p>Wir senden E-Mails zu Einladungen, Zuständigkeiten, Kommentaren, Tagesberichten, Rechnungen und zu Ihrem Konto. Rechtsgrundlage: Vertrag (Art. 6 Abs. 1 lit. b DSGVO). Versand über [Brevo (Sendinblue SAS, Frankreich) und/oder Resend (Resend Inc., USA) – eintragen, welcher Dienst genutzt wird].</p>
+<p><b>Push-Mitteilungen</b> senden wir nur, wenn Sie im Browser oder Gerät zugestimmt haben. Die Zustellung läuft über die Push-Dienste der Browser- bzw. Gerätehersteller (Google, Apple, Mozilla). Sie können die Zustimmung jederzeit im Browser widerrufen.</p>
+<h3>6. Zahlungen</h3>
+<p>Abo-Zahlungen an uns wickelt <b>Stripe</b> ab (Stripe Payments Europe Ltd., Irland). Kartendaten erhalten wir nicht. Rechtsgrundlage: Vertrag (Art. 6 Abs. 1 lit. b DSGVO) und gesetzliche Aufbewahrungspflicht (Art. 6 Abs. 1 lit. c DSGVO, § 132 BAO: 7 Jahre).</p>
+<p>Zahlungen von Gästen eines Hotels (z. B. Gutscheine, Spa-Anzahlungen) laufen über Stripe Connect <b>direkt auf das Stripe-Konto des Hotels</b>. Das Hotel ist Zahlungsempfänger und Vertragspartner des Gastes. Wir erhalten dafür keine Gebühr und keine Kartendaten.</p>
+<h3>7. KI-Funktionen</h3>
+<p>Ouverture bietet KI-Funktionen: Lagebericht, Assistent („Hilfe 24/7“) und automatische Übersetzung (z. B. Speisekarte, Nachrichten). Sie werden **nur auf Anforderung bzw. bei Nutzung der Funktion<b> ausgeführt. Dabei werden die dafür nötigen Inhalte an </b>Anthropic PBC (USA)** übermittelt und dort verarbeitet. Beim Lagebericht sind das verdichtete Projektdaten (z. B. Aufgabentitel, Termine, Status, Budgetzahlen). [Prüfen: genauen Umfang je Funktion bestätigen; bei Anthropic Vertragspartner, Datenverwendung, Speicherdauer und Auftragsverarbeitungsbedingungen (DPA) prüfen.] Geben Sie in Freitextfeldern der KI-Funktionen keine Gesundheitsdaten ein.</p>
+<h3>8. Optionale Anbindungen</h3>
+<p>Nur wenn Sie sie selbst verbinden oder nutzen:</p>
+<ul><li><b>Google</b> (Google Ireland Ltd.): Anmeldung mit Google, Google-Unternehmensprofil (Bewertungen beantworten), Google Places (Hotelsuche).</li><li><b>WhatsApp Business Platform (Meta):</b> wenn das Hotel WhatsApp verbindet.</li><li><b>PMS Mews und Apaleo:</b> Das Hotel verbindet sein PMS mit eigenem Vertrag beim PMS-Anbieter. Daten werden auf Weisung des Hotels weitergegeben. Der PMS-Anbieter ist kein Unterauftragsverarbeiter von uns.</li><li><b>Eingebettete Videos</b> (YouTube im erweiterten Datenschutzmodus, Vimeo): nur, wenn ein Kunde selbst ein Video einbindet. Dabei kann die IP-Adresse an den Anbieter gehen.</li><li><b>Wechselkurse</b> über open.er-api.com: ohne personenbezogene Daten.</li></ul>
+<h3>9. Bewerbungen und Handwerker-Links</h3>
+<p>Bewerbungen über die Jobs-Seite eines Hotels und Zugänge für Lieferanten und Handwerker (Links) verwaltet das Hotel als Verantwortlicher. Wir verarbeiten sie als Auftragsverarbeiter (Abschnitt 2).</p>
+<h3>10. Empfänger und Auftragsverarbeiter</h3>
+<div class="tw"><table><tr><th>Anbieter</th><th>Zweck</th><th>Sitz / Serverstandort</th></tr><tr><td>Supabase Inc.</td><td>Datenbank, Anmeldung, Dateien</td><td>USA / Region: <span class="todo">[aus Supabase eintragen]</span></td></tr><tr><td>Render Services Inc.</td><td>Hosting von App, Website, Server</td><td>USA / Region: <span class="todo">[aus Render eintragen]</span></td></tr><tr><td>Stripe Payments Europe Ltd.</td><td>Abo-Zahlungen</td><td>Irland</td></tr><tr><td><span class="todo">[Brevo (Sendinblue SAS) und/oder Resend Inc.]</span></td><td>E-Mail-Versand</td><td><span class="todo">[Frankreich / USA – eintragen]</span></td></tr><tr><td>Anthropic PBC</td><td>KI-Funktionen (auf Anforderung)</td><td>USA</td></tr><tr><td>jsDelivr, Cloudflare (cdnjs)</td><td>Programmbibliotheken</td><td><span class="todo">[Sitz prüfen]</span></td></tr><tr><td>Push-Dienste von Google, Apple, Mozilla</td><td>Zustellung von Push-Mitteilungen (nach Zustimmung)</td><td><span class="todo">[prüfen]</span></td></tr></table></div>
+<p>Optionale Anbieter siehe Abschnitt 8. Die Unterauftragsverarbeiter im Sinne des AVV sind in dessen Anlage 3 geführt.</p>
+<p><b>Drittland-Übermittlung:</b> Bei Anbietern mit Sitz in den USA stützen wir die Übermittlung auf den Angemessenheitsbeschluss zum EU-US Data Privacy Framework bzw. auf Standardvertragsklauseln. [Bei jedem Anbieter prüfen, ob er zertifiziert ist bzw. Klauseln anbietet.]</p>
+<h3>11. Speicherdauer</h3>
+<ul><li>Konto- und Vertragsdaten: für die Dauer des Vertrags.</li><li>Nach Ablauf des Abos: Nur-Lesen-Modus und Datenexport (Excel). Löschung der Daten nach <span class="todo">[90]</span> Tagen ohne Abo, nach vorheriger Ankündigung.</li><li>Rechnungsdaten: 7 Jahre (§ 132 BAO).</li><li>Server-Protokolle: <span class="todo">[Dauer beim Hosting-Anbieter prüfen und eintragen]</span>.</li><li>Backups: <span class="todo">[Dauer eintragen]</span>; Daten verschwinden dort erst mit Ablauf der Backup-Dauer.</li></ul>
+<h3>12. Ihre Rechte</h3>
+<p>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch sowie auf Widerruf einer Einwilligung mit Wirkung für die Zukunft. Für Daten, die wir als Verantwortlicher verarbeiten, wenden Sie sich an <span class="todo">[kontakt@…]</span>.</p>
+<p>Für Daten aus Hotel-Funktionen (Mitarbeitende, Gäste, Bewerbende) wenden Sie sich an das Hotel (Abschnitt 2).</p>
+<p><b>Beschwerde:</b> Österreichische Datenschutzbehörde, Barichgasse 40–42, 1030 Wien, www.dsb.gv.at. <span class="todo">[Adresse vor Veröffentlichung prüfen.]</span></p>
+<h3>13. Änderungen</h3>
+<p>Wir passen diese Erklärung an, wenn sich Funktionen oder Anbieter ändern. Es gilt die jeweils veröffentlichte Fassung.</p>
+<p>Stand: <span class="todo">[Datum]</span></p>
   <h2 id="agb">Allgemeine Geschäftsbedingungen</h2>
-  <p class="todo">[AGB hier einfügen]</p>
-  <p>Sinnvolle Punkte für Ouverture: nur für Unternehmer (B2B), Leistungsbeschreibung, 14-tägige kostenlose Testphase, monatliche Laufzeit und Kündigung, Nur-Lesen-Modus nach Abo-Ende, Datenexport und Löschung nach Vertragsende, Verfügbarkeit, Haftungsbeschränkung, Hinweis, dass KI-Lageberichte Einschätzungen sind und keine Prüfung durch Fachleute ersetzen, Gerichtsstand.</p>
+<h3>1. Geltungsbereich</h3>
+<p>1.1 Diese AGB gelten für alle Verträge über die Nutzung der Software „Ouverture“ zwischen <span class="todo">[Firmenname, Adresse, UID]</span> („Anbieter“) und dem Kunden.</p>
+<p>1.2 Ouverture richtet sich ausschließlich an <b>Unternehmer</b> im Sinne des § 1 UGB. Verbraucher sind von der Nutzung ausgeschlossen.</p>
+<p>1.3 Abweichende Bedingungen des Kunden gelten nur, wenn der Anbieter ihnen schriftlich zustimmt.</p>
+<h3>2. Leistung</h3>
+<p>2.1 Der Anbieter stellt Ouverture als Online-Software (Software as a Service) bereit. Sie unterstützt die Planung von Hotel-Eröffnungen (Pre-Opening: Aufgaben, Meilensteine, Budget, Dokumente, Berichte) und den laufenden Betrieb, z. B. Dienstplan, Zeiterfassung, Lohnliste-Vorbereitung, Personalunterkünfte, Übergabebuch, Checklisten, HACCP, Zimmer/Housekeeping, Wartung und Tickets, Team-Chat, Kassenbuch, Rechnungen, Kennzahlen sowie Gästefunktionen (Gästefeedback, Fundsachen, Gäste-QR im Zimmer, Spa- und Freizeitbuchungen, Tischreservierungen, Gutscheine, Arrangements, Warteliste, Speisekarte). Der jeweils aktuelle Funktionsumfang ist auf der Website beschrieben.</p>
+<p>2.2 Der Anbieter darf die Software weiterentwickeln, sofern der vereinbarte Kernumfang erhalten bleibt. Optionale Anbindungen (z. B. PMS, Google, WhatsApp) hängen von den Diensten Dritter ab. Der Anbieter schuldet deren Verfügbarkeit nicht.</p>
+<h3>3. Hilfsmittel ohne Gewähr</h3>
+<p>3.1 **Preisempfehlung, KI-Texte, KI-Lageberichte, Assistent, automatische Übersetzungen, Lohnliste und Kennzahlen** sind Hilfsmittel. Sie beruhen auf den Eingaben des Kunden bzw. automatischer Verarbeitung, können fehlerhaft oder unvollständig sein und werden ohne Gewähr bereitgestellt. Der Kunde prüft die Ergebnisse vor der Verwendung und entscheidet in eigener Verantwortung.</p>
+<p>3.2 Ouverture ist <b>keine Lohnverrechnung</b> und ersetzt keine Steuer-, Rechts- oder Arbeitsrechtsberatung. Die Lohnliste bereitet Daten vor. Berechnung, Meldung und Abgabe verantwortet der Kunde (bzw. dessen Lohnverrechner oder Steuerberater). Gleiches gilt für Arbeitszeitaufzeichnung und Einhaltung von Kollektivvertrag und Arbeitszeitrecht.</p>
+<p>3.3 HACCP-Vorlagen und Checklisten sind Arbeitshilfen. Die Erfüllung lebensmittelrechtlicher Pflichten bleibt beim Kunden.</p>
+<h3>4. Gästefunktionen: Rolle des Anbieters und des Hotels</h3>
+<p>4.1 Bei Gästefunktionen (Buchungen, Gutscheine, Anzahlungen, Reservierungen, Wartelisten, Gastanfragen) ist der Anbieter <b>nicht Vertragspartner des Gastes</b>. Der Vertrag über die Leistung kommt zwischen Hotel und Gast zustande. Der Anbieter stellt nur die Technik bereit.</p>
+<p>4.2 Das Hotel ist selbst verantwortlich für:</p>
+<ul><li>Leistung, Preise, Verfügbarkeit und Inhalt von Angeboten,</li><li>Storno- und Buchungsbedingungen sowie Gutscheinbedingungen (Gültigkeit, Einlösung),</li><li>Steuern und Rechnungen an Gäste,</li><li>sein Impressum und seine Informationspflichten (u. a. E-Commerce-Gesetz, Konsumentenschutz),</li><li>Datenschutzerklärung und Informationspflichten gegenüber Gästen und Mitarbeitenden,</li><li>die Einholung und den Nachweis erforderlicher Einwilligungen.</li></ul>
+<p>4.3 <b>Zahlungen:</b> Zahlungen der Gäste (Gutscheine, Spa-Anzahlungen) laufen über Stripe Connect direkt auf das Stripe-Konto des Hotels. Das Hotel ist Zahlungsempfänger. Der Anbieter erhält dafür keine Gebühr und keine Kartendaten. Für das Stripe-Konto des Hotels gelten die Bedingungen von Stripe. Das Hotel schließt sie selbst ab und hält sie ein. Die Abo-Zahlungen des Kunden an den Anbieter laufen ebenfalls über Stripe (Anbieter als Empfänger).</p>
+<p>4.4 <b>Gesundheitsfragebogen (Spa):</b> Das Hotel entscheidet, ob es den Fragebogen einsetzt und welchen Inhalt er hat. Es ist für Rechtsgrundlage, Einwilligungstext und Informationen an den Gast verantwortlich. Der Anbieter stellt die technische Funktion mit getrennter Speicherung bereit. <span class="todo">[Vorlage: Gaeste-Datenschutzhinweis-Muster.md.]</span></p>
+<h3>5. Testphase</h3>
+<p>5.1 Neue Kunden können Ouverture 14 Tage kostenlos testen. Es entsteht keine Zahlungspflicht.</p>
+<p>5.2 Endet die Testphase ohne Abschluss eines Tarifs, bleiben die Daten lesbar, können aber nicht mehr geändert werden (Nur-Lesen-Modus). Nach <span class="todo">[90]</span> Tagen ohne Abo kann der Anbieter die Daten nach vorheriger Ankündigung per E-Mail löschen.</p>
+<h3>6. Preise und Zahlung</h3>
+<p>6.1 Es gelten die bei Vertragsabschluss auf der Website angegebenen Preise. [Kleinunternehmer: „Gemäß § 6 Abs. 1 Z 27 UStG wird keine Umsatzsteuer berechnet.“ – ODER: „Alle Preise verstehen sich zuzüglich der gesetzlichen Umsatzsteuer.“]</p>
+<p>6.2 Die Abrechnung erfolgt monatlich im Voraus über Stripe. Rechnungen werden elektronisch zugestellt.</p>
+<p>6.3 Bei Zahlungsverzug kann der Anbieter den Zugang nach erfolgloser Mahnung auf den Nur-Lesen-Modus beschränken.</p>
+<p>6.4 Preisänderungen kündigt der Anbieter mindestens <span class="todo">[6]</span> Wochen im Voraus per E-Mail an. Der Kunde kann zum Wirksamwerden der Änderung kündigen.</p>
+<h3>7. Laufzeit und Kündigung</h3>
+<p>7.1 Abos laufen auf unbestimmte Zeit. Sie sind <b>monatlich kündbar</b>, durch den Kunden direkt in der Software unter „Abo“, zum Ende des jeweiligen Abrechnungsmonats.</p>
+<p>7.2 Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt unberührt.</p>
+<p>7.3 Nach Vertragsende kann der Kunde seine Daten <span class="todo">[30]</span> Tage lang exportieren (Excel-Export). Danach werden sie gelöscht, spätestens nach <span class="todo">[90]</span> Tagen ohne Abo nach Ankündigung, soweit keine gesetzliche Aufbewahrungspflicht besteht (Rechnungsdaten: 7 Jahre, § 132 BAO). [Fristen vereinheitlichen: 30 Tage Export oder 90 Tage bis Löschung.]</p>
+<h3>8. Pflichten des Kunden</h3>
+<p>8.1 Der Kunde hält seine Zugangsdaten geheim und ist für die Aktivitäten seiner Nutzer verantwortlich. Er richtet die Zwei-Faktor-Anmeldung dort ein, wo sie für sensible Funktionen erforderlich ist.</p>
+<p>8.2 Der Kunde lädt keine rechtswidrigen Inhalte hoch und hat die erforderlichen Rechte an den eingegebenen Daten. Er vergibt Rollen und Rechte seiner Nutzer sorgfältig.</p>
+<p>8.3 Der Kunde ist gegenüber seinen Mitarbeitenden, Bewerbenden und Gästen für die Rechtmäßigkeit der Verarbeitung verantwortlich (siehe Abschnitt 10).</p>
+<h3>9. Verfügbarkeit</h3>
+<p>Der Anbieter bemüht sich um hohe Verfügbarkeit, schuldet aber keine bestimmte. Wartungsarbeiten werden nach Möglichkeit vorher angekündigt. [Optional: „Ziel ist eine Verfügbarkeit von 99 % im Monatsmittel.“] Der Kunde hält für Ausfälle Notfallabläufe bereit (z. B. Papier-Ausdruck von Dienstplan und Checklisten).</p>
+<h3>10. Datenschutz</h3>
+<p>10.1 Soweit der Anbieter personenbezogene Daten im Auftrag des Kunden verarbeitet (Daten von Mitarbeitenden, Gästen, Bewerbenden), ist der Kunde Verantwortlicher. Es gilt der Auftragsverarbeitungsvertrag nach Art. 28 DSGVO, der Teil dieses Vertrags ist.</p>
+<p>10.2 Im Übrigen gilt die Datenschutzerklärung des Anbieters.</p>
+<h3>11. Haftung</h3>
+<p>11.1 Der Anbieter haftet unbeschränkt für Vorsatz und grobe Fahrlässigkeit sowie für Personenschäden.</p>
+<p>11.2 Bei leichter Fahrlässigkeit ist die Haftung ausgeschlossen, soweit gesetzlich zulässig. <span class="todo">[Alternativ: begrenzt auf die vom Kunden in den letzten 12 Monaten gezahlten Entgelte.]</span></p>
+<p>11.3 Die Haftung für entgangenen Gewinn, Folgeschäden und Datenverlust ist ausgeschlossen, soweit gesetzlich zulässig. Der Kunde ist für regelmäßige Datenexporte selbst verantwortlich.</p>
+<p>11.4 Für Inhalte, Leistungen und Verträge zwischen Hotel und Gast sowie für Ergebnisse der Hilfsmittel nach Abschnitt 3 haftet der Anbieter nicht, soweit gesetzlich zulässig.</p>
+<h3>12. Schlussbestimmungen</h3>
+<p>12.1 Es gilt österreichisches Recht unter Ausschluss des UN-Kaufrechts und der Verweisungsnormen.</p>
+<p>12.2 Gerichtsstand ist [Gerichtsstand eintragen, z. B. sachlich zuständiges Gericht am Sitz des Anbieters].</p>
+<p>12.3 Sollte eine Bestimmung unwirksam sein, bleiben die übrigen Bestimmungen wirksam.</p>
+<p>12.4 Änderungen dieser AGB teilt der Anbieter mindestens <span class="todo">[6]</span> Wochen vorher per E-Mail mit. Der Kunde kann zum Wirksamwerden kündigen. <span class="todo">[Zulässigkeit der Änderungsklausel prüfen lassen.]</span></p>
+<p>Stand: <span class="todo">[Datum]</span></p>
+  <h2 id="avv">Auftragsverarbeitungsvertrag (AVV)</h2>
+<p>zwischen</p>
+<p><b><span class="todo">[Name/Firma des Kunden (Hotel), Adresse]</span></b> – „Verantwortlicher“</p>
+<p>und</p>
+<p><b><span class="todo">[Firmenname Anbieter, Adresse, UID]</span></b> – „Auftragsverarbeiter“ (Anbieter von Ouverture)</p>
+<h3>1. Gegenstand und Dauer</h3>
+<p>1.1 Der Auftragsverarbeiter verarbeitet im Auftrag des Verantwortlichen personenbezogene Daten bei Bereitstellung der Software Ouverture (Hosting, Speicherung, Anzeige, Übermittlung). Der Gegenstand ist im Hauptvertrag (AGB) und in <b>Anlage 1</b> beschrieben.</p>
+<p>1.2 Der Vertrag gilt für die Laufzeit des Hauptvertrags und danach, bis alle Daten gelöscht oder zurückgegeben sind.</p>
+<h3>2. Weisungen</h3>
+<p>2.1 Der Auftragsverarbeiter verarbeitet Daten nur auf dokumentierte Weisung des Verantwortlichen. Weisung ist der Hauptvertrag samt Einstellungen und Eingaben des Verantwortlichen in der Software.</p>
+<p>2.2 Hält der Auftragsverarbeiter eine Weisung für rechtswidrig, informiert er den Verantwortlichen unverzüglich. Er darf die Ausführung bis zur Klärung aussetzen.</p>
+<p>2.3 Der Verantwortliche ist für die Rechtmäßigkeit der Verarbeitung, die Information der Betroffenen und erforderliche Einwilligungen verantwortlich (u. a. für den Gesundheitsfragebogen der Spa-Buchung).</p>
+<h3>3. Vertraulichkeit</h3>
+<p>Personen, die beim Auftragsverarbeiter Zugriff auf die Daten haben, sind zur Vertraulichkeit verpflichtet und nur im nötigen Umfang berechtigt.</p>
+<h3>4. Sicherheit</h3>
+<p>Der Auftragsverarbeiter trifft die in <b>Anlage 2</b> beschriebenen technischen und organisatorischen Maßnahmen (Art. 32 DSGVO) und entwickelt sie weiter. Das Schutzniveau darf nicht sinken.</p>
+<h3>5. Unterauftragsverarbeiter</h3>
+<p>5.1 Der Verantwortliche erteilt die allgemeine Genehmigung für die in <b>Anlage 3</b> genannten Unterauftragsverarbeiter.</p>
+<p>5.2 Änderungen (neue oder ersetzte Unterauftragsverarbeiter) kündigt der Auftragsverarbeiter mindestens <span class="todo">[30]</span> Tage vorher per E-Mail an. Der Verantwortliche kann aus wichtigem datenschutzrechtlichem Grund widersprechen. Einigen sich die Parteien nicht, kann der Verantwortliche den Hauptvertrag zum Wirksamwerden kündigen.</p>
+<p>5.3 Der Auftragsverarbeiter verpflichtet Unterauftragsverarbeiter vertraglich auf im Wesentlichen gleiche Datenschutzpflichten und haftet für sie nach Art. 28 Abs. 4 DSGVO.</p>
+<p>5.4 Kein Unterauftragsverarbeiter sind Dienste, die der Verantwortliche selbst mit eigenem Vertrag anbindet (z. B. PMS Mews/Apaleo, das eigene Stripe-Konto, WhatsApp, Google-Konto). Dort gibt der Auftragsverarbeiter Daten auf Weisung des Verantwortlichen weiter.</p>
+<h3>6. Drittlandübermittlung</h3>
+<p>Werden Daten in ein Land außerhalb des EWR übermittelt (z. B. USA), stützt der Auftragsverarbeiter dies auf einen Angemessenheitsbeschluss (EU-US Data Privacy Framework) oder auf Standardvertragsklauseln. <span class="todo">[Bei jedem Anbieter prüfen und in Anlage 3 vermerken.]</span></p>
+<h3>7. Rechte der Betroffenen</h3>
+<p>Anfragen Betroffener leitet der Auftragsverarbeiter unverzüglich an den Verantwortlichen weiter und beantwortet sie nicht selbst. Er unterstützt den Verantwortlichen mit geeigneten technischen und organisatorischen Mitteln (Auskunft, Berichtigung, Löschung, Export).</p>
+<h3>8. Unterstützungspflichten</h3>
+<p>Der Auftragsverarbeiter unterstützt den Verantwortlichen bei Sicherheit, Meldung von Datenschutzverletzungen, Datenschutz-Folgenabschätzung und Konsultation der Behörde (Art. 32 bis 36 DSGVO), soweit dies die Informationen des Auftragsverarbeiters betrifft.</p>
+<h3>9. Meldung von Verletzungen</h3>
+<p>Der Auftragsverarbeiter meldet eine Verletzung des Schutzes personenbezogener Daten dem Verantwortlichen unverzüglich nach Bekanntwerden, mit den ihm vorliegenden Angaben (Art, Umfang, Folgen, Maßnahmen). Meldekontakt: [E-Mail des Verantwortlichen im Kundenkonto / Datenschutzkontakt eintragen].</p>
+<h3>10. Nachweise und Kontrolle</h3>
+<p>10.1 Der Auftragsverarbeiter stellt auf Anfrage die nötigen Informationen zum Nachweis der Pflichten bereit.</p>
+<p>10.2 Prüfungen durch den Verantwortlichen oder einen Prüfer sind nach angemessener Vorankündigung (<span class="todo">[30]</span> Tage) und zu üblichen Geschäftszeiten möglich, ohne den Betrieb unverhältnismäßig zu stören. <span class="todo">[Kostenregelung festlegen.]</span></p>
+<h3>11. Rückgabe und Löschung</h3>
+<p>11.1 Nach Vertragsende (und nach Wunsch des Verantwortlichen) kann dieser seine Daten exportieren (Excel-Export). Bis dahin läuft die Software im Nur-Lesen-Modus.</p>
+<p>11.2 Der Auftragsverarbeiter löscht die Daten nach <span class="todo">[90]</span> Tagen ohne Abo nach vorheriger Ankündigung. Backups verfallen nach <span class="todo">[Backup-Dauer eintragen]</span>.</p>
+<p>11.3 Gesetzliche Aufbewahrungspflichten bleiben unberührt. Rechnungsdaten des Hauptvertrags verarbeitet der Auftragsverarbeiter als eigener Verantwortlicher (7 Jahre, § 132 BAO).</p>
+<h3>12. Haftung, Schlussbestimmungen</h3>
+<p>12.1 Die Haftung richtet sich nach den AGB und Art. 82 DSGVO.</p>
+<p>12.2 Es gilt österreichisches Recht. Gerichtsstand: <span class="todo">[Gerichtsstand eintragen]</span>.</p>
+<p>12.3 Bei Widerspruch zwischen AVV und AGB geht in Datenschutzfragen der AVV vor.</p>
+<p>Ort, Datum: <span class="todo">[ ]</span> Unterschrift Verantwortlicher: <span class="todo">[ ]</span> Ort, Datum: <span class="todo">[ ]</span> Unterschrift Auftragsverarbeiter: <span class="todo">[ ]</span> <span class="todo">[Hinweis: Abschluss kann auch elektronisch in der Software erfolgen. Form mit Fachperson klären.]</span></p>
+<p>---</p>
+<h3>Anlage 1 – Gegenstand, Datenkategorien, Betroffene</h3>
+<p><b>Art und Zweck:</b> Bereitstellung von Ouverture als Software für Hotel-Eröffnung und Betrieb: Speicherung, Anzeige, Verarbeitung und Übermittlung der vom Verantwortlichen und seinen Nutzern und Gästen eingegebenen Daten.</p>
+<p><b>Funktionen mit Personenbezug:</b> Dienstplan, Zeiterfassung (Stempeln, optional per QR), Lohnliste-Vorbereitung, Personalunterkünfte mit Übergabeprotokoll, Übergabebuch, Checklisten, HACCP, Zimmer/Housekeeping, Wartung/Tickets, Team-Chat, Push-Mitteilungen, Kassenbuch, Rechnungen, Kennzahlen, Gästefeedback, Fundsachen, Gäste-QR im Zimmer (Gastanfragen), Spa- und Freizeitbuchungen, Tischreservierungen, Gutscheine, Arrangements, Warteliste, Speisekarte, Tagesbericht per Mail, Jobs/Bewerbungen, Lieferanten-/Handwerker-Links, KI-Funktionen (auf Anforderung).</p>
+<div class="tw"><table><tr><th>Betroffene</th><th>Datenkategorien</th></tr><tr><td>Mitarbeitende und Nutzer des Verantwortlichen</td><td>Name, E-Mail, Telefon, Rolle, Abteilung, Dienstplan, Arbeitszeiten und Stempelungen, Abwesenheiten, Daten für die Lohnliste-Vorbereitung, Unterkunft und Übergabeprotokoll, Chat-Nachrichten, Aufgaben, Push-Abonnement, Anmelde- und Protokolldaten</td></tr><tr><td>Bewerbende</td><td>Kontaktdaten, Bewerbungsunterlagen und -angaben</td></tr><tr><td>Gäste</td><td>Name, Kontaktdaten, Zimmer, Buchungen und Reservierungen (Spa, Tisch, Freizeit), Gutscheindaten, Anfragen, Feedback, Fundsachen, Wartelisten-Einträge, Zahlungsstatus (keine Kartendaten)</td></tr><tr><td>Gäste (besondere Kategorie, Art. 9 DSGVO)</td><td>Nur wenn der Verantwortliche den Gesundheitsfragebogen aktiviert: Gesundheitsangaben. Ausdrückliche Einwilligung des Gastes; getrennt von der Buchung gespeichert; nur für das Spa-Team sichtbar; automatische Löschung 30 Tage nach dem Termin. Im Zahlungsvorgang ein neutraler Name</td></tr><tr><td>Lieferanten, Handwerker, Kontakte</td><td>Name, Firma, Kontaktdaten, Auftrags- und Ticketdaten</td></tr></table></div>
+<p><b>Dauer:</b> Laufzeit des Hauptvertrags, danach nach Abschnitt 11.</p>
+<p>---</p>
+<h3>Anlage 2 – Technische und organisatorische Maßnahmen</h3>
+<p>Stand: <span class="todo">[Datum]</span>. Beschrieben ist der Stand der Software; organisatorische Punkte vom Betreiber bestätigen. Es wird keine Zertifizierung (z. B. ISO 27001) behauptet.</p>
+<p><b>Vertraulichkeit</b></p>
+<ul><li>Mandantentrennung durch Zeilen-Sicherheitsregeln der Datenbank (Row Level Security).</li><li>Rollen- und Rechtekonzept (Admin, Manager, Mitglied, abteilungsbezogene Rechte).</li><li>Anmeldung mit E-Mail/Passwort (Supabase), optional Google-Anmeldung und SSO. Zwei-Faktor-Anmeldung verfügbar und für sensible Funktionen erforderlich.</li><li>Öffentliche Gäste-Links nutzen zufällige Token, teils in der Datenbank nur als Hash gespeichert.</li><li>Gesundheitsangaben getrennt von der Buchung, nur für das Spa-Team sichtbar.</li><li>Geheimnisse (API-Schlüssel) nur in der Hosting-Umgebung, nicht im Quellcode.</li></ul>
+<p><b>Integrität und Transport</b></p>
+<ul><li>Übertragung nur verschlüsselt (HTTPS/TLS).</li><li>Ratenbegrenzung gegen Missbrauch.</li><li>Zahlungen der Gäste direkt auf das Konto des Hotels (Stripe Connect). Der Auftragsverarbeiter erhält keine Kartendaten.</li></ul>
+<p><b>Verfügbarkeit und Belastbarkeit</b></p>
+<ul><li>Hosting bei Render, Datenbank bei Supabase. Backups: <span class="todo">[Backup-Dauer und -Rhythmus eintragen]</span>.</li><li>Datenexport (Excel) durch den Kunden.</li></ul>
+<p><b>Löschung und Datenminimierung</b></p>
+<ul><li>Automatische Löschung der Gesundheitsangaben 30 Tage nach dem Termin.</li><li>Löschung nach Vertragsende gemäß Abschnitt 11.</li><li>KI-Funktionen nur auf Anforderung; keine Analyse- oder Werbe-Cookies.</li></ul>
+<p><b>Organisation</b></p>
+<ul><li><span class="todo">[Verpflichtung der Beschäftigten zur Vertraulichkeit bestätigen]</span></li><li><span class="todo">[Prozess für Datenschutzverletzungen und Zugriffsrechte bestätigen]</span></li><li><span class="todo">[Regelmäßige Prüfung der Wirksamkeit: Rhythmus eintragen]</span></li></ul>
+<p>---</p>
+<h3>Anlage 3 – Unterauftragsverarbeiter</h3>
+<div class="tw"><table><tr><th>Anbieter</th><th>Leistung</th><th>Sitz / Region</th><th>Grundlage Drittland</th></tr><tr><td>Supabase Inc.</td><td>Datenbank, Anmeldung, Dateien</td><td>USA / Region: <span class="todo">[eintragen]</span></td><td><span class="todo">[DPF / SCC prüfen]</span></td></tr><tr><td>Render Services Inc.</td><td>Hosting App, Website, Server</td><td>USA / Region: <span class="todo">[eintragen]</span></td><td><span class="todo">[DPF / SCC prüfen]</span></td></tr><tr><td>Stripe Payments Europe Ltd.</td><td>Abo-Zahlungen (Anbieter als Empfänger)</td><td>Irland</td><td><span class="todo">[prüfen]</span></td></tr><tr><td><span class="todo">[Brevo (Sendinblue SAS) und/oder Resend Inc.]</span></td><td>E-Mail-Versand</td><td><span class="todo">[Frankreich / USA]</span></td><td><span class="todo">[prüfen]</span></td></tr><tr><td>Anthropic PBC</td><td>KI-Funktionen (nur bei Nutzung): Lagebericht, Assistent, Übersetzung</td><td>USA</td><td><span class="todo">[DPF / SCC prüfen]</span></td></tr><tr><td>Google Ireland Ltd.</td><td>Optional, nur wenn verbunden: Google-Anmeldung, Unternehmensprofil, Places</td><td>Irland</td><td><span class="todo">[prüfen]</span></td></tr><tr><td>Meta (WhatsApp Business Platform)</td><td>Optional, nur wenn das Hotel WhatsApp verbindet</td><td><span class="todo">[Vertragspartner prüfen]</span></td><td><span class="todo">[prüfen]</span></td></tr><tr><td>Push-Dienste (Google, Apple, Mozilla)</td><td>Zustellung von Push-Mitteilungen, nur nach Zustimmung</td><td><span class="todo">[prüfen]</span></td><td><span class="todo">[prüfen]</span></td></tr><tr><td>jsDelivr, Cloudflare (cdnjs)</td><td>Auslieferung von Programmbibliotheken (IP-Adresse)</td><td><span class="todo">[prüfen]</span></td><td><span class="todo">[prüfen; Selbst-Hosting geplant?]</span></td></tr></table></div>
+<p><b>Nicht Unterauftragsverarbeiter:</b> PMS Mews und Apaleo (eigener Vertrag des Hotels, Weitergabe auf Weisung); Stripe-Konto des Hotels für Gästezahlungen (Stripe ist dort Vertragspartner des Hotels); open.er-api.com (Wechselkurse, keine personenbezogenen Daten); eingebettete Videos (YouTube erweiterter Datenschutzmodus, Vimeo), nur wenn der Kunde sie selbst einbindet.</p>
+  <h2 id="gaeste-muster">Muster: Datenschutzhinweis für Gäste (für Hotels)</h2>
+<p class="note">Mustertext für Hotels, die Ouverture für Gästefunktionen nutzen. Übernehmen und an Ihr Haus anpassen; in Ouverture unter „Hotel bearbeiten → Rechtliches für Gästeseiten“ verlinken. Keine Rechtsberatung.</p>
+<h3>1. Verantwortlicher</h3>
+<p><span class="todo">[Hotelname, Rechtsform]</span> <span class="todo">[Straße Hausnummer, PLZ Ort, Land]</span> E-Mail: <span class="todo">[E-Mail]</span> · Telefon: <span class="todo">[Telefon]</span> <span class="todo">[UID / Firmenbuchnummer]</span> <span class="todo">[Datenschutzbeauftragte/r, falls bestellt: Kontakt]</span></p>
+<h3>2. Technik-Dienstleister</h3>
+<p>Für Buchungen, Reservierungen, Gutscheine und Gastanfragen nutzen wir die Software <b>Ouverture</b>. Der Anbieter <span class="todo">[Firmenname Ouverture-Anbieter]</span> verarbeitet Ihre Daten **in unserem Auftrag** (Auftragsverarbeiter, Art. 28 DSGVO) und nicht für eigene Zwecke. Ein Auftragsverarbeitungsvertrag besteht. Die Technik wird bei Supabase (Datenbank) und Render (Hosting) betrieben. <span class="todo">[Region laut AVV, Anlage 3 eintragen.]</span> Für bestimmte Funktionen setzen wir weitere Dienstleister ein (z. B. E-Mail-Versand, Zahlungsdienst Stripe).</p>
+<h3>3. Spa- und Freizeitbuchung</h3>
+<p><b>Daten:</b> Name, E-Mail, Telefon, gewählte Leistung, Termin, Personenzahl, Anmerkungen, gegebenenfalls Zahlungsstatus einer Anzahlung. <b>Zweck:</b> Durchführung der Buchung, Bestätigung, Erinnerung, Änderung und Absage. <b>Rechtsgrundlage:</b> Vertrag bzw. vorvertragliche Maßnahmen (Art. 6 Abs. 1 lit. b DSGVO). <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen]</span>.</p>
+<p><b>Gesundheitsangaben (nur wenn wir den Fragebogen aktiviert haben):</b> Bei manchen Behandlungen fragen wir nach Angaben zur Gesundheit (z. B. Schwangerschaft, Allergien, Vorerkrankungen), damit die Behandlung sicher durchgeführt werden kann.</p>
+<ul><li>Das ist freiwillig. Wir verarbeiten die Angaben nur mit Ihrer <b>ausdrücklichen Einwilligung</b> (Art. 9 Abs. 2 lit. a DSGVO).</li><li>Die Angaben werden <b>getrennt von der Buchung</b> gespeichert und sind <b>nur für das Spa-Team</b> sichtbar.</li><li>Sie werden <b>automatisch 30 Tage nach dem Termin gelöscht</b>.</li><li>Im Zahlungsvorgang verwenden wir einen <b>neutralen Namen</b>, keinen Behandlungsnamen, der auf Ihre Gesundheit schließen lässt.</li><li><b>Widerruf:</b> Sie können die Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen, per E-Mail an <span class="todo">[E-Mail]</span>. Die Angaben werden dann gelöscht. Ohne Angaben können wir manche Behandlungen möglicherweise nicht anbieten. <span class="todo">[Hotel: Folgen anpassen.]</span></li></ul>
+<h3>4. Tischreservierung</h3>
+<p><b>Daten:</b> Name, Kontaktdaten, Datum, Uhrzeit, Personenzahl, Anmerkungen (z. B. Allergien, wenn Sie sie angeben – bitte nur das Nötige). <b>Zweck:</b> Durchführung und Bestätigung der Reservierung. <b>Rechtsgrundlage:</b> Art. 6 Abs. 1 lit. b DSGVO; für freiwillige Angaben zu Allergien oder Unverträglichkeiten, die Gesundheitsdaten sein können, Ihre Einwilligung (Art. 9 Abs. 2 lit. a DSGVO). <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen]</span>.</p>
+<h3>5. Gutscheinkauf und Einlösung</h3>
+<p><b>Daten:</b> Name und E-Mail der Käuferin bzw. des Käufers, gegebenenfalls Name der beschenkten Person und Widmung, Gutscheinwert, Gutscheincode, Einlösedaten. <b>Zahlung:</b> Die Zahlung läuft über <b>Stripe</b> (Stripe Payments Europe Ltd., Irland) auf das <b>eigene Stripe-Konto des Hotels</b>. Wir sind Zahlungsempfänger und Ihr Vertragspartner. Kartendaten verarbeitet Stripe; wir erhalten sie nicht. Für Stripe gelten dessen Bedingungen und Datenschutzhinweise. <b>Rechtsgrundlage:</b> Vertrag (Art. 6 Abs. 1 lit. b DSGVO); gesetzliche Aufbewahrung von Buchhaltungsunterlagen (Art. 6 Abs. 1 lit. c DSGVO, [§ 132 BAO – 7 Jahre; bei Sitz außerhalb Österreichs anpassen]). <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen]</span>. Gutscheine werden auch an der Rezeption verkauft und eingelöst; dort erfassen wir dieselben Daten.</p>
+<h3>6. Warteliste</h3>
+<p><b>Daten:</b> Name, Kontaktdaten, gewünschter Termin bzw. Leistung. <b>Zweck:</b> Wir informieren Sie, wenn ein Platz frei wird. <b>Rechtsgrundlage:</b> Ihre Anfrage, Art. 6 Abs. 1 lit. b DSGVO. <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen]</span>, spätestens bis der Wunschtermin vorbei ist <span class="todo">[prüfen]</span>.</p>
+<h3>7. Gäste-QR im Zimmer (Gastanfragen)</h3>
+<p>Im Zimmer können Sie über einen QR-Code Anfragen an uns senden (z. B. Handtücher, Reparatur, Wünsche). Der Link enthält ein zufälliges Token. <b>Daten:</b> Zimmernummer, Inhalt der Anfrage, Zeitpunkt, gegebenenfalls Name oder Kontaktdaten. <b>Zweck:</b> Bearbeitung Ihrer Anfrage. <b>Rechtsgrundlage:</b> Vertrag (Art. 6 Abs. 1 lit. b DSGVO) bzw. berechtigtes Interesse an einem guten Service (Art. 6 Abs. 1 lit. f DSGVO). <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen]</span>.</p>
+<h3>8. Feedback</h3>
+<p>Sie können uns Feedback geben, auch mit Namen oder anonym, soweit die Funktion das erlaubt. <b>Daten:</b> Bewertung, Freitext, gegebenenfalls Name und Kontakt. <b>Zweck:</b> Qualitätsverbesserung und Rückmeldung an Sie. <b>Rechtsgrundlage:</b> Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) bzw. Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), wenn Sie Kontaktdaten angeben. <span class="todo">[Hotel: zutreffende Grundlage wählen.]</span> <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen]</span>.</p>
+<h3>9. Fundsachen</h3>
+<p><b>Daten:</b> Beschreibung des Gegenstands, Fundort und -zeit, Kontaktdaten der Verlierer:in bzw. Finder:in, Übergabe. <b>Zweck:</b> Rückgabe von Fundsachen. <b>Rechtsgrundlage:</b> Berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO. <b>Speicherdauer:</b> <span class="todo">[vom Hotel festzulegen, z. B. Aufbewahrungsfrist für Fundsachen]</span>.</p>
+<h3>10. Technik, Cookies und Drittanbieter</h3>
+<p>Die Gästeseiten setzen <b>keine Analyse- oder Werbe-Cookies</b>. Nur technisch notwendige Speicherung im Browser (z. B. Sprache). Beim Aufruf werden technisch notwendig IP-Adresse und Zeitpunkt in Server-Protokollen verarbeitet. Die Seiten laden Programmbibliotheken von öffentlichen Auslieferungsnetzen (jsDelivr, Cloudflare/cdnjs); dabei wird Ihre IP-Adresse an diese Anbieter übermittelt. <span class="todo">[Hotel/Anbieter: Hinweis streichen, wenn Selbst-Hosting umgesetzt ist.]</span> <span class="todo">[Wenn Sie Videos, Karten o. Ä. einbinden: hier ergänzen.]</span></p>
+<h3>11. Empfänger und Drittland</h3>
+<p>Empfänger sind unsere Dienstleister: Ouverture-Anbieter mit seinen Unterauftragsverarbeitern (u. a. Supabase, Render, E-Mail-Dienst), Stripe bei Zahlungen. Soweit Daten in die USA gelangen, beruht das auf dem EU-US Data Privacy Framework oder Standardvertragsklauseln. <span class="todo">[Mit AVV, Anlage 3 abgleichen.]</span></p>
+<h3>12. Ihre Rechte</h3>
+<p>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch sowie das Recht, erteilte Einwilligungen jederzeit zu widerrufen. Wenden Sie sich an <span class="todo">[E-Mail des Hotels]</span>. Ihre Anfrage richten Sie bitte an uns, nicht an den Software-Anbieter.</p>
+<h3>13. Beschwerde</h3>
+<p>Sie können sich bei der Datenschutzbehörde beschweren. In Österreich: Österreichische Datenschutzbehörde, Barichgasse 40–42, 1030 Wien, www.dsb.gv.at. [Hotel außerhalb Österreichs: zuständige Aufsichtsbehörde eintragen.]</p>
+<p>Stand: <span class="todo">[Datum]</span></p>
 </div>
 </body>
 </html>

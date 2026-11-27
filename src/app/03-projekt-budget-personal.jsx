@@ -128,10 +128,15 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
     reader.readAsDataURL(file);
   };
   const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
+  // Impressum/Datenschutz des Hotels – erscheinen als Fußzeile auf allen Gästeseiten (Buchung, Tisch, Gutschein, Speisekarte …)
+  const [legal,setLegal]=useState(()=>({privacy_url:(hotel.guest_info||{}).privacy_url||"", imprint_url:(hotel.guest_info||{}).imprint_url||""}));
   const save = async () => {
     if(!form.name) return;
+    const bad = [legal.imprint_url, legal.privacy_url].some(u=>u.trim() && !/^https:\/\/\S+$/i.test(u.trim()));
+    if(bad) return setError(tf("Impressum und Datenschutz bitte als vollständige Adresse mit https:// angeben."));
     setSaving(true); setError("");
-    try { onSaved(await api("/api/hotels/"+hotel.id,"PATCH",{...form, rooms: form.rooms==="" ? "" : Number(form.rooms), brand_color: form.brand_color || null, logo_data: form.logo_data || null, holiday_region: form.holiday_region || null})); }
+    const gi = hotel.guest_info !== undefined ? {guest_info:{...(hotel.guest_info||{}), privacy_url:legal.privacy_url.trim(), imprint_url:legal.imprint_url.trim()}} : {};
+    try { onSaved(await api("/api/hotels/"+hotel.id,"PATCH",{...form, ...gi, rooms: form.rooms==="" ? "" : Number(form.rooms), brand_color: form.brand_color || null, logo_data: form.logo_data || null, holiday_region: form.holiday_region || null})); }
     catch(e){ setError(e.message); }
     setSaving(false);
   };
@@ -200,6 +205,14 @@ function HotelEditForm({hotel, api, onSaved, onCancel}){
         </div>
         <div style={{fontSize:12,color:INK_MUTED,flex:"1 1 220px"}}>{tf("Logo und Farbe erscheinen in der Seitenleiste, im Statusbericht und auf geteilten Dienstplan-Bildern.")}</div>
       </div>
+      {hotel.guest_info !== undefined && <div style={{marginTop:14}}>
+        <div className="field-label">{tf("Rechtliches für Gästeseiten")}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:"0 10px"}}>
+          <Field label={tf("Impressum (Link)")}><input className="input" type="url" inputMode="url" placeholder="https://" value={legal.imprint_url} onChange={e=>setLegal({...legal,imprint_url:e.target.value})} /></Field>
+          <Field label={tf("Datenschutzerklärung (Link)")}><input className="input" type="url" inputMode="url" placeholder="https://" value={legal.privacy_url} onChange={e=>setLegal({...legal,privacy_url:e.target.value})} /></Field>
+        </div>
+        <div style={{fontSize:12,color:INK_MUTED}}>{tf("Erscheinen als Fußzeile auf allen Gästeseiten (Online-Buchung, Tischreservierung, Gutscheine, Speisekarte, Zimmer-QR, Feedback, Jobs). Pflicht, sobald Gäste dort Daten eingeben.")} <a href="rechtliches.html#gaeste-muster" target="_blank" rel="noopener">{tf("Mustertext für Ihre Datenschutzerklärung")}</a></div>
+      </div>}
       <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:12}}>
         <button style={linkBtn} onClick={onCancel}>Abbrechen</button>
         <button className="btn-primary" onClick={save} disabled={saving}>{saving?"Speichert…":"Speichern"}</button>
